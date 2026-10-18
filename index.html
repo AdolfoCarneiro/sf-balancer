@@ -63,6 +63,8 @@
     --sink: #ff6d7c;
     --held: #7f9bb8;
     --ok: #8fe3a4;
+    --holo: #6fe3ff;
+    --bench: #0a1b2d;
     --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
     --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --cut: 14px;
@@ -315,6 +317,151 @@
   @media (max-width: 900px) { .segs, .guide-cols { grid-template-columns: 1fr; } }
   .site-foot a.coffee { color: var(--ink); text-decoration: none; border: 1px solid var(--ficsit); border-radius: 4px; padding: 1px 8px; }
   .site-foot a.coffee:hover, .site-foot a.coffee:focus-visible { background: var(--ficsit); color: var(--paper); }
+  .intro .links { display: inline-flex; gap: 16px; }
+
+  /* Bloco do balancer no diagrama do meio: abre a montagem */
+  .balblock { cursor: pointer; }
+  .balblock:hover polygon { fill: var(--plate); }
+  .balblock:focus { outline: none; }
+  .balblock:focus-visible polygon { stroke: var(--holo); stroke-width: 3; }
+  .pbtn {
+    background: var(--paper); border: 1px solid var(--line); color: var(--ink); cursor: pointer;
+    font: 600 14px/1.2 var(--display); padding: 6px 11px; min-width: 34px;
+  }
+  .pbtn:hover { border-color: var(--ficsit); }
+  .pbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
+  .pbtn.prim { background: var(--ficsit); border-color: var(--ficsit); color: var(--paper); }
+  .pbtn.prim:hover { background: #ffb067; }
+  .open-row { margin-top: 12px; }
+
+  /* Biblioteca de balancers */
+  .library { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .library > h2 { font: 600 28px/1.1 var(--display); margin: 0 0 6px; }
+  .library h3 { font: 600 18px/1.2 var(--display); margin: 0 0 6px; }
+  .gen { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; margin: 16px 0; padding: 14px 18px 16px; }
+  .gen .fld { display: flex; flex-direction: column; gap: 3px; }
+  .gen .fld .field { width: 96px; }
+  .gen .fld select.field { width: auto; min-width: 150px; }
+  .gen .cell-head { min-height: 0; }
+  .gen-arrow { font: 700 26px/1 var(--display); color: var(--ficsit); padding-bottom: 6px; }
+  .bps-wrap { margin-left: auto; display: flex; flex-direction: column; gap: 5px; }
+  .bps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .bp-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--ficsit); padding: 2px 2px 2px 9px; font: 600 15px var(--display); }
+  .bp-chip button { background: none; border: 0; color: var(--ink-dim); cursor: pointer; font: 600 16px/1 var(--body); padding: 2px 6px; }
+  .bp-chip button:hover { color: var(--sink); }
+  .bp-chip button:focus-visible { outline: 2px solid var(--ficsit); }
+  .bp-add { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-dim); }
+  .bp-add .field { width: 48px; padding: 5px 6px; }
+  @media (max-width: 760px) { .bps-wrap { margin-left: 0; } }
+
+  /* Bancada: passo a passo à esquerda, escolha e conferência à direita */
+  .wb { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+  .wb > * { min-width: 0; }
+  @media (min-width: 1101px) { .wb-stage { position: sticky; top: 12px; } }
+  @media (max-width: 1100px) { .wb { grid-template-columns: 1fr; } }
+  .ponder {
+    border: 1px solid var(--line);
+    background-color: var(--bench);
+    background-image: radial-gradient(var(--grid) 1px, transparent 1.2px);
+    background-size: 16px 16px;
+  }
+  .ponder:focus { outline: none; }
+  .ponder:focus-visible { outline: 1px solid var(--holo); }
+  .stage { padding: 18px; overflow: auto; max-height: 68vh; }
+  .stage svg { width: 100%; min-width: min(var(--w), 620px); max-width: var(--w); height: auto; margin: 0 auto; }
+  .cap {
+    display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 14px; align-items: baseline;
+    min-height: 68px; padding: 12px 16px; background: var(--plate); border-top: 1px solid var(--line);
+    box-shadow: inset 4px 0 0 var(--holo);
+  }
+  .cap.done { box-shadow: inset 4px 0 0 var(--ok); }
+  .cap-n { font: 700 14px var(--display); color: var(--holo); white-space: nowrap; }
+  .cap.done .cap-n { color: var(--ok); }
+  .cap-t { margin: 0; font-size: 15px; max-width: 78ch; }
+  .pctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .ticks { display: flex; gap: 3px; flex: 1 1 180px; min-width: 120px; }
+  .tick { flex: 1; height: 12px; padding: 0; border: 0; cursor: pointer; background: var(--line); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); }
+  .tick.done { background: var(--ficsit); }
+  .tick.cur { background: var(--holo); }
+  .tick:hover { background: #3d6a96; }
+  .tick:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+  .pkeys { font-size: 12px; color: var(--ink-dim); margin-left: auto; }
+  @media (max-width: 760px) { .pkeys { display: none; } }
+  .plegend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 16px 12px; font-size: 12.5px; color: var(--ink-dim); }
+  .plegend span { display: inline-flex; align-items: center; gap: 6px; }
+  .plegend i { display: inline-block; width: 16px; height: 4px; }
+  .plegend i.holo { height: 10px; width: 14px; border: 1.5px dashed var(--holo); background: rgba(111, 227, 255, .14); }
+  .plegend i.loopi { background: repeating-linear-gradient(90deg, var(--ink-dim) 0 5px, transparent 5px 8px); }
+
+  /* Holograma da build gun: a peça do passo atual aparece tracejada e fica sólida no passo seguinte */
+  .bsvg [data-s] { transition: opacity .3s ease; }
+  .bsvg.stepping .fut { opacity: 0; }
+  .bsvg.stepping .past { opacity: .5; }
+  .bsvg .now :is(path, rect, polygon, circle) { stroke: var(--holo) !important; stroke-dasharray: 5 3; animation: holo 1.1s linear infinite; }
+  .bsvg .now :is(rect, polygon, circle) { fill: rgba(111, 227, 255, .14) !important; }
+  .bsvg .now text { fill: var(--holo) !important; }
+  @keyframes holo { to { stroke-dashoffset: -16; } }
+  @media (prefers-reduced-motion: reduce) { .bsvg .now * { animation: none; } .bsvg [data-s] { transition: none; } }
+
+  .wb-side { display: flex; flex-direction: column; gap: 14px; }
+  .wb-side h4 { font: 600 16px/1.2 var(--display); margin: 0 0 4px; color: var(--ink-dim); }
+  .wb-side p { margin: 0; font-size: 14px; }
+  .wb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .wb-shape { font: 700 52px/0.95 var(--display); color: var(--ficsit); letter-spacing: -.01em; }
+  .wb-name { font: 600 20px/1.15 var(--display); }
+  .pc-grid { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0 24px; margin: 0; }
+  .pc-grid dt { font-size: 12px; color: var(--ink-dim); }
+  .pc-grid dd { margin: 0; font: 600 26px/1.1 var(--display); }
+  .pc-grid dd small { font: 500 13px var(--body); color: var(--ink-dim); margin-left: 2px; }
+  .cands { display: flex; flex-direction: column; }
+  .cand-h, .cand { display: grid; grid-template-columns: minmax(0, 1fr) 70px 46px; gap: 1px 10px; }
+  .cand-h { font-size: 12px; color: var(--ink-dim); padding: 0 0 4px 12px; }
+  .cand-h span + span, .cand .cv, .cand .cp { text-align: right; }
+  .cand {
+    position: relative; width: 100%; text-align: left; cursor: pointer; color: var(--ink); font: inherit;
+    background: none; border: 0; border-top: 1px solid var(--line); padding: 8px 0 8px 12px;
+  }
+  .cand::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: transparent; }
+  .cand:hover:not(:disabled) { background: rgba(255, 255, 255, .03); }
+  .cand.sel::before { background: var(--ficsit); }
+  .cand:disabled { cursor: default; color: var(--ink-dim); }
+  .cand:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
+  .cand .cn { font: 600 15px/1.25 var(--display); }
+  .cand .cv, .cand .cp { font: 600 15px var(--display); font-variant-numeric: tabular-nums; }
+  .cand .cnote { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-dim); }
+  .ctag { font: 600 11.5px var(--body); color: var(--ok); white-space: nowrap; margin-left: 4px; }
+  .ctag.use { color: var(--holo); }
+  .checks td:first-child { white-space: normal; }
+  .checks td:last-child { width: 1%; }
+
+  /* O que é, como montar */
+  .learn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 36px; margin-top: 36px; }
+  .learn p { margin: 0; max-width: 68ch; color: var(--ink-dim); }
+  .learn .build { grid-column: 1 / -1; }
+  .learn ol { margin: 4px 0 0; padding-left: 26px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 28px; }
+  .learn ol li { padding-left: 4px; color: var(--ink-dim); }
+  .learn ol li::marker { color: var(--ficsit); font: 600 15px var(--display); }
+  @media (max-width: 900px) { .learn { grid-template-columns: 1fr; } }
+
+  /* Catálogo */
+  .catalog { margin-top: 36px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
+  @media (max-width: 1100px) { .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 680px) { .cat-grid { grid-template-columns: 1fr; } }
+  .cat { display: flex; flex-direction: column; gap: 8px; }
+  .cat .thumb { background: var(--bench); border: 1px solid var(--line); padding: 10px; height: 150px; display: flex; align-items: center; justify-content: center; }
+  .cat .thumb svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+  .cat h4 { margin: 0; font: 600 17px var(--display); }
+  .cat p { margin: 0; font-size: 14px; color: var(--ink-dim); flex: 1; }
+  .cat .pbtn { align-self: flex-start; }
+
+  /* Diálogo com a montagem */
+  .dlg { width: min(1320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--ficsit); background: var(--paper); color: var(--ink); }
+  .dlg::backdrop { background: rgba(4, 12, 22, .72); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--paper); z-index: 1; }
+  .dlg-head h2 { margin: 0; font: 600 22px var(--display); }
+  .dlg-body { padding: 18px; }
+
   .site-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ink-dim); }
 </style>
 </head>
@@ -330,7 +477,7 @@
     </div>
     <dl class="ledger num" id="ledger"></dl>
   </header>
-  <p class="intro"><span data-i18n="intro">Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.</span> <a href="#how" data-i18n="howLink">How it works</a></p>
+  <p class="intro"><span data-i18n="intro">Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.</span> <span class="links"><a href="#how" data-i18n="howLink">How it works</a><a href="#library" data-i18n="libLink">Balancer library</a></span></p>
 
   <div id="form">
     <div class="band">
@@ -377,6 +524,44 @@
   </div>
 
   <!-- Texto fixo em inglês para quem lê sem JavaScript (buscadores); applyStatic() troca pelo idioma escolhido. -->
+  <section class="library" id="library" aria-labelledby="libTitle">
+    <h2 id="libTitle" data-i18n="libTitle">Load balancer library</h2>
+    <p class="lead" data-i18n="libLead">Build an N→M balancer from scratch: pick how many belts go in and how many come out, and the tool tries every design, checks the rate on each segment and shows the build piece by piece.</p>
+    <div class="plate gen" id="gen">
+      <div class="fld"><div class="cell-head"><label for="libN" data-i18n="genIn">Inputs</label></div><input class="field" id="libN" type="text" inputmode="numeric"></div>
+      <span class="gen-arrow" aria-hidden="true">→</span>
+      <div class="fld"><div class="cell-head"><label for="libM" data-i18n="genOut">Outputs</label></div><input class="field" id="libM" type="text" inputmode="numeric"></div>
+      <div class="fld"><div class="cell-head"><span><label for="libRate" data-i18n="genRate">Each input /min</label><button type="button" class="tip" data-tip="tipGenRate" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span></div><input class="field" id="libRate" type="text" inputmode="decimal"></div>
+      <div class="fld"><div class="cell-head"><label for="libBelt" data-i18n="genBelt">Belt</label></div><select class="field" id="libBelt"></select></div>
+      <div class="bps-wrap">
+        <div class="cell-head"><span><span data-i18n="bpTitle">Blueprints I have</span><button type="button" class="tip" data-tip="tipBp" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span></div>
+        <div class="bps" id="bpList"></div>
+      </div>
+    </div>
+    <div id="libOut"></div>
+    <div class="learn">
+      <div><h3 data-i18n="lbWhatTitle">What it is</h3><p data-i18n="lbWhat">A load balancer is a set of splitters and mergers that takes N belts and delivers M belts at exactly the same rate, no matter how much each input carries. There is no “balancer” piece in the game: you build it from regular pieces.</p></div>
+      <div><h3 data-i18n="lbHowTitle">How it works</h3><p data-i18n="lbHow">A splitter divides evenly among the outputs that accept items, into 2 or 3. Chaining splitters cuts a belt into any product of 2 and 3 (2, 3, 4, 6, 8, 9, 12…). A merger joins up to 3 belts, taking from each in turn. A matrix uses both: each input is cut into M equal parts and each output gets one part from every input, so every output adds up to the same.</p></div>
+      <div><h3 data-i18n="lbWhyTitle">Why use one</h3><p data-i18n="lbWhy">A manifold balances itself across machines, but not across lines: if one destination line gets 455 and another 300, the machines on the second starve forever. A balancer makes every line carry the same share of the total. It’s also how you split a belt into 5 or 7, which a splitter can’t do directly.</p></div>
+      <div><h3 data-i18n="lbNotTitle">When you don’t need one</h3><p data-i18n="lbNot">If each source line already covers a destination, connect them directly. If the shortfall is small, a split donor line or a Smart Splitter with overflow does it with fewer pieces. The alternatives above compare this for your case.</p></div>
+      <div class="build">
+        <h3 data-i18n="lbBuildTitle">How to build your own</h3>
+        <ol>
+          <li data-i18n="lbBuild1">Write M as a product of 2 and 3 (6 = 3 × 2). If you can’t (5, 7, 10…), use the next number that works and choose: loop or sink.</li>
+          <li data-i18n="lbBuild2">On each input, build the tree: one splitter for the first factor, then one splitter on each output for the next factor.</li>
+          <li data-i18n="lbBuild3">For each output, take the part with the same number from every input and join them with a merger. With more than 3 inputs, chain mergers.</li>
+          <li data-i18n="lbBuild4">Loop: the extra parts go back to a merger before the first splitter. Sink: they go to the Awesome Sink.</li>
+          <li data-i18n="lbBuild5">Check the belt on every segment. If the total fits on one belt, the funnel (merge everything, then split) uses far fewer pieces.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="catalog">
+      <h3 data-i18n="catTitle">Design catalog</h3>
+      <p class="lead" data-i18n="catLead">The six families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.</p>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+  </section>
+
   <section class="guide" id="how" aria-labelledby="howTitle">
     <h2 id="howTitle" data-i18n="guideTitle">How it works</h2>
     <p class="lead" data-i18n="guideLead">Between two stages of a factory there are three belt segments. The tool solves each one and shows the result above.</p>
@@ -422,6 +607,10 @@
   </footer>
 </div>
 <div id="tipbox" role="tooltip" hidden></div>
+<dialog class="dlg" id="balDlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head"><h2 id="dlgTitle"></h2><button type="button" class="pbtn" id="dlgClose" data-i18n="dlgClose">Close</button></div>
+  <div class="dlg-body" id="dlgBody"></div>
+</dialog>
 <noscript><p style="text-align:center">This planner needs JavaScript to calculate.</p></noscript>
 
 <template id="grpTpl">
@@ -593,6 +782,93 @@ const I18N = {
     faq4Q: 'Qual versão do jogo?',
     faq4A: 'Satisfactory 1.0 em diante, com esteiras da Mk1 (60/min) à Mk6 (1.200/min).',
     footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footCoffee: 'Me paga um café', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
+    caseBal: (n, m) => `balancer ${n}→${m}`,
+    planBal: (n, m, name) => `Balancer ${n}→${m}, ${name}`, planBalSub: 'As linhas de origem entram num balancer que reparte o total igual entre todos os destinos.',
+    dkMatrix: 'matriz', dkFunnel: 'funil', dkMatrixLoop: 'matriz com loop', dkFunnelLoop: 'funil com loop', dkMatrixSink: 'matriz com sink', dkFunnelSink: 'funil com sink',
+    dkBlueprint: (n, m) => `seu blueprint ${n}→${m}`,
+    libLink: 'Biblioteca de balancers',
+    libTitle: 'Biblioteca de load balancers',
+    libLead: 'Monte um balancer N→M do zero: escolha quantas esteiras entram e quantas saem, e a ferramenta testa cada design, confere a vazão de cada trecho e mostra a montagem peça por peça.',
+    genIn: 'Entradas', genOut: 'Saídas', genRate: 'Cada entrada /min', genBelt: 'Esteira',
+    tipGenRate: 'Quanto cada esteira de entrada traz. Define a vazão de cada trecho interno, que é conferida contra a esteira escolhida.',
+    genBest: (n, m) => `Melhor design para ${n}→${m}`,
+    designsTitle: 'Designs testados', thDesign: 'Design', thPerOut: 'Por saída', thNote: 'Observação',
+    tipDesigns: 'Todos os designs que a ferramenta sabe montar, o melhor primeiro: mais vazão por saída, depois blueprint seu, menos sink e menos peças. Clique numa linha para ver a montagem dele.',
+    bestTag: 'melhor', inUseTag: 'em uso no plano',
+    rNotDirect: m => `${m} não sai só com splitters`, rDirect: m => `${m} já sai direto; loop e sink só gastam peça`,
+    rOneInput: 'com 1 entrada é igual à matriz', rShape: 'precisa de 2 saídas ou mais', rBpShape: 'formato não bate',
+    rLimit: (seg, rate, belt) => `gargalo: ${seg} (${rate}/min) passa da ${belt}`, rNoLimit: 'sem gargalo',
+    whyTitle: 'Por que este design', whyNotTitle: 'Por que não é o melhor',
+    whyBp: (n, m) => `Você já tem o blueprint ${n}→${m}: é só colar, sem montar peça por peça.`,
+    whyOnly: 'É o único design que se aplica a esse formato.',
+    whyMore: (a, name, b) => `Entrega ${a}/min por saída; ${name} só chega a ${b}/min.`,
+    whyNoSink: (name, s) => `Mesma vazão sem mandar nada pro sink; ${name} joga ${s}/min fora.`,
+    whyFewer: (pa, name, pb) => `Mesma vazão com menos peças: ${pa} contra ${pb} (${name}).`,
+    whyTie: name => `Empata com ${name}; qualquer um dos dois serve.`,
+    whyNone: 'Nenhum design se aplica a esse formato.',
+    bpTitle: 'Blueprints que eu tenho',
+    bpLead: 'Quando um blueprint seu tem exatamente as saídas certas e entradas suficientes, a ferramenta prefere ele.',
+    bpAdd: 'Adicionar', bpEmpty: 'Nenhum blueprint ainda.', bpRemove: (n, m) => `Remover blueprint ${n}→${m}`,
+    bpInAria: 'Entradas do blueprint', bpOutAria: 'Saídas do blueprint',
+    tipBp: 'Blueprints do Blueprint Designer que você já montou. Contam como uma peça só, porque é só colar. Entrada sobrando fica vazia sem problema; saída sobrando desequilibra a divisão, por isso o número de saídas tem que bater.',
+    lbWhatTitle: 'O que é',
+    lbWhat: 'Um load balancer é um conjunto de splitters e mergers que recebe N esteiras e entrega M esteiras com exatamente a mesma taxa, não importa quanto cada entrada traz. Não existe uma peça “balancer” no jogo: ele é montado só com peças comuns.',
+    lbHowTitle: 'Como funciona',
+    lbHow: 'O splitter divide igual entre as saídas que aceitam item, em 2 ou 3. Encadeando splitters dá para cortar uma esteira em qualquer produto de 2 e 3 (2, 3, 4, 6, 8, 9, 12…). O merger junta até 3 esteiras, puxando de cada uma por vez. A matriz usa os dois: cada entrada é cortada em M partes iguais e cada saída recebe uma parte de cada entrada, então todas as saídas somam o mesmo.',
+    lbWhyTitle: 'Por que usar',
+    lbWhy: 'Um manifold se equilibra sozinho entre máquinas, mas não entre linhas: se uma linha de destino recebe 455 e outra 300, as máquinas da segunda ficam com fome para sempre. O balancer garante que cada linha leve a mesma parte do total. Também é o jeito de dividir uma esteira em 5 ou 7, que o splitter não faz direto.',
+    lbNotTitle: 'Quando não precisa',
+    lbNot: 'Se cada linha de origem já cobre um destino, ligue direto. Se a falta é pequena, uma doadora dividida ou um Smart Splitter com overflow resolve com menos peças. As alternativas lá em cima comparam isso para o seu caso.',
+    lbBuildTitle: 'Como montar o seu',
+    lbBuild1: 'Escreva M como produto de 2 e 3 (6 = 3 × 2). Se não der (5, 7, 10…), use o próximo número que dá e escolha: loop ou sink.',
+    lbBuild2: 'Em cada entrada, monte a árvore: um splitter no primeiro fator, depois um splitter em cada saída para o fator seguinte.',
+    lbBuild3: 'Para cada saída, pegue a parte de mesmo número de cada entrada e junte num merger. Com mais de 3 entradas, encadeie mergers.',
+    lbBuild4: 'Loop: as partes a mais voltam para um merger antes do primeiro splitter. Sink: vão pro Awesome Sink.',
+    lbBuild5: 'Confira a esteira de cada trecho. Se o total cabe numa esteira só, o funil (juntar tudo e depois dividir) gasta bem menos peças.',
+    catTitle: 'Catálogo de designs',
+    catLead: 'As seis famílias que a ferramenta monta, inclusive para 5, 7 e outros números que o splitter não alcança direto. Abra um exemplo no gerador.',
+    dsMatrix: 'Cada entrada vira M partes; cada saída junta uma parte de cada entrada. Aguenta a vazão de várias esteiras cheias. Serve quando M é produto de 2 e 3.',
+    dsFunnel: 'Junta todas as entradas numa esteira e divide em M. Gasta bem menos peças, mas tudo passa por uma esteira só: serve se o total couber nela.',
+    dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árvore divide no próximo número que o splitter alcança e as partes a mais voltam pra entrada. Divisão exata, sem perda; a esteira do loop carrega mais que a entrada.',
+    dsFunnelLoop: 'Funil com loop: o jeito mais barato de dividir em 5 ou 7, se o total mais o retorno couber numa esteira.',
+    dsMatrixSink: 'Matriz que divide a mais e manda as partes extras pro Awesome Sink. Sem loop e simples de montar, mas joga item fora.',
+    dsFunnelSink: 'Funil que divide a mais e manda as sobras pro sink. O mais simples para 5 ou 7 em baixa vazão, quando perder item não importa.',
+    catExample: (n, m) => `Abrir ${n}→${m}`,
+    inTag: 'E', outTag: 'S',
+    segIn: 'Entrada', segLoop: 'Entrada da árvore (entrada + retorno)', segLevel: p => `Depois de dividir em ${p}`, segPart: n => `Cada uma das ${n} partes`,
+    segChain: k => `Cascata com ${k} partes juntas`, segChainIn: k => `Cascata com ${k} entradas juntas`, segFunnel: 'Esteira do funil (tudo junto)', segOut: 'Cada saída',
+    checksTitle: 'Vazão por trecho', thSegment: 'Trecho', thLoad: 'Carrega', thFits: belt => `Cabe na ${belt}?`,
+    checkNote: (belt, per) => `Com os limites da ${belt}, cada saída entrega até ${per}/min.`,
+    checkOver: 'Trecho acima da capacidade não quebra o equilíbrio: a esteira enche, as entradas represam e cada saída recebe menos.',
+    stepOf: (k, n) => `Passo ${k} de ${n}`, stepPrev: 'Passo anterior', stepNext: 'Próximo passo', stepPlay: 'Reproduzir', stepPause: 'Pausar',
+    stepAll: 'Ver pronto', stepStart: 'Montar do zero', stepGoto: k => `Ir para o passo ${k}`, ponderAria: 'Montagem do balancer', ponderKeys: '← e → mudam de passo',
+    stepDone: (pieces, m, per) => `Pronto: ${pieces} peças e ${m} saídas de até ${per}/min cada.`,
+    stIn: (n, list, rate) => (n > 1 ? `Traga as ${n} esteiras de entrada (${list}), ${rate}/min cada.` : `Traga a esteira de entrada (${list}), ${rate}/min.`),
+    stLoopM: n => `Coloque um merger no começo ${n > 1 ? 'de cada entrada' : 'da entrada'}. Ele vai receber de volta as partes a mais do loop.`,
+    stLevelFirst: (tag, ways, rate) => `Em ${tag}, um splitter divide em ${ways}: ${ways} partes de ${rate}/min.`,
+    stLevelFunnel: (ways, rate) => `Na esteira do funil, um splitter divide em ${ways}: ${ways} partes de ${rate}/min.`,
+    stLevelNext: (count, ways, parts, rate) => `${count} splitters, um em cada saída, dividem em ${ways}: ${parts} partes de ${rate}/min.`,
+    stRepeat: (list, k) => `Repita a mesma árvore em ${list}: ${k} splitter${k > 1 ? 's' : ''} em cada.`,
+    stLoopBack: (k, m) => `${k > 1 ? `As ${k} saídas a mais voltam` : 'A saída a mais volta'} pro merger do começo. É o loop: o que volta é dividido de novo, então as ${m} partes que saem ficam iguais.`,
+    stSinkOut: k => `${k > 1 ? `As ${k} saídas a mais vão` : 'A saída a mais vai'} pro Awesome Sink.`,
+    stMerge1: (out, n, c) => `${out}: um merger junta a primeira parte de cada entrada.` + (c > 1 ? ` Com ${n} entradas são ${c} mergers em cascata: o primeiro pega 3, cada um dos seguintes pega o anterior + 2.` : ''),
+    stMergeRest: list => `Repita em ${list}: cada saída junta a parte de mesmo número de cada entrada.`,
+    stFunnelMerge: (n, c, total) => `Junte as ${n} entradas numa esteira só com ${c} merger${c > 1 ? 's em cascata' : ''}: ${total}/min.`,
+    stOut: (m, rate) => `Ligue as ${m} saídas nas linhas de destino: cada uma leva ${rate}/min.`,
+    stBpBox: (n, m, spare) => `Cole o seu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas ficam vazias` : 'Uma entrada fica vazia'}, sem problema.` : ''),
+    lgHolo: 'peça deste passo', lgLoopBack: 'retorno do loop', lgToSink: 'pro sink',
+    blkHint: 'clique para montar', blkAria: (n, m) => `Ver montagem do balancer ${n}→${m}`,
+    lbBalTitle: (n, m) => `Balancer ${n}→${m}`,
+    lbBalLine: (name, pieces, per) => `${name}: ${pieces} peças, até ${per}/min por saída.`,
+    lbOpen: 'Ver montagem passo a passo', dlgClose: 'Fechar',
+    whyVsTitle: 'Balancer ou outra alternativa?',
+    whyIsBest: 'O balancer é a alternativa recomendada aqui: enche todos os destinos com menos peças que as outras.',
+    whyVsBest: (title, full, po, pb) => `A recomendada, “${title}”, ${full ? 'também enche todos os destinos' : 'não enche todos os destinos'} com ${po} peças no meio. Este balancer usa ${pb}.`,
+    whyBalWhen: 'Vale o balancer quando você quer todas as linhas de destino com a mesma taxa, ou quando vai mexer nas máquinas depois e não quer refazer a ligação.',
+    whyOverflow: 'Overflow (Smart Splitter) só passa adiante o que sobra de uma linha que já encheu o próprio destino. É barato, mas não iguala as linhas.',
+    stepBal: (ins, n, m, name, per) => `Meio: ${ins} entram num balancer ${n}→${m} (${name}). Cada destino recebe até ${per}/min; a montagem peça por peça está em “Ver montagem passo a passo”.`,
+    toBalancer: list => `balancer para ${list}`,
+    pcBp: n => `Inclui ${n} blueprint, contado como 1 peça.`,
   },
   en: {
     locale: 'en-US', htmlLang: 'en', langName: 'English',
@@ -742,6 +1018,93 @@ const I18N = {
     faq4Q: 'Which game version?',
     faq4A: 'Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).',
     footSource: 'Open source on GitHub', footLicense: 'MIT License', footCoffee: 'Buy me a coffee', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
+    caseBal: (n, m) => `${n}→${m} balancer`,
+    planBal: (n, m, name) => `${n}→${m} balancer, ${name}`, planBalSub: 'The source lines go into a balancer that splits the total evenly among every destination.',
+    dkMatrix: 'matrix', dkFunnel: 'funnel', dkMatrixLoop: 'looped matrix', dkFunnelLoop: 'looped funnel', dkMatrixSink: 'matrix with sink', dkFunnelSink: 'funnel with sink',
+    dkBlueprint: (n, m) => `your ${n}→${m} blueprint`,
+    libLink: 'Balancer library',
+    libTitle: 'Load balancer library',
+    libLead: 'Build an N→M balancer from scratch: pick how many belts go in and how many come out, and the tool tries every design, checks the rate on each segment and shows the build piece by piece.',
+    genIn: 'Inputs', genOut: 'Outputs', genRate: 'Each input /min', genBelt: 'Belt',
+    tipGenRate: 'How much each input belt carries. It sets the rate on every internal segment, which is checked against the chosen belt.',
+    genBest: (n, m) => `Best design for ${n}→${m}`,
+    designsTitle: 'Designs tried', thDesign: 'Design', thPerOut: 'Per output', thNote: 'Note',
+    tipDesigns: 'Every design the tool can build, best first: more rate per output, then your own blueprint, less sink and fewer pieces. Click a row to see how it is built.',
+    bestTag: 'best', inUseTag: 'used in the plan',
+    rNotDirect: m => `${m} can’t be reached with splitters alone`, rDirect: m => `${m} splits directly; a loop or sink only adds pieces`,
+    rOneInput: 'with 1 input it’s the same as the matrix', rShape: 'needs 2 or more outputs', rBpShape: 'shape doesn’t match',
+    rLimit: (seg, rate, belt) => `bottleneck: ${seg} (${rate}/min) exceeds ${belt}`, rNoLimit: 'no bottleneck',
+    whyTitle: 'Why this design', whyNotTitle: 'Why it isn’t the best',
+    whyBp: (n, m) => `You already have the ${n}→${m} blueprint: just paste it instead of building piece by piece.`,
+    whyOnly: 'It’s the only design that fits this shape.',
+    whyMore: (a, name, b) => `It delivers ${a}/min per output; the ${name} only reaches ${b}/min.`,
+    whyNoSink: (name, s) => `Same rate without sinking anything; the ${name} throws away ${s}/min.`,
+    whyFewer: (pa, name, pb) => `Same rate with fewer pieces: ${pa} against ${pb} for the ${name}.`,
+    whyTie: name => `Tied with the ${name}; either one works.`,
+    whyNone: 'No design fits this shape.',
+    bpTitle: 'Blueprints I have',
+    bpLead: 'When one of your blueprints has exactly the right outputs and enough inputs, the tool prefers it.',
+    bpAdd: 'Add', bpEmpty: 'No blueprints yet.', bpRemove: (n, m) => `Remove ${n}→${m} blueprint`,
+    bpInAria: 'Blueprint inputs', bpOutAria: 'Blueprint outputs',
+    tipBp: 'Blueprint Designer blueprints you already built. Each counts as a single piece, because you just paste it. A spare input stays empty with no harm; a spare output unbalances the split, so the output count has to match.',
+    lbWhatTitle: 'What it is',
+    lbWhat: 'A load balancer is a set of splitters and mergers that takes N belts and delivers M belts at exactly the same rate, no matter how much each input carries. There is no “balancer” piece in the game: you build it from regular pieces.',
+    lbHowTitle: 'How it works',
+    lbHow: 'A splitter divides evenly among the outputs that accept items, into 2 or 3. Chaining splitters cuts a belt into any product of 2 and 3 (2, 3, 4, 6, 8, 9, 12…). A merger joins up to 3 belts, taking from each in turn. A matrix uses both: each input is cut into M equal parts and each output gets one part from every input, so every output adds up to the same.',
+    lbWhyTitle: 'Why use one',
+    lbWhy: 'A manifold balances itself across machines, but not across lines: if one destination line gets 455 and another 300, the machines on the second starve forever. A balancer makes every line carry the same share of the total. It’s also how you split a belt into 5 or 7, which a splitter can’t do directly.',
+    lbNotTitle: 'When you don’t need one',
+    lbNot: 'If each source line already covers a destination, connect them directly. If the shortfall is small, a split donor line or a Smart Splitter with overflow does it with fewer pieces. The alternatives above compare this for your case.',
+    lbBuildTitle: 'How to build your own',
+    lbBuild1: 'Write M as a product of 2 and 3 (6 = 3 × 2). If you can’t (5, 7, 10…), use the next number that works and choose: loop or sink.',
+    lbBuild2: 'On each input, build the tree: one splitter for the first factor, then one splitter on each output for the next factor.',
+    lbBuild3: 'For each output, take the part with the same number from every input and join them with a merger. With more than 3 inputs, chain mergers.',
+    lbBuild4: 'Loop: the extra parts go back to a merger before the first splitter. Sink: they go to the Awesome Sink.',
+    lbBuild5: 'Check the belt on every segment. If the total fits on one belt, the funnel (merge everything, then split) uses far fewer pieces.',
+    catTitle: 'Design catalog',
+    catLead: 'The six families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.',
+    dsMatrix: 'Each input becomes M parts; each output joins one part from every input. Handles the rate of several full belts. Works when M is a product of 2 and 3.',
+    dsFunnel: 'Merges every input onto one belt and splits it into M. Far fewer pieces, but everything runs on a single belt: it works if the total fits on it.',
+    dsMatrixLoop: 'Matrix for 5, 7, 10…: each tree splits into the next count a splitter can reach and the extra parts loop back to the input. Exact split, nothing lost; the loop belt carries more than the input.',
+    dsFunnelLoop: 'Funnel with a loop: the cheapest way to split into 5 or 7, if the total plus the return fits on one belt.',
+    dsMatrixSink: 'Matrix that splits into more parts and sends the extras to the Awesome Sink. No loop and easy to build, but it throws items away.',
+    dsFunnelSink: 'Funnel that splits into more parts and sinks the extras. The simplest way to get 5 or 7 at low rates, when losing items doesn’t matter.',
+    catExample: (n, m) => `Open ${n}→${m}`,
+    inTag: 'I', outTag: 'O',
+    segIn: 'Input', segLoop: 'Tree input (input + return)', segLevel: p => `After splitting into ${p}`, segPart: n => `Each of the ${n} parts`,
+    segChain: k => `Chain with ${k} parts joined`, segChainIn: k => `Chain with ${k} inputs joined`, segFunnel: 'Funnel belt (everything joined)', segOut: 'Each output',
+    checksTitle: 'Rate per segment', thSegment: 'Segment', thLoad: 'Carries', thFits: belt => `Fits ${belt}?`,
+    checkNote: (belt, per) => `Within ${belt} limits, each output delivers up to ${per}/min.`,
+    checkOver: 'A segment over capacity doesn’t break the balance: the belt fills, the inputs back up and each output gets less.',
+    stepOf: (k, n) => `Step ${k} of ${n}`, stepPrev: 'Previous step', stepNext: 'Next step', stepPlay: 'Play', stepPause: 'Pause',
+    stepAll: 'Show finished', stepStart: 'Build from scratch', stepGoto: k => `Go to step ${k}`, ponderAria: 'Balancer build', ponderKeys: '← and → change step',
+    stepDone: (pieces, m, per) => `Done: ${pieces} pieces and ${m} outputs of up to ${per}/min each.`,
+    stIn: (n, list, rate) => (n > 1 ? `Bring in the ${n} input belts (${list}), ${rate}/min each.` : `Bring in the input belt (${list}), ${rate}/min.`),
+    stLoopM: n => `Place a merger at the start of ${n > 1 ? 'each input' : 'the input'}. It will take back the extra parts from the loop.`,
+    stLevelFirst: (tag, ways, rate) => `On ${tag}, a splitter divides into ${ways}: ${ways} parts of ${rate}/min.`,
+    stLevelFunnel: (ways, rate) => `On the funnel belt, a splitter divides into ${ways}: ${ways} parts of ${rate}/min.`,
+    stLevelNext: (count, ways, parts, rate) => `${count} splitters, one on each output, divide into ${ways}: ${parts} parts of ${rate}/min.`,
+    stRepeat: (list, k) => `Repeat the same tree on ${list}: ${k} splitter${k > 1 ? 's' : ''} each.`,
+    stLoopBack: (k, m) => `${k > 1 ? `The ${k} extra outputs go` : 'The extra output goes'} back to the merger at the start. That’s the loop: whatever comes back is split again, so the ${m} parts that leave are equal.`,
+    stSinkOut: k => `${k > 1 ? `The ${k} extra outputs go` : 'The extra output goes'} to the Awesome Sink.`,
+    stMerge1: (out, n, c) => `${out}: a merger joins the first part of every input.` + (c > 1 ? ` With ${n} inputs that’s ${c} chained mergers: the first takes 3, each one after takes the previous + 2.` : ''),
+    stMergeRest: list => `Repeat for ${list}: each output joins the part with the same number from every input.`,
+    stFunnelMerge: (n, c, total) => `Join the ${n} inputs onto one belt with ${c} ${c > 1 ? 'chained mergers' : 'merger'}: ${total}/min.`,
+    stOut: (m, rate) => `Connect the ${m} outputs to the destination lines: each carries ${rate}/min.`,
+    stBpBox: (n, m, spare) => `Paste your ${n}→${m} blueprint.` + (spare ? ` ${spare > 1 ? `${spare} inputs stay` : 'One input stays'} empty, no harm.` : ''),
+    lgHolo: 'piece in this step', lgLoopBack: 'loop return', lgToSink: 'to sink',
+    blkHint: 'click to build', blkAria: (n, m) => `See how to build the ${n}→${m} balancer`,
+    lbBalTitle: (n, m) => `${n}→${m} balancer`,
+    lbBalLine: (name, pieces, per) => `${name}: ${pieces} pieces, up to ${per}/min per output.`,
+    lbOpen: 'See the build step by step', dlgClose: 'Close',
+    whyVsTitle: 'Balancer or another alternative?',
+    whyIsBest: 'The balancer is the recommended alternative here: it fills every destination with fewer pieces than the others.',
+    whyVsBest: (title, full, po, pb) => `The recommended one, “${title}”, ${full ? 'also fills every destination' : 'doesn’t fill every destination'} with ${po} pieces in the middle. This balancer uses ${pb}.`,
+    whyBalWhen: 'A balancer pays off when you want every destination line at the same rate, or when you’ll change the machines later and don’t want to rewire.',
+    whyOverflow: 'Overflow (Smart Splitter) only passes on what’s left of a line that already filled its own destination. It’s cheap, but it doesn’t even out the lines.',
+    stepBal: (ins, n, m, name, per) => `Middle: ${ins} go into a ${n}→${m} balancer (${name}). Each destination gets up to ${per}/min; the piece-by-piece build is under “See the build step by step”.`,
+    toBalancer: list => `balancer to ${list}`,
+    pcBp: n => `Includes ${n} blueprint, counted as 1 piece.`,
   },
   es: {
     locale: 'es-ES', htmlLang: 'es', langName: 'Español',
@@ -891,6 +1254,93 @@ const I18N = {
     faq4Q: '¿Qué versión del juego?',
     faq4A: 'Satisfactory 1.0 en adelante, con cintas de la Mk1 (60/min) a la Mk6 (1200/min).',
     footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footCoffee: 'Invítame un café', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
+    caseBal: (n, m) => `balanceador ${n}→${m}`,
+    planBal: (n, m, name) => `Balanceador ${n}→${m}, ${name}`, planBalSub: 'Las líneas de origen entran en un balanceador que reparte el total en partes iguales entre todos los destinos.',
+    dkMatrix: 'matriz', dkFunnel: 'embudo', dkMatrixLoop: 'matriz con loop', dkFunnelLoop: 'embudo con loop', dkMatrixSink: 'matriz con sink', dkFunnelSink: 'embudo con sink',
+    dkBlueprint: (n, m) => `tu blueprint ${n}→${m}`,
+    libLink: 'Biblioteca de balanceadores',
+    libTitle: 'Biblioteca de load balancers',
+    libLead: 'Monta un balanceador N→M desde cero: elige cuántas cintas entran y cuántas salen, y la herramienta prueba cada diseño, revisa la tasa de cada tramo y muestra el montaje pieza por pieza.',
+    genIn: 'Entradas', genOut: 'Salidas', genRate: 'Cada entrada /min', genBelt: 'Cinta',
+    tipGenRate: 'Cuánto lleva cada cinta de entrada. Define la tasa de cada tramo interno, que se compara con la cinta elegida.',
+    genBest: (n, m) => `Mejor diseño para ${n}→${m}`,
+    designsTitle: 'Diseños probados', thDesign: 'Diseño', thPerOut: 'Por salida', thNote: 'Nota',
+    tipDesigns: 'Todos los diseños que la herramienta sabe montar, el mejor primero: más tasa por salida, luego tu propio blueprint, menos sink y menos piezas. Haz clic en una fila para ver su montaje.',
+    bestTag: 'mejor', inUseTag: 'en uso en el plan',
+    rNotDirect: m => `${m} no sale solo con splitters`, rDirect: m => `${m} ya sale directo; loop y sink solo gastan piezas`,
+    rOneInput: 'con 1 entrada es igual a la matriz', rShape: 'necesita 2 salidas o más', rBpShape: 'el formato no coincide',
+    rLimit: (seg, rate, belt) => `cuello de botella: ${seg} (${rate}/min) supera la ${belt}`, rNoLimit: 'sin cuello de botella',
+    whyTitle: 'Por qué este diseño', whyNotTitle: 'Por qué no es el mejor',
+    whyBp: (n, m) => `Ya tienes el blueprint ${n}→${m}: solo hay que pegarlo, sin montar pieza por pieza.`,
+    whyOnly: 'Es el único diseño que sirve para ese formato.',
+    whyMore: (a, name, b) => `Entrega ${a}/min por salida; ${name} solo llega a ${b}/min.`,
+    whyNoSink: (name, s) => `Misma tasa sin mandar nada al sink; ${name} tira ${s}/min.`,
+    whyFewer: (pa, name, pb) => `Misma tasa con menos piezas: ${pa} contra ${pb} (${name}).`,
+    whyTie: name => `Empata con ${name}; cualquiera de los dos sirve.`,
+    whyNone: 'Ningún diseño sirve para ese formato.',
+    bpTitle: 'Blueprints que tengo',
+    bpLead: 'Cuando uno de tus blueprints tiene exactamente las salidas correctas y entradas suficientes, la herramienta lo prefiere.',
+    bpAdd: 'Añadir', bpEmpty: 'Todavía no hay blueprints.', bpRemove: (n, m) => `Quitar blueprint ${n}→${m}`,
+    bpInAria: 'Entradas del blueprint', bpOutAria: 'Salidas del blueprint',
+    tipBp: 'Blueprints del Blueprint Designer que ya montaste. Cuentan como una sola pieza, porque solo hay que pegarlos. Una entrada de más queda vacía sin problema; una salida de más desequilibra la división, por eso el número de salidas tiene que coincidir.',
+    lbWhatTitle: 'Qué es',
+    lbWhat: 'Un load balancer es un conjunto de splitters y mergers que recibe N cintas y entrega M cintas exactamente con la misma tasa, sin importar cuánto traiga cada entrada. No existe una pieza “balanceador” en el juego: se monta solo con piezas comunes.',
+    lbHowTitle: 'Cómo funciona',
+    lbHow: 'El splitter divide en partes iguales entre las salidas que aceptan ítems, en 2 o 3. Encadenando splitters se puede cortar una cinta en cualquier producto de 2 y 3 (2, 3, 4, 6, 8, 9, 12…). El merger junta hasta 3 cintas, tomando de cada una por turnos. La matriz usa los dos: cada entrada se corta en M partes iguales y cada salida recibe una parte de cada entrada, así todas las salidas suman lo mismo.',
+    lbWhyTitle: 'Por qué usarlo',
+    lbWhy: 'Un manifold se equilibra solo entre máquinas, pero no entre líneas: si una línea de destino recibe 455 y otra 300, las máquinas de la segunda se quedan con hambre para siempre. El balanceador garantiza que cada línea lleve la misma parte del total. También es la forma de dividir una cinta en 5 o 7, que el splitter no hace directo.',
+    lbNotTitle: 'Cuándo no hace falta',
+    lbNot: 'Si cada línea de origen ya cubre un destino, conéctala directo. Si la falta es pequeña, una donante dividida o un Smart Splitter con overflow lo resuelve con menos piezas. Las alternativas de arriba comparan esto para tu caso.',
+    lbBuildTitle: 'Cómo montar el tuyo',
+    lbBuild1: 'Escribe M como producto de 2 y 3 (6 = 3 × 2). Si no se puede (5, 7, 10…), usa el siguiente número que sí y elige: loop o sink.',
+    lbBuild2: 'En cada entrada, monta el árbol: un splitter para el primer factor, luego un splitter en cada salida para el siguiente factor.',
+    lbBuild3: 'Para cada salida, toma la parte con el mismo número de cada entrada y únelas en un merger. Con más de 3 entradas, encadena mergers.',
+    lbBuild4: 'Loop: las partes de más vuelven a un merger antes del primer splitter. Sink: van al Awesome Sink.',
+    lbBuild5: 'Revisa la cinta de cada tramo. Si el total cabe en una sola cinta, el embudo (juntar todo y luego dividir) gasta muchas menos piezas.',
+    catTitle: 'Catálogo de diseños',
+    catLead: 'Las seis familias que monta la herramienta, incluso para 5, 7 y otros números que el splitter no alcanza directo. Abre un ejemplo en el generador.',
+    dsMatrix: 'Cada entrada se vuelve M partes; cada salida junta una parte de cada entrada. Aguanta la tasa de varias cintas llenas. Sirve cuando M es producto de 2 y 3.',
+    dsFunnel: 'Junta todas las entradas en una cinta y la divide en M. Gasta muchas menos piezas, pero todo pasa por una sola cinta: sirve si el total cabe en ella.',
+    dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árbol divide en el siguiente número que alcanza el splitter y las partes de más vuelven a la entrada. División exacta, sin pérdida; la cinta del loop lleva más que la entrada.',
+    dsFunnelLoop: 'Embudo con loop: la forma más barata de dividir en 5 o 7, si el total más el retorno cabe en una cinta.',
+    dsMatrixSink: 'Matriz que divide de más y manda las partes sobrantes al Awesome Sink. Sin loop y fácil de montar, pero tira ítems.',
+    dsFunnelSink: 'Embudo que divide de más y manda lo sobrante al sink. Lo más simple para 5 o 7 con poca tasa, cuando perder ítems no importa.',
+    catExample: (n, m) => `Abrir ${n}→${m}`,
+    inTag: 'E', outTag: 'S',
+    segIn: 'Entrada', segLoop: 'Entrada del árbol (entrada + retorno)', segLevel: p => `Tras dividir en ${p}`, segPart: n => `Cada una de las ${n} partes`,
+    segChain: k => `Cascada con ${k} partes juntas`, segChainIn: k => `Cascada con ${k} entradas juntas`, segFunnel: 'Cinta del embudo (todo junto)', segOut: 'Cada salida',
+    checksTitle: 'Tasa por tramo', thSegment: 'Tramo', thLoad: 'Lleva', thFits: belt => `¿Cabe en la ${belt}?`,
+    checkNote: (belt, per) => `Con los límites de la ${belt}, cada salida entrega hasta ${per}/min.`,
+    checkOver: 'Un tramo por encima de la capacidad no rompe el equilibrio: la cinta se llena, las entradas se retienen y cada salida recibe menos.',
+    stepOf: (k, n) => `Paso ${k} de ${n}`, stepPrev: 'Paso anterior', stepNext: 'Paso siguiente', stepPlay: 'Reproducir', stepPause: 'Pausar',
+    stepAll: 'Ver terminado', stepStart: 'Montar desde cero', stepGoto: k => `Ir al paso ${k}`, ponderAria: 'Montaje del balanceador', ponderKeys: '← y → cambian de paso',
+    stepDone: (pieces, m, per) => `Listo: ${pieces} piezas y ${m} salidas de hasta ${per}/min cada una.`,
+    stIn: (n, list, rate) => (n > 1 ? `Trae las ${n} cintas de entrada (${list}), ${rate}/min cada una.` : `Trae la cinta de entrada (${list}), ${rate}/min.`),
+    stLoopM: n => `Pon un merger al principio de ${n > 1 ? 'cada entrada' : 'la entrada'}. Recibirá de vuelta las partes de más del loop.`,
+    stLevelFirst: (tag, ways, rate) => `En ${tag}, un splitter divide en ${ways}: ${ways} partes de ${rate}/min.`,
+    stLevelFunnel: (ways, rate) => `En la cinta del embudo, un splitter divide en ${ways}: ${ways} partes de ${rate}/min.`,
+    stLevelNext: (count, ways, parts, rate) => `${count} splitters, uno en cada salida, dividen en ${ways}: ${parts} partes de ${rate}/min.`,
+    stRepeat: (list, k) => `Repite el mismo árbol en ${list}: ${k} splitter${k > 1 ? 's' : ''} en cada una.`,
+    stLoopBack: (k, m) => `${k > 1 ? `Las ${k} salidas de más vuelven` : 'La salida de más vuelve'} al merger del principio. Es el loop: lo que vuelve se divide otra vez, así las ${m} partes que salen quedan iguales.`,
+    stSinkOut: k => `${k > 1 ? `Las ${k} salidas de más van` : 'La salida de más va'} al Awesome Sink.`,
+    stMerge1: (out, n, c) => `${out}: un merger junta la primera parte de cada entrada.` + (c > 1 ? ` Con ${n} entradas son ${c} mergers en cascada: el primero toma 3 y cada uno de los siguientes toma el anterior + 2.` : ''),
+    stMergeRest: list => `Repite en ${list}: cada salida junta la parte con el mismo número de cada entrada.`,
+    stFunnelMerge: (n, c, total) => `Junta las ${n} entradas en una sola cinta con ${c} merger${c > 1 ? 's en cascada' : ''}: ${total}/min.`,
+    stOut: (m, rate) => `Conecta las ${m} salidas a las líneas de destino: cada una lleva ${rate}/min.`,
+    stBpBox: (n, m, spare) => `Pega tu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas quedan vacías` : 'Una entrada queda vacía'}, sin problema.` : ''),
+    lgHolo: 'pieza de este paso', lgLoopBack: 'retorno del loop', lgToSink: 'al sink',
+    blkHint: 'clic para montar', blkAria: (n, m) => `Ver montaje del balanceador ${n}→${m}`,
+    lbBalTitle: (n, m) => `Balanceador ${n}→${m}`,
+    lbBalLine: (name, pieces, per) => `${name}: ${pieces} piezas, hasta ${per}/min por salida.`,
+    lbOpen: 'Ver montaje paso a paso', dlgClose: 'Cerrar',
+    whyVsTitle: '¿Balanceador u otra alternativa?',
+    whyIsBest: 'El balanceador es la alternativa recomendada aquí: llena todos los destinos con menos piezas que las otras.',
+    whyVsBest: (title, full, po, pb) => `La recomendada, “${title}”, ${full ? 'también llena todos los destinos' : 'no llena todos los destinos'} con ${po} piezas en el medio. Este balanceador usa ${pb}.`,
+    whyBalWhen: 'El balanceador compensa cuando quieres todas las líneas de destino con la misma tasa, o cuando vas a cambiar las máquinas después y no quieres rehacer la conexión.',
+    whyOverflow: 'El overflow (Smart Splitter) solo pasa lo que sobra de una línea que ya llenó su propio destino. Es barato, pero no iguala las líneas.',
+    stepBal: (ins, n, m, name, per) => `Medio: ${ins} entran en un balanceador ${n}→${m} (${name}). Cada destino recibe hasta ${per}/min; el montaje pieza por pieza está en “Ver montaje paso a paso”.`,
+    toBalancer: list => `balanceador a ${list}`,
+    pcBp: n => `Incluye ${n} blueprint, contado como 1 pieza.`,
   },
 };
 const LANGS = Object.keys(I18N);
@@ -1049,6 +1499,108 @@ function divisionOptions(s, p, maxDeficit, cap) {
 
 // Mergers para juntar `inputs` esteiras numa só (merger tem até 3 entradas, em cascata).
 function mergersFor(inputs) { return inputs <= 1 ? 0 : Math.ceil((inputs - 1) / 2); }
+// Quantas entradas já estão juntas na saída de cada merger da cascata: o primeiro pega 3, os outros +2.
+function chainSizes(inputs) {
+  const out = [];
+  for (let k = 0; inputs > 1 && k < inputs;) { k = Math.min(inputs, k === 0 ? 3 : k + 2); out.push(k); }
+  return out;
+}
+// Em qual merger da cascata entra a entrada i.
+const chainSlot = i => (i < 3 ? 0 : 1 + Math.floor((i - 3) / 2));
+
+// ---- Biblioteca de load balancers N→M ----
+// Matriz: cada entrada vira M partes numa árvore de splitters e cada saída junta uma parte de cada entrada.
+// Funil: junta tudo numa esteira e divide em M. Quando M não é produto de 2 e 3, divide em n (o próximo
+// que é) e manda as n−M partes extras de volta pra entrada (loop) ou pro sink.
+const DESIGN_KINDS = ['matrix', 'funnel', 'matrix-loop', 'funnel-loop', 'matrix-sink', 'funnel-sink'];
+
+function balancerDesign(kind, N, M, rates, cap) {
+  const r = Array.from({ length: N }, (_, i) => rates[Math.min(i, rates.length - 1)] || 0);
+  const total = r.reduce((a, b) => a + b, 0), rMax = Math.max(0, ...r);
+  const direct = isDirect(M);
+  const loop = kind.endsWith('-loop'), sink = kind.endsWith('-sink'), funnel = kind.startsWith('funnel');
+  let applies = null;
+  if (N < 1 || M < 2) applies = 'shape';
+  else if (!loop && !sink && !direct) applies = 'notDirect';
+  else if ((loop || sink) && direct) applies = 'direct';
+  else if (funnel && N < 2) applies = 'oneInput';
+  const n = direct ? M : nextDirect(M);
+  const tree = splitTree(n);
+  const extra = n - M;
+  const chain = chainSizes(N);
+  const segments = [];
+  const add = (key, rate, arg) => segments.push({ key, rate, arg, ok: rate <= cap + EPS });
+  add('in', rMax);
+  let treeIn, perOut, sinkRate = 0, splitters, mergers;
+  if (funnel) {
+    const sorted = r.slice().sort((a, b) => b - a);
+    chain.slice(0, -1).forEach(k => add('chainIn', sorted.slice(0, k).reduce((a, b) => a + b, 0), k));
+    if (N > 1) add('funnel', total);
+    const fed = Math.min(total, cap);
+    treeIn = loop ? total * n / M : total;
+    perOut = loop ? Math.min(total, cap * M / n) / M : sink ? fed / n : fed / M;
+    if (sink) sinkRate = fed * extra / n;
+    splitters = tree.splitters;
+    mergers = chain.length + (loop ? 1 : 0);
+  } else {
+    treeIn = loop ? rMax * n / M : rMax;
+    perOut = Math.min(cap, loop ? r.reduce((a, x) => a + Math.min(x, cap * M / n), 0) / M : sink ? total / n : total / M);
+    if (sink) sinkRate = total * extra / n;
+    splitters = N * tree.splitters;
+    mergers = M * chain.length + (loop ? N : 0);
+  }
+  if (loop) add('loop', treeIn);
+  let prod = 1;
+  tree.factors.slice(0, -1).forEach(f => { prod *= f; add('level', treeIn / prod, prod); });
+  add('part', treeIn / n, n);
+  if (!funnel) chain.slice(0, -1).forEach(k => add('chain', k * treeIn / n, k));
+  add('out', funnel ? treeIn / n : (sink ? total / n : total / M));
+  return { kind, N, M, n, tree, extra, rates: r, total, cap, applies, segments, perOut, sinkRate, chain, pieces: { splitters, mergers, blueprints: 0 } };
+}
+
+// Blueprint do jogador: caixa-preta N→M. Serve quando tem exatamente M saídas (saída sobrando desequilibra
+// a árvore) e pelo menos N entradas (entrada vazia não atrapalha o merger).
+function blueprintDesign(bp, N, M, rates, cap) {
+  const r = Array.from({ length: N }, (_, i) => rates[Math.min(i, rates.length - 1)] || 0);
+  const total = r.reduce((a, b) => a + b, 0);
+  const segments = [{ key: 'in', rate: Math.max(0, ...r), ok: Math.max(0, ...r) <= cap + EPS }, { key: 'out', rate: total / M, ok: total / M <= cap + EPS }];
+  return {
+    kind: 'blueprint', bp, N, M, n: M, extra: 0, rates: r, total, cap, segments, chain: [],
+    applies: bp.m !== M || bp.n < N ? 'bpShape' : null,
+    perOut: Math.min(cap, total / M), sinkRate: 0, pieces: { splitters: 0, mergers: 0, blueprints: 1 },
+  };
+}
+
+function balancerCandidates(N, M, rates, cap, blueprints = []) {
+  const list = DESIGN_KINDS.map(k => balancerDesign(k, N, M, rates, cap));
+  for (const bp of blueprints) if (bp.m === M && bp.n >= N) list.push(blueprintDesign(bp, N, M, rates, cap));
+  return list;
+}
+
+const designPieces = d => d.pieces.splitters + d.pieces.mergers + d.pieces.blueprints;
+const designOut = d => d.perOut * d.M;
+// Os que se aplicam primeiro; depois mais vazão, blueprint seu, menos sink, menos peças.
+function rankDesigns(list) {
+  return list.slice().sort((a, b) => {
+    if (!!a.applies !== !!b.applies) return a.applies ? 1 : -1;
+    const dOut = designOut(b) - designOut(a);
+    if (Math.abs(dOut) > 0.05) return dOut;
+    if ((a.kind === 'blueprint') !== (b.kind === 'blueprint')) return a.kind === 'blueprint' ? -1 : 1;
+    if (Math.abs(a.sinkRate - b.sinkRate) > 0.05) return a.sinkRate - b.sinkRate;
+    return designPieces(a) - designPieces(b);
+  });
+}
+// Por que o primeiro ganhou do segundo colocado: código + argumentos para o texto.
+function designWhy(ranked) {
+  const [a, b] = ranked.filter(d => !d.applies);
+  if (!a) return { code: 'none' };
+  if (a.kind === 'blueprint') return { code: 'bp', a };
+  if (!b) return { code: 'only', a };
+  if (designOut(a) - designOut(b) > 0.05) return { code: 'more', a, b };
+  if (b.sinkRate - a.sinkRate > 0.05) return { code: 'noSink', a, b };
+  if (designPieces(a) < designPieces(b)) return { code: 'fewer', a, b };
+  return { code: 'tie', a, b };
+}
 
 // Tamanhos de grupo (soma m, k grupos), preferindo tamanhos divisíveis direto.
 function groupSizeCandidates(m, k) {
@@ -1150,9 +1702,10 @@ function simulate(g) {
       } else if (n.type === 'splitter' || n.type === 'balancer') {
         const a = n.outs.map(e => acc[e]);
         const f = waterfill(inFlow, a);
+        const offIn = n.maxIn === undefined ? inOff : Math.min(inOff, n.maxIn);
         n.outs.forEach((e, j) => {
           const a2 = a.slice(); a2[j] = INF;
-          set(e, f[j], waterfill(inOff, a2)[j]);
+          set(e, f[j], waterfill(offIn, a2)[j]);
         });
       } else if (n.type === 'overflow') {
         const [p, o] = n.outs;
@@ -1169,9 +1722,11 @@ function simulate(g) {
         let a;
         if (n.type === 'consumer') a = n.demand;
         else if (n.type === 'sink' || n.type === 'extra') a = cap;
-        else if (n.type === 'merger') {
+        else if (n.type === 'merger' || n.type === 'balancer') {
+          // Balancer com várias entradas (blueprint) puxa como um merger; maxIn é o limite da esteira do loop.
           const caps = n.ins.map(x => (x === e ? INF : off[x]));
-          a = waterfill(acc[n.outs[0]], caps)[idx];
+          a = waterfill(n.type === 'merger' ? acc[n.outs[0]] : sum(n.outs, acc), caps)[idx];
+          if (n.maxIn !== undefined) a = Math.min(a, n.maxIn);
         } else a = sum(n.outs, acc);
         acc[e] = Math.min(cap, a);
       });
@@ -1212,6 +1767,35 @@ function buildTree(g, tree) {
   return { root, slots };
 }
 
+// Monta um design N→M no grafo, das esteiras `inputs` até os consumidores `outputs`.
+// O loop vira um nó de divisão ideal limitado pela esteira do loop (cap × M/n).
+function buildBalancer(g, d, inputs, outputs, sink) {
+  const v = { design: d, inEdges: [], outEdges: [], sinkEdges: [], ...d.pieces };
+  const M = outputs.length;
+  const split = () => {
+    if (d.kind.endsWith('-loop')) {
+      const b = addNode(g, 'balancer', { maxIn: g.cap * d.M / d.n });
+      return { root: b, slots: Array(M).fill(b) };
+    }
+    const tr = buildTree(g, d.tree);
+    tr.slots.slice(M).forEach(s => v.sinkEdges.push(addEdge(g, s, sink)));
+    return { root: tr.root, slots: tr.slots.slice(0, M) };
+  };
+  if (d.kind === 'blueprint') {
+    const hub = addNode(g, 'balancer');
+    inputs.forEach(s => v.inEdges.push(addEdge(g, s, hub)));
+    outputs.forEach(c => v.outEdges.push(addEdge(g, hub, c)));
+  } else if (d.kind.startsWith('funnel')) {
+    const tr = split();
+    v.inEdges = connectMany(g, inputs, tr.root).inEdges;
+    tr.slots.forEach((s, j) => v.outEdges.push(addEdge(g, s, outputs[j])));
+  } else {
+    const trees = inputs.map(s => { const tr = split(); v.inEdges.push(addEdge(g, s, tr.root)); return tr; });
+    outputs.forEach((c, j) => v.outEdges.push(connectMany(g, trees.map(tr => tr.slots[j]), c).outEdge));
+  }
+  return v;
+}
+
 // Feeds com `overflow` passam por um Smart Splitter: saída principal no destino,
 // overflow pro sink (overflowTo vazio) ou pro merger de outro destino (overflowTo = id do destino).
 function buildGraph(plan, cap) {
@@ -1220,6 +1804,7 @@ function buildGraph(plan, cap) {
   const addSrc = l => { if (!srcNode.has(l.id)) srcNode.set(l.id, addNode(g, 'source', { rate: l.rate, line: l })); };
   plan.feeds.forEach(f => f.mains.forEach(addSrc));
   plan.groups.forEach(gr => addSrc(gr.donor));
+  if (plan.bal) plan.bal.inputs.forEach(addSrc);
   plan.leftovers.forEach(addSrc);
   const consumer = new Map();
   [...plan.feeds.map(f => f.dst), ...plan.unfed].forEach(d => consumer.set(d.id, addNode(g, 'consumer', { demand: d.rate, line: d })));
@@ -1235,7 +1820,8 @@ function buildGraph(plan, cap) {
     let slots, sinkSlots = [];
     if (p === 1) slots = [donor];
     else if (gr.mode === 'loop') {
-      v.root = addNode(g, 'balancer');
+      // A esteira que entra na árvore leva doadora + retorno (n/p da doadora): no limite, a doadora entra menos.
+      v.root = addNode(g, 'balancer', { maxIn: cap * p / gr.n });
       v.donorEdge = addEdge(g, donor, v.root);
       slots = Array(p).fill(v.root);
       v.splitters = gr.tree.splitters;
@@ -1253,43 +1839,52 @@ function buildGraph(plan, cap) {
     view.groups.push(v);
   });
 
-  // Primeiro os Smart Splitters, para a saída principal ser a primeira do nó.
-  const fv = new Map(), ovNode = new Map();
-  plan.feeds.filter(f => f.overflow).forEach(f => {
-    const c = consumer.get(f.dst.id);
-    const ov = addNode(g, 'overflow');
-    const conn = connectMany(g, f.mains.map(l => srcNode.get(l.id)), ov);
-    const outEdge = addEdge(g, ov, c);
-    const toSink = f.overflowTo === undefined || f.overflowTo === null;
-    ovNode.set(f.dst.id, ov);
-    fv.set(f.dst.id, {
-      f, consumer: c, mainEdges: conn.inEdges.slice(0, f.mains.length), partEdge: null, outEdge,
-      mergers: conn.mergers, mergeNode: conn.mergeNode, overflowNode: ov,
-      sinkEdge: toSink ? addEdge(g, ov, sink) : null, overflowEdge: null, overflowTo: toSink ? null : f.overflowTo,
-      inbound: [], group: null,
+  if (plan.bal) {
+    const outs = plan.feeds.map(f => consumer.get(f.dst.id));
+    view.bal = buildBalancer(g, plan.bal.design, plan.bal.inputs.map(l => srcNode.get(l.id)), outs, sink);
+    view.feeds = plan.feeds.map((f, j) => ({
+      f, consumer: outs[j], mainEdges: [], partEdge: null, outEdge: view.bal.outEdges[j], mergers: 0, mergeNode: null,
+      overflowNode: null, sinkEdge: null, overflowEdge: null, overflowTo: null, inbound: [], group: null,
+    }));
+  } else {
+    // Primeiro os Smart Splitters, para a saída principal ser a primeira do nó.
+    const fv = new Map(), ovNode = new Map();
+    plan.feeds.filter(f => f.overflow).forEach(f => {
+      const c = consumer.get(f.dst.id);
+      const ov = addNode(g, 'overflow');
+      const conn = connectMany(g, f.mains.map(l => srcNode.get(l.id)), ov);
+      const outEdge = addEdge(g, ov, c);
+      const toSink = f.overflowTo === undefined || f.overflowTo === null;
+      ovNode.set(f.dst.id, ov);
+      fv.set(f.dst.id, {
+        f, consumer: c, mainEdges: conn.inEdges.slice(0, f.mains.length), partEdge: null, outEdge,
+        mergers: conn.mergers, mergeNode: conn.mergeNode, overflowNode: ov,
+        sinkEdge: toSink ? addEdge(g, ov, sink) : null, overflowEdge: null, overflowTo: toSink ? null : f.overflowTo,
+        inbound: [], group: null,
+      });
     });
-  });
-  plan.feeds.filter(f => !f.overflow).forEach(f => {
-    const c = consumer.get(f.dst.id);
-    const froms = f.mains.map(l => srcNode.get(l.id));
-    const slot = slotByDst.get(f.dst.id);
-    if (slot) froms.push(slot.slot);
-    const senders = plan.feeds.filter(x => x.overflow && x.overflowTo === f.dst.id);
-    senders.forEach(x => froms.push(ovNode.get(x.dst.id)));
-    const conn = connectMany(g, froms, c);
-    const nm = f.mains.length;
-    const inbound = senders.map((x, i) => ({ from: x.dst.id, edge: conn.inEdges[nm + (slot ? 1 : 0) + i] }));
-    inbound.forEach(ib => { fv.get(ib.from).overflowEdge = ib.edge; });
-    fv.set(f.dst.id, {
-      f, consumer: c, mainEdges: conn.inEdges.slice(0, nm), partEdge: slot ? conn.inEdges[nm] : null, outEdge: conn.outEdge,
-      mergers: conn.mergers, mergeNode: conn.mergeNode, overflowNode: null, sinkEdge: null, overflowEdge: null, overflowTo: null,
-      inbound, group: slot ? slot.group : null,
+    plan.feeds.filter(f => !f.overflow).forEach(f => {
+      const c = consumer.get(f.dst.id);
+      const froms = f.mains.map(l => srcNode.get(l.id));
+      const slot = slotByDst.get(f.dst.id);
+      if (slot) froms.push(slot.slot);
+      const senders = plan.feeds.filter(x => x.overflow && x.overflowTo === f.dst.id);
+      senders.forEach(x => froms.push(ovNode.get(x.dst.id)));
+      const conn = connectMany(g, froms, c);
+      const nm = f.mains.length;
+      const inbound = senders.map((x, i) => ({ from: x.dst.id, edge: conn.inEdges[nm + (slot ? 1 : 0) + i] }));
+      inbound.forEach(ib => { fv.get(ib.from).overflowEdge = ib.edge; });
+      fv.set(f.dst.id, {
+        f, consumer: c, mainEdges: conn.inEdges.slice(0, nm), partEdge: slot ? conn.inEdges[nm] : null, outEdge: conn.outEdge,
+        mergers: conn.mergers, mergeNode: conn.mergeNode, overflowNode: null, sinkEdge: null, overflowEdge: null, overflowTo: null,
+        inbound, group: slot ? slot.group : null,
+      });
     });
-  });
-  view.feeds = plan.feeds.map(f => fv.get(f.dst.id));
-  view.groups.forEach((v, gi) => {
-    if (v.donorEdge === null) v.donorEdge = view.feeds.find(x => x.group === gi).partEdge;
-  });
+    view.feeds = plan.feeds.map(f => fv.get(f.dst.id));
+    view.groups.forEach((v, gi) => {
+      if (v.donorEdge === null) v.donorEdge = view.feeds.find(x => x.group === gi).partEdge;
+    });
+  }
 
   plan.leftovers.forEach(l => {
     const n = srcNode.get(l.id);
@@ -1319,10 +1914,12 @@ function evaluatePlan(plan, cap) {
   sources.forEach(s => { held += s.held; });
   dests.forEach(d => { served += d.got; demand += d.line.rate; });
   const full = [...dests.values()].every(d => d.short < 0.05);
+  const bal = view.bal || { mergers: 0, splitters: 0, blueprints: 0 };
   const pieces = {
-    mergers: view.feeds.reduce((a, f) => a + f.mergers, 0) + view.groups.reduce((a, v) => a + v.extraMergers, 0),
-    splitters: view.groups.reduce((a, v) => a + v.splitters, 0),
+    mergers: view.feeds.reduce((a, f) => a + f.mergers, 0) + view.groups.reduce((a, v) => a + v.extraMergers, 0) + bal.mergers,
+    splitters: view.groups.reduce((a, v) => a + v.splitters, 0) + bal.splitters,
     smart: view.feeds.filter(f => f.overflowNode !== null).length,
+    blueprints: bal.blueprints,
     sinkBelts: g.nodes[view.sink].ins.length,
   };
   const warnings = [];
@@ -1336,12 +1933,13 @@ function evaluatePlan(plan, cap) {
   else if (plan.kind === 'direct') caseLabel = t('caseA');
   else if (plan.kind === 'merge') caseLabel = t('caseC');
   else if (plan.kind === 'overflow') caseLabel = t('caseD');
+  else if (plan.kind === 'balancer') caseLabel = t('caseBal', plan.bal.inputs.length, plan.feeds.length);
   else caseLabel = plan.multi ? t('caseCB') : t('caseB');
   return { ...plan, g, view, sim, sources, dests, sinkRate, extraRate, held, served, demand, full, pieces, warnings, caseLabel };
 }
 
 // Gera as alternativas para ligar as linhas de origem nas de destino.
-function generatePlans(srcLines, dstLines, cap, policy) {
+function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
   const S = srcLines.map((l, i) => ({ ...l, id: i })).sort((a, b) => b.rate - a.rate || a.id - b.id);
   const D = dstLines.map((l, i) => ({ ...l, id: i })).sort((a, b) => b.rate - a.rate || a.id - b.id);
   if (!S.length || !D.length) return [];
@@ -1442,11 +2040,34 @@ function generatePlans(srcLines, dstLines, cap, policy) {
     donorPlans(base, full.slice(i).concat(rest), floorQ.some(q => q > 1), '');
   }
   if (fit.length === D.length) donorPlans(fit, avail, false, '-encaixe');
+
+  // Balancer N→M: as maiores linhas até somar a demanda entram num balancer que reparte igual entre os M destinos.
+  // Uma alternativa por design aplicável; computePlan fica só com a melhor delas.
+  const directFull = fit.length === D.length && fit.every(f => f.deficit < EPS);
+  if (D.length >= 2 && !directFull) {
+    const need = D.reduce((a, d) => a + d.rate, 0);
+    const ins = [];
+    let sum = 0;
+    for (const l of S) { if (sum + EPS >= need) break; ins.push(l); sum += l.rate; }
+    const rates = ins.map(l => l.rate);
+    for (const d of balancerCandidates(ins.length, D.length, rates, cap, blueprints)) {
+      if (d.applies) continue;
+      plans.push(mk(`balancer-${d.kind}${d.bp ? `-${d.bp.n}x${d.bp.m}` : ''}`, 'balancer', t('planBal', ins.length, D.length, designName(d)),
+        D.map(dd => ({ dst: dd, mains: [] })), [], S.filter(l => !ins.includes(l)),
+        { sub: t('planBalSub'), bal: { inputs: ins, design: d } }));
+    }
+  }
   return plans;
 }
 
+function designName(d) {
+  if (d.kind === 'blueprint') return t('dkBlueprint', d.bp.n, d.bp.m);
+  return t({ matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
+}
+
+// Blueprint conta como uma peça: é só colar.
 function rankPlans(evaluated) {
-  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart;
+  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints;
   return evaluated.slice().sort((a, b) =>
     (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
 }
@@ -1461,7 +2082,11 @@ function computePlan(input) {
   const dstGroups = input.dstGroups || [{ driver: 'machines', count: input.dstCount, nominal: input.dstRate, per: input.dstPer }];
   const src = buildLines(srcGroups, cap, t('sideSrc'));
   const dst = buildLines(dstGroups, cap, t('sideDst'));
-  const alternatives = rankPlans(generatePlans(src.lines, dst.lines, cap, policy).map(p => evaluatePlan(p, cap)));
+  const ranked = rankPlans(generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || []).map(p => evaluatePlan(p, cap)));
+  // Dos designs de balancer, só o melhor vira alternativa; os outros ficam para a comparação.
+  const balAlts = ranked.filter(a => a.kind === 'balancer');
+  const alternatives = ranked.filter(a => a.kind !== 'balancer' || a === balAlts[0]);
+  if (balAlts.length) balAlts[0].designAlts = balAlts;
   const supply = src.total, demand = dst.total;
 
   const warnings = [...src.warnings, ...dst.warnings];
@@ -1502,7 +2127,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -1564,6 +2189,9 @@ function applyStatic() {
   const belt = $('belt').value;
   $('belt').innerHTML = BELTS.map(b => `<option value="${b.id}">${b.id}, ${fmt(b.cap)}/min</option>`).join('');
   $('belt').value = belt || 'Mk4';
+  const libBelt = $('libBelt').value;
+  $('libBelt').innerHTML = $('belt').innerHTML;
+  $('libBelt').value = libBelt || 'Mk4';
   $('langs').innerHTML = LANGS.map(l => `<button type="button" data-lang="${l}" lang="${I18N[l].htmlLang}" title="${I18N[l].langName}" aria-pressed="${l === LANG}">${FLAGS[l]}${l.toUpperCase()}</button>`).join('');
   syncGroups('src');
   syncGroups('dst');
@@ -1592,6 +2220,11 @@ function changeLang(l) {
   $('item').value = itemFor($('item').value);
   applyStatic();
   render();
+  const rate = $('libRate').value.trim();
+  if (rate) { setLang(prev); const v = parseNum(rate); setLang(l); if (isFinite(v)) $('libRate').value = fmt(v, 6); }
+  renderBps();
+  renderCatalog();
+  renderLib();
 }
 
 // ---- Grupos de máquinas editáveis (origem e destino) ----
@@ -1646,6 +2279,9 @@ let tipBtn = null, tipPinned = false;
 function showTip(btn, pin = false) {
   if (tipBtn && tipBtn !== btn) hideTip();
   const box = $('tipbox');
+  // Dentro do diálogo modal o balão precisa morar no diálogo, senão fica atrás dele.
+  const host = btn.closest('dialog') || document.body;
+  if (box.parentNode !== host) host.append(box);
   box.textContent = t(btn.dataset.tip);
   box.hidden = false;
   const r = btn.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
@@ -1704,6 +2340,7 @@ function readInput() {
       belt: belt.id, cap: belt.cap,
       policy: document.querySelector('input[name=policy]:checked').value,
       conv: document.querySelector('input[name=conv]:checked').value,
+      blueprints: BPS,
     },
   };
 }
@@ -1781,6 +2418,7 @@ function render() {
   const alts = p.alternatives;
   if (!alts.length) { out.innerHTML = `<p class="lead" style="margin-top:24px">${t('noLines')}</p>`; return; }
   const alt = alts.find(a => a.key === selectedKey) || alts[0];
+  lastRender = { p, alt };
 
   out.innerHTML = `
     <div class="work">
@@ -1822,6 +2460,8 @@ function render() {
     </div>`;
 }
 
+const planCost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints;
+
 function altCard(a, i, sel) {
   const pc = a.pieces;
   const fullCount = [...a.dests.values()].filter(d => d.short < 0.05).length;
@@ -1834,7 +2474,7 @@ function altCard(a, i, sel) {
       <div><dt>${t('stFull')}</dt><dd class="${a.full ? 'ok' : 'bad'}">${fullCount}/${a.dests.size}</dd></div>
       <div><dt>${t('stSink')}</dt><dd>${fmt(a.sinkRate)}</dd></div>
       <div><dt>${t('stHeld')}</dt><dd>${fmt(a.held)}</dd></div>
-      <div><dt>${t('stPieces')}</dt><dd>${pc.mergers + pc.splitters + pc.smart}</dd></div>
+      <div><dt>${t('stPieces')}</dt><dd>${planCost(a)}</dd></div>
     </dl>
   </button>`;
 }
@@ -1842,6 +2482,7 @@ function altCard(a, i, sel) {
 function balanceTable(a) {
   const dest = id => {
     const v = a.view;
+    if (v.bal && a.bal.inputs.some(l => l.id === id)) return t('toBalancer', a.feeds.map(f => Dn(f.dst)).join(', '));
     const fv = v.feeds.find(f => f.f.mains.some(l => l.id === id));
     if (fv) {
       if (fv.overflowNode === null) return Dn(fv.f.dst);
@@ -1894,7 +2535,11 @@ function planSteps(p, a) {
     else if (gr.mode === 'sink') steps.push(t('stepDonorSink', O(gr.donor), describeTree(d.tree), gr.p, who, d.sink.sinkParts));
     else steps.push(t('stepDonorLoop', O(gr.donor), gr.p, describeTree(d.tree), d.loop.recirculate, who));
   }
-  for (const fv of a.view.feeds) {
+  if (a.view.bal) {
+    const d = a.view.bal.design;
+    steps.push(t('stepBal', a.bal.inputs.map(O).join(', '), d.N, d.M, designName(d), fmt(d.perOut)));
+  }
+  for (const fv of a.view.bal ? [] : a.view.feeds) {
     const f = fv.f, ds = a.dests.get(f.dst.id);
     const mains = f.mains.map((l, i) => {
       const held = a.sources.get(l.id).held;
@@ -1924,7 +2569,27 @@ function planSteps(p, a) {
   return steps;
 }
 
+// Balancer N→M da alternativa: design escolhido, por que ele e por que (ou não) um balancer aqui.
+function balSection(p, a) {
+  const d = a.view.bal.design;
+  const ranked = rankDesigns(balancerCandidates(d.N, d.M, d.rates, p.cap, BPS));
+  const best = p.alternatives[0];
+  return `<section class="plate"><h2 class="section-title">${t('lbBalTitle', d.N, d.M)}${tip('tipLb')}</h2>
+    <p style="margin:0 0 6px">${esc(t('lbBalLine', cap1(designName(d)), designPieces(d), fmt(d.perOut)))}</p>
+    <p class="dim" style="margin:0 0 12px">${esc(whyText(ranked))}</p>
+    ${checksTable(d, p.input.belt)}
+    <h3 class="donor-title">${t('whyVsTitle')}</h3>
+    <div class="opt on"><ul>
+      <li>${esc(best === a ? t('whyIsBest') : t('whyVsBest', best.title, best.full, planCost(best), planCost(a)))}</li>
+      <li>${t('whyBalWhen')}</li>
+      <li>${t('whyOverflow')}</li>
+    </ul></div>
+    <div class="open-row"><button type="button" class="pbtn prim" data-open-bal="plan">${t('lbOpen')}</button></div>
+  </section>`;
+}
+
 function balancerSection(p, a) {
+  if (a.view.bal) return balSection(p, a);
   const groups = a.view.groups.filter(v => v.gr.p > 1);
   const smart = a.view.feeds.filter(f => f.overflowNode !== null);
   if (!groups.length && !smart.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
@@ -1941,6 +2606,7 @@ function balancerSection(p, a) {
       <p class="hint">${t('lbSmartHint')}</p></div>`;
   }
   const ok = '<span class="ok">✓</span>';
+  const openBtn = v => `<div class="open-row"><button type="button" class="pbtn" data-open-bal="g${a.view.groups.indexOf(v)}">${t('lbOpen')}</button></div>`;
   for (const v of groups) {
     const gr = v.gr, d = gr.division;
     const tree = esc(describeTree(d.tree));
@@ -1949,7 +2615,7 @@ function balancerSection(p, a) {
       html += `<div class="opt on"><ul>
         <li>${t('lbDirect', tree, d.tree.splitters)}</li>
         <li>${t('lbPart', fmt(d.part), fmt(gr.maxDeficit))} ${ok}</li>
-      </ul>${treeSvg(d.tree, gr.p, 'none')}</div>`;
+      </ul>${treeSvg(d.tree, gr.p, 'none')}</div>${openBtn(v)}`;
     } else {
       html += `<div class="bal">
         <div class="opt ${gr.mode === 'loop' ? 'on' : ''}"><h4>${t('lbLoopTitle')}</h4><ul>
@@ -1963,7 +2629,7 @@ function balancerSection(p, a) {
           <li>${t('lbSinkParts', gr.p, d.sink.sinkParts)}</li>
           <li>${t('lbSinkPart', fmt(d.sink.part), fmt(gr.maxDeficit))} ${d.sink.ok ? ok : `<span class="bad">${t('lbNotCover')}</span>`}</li>
         </ul>${treeSvg(d.tree, gr.p, 'sink')}</div>
-      </div>`;
+      </div>${openBtn(v)}`;
     }
   }
   return html + `</section>`;
@@ -1980,7 +2646,7 @@ function piecesTable(p, a) {
     <tr><td>${t('rowDist')}</td><td class="l">${summarizeRates(p.dst.lines)}</td><td>0</td><td>${p.distSplitters}</td><td>0</td></tr>
     <tr class="sum"><td>${t('rowTotal')}</td><td></td><td>${p.collectMergers + pc.mergers}</td><td>${p.distSplitters + pc.splitters}</td><td>${pc.smart}</td></tr>
   </table></div>
-  <p class="hint">${t('pcHint', conv, pc.sinkBelts)}</p>
+  <p class="hint">${t('pcHint', conv, pc.sinkBelts)}${pc.blueprints ? ` ${t('pcBp', pc.blueprints)}` : ''}</p>
   </section>`;
 }
 
@@ -1995,6 +2661,7 @@ function flowSvg(p, a) {
   const push = l => { if (!seen.has(l.id)) { seen.add(l.id); srcOrder.push(l); } };
   v.feeds.forEach(fv => fv.f.mains.forEach(push));
   v.groups.forEach(g => push(g.gr.donor));
+  if (v.bal) a.bal.inputs.forEach(push);
   v.leftovers.forEach(l => push(l.line));
   const dstOrder = [...v.feeds.map(fv => fv.f.dst), ...a.unfed];
   const hasSink = a.g.nodes[v.sink].ins.length > 0;
@@ -2023,7 +2690,7 @@ function flowSvg(p, a) {
   const merger = (x, y) => front.push(`<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>`);
   const smart = (x, y) => front.push(`<rect x="${x - 9}" y="${y - 9}" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M${x - 4},${y - 4} l4,4 l-4,4 M${x},${y - 4} l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/>`);
 
-  v.groups.forEach(g => {
+  v.groups.forEach((g, gi) => {
     const gr = g.gr;
     const y0 = ySrc.get(gr.donor.id);
     const members = gr.members.map(m => v.feeds.find(fv => fv.f.dst.id === m));
@@ -2048,9 +2715,35 @@ function flowSvg(p, a) {
       label(xDiv + 30, sy + (ySink > sy ? 24 : -12), t('svgToSink', fmt(f)), 'var(--sink)');
     }
     const txt = gr.mode === 'loop' ? `÷${gr.p} ↺` : `÷${gr.mode === 'sink' ? gr.n : gr.p}`;
-    front.push(`<polygon points="${xDiv - 24},${sy - 15} ${xDiv + 16},${sy - 15} ${xDiv + 24},${sy - 7} ${xDiv + 24},${sy + 15} ${xDiv - 24},${sy + 15}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
-      <text class="lbl" x="${xDiv}" y="${sy + 5}" text-anchor="middle" style="fill:var(--ficsit)">${txt}</text>`);
+    front.push(`<g class="balblock" data-open-bal="g${gi}" tabindex="0" role="button" aria-label="${esc(t('blkAria', 1, gr.p))}">
+      <polygon points="${xDiv - 24},${sy - 15} ${xDiv + 16},${sy - 15} ${xDiv + 24},${sy - 7} ${xDiv + 24},${sy + 15} ${xDiv - 24},${sy + 15}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+      <text class="lbl" x="${xDiv}" y="${sy + 5}" text-anchor="middle" style="fill:var(--ficsit)">${txt}</text></g>`);
   });
+
+  // Balancer N→M: um bloco só no meio; o detalhe abre num diálogo.
+  if (v.bal) {
+    const d = v.bal.design;
+    const ys = [...a.bal.inputs.map(l => ySrc.get(l.id)), ...dstOrder.map(dd => yDst.get(dd.id))];
+    const ym = (Math.min(...ys) + Math.max(...ys)) / 2, half = Math.max((Math.max(...ys) - Math.min(...ys)) / 2 + 18, 40);
+    const y1 = Math.max(2, ym - half), y2 = Math.min(H - 2, ym + half);
+    const bx = 330, bw = 170;
+    a.bal.inputs.forEach((l, i) => {
+      const y = ySrc.get(l.id), f = fl(v.bal.inEdges[i]), held = a.sources.get(l.id).held;
+      belt(curve(xSrc + boxW, y, bx, y), f, 'var(--flow)');
+      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${y - 10}" style="fill:var(--flow)">${fmt(f)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(held))}</tspan>` : ''}</text>`);
+    });
+    v.feeds.forEach(fv => { const y = yDst.get(fv.f.dst.id); belt(curve(bx + bw, y, xDst, y), fl(fv.outEdge), 'var(--flow)'); });
+    if (v.bal.sinkEdges.length) {
+      const f = v.bal.sinkEdges.reduce((acc, e) => acc + fl(e), 0);
+      belt(curve(bx + bw, y2 - 10, xDst, ySink), f, 'var(--sink)', back);
+      label(bx + bw + 12, y2 + 4, t('svgToSink', fmt(f)), 'var(--sink)');
+    }
+    front.push(`<g class="balblock" data-open-bal="plan" tabindex="0" role="button" aria-label="${esc(t('blkAria', d.N, d.M))}">
+      <polygon points="${bx},${y1} ${bx + bw - 14},${y1} ${bx + bw},${y1 + 14} ${bx + bw},${y2} ${bx},${y2}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+      <text class="lbl" x="${bx + bw / 2}" y="${ym - 4}" text-anchor="middle" style="fill:var(--ficsit);font-size:26px">${d.N}→${d.M}</text>
+      <text class="sm" x="${bx + bw / 2}" y="${ym + 16}" text-anchor="middle">${esc(designName(d))}</text>
+      <text class="sm" x="${bx + bw / 2}" y="${ym + 31}" text-anchor="middle" style="fill:var(--holo)">${t('blkHint')}</text></g>`);
+  }
 
   v.feeds.forEach(fv => {
     const y = yDst.get(fv.f.dst.id);
@@ -2164,6 +2857,435 @@ function treeSvg(tree, useful, kind) {
   return s + `</svg>`;
 }
 
+// ---- Balancer N→M: desenho com passo a passo ----
+// Uma cor por entrada, para seguir cada árvore até os mergers.
+const IN_COLORS = ['#ffd166', '#c6a6ff', '#8fe3a4', '#ff8fc7', '#a3b8ff', '#e9ff70', '#ffb3a7', '#d6c3a5'];
+const inColor = i => IN_COLORS[i % IN_COLORS.length];
+const designKey = d => (d.kind === 'blueprint' ? `bp-${d.bp.n}-${d.bp.m}` : d.kind);
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const segName = sg => t('seg' + cap1(sg.key), sg.arg);
+const rateList = rs => (rs.every(r => Math.abs(r - rs[0]) < EPS) ? fmt(rs[0]) : rs.map(r => fmt(r)).join(' / '));
+const tags = (prefix, n) => Array.from({ length: n }, (_, i) => prefix + (i + 1));
+
+// Desenha o design e devolve o texto de cada passo. Cada peça leva data-s = passo em que aparece.
+function balancerBuild(d, labels) {
+  const steps = [], under = [], over = [];
+  const step = text => steps.push(text) - 1;
+  const g = (layer, s, svg) => layer.push(`<g data-s="${s}">${svg}</g>`);
+  const ins = labels.ins, outs = labels.outs;
+  const N = d.N, M = d.M, n = d.n, top = 14, boxH = 34, inW = 92, outW = 100;
+  const loop = d.kind.endsWith('-loop'), sink = d.kind.endsWith('-sink');
+  const plate = (x, y, w, stroke) => `<polygon points="${x},${y} ${x + w - 9},${y} ${x + w},${y + 9} ${x + w},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
+  const box = (x, yc, w, tag, rate, stroke) => plate(x, yc - boxH / 2, w, stroke)
+    + `<text class="lbl" x="${x + 9}" y="${yc + 5}">${esc(tag)}</text><text class="rate" x="${x + w - 9}" y="${yc + 5}" text-anchor="end">${rate}</text>`;
+  const splitter = (x, y, ways) => `<rect x="${x - 11}" y="${y - 9}" width="22" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text class="sm" x="${x}" y="${y + 4}" text-anchor="middle" style="fill:var(--ficsit)">${ways}</text>`;
+  const merger = (x, y) => `<rect x="${x - 6.5}" y="${y - 6.5}" width="13" height="13" transform="rotate(45 ${x} ${y})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/>`;
+  const curve = (x1, y1, x2, y2) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`;
+  const belt = (path, color, w = 2, dash = '') => `<path d="${path}" fill="none" stroke="${color}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+  const leaf = (x, y, color, hollow) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${hollow ? 'var(--paper)' : color}" stroke="${color}" stroke-width="1.5"/>`;
+  const sinkStub = (s, x, y) => {
+    g(under, s, belt(`M${x},${y} h22`, 'var(--sink)', 2));
+    g(over, s, `<text class="sm" x="${x + 26}" y="${y + 4}" style="fill:var(--sink)">sink</text>`);
+  };
+  const inStep = () => step(t('stIn', N, ins.join(', '), rateList(d.rates)));
+  let W, H;
+
+  if (d.kind === 'blueprint') {
+    const gap = 46, rows = Math.max(N, M), cH = rows * gap - (gap - boxH);
+    const yAt = (i, k) => top + (cH - (k * gap - (gap - boxH))) / 2 + i * gap + boxH / 2;
+    const bx = inW + 80, bw = 150, xOut = bx + bw + 80;
+    W = xOut + outW + 2;
+    H = top * 2 + cH;
+    const s0 = inStep();
+    for (let i = 0; i < N; i++) g(over, s0, box(0, yAt(i, N), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+    const s1 = step(t('stBpBox', d.bp.n, d.bp.m, d.bp.n - N));
+    for (let i = 0; i < N; i++) g(under, s1, belt(curve(inW, yAt(i, N), bx, yAt(i, N)), inColor(i), 3));
+    g(over, s1, `<polygon points="${bx},${top} ${bx + bw - 12},${top} ${bx + bw},${top + 12} ${bx + bw},${top + cH} ${bx},${top + cH}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+      <text class="lbl" x="${bx + bw / 2}" y="${top + cH / 2 + 2}" text-anchor="middle" style="fill:var(--ficsit);font-size:22px">${d.bp.n}→${d.bp.m}</text>
+      <text class="sm" x="${bx + bw / 2}" y="${top + cH / 2 + 20}" text-anchor="middle">blueprint</text>`);
+    const s2 = step(t('stOut', M, fmt(d.perOut)));
+    for (let j = 0; j < M; j++) {
+      g(under, s2, belt(curve(bx + bw, yAt(j, M), xOut, yAt(j, M)), 'var(--ink)', 3));
+      g(over, s2, box(xOut, yAt(j, M), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    }
+  } else if (d.kind.startsWith('funnel')) {
+    const F = d.tree.factors, L = F.length, C = d.chain.length;
+    const inGap = 44, cH = Math.max(N * inGap - (inGap - boxH), n * 42);
+    H = top * 2 + cH + (loop ? 16 : 0);
+    const yIn = i => top + (cH - (N * inGap - (inGap - boxH))) / 2 + i * inGap + boxH / 2;
+    const yMid = top + cH / 2;
+    const xCh = c => inW + 54 + c * 34;
+    const xLM = xCh(C - 1) + 46;
+    const xRoot = loop ? xLM + 42 : xCh(C - 1) + 52;
+    const xNode = k => xRoot + k * 58, xLeaf = xNode(L - 1) + 40, xOut = xLeaf + 56;
+    W = xOut + outW + 2;
+    const leafY = j => top + (j + 0.5) * cH / n;
+    const nodeY = (k, q) => { const span = n / d.tree.levels[k].count; return top + (q * span + span / 2) * cH / n; };
+    const treeIn = loop ? d.total * n / M : d.total;
+    const s0 = inStep();
+    for (let i = 0; i < N; i++) g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+    const sm = step(t('stFunnelMerge', N, C, fmt(d.total)));
+    for (let i = 0; i < N; i++) g(under, sm, belt(curve(inW, yIn(i), xCh(chainSlot(i)) - 7, yMid), inColor(i), 2.2));
+    for (let c = 0; c < C; c++) {
+      if (c) g(under, sm, belt(`M${xCh(c - 1) + 7},${yMid} L${xCh(c) - 7},${yMid}`, 'var(--ink)', 3));
+      g(over, sm, merger(xCh(c), yMid));
+    }
+    g(under, sm, belt(`M${xCh(C - 1) + 7},${yMid} L${loop ? xLM - 7 : xRoot - 11},${yMid}`, 'var(--ink)', 3.4));
+    if (loop) {
+      const s = step(t('stLoopM', 1));
+      g(over, s, merger(xLM, yMid));
+      g(under, s, belt(`M${xLM + 7},${yMid} L${xRoot - 11},${yMid}`, 'var(--ink)', 3.4));
+    }
+    let prod = 1;
+    for (let k = 0; k < L; k++) {
+      prod *= F[k];
+      const s = step(k === 0 ? t('stLevelFunnel', F[0], fmt(treeIn / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn / prod)));
+      for (let q = 0; q < d.tree.levels[k].count; q++) {
+        const x = xNode(k), y = nodeY(k, q);
+        for (let c = 0; c < F[k]; c++) {
+          const child = q * F[k] + c;
+          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(k + 1, child)), 'var(--ink)', 2));
+          else {
+            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(child)), 'var(--ink)', 1.8));
+            g(over, s, leaf(xLeaf, leafY(child), child >= M && sink ? 'var(--sink)' : 'var(--ink)', child >= M && loop));
+          }
+        }
+        g(over, s, splitter(x, y, F[k]));
+      }
+    }
+    if (d.extra && loop) {
+      const s = step(t('stLoopBack', d.extra, M));
+      for (let j = M; j < n; j++) g(under, s, belt(`M${xLeaf + 4},${leafY(j)} h10 V${top + cH + 6 + (j - M) * 4} H${xLM} V${yMid + 7}`, 'var(--ink-dim)', 1.6, '5 3'));
+    }
+    if (d.extra && sink) {
+      const s = step(t('stSinkOut', d.extra));
+      for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(j));
+    }
+    const so = step(t('stOut', M, fmt(d.perOut)));
+    for (let j = 0; j < M; j++) {
+      g(under, so, belt(`M${xLeaf + 4},${leafY(j)} L${xOut},${leafY(j)}`, 'var(--ink)', 3));
+      g(over, so, box(xOut, leafY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    }
+  } else {
+    // Matriz: uma faixa por entrada com a sua árvore; as saídas se espalham pela altura toda à direita.
+    const F = d.tree.factors, L = F.length, C = d.chain.length;
+    // A faixa cresce se as saídas (uma caixa a cada 42px) não couberem na altura das entradas.
+    const BG = loop ? 30 : 16, bandH = Math.max(n * 18, boxH + 6, (M * 42 + BG) / N - BG);
+    const cH = N * (bandH + BG) - BG;
+    H = top * 2 + cH + (loop ? 8 : 0);
+    const xLM = inW + 28, xRoot = inW + (loop ? 64 : 36);
+    const xNode = k => xRoot + k * 58, xLeaf = xNode(L - 1) + 36;
+    const xMerg = c => xLeaf + 120 + c * 32;
+    const xOut = (C ? xMerg(C - 1) : xLeaf + 90) + 36;
+    W = xOut + outW + 2;
+    const bandY = i => top + i * (bandH + BG);
+    const yc = i => bandY(i) + bandH / 2;
+    const leafY = (i, j) => bandY(i) + (j + 0.5) * bandH / n;
+    const nodeY = (i, k, q) => { const span = n / d.tree.levels[k].count; return bandY(i) + (q * span + span / 2) * bandH / n; };
+    const outY = j => top + (j + 0.5) * cH / M;
+    const treeIn = i => (loop ? d.rates[i] * n / M : d.rates[i]);
+    const s0 = inStep();
+    for (let i = 0; i < N; i++) {
+      g(over, s0, box(0, yc(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+      g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3));
+    }
+    if (loop) {
+      const s = step(t('stLoopM', N));
+      for (let i = 0; i < N; i++) {
+        g(over, s, merger(xLM, yc(i)));
+        g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(i), 3));
+      }
+    }
+    const drawLevel = (i, k, s) => {
+      for (let q = 0; q < d.tree.levels[k].count; q++) {
+        const x = xNode(k), y = nodeY(i, k, q);
+        for (let c = 0; c < F[k]; c++) {
+          const child = q * F[k] + c;
+          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(i), 1.8));
+          else {
+            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(i), 1.6));
+            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(i), child >= M && loop));
+          }
+        }
+        g(over, s, splitter(x, y, F[k]));
+      }
+    };
+    let prod = 1;
+    for (let k = 0; k < L; k++) {
+      prod *= F[k];
+      const s = step(k === 0 ? t('stLevelFirst', ins[0], F[0], fmt(treeIn(0) / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn(0) / prod)));
+      drawLevel(0, k, s);
+    }
+    if (N > 1) {
+      const s = step(t('stRepeat', ins.slice(1).join(', '), d.tree.splitters));
+      for (let i = 1; i < N; i++) for (let k = 0; k < L; k++) drawLevel(i, k, s);
+    }
+    if (d.extra && loop) {
+      const s = step(t('stLoopBack', d.extra, M));
+      for (let i = 0; i < N; i++) for (let j = M; j < n; j++) {
+        const yb = bandY(i) + bandH + 8 + (j - M) * 4;
+        g(under, s, belt(`M${xLeaf + 4},${leafY(i, j)} h10 V${yb} H${xLM} V${yc(i) + 7}`, inColor(i), 1.6, '5 3'));
+      }
+    }
+    if (d.extra && sink) {
+      const s = step(t('stSinkOut', d.extra));
+      for (let i = 0; i < N; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j));
+    }
+    const mergeOut = (j, s) => {
+      for (let i = 0; i < N; i++) g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(i), 1.4));
+      for (let c = 0; c < C; c++) {
+        if (c) g(under, s, belt(`M${xMerg(c - 1) + 7},${outY(j)} L${xMerg(c) - 7},${outY(j)}`, 'var(--ink)', 2.4));
+        g(over, s, merger(xMerg(c), outY(j)));
+      }
+    };
+    if (N > 1) {
+      mergeOut(0, step(t('stMerge1', outs[0], N, C)));
+      if (M > 1) {
+        const s = step(t('stMergeRest', outs.slice(1).join(', ')));
+        for (let j = 1; j < M; j++) mergeOut(j, s);
+      }
+    }
+    const so = step(t('stOut', M, fmt(d.perOut)));
+    for (let j = 0; j < M; j++) {
+      g(under, so, N > 1 ? belt(`M${xMerg(C - 1) + 7},${outY(j)} L${xOut},${outY(j)}`, 'var(--ink)', 3) : belt(curve(xLeaf + 4, leafY(0, j), xOut, outY(j)), inColor(0), 2));
+      g(over, so, box(xOut, outY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    }
+  }
+  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
+  return { svg, steps };
+}
+
+// Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
+function mountPonder(root, d, labels) {
+  if (root._stop) root._stop();
+  const { svg, steps } = balancerBuild(d, labels);
+  const K = steps.length;
+  let cur = K, timer = null;
+  const matrix = d.kind === 'matrix' || d.kind === 'matrix-loop' || d.kind === 'matrix-sink' || d.kind === 'blueprint';
+  root.innerHTML = `<div class="ponder" tabindex="-1">
+    <div class="stage">${svg}</div>
+    <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
+    <div class="pctl">
+      <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
+      <div class="ticks">${steps.map((_, i) => `<button type="button" class="tick" data-p="${i}" aria-label="${esc(t('stepGoto', i + 1))}"></button>`).join('')}</div>
+      <button type="button" class="pbtn" data-p="next" aria-label="${esc(t('stepNext'))}">›</button>
+      <button type="button" class="pbtn" data-p="play"></button>
+      <button type="button" class="pbtn prim" data-p="toggle"></button>
+      <span class="pkeys">${t('ponderKeys')}</span>
+    </div>
+    <div class="plegend">
+      ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
+      <span><i class="holo"></i>${t('lgHolo')}</span>
+      ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
+      ${d.extra && d.kind.endsWith('-sink') ? `<span><i style="background:var(--sink)"></i>${t('lgToSink')}</span>` : ''}
+    </div>
+  </div>`;
+  const q = s => root.querySelector(s);
+  const stop = () => { clearInterval(timer); timer = null; };
+  root._stop = stop;
+  const update = () => {
+    const st = q('.bsvg');
+    st.classList.toggle('stepping', cur < K);
+    st.querySelectorAll('[data-s]').forEach(el => {
+      const s = +el.dataset.s;
+      el.classList.toggle('fut', cur < K && s > cur);
+      el.classList.toggle('now', cur < K && s === cur);
+      el.classList.toggle('past', cur < K && s < cur);
+    });
+    const done = cur >= K;
+    q('.cap').classList.toggle('done', done);
+    q('.cap-n').textContent = done ? '✓' : t('stepOf', cur + 1, K);
+    q('.cap-t').textContent = done ? t('stepDone', designPieces(d), d.M, fmt(d.perOut)) : steps[cur];
+    root.querySelectorAll('.tick').forEach((b, i) => {
+      b.classList.toggle('done', done || i < cur);
+      b.classList.toggle('cur', !done && i === cur);
+      b.setAttribute('aria-current', !done && i === cur ? 'step' : 'false');
+    });
+    q('[data-p=prev]').disabled = cur === 0;
+    q('[data-p=next]').disabled = done;
+    q('[data-p=play]').textContent = timer ? t('stepPause') : t('stepPlay');
+    q('[data-p=toggle]').textContent = done ? t('stepStart') : t('stepAll');
+  };
+  const go = k => { cur = Math.max(0, Math.min(K, k)); if (cur >= K) stop(); update(); };
+  root.querySelector('.pctl').addEventListener('click', e => {
+    const b = e.target.closest('[data-p]');
+    if (!b) return;
+    const p = b.dataset.p;
+    if (p === 'prev') { stop(); go(cur - 1); }
+    else if (p === 'next') { stop(); go(cur + 1); }
+    else if (p === 'toggle') { stop(); go(cur >= K ? 0 : K); }
+    else if (p === 'play') {
+      if (timer) { stop(); update(); return; }
+      if (cur >= K) cur = 0;
+      timer = setInterval(() => go(cur + 1), 2600);
+      update();
+    } else { stop(); go(+p); }
+  });
+  q('.ponder').addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); stop(); go(cur + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(cur - 1); }
+  });
+  update();
+}
+
+function whyText(ranked) {
+  const w = designWhy(ranked);
+  if (w.code === 'none') return t('whyNone');
+  if (w.code === 'bp') return t('whyBp', w.a.bp.n, w.a.bp.m);
+  if (w.code === 'only') return t('whyOnly');
+  if (w.code === 'more') return t('whyMore', fmt(w.a.perOut), designName(w.b), fmt(w.b.perOut));
+  if (w.code === 'noSink') return t('whyNoSink', designName(w.b), fmt(w.b.sinkRate));
+  if (w.code === 'fewer') return t('whyFewer', designPieces(w.a), designName(w.b), designPieces(w.b));
+  return t('whyTie', designName(w.b));
+}
+
+function designNote(d, belt) {
+  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape' }[d.applies], d.M);
+  const bad = d.segments.find(s => !s.ok);
+  const note = bad ? t('rLimit', segName(bad), fmt(bad.rate), belt) : t('rNoLimit');
+  return note + (d.sinkRate > 0.05 ? `; ${t('lgToSink')} ${fmt(d.sinkRate)}/min` : '');
+}
+
+function checksTable(d, belt) {
+  const rows = d.segments.map(s => `<tr><td>${esc(segName(s))}</td><td>${fmt(s.rate)}</td><td class="${s.ok ? 'ok' : 'bad'}">${s.ok ? '✓' : '✗'}</td></tr>`).join('');
+  return `<div class="tablewrap"><table class="checks">
+    <tr><th>${t('thSegment')}</th><th>${t('thLoad')}</th><th>${t('thFits', belt)}</th></tr>${rows}</table></div>
+    <p class="hint">${t('checkNote', belt, fmt(d.perOut))}${d.segments.some(s => !s.ok) ? ` ${t('checkOver')}` : ''}</p>`;
+}
+
+// Bancada: passo a passo do design escolhido, a lista de designs testados e a vazão de cada trecho.
+// ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, view, inUse, onView }
+function workbench(el, ctx) {
+  const cands = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints));
+  const best = cands[0];
+  if (best.applies) { el.innerHTML = `<p class="lead">${t('whyNone')}</p>`; return; }
+  const d = cands.find(x => !x.applies && designKey(x) === ctx.view) || best;
+  const pc = d.pieces;
+  const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
+  el.innerHTML = `<div class="wb">
+    <div class="wb-stage"></div>
+    <aside class="wb-side">
+      <div class="wb-head"><span class="wb-shape num">${d.N}→${d.M}</span><span class="wb-name">${esc(cap1(designName(d)))}${tag(d)}</span></div>
+      <dl class="pc-grid num">
+        ${pc.blueprints ? `<div><dt>Blueprint</dt><dd>${pc.blueprints}</dd></div>` : `<div><dt>${t('thSplitters')}</dt><dd>${pc.splitters}</dd></div><div><dt>${t('thMergers')}</dt><dd>${pc.mergers}</dd></div>`}
+        <div><dt>${t('thPerOut')}</dt><dd>${fmt(d.perOut)}<small>/min</small></dd></div>
+      </dl>
+      <div>${d === best ? `<h4>${t('whyTitle')}</h4><p>${esc(whyText(cands))}</p>` : `<h4>${t('whyNotTitle')}</h4><p>${esc(`${cap1(designName(best))}: ${whyText([best, d])}`)}</p>`}</div>
+      <div>
+        <h4>${t('designsTitle')}${tip('tipDesigns')}</h4>
+        <div class="cands" role="radiogroup" aria-label="${esc(t('designsTitle'))}">
+          <div class="cand-h" aria-hidden="true"><span>${t('thDesign')}</span><span>${t('thPerOut')}</span><span>${t('stPieces')}</span></div>
+          ${cands.map(c => `<button type="button" class="cand ${c === d ? 'sel' : ''}" role="radio" aria-checked="${c === d}" data-key="${designKey(c)}" ${c.applies ? 'disabled' : ''}>
+            <span class="cn">${esc(cap1(designName(c)))}${c.applies ? '' : tag(c)}</span>
+            <span class="cv">${c.applies ? '—' : fmt(c.perOut)}</span>
+            <span class="cp">${c.applies ? '' : designPieces(c)}</span>
+            <span class="cnote">${esc(designNote(c, ctx.belt))}</span>
+          </button>`).join('')}
+        </div>
+      </div>
+      <div><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}</div>
+    </aside>
+  </div>`;
+  mountPonder(el.querySelector('.wb-stage'), d, ctx.labels);
+  el.querySelector('.cands').addEventListener('click', e => {
+    const b = e.target.closest('.cand');
+    if (!b || b.disabled) return;
+    ctx.view = b.dataset.key;
+    if (ctx.onView) ctx.onView(ctx.view);
+    workbench(el, ctx);
+    el.querySelector(`.cand[data-key="${ctx.view}"]`)?.focus();
+  });
+}
+
+// ---- Biblioteca: gerador, blueprints e catálogo ----
+const BP_STORE = 'sf-balancer:bp';
+const LIB_STORE = 'sf-balancer:lib';
+let BPS = [{ n: 3, m: 4 }];
+try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null };
+try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
+const saveBps = () => { try { localStorage.setItem(BP_STORE, JSON.stringify(BPS)); } catch (e) { /* sem storage */ } };
+const saveLib = () => { try { localStorage.setItem(LIB_STORE, JSON.stringify(LIB)); } catch (e) { /* sem storage */ } };
+
+const CATALOG = [
+  { kind: 'matrix', n: 3, m: 4, rate: 240, ds: 'dsMatrix' },
+  { kind: 'funnel', n: 3, m: 2, rate: 120, ds: 'dsFunnel' },
+  { kind: 'matrix-loop', n: 2, m: 5, rate: 240, ds: 'dsMatrixLoop' },
+  { kind: 'funnel-loop', n: 3, m: 5, rate: 60, ds: 'dsFunnelLoop' },
+  { kind: 'matrix-sink', n: 1, m: 7, rate: 480, ds: 'dsMatrixSink' },
+  { kind: 'funnel-sink', n: 2, m: 5, rate: 60, ds: 'dsFunnelSink' },
+];
+
+function renderBps() {
+  $('bpList').innerHTML = (BPS.length
+    ? BPS.map((b, i) => `<span class="bp-chip num">${b.n}→${b.m}<button type="button" data-bp-rm="${i}" aria-label="${esc(t('bpRemove', b.n, b.m))}">×</button></span>`).join('')
+    : `<span class="dim">${t('bpEmpty')}</span>`)
+    + `<span class="bp-add"><input class="field" id="bpN" type="text" inputmode="numeric" placeholder="N" aria-label="${esc(t('bpInAria'))}"><span aria-hidden="true">→</span><input class="field" id="bpM" type="text" inputmode="numeric" placeholder="M" aria-label="${esc(t('bpOutAria'))}"><button type="button" class="pbtn" id="bpAdd">${t('bpAdd')}</button></span>`;
+}
+
+function libLabels(N, M) { return { ins: tags(t('inTag'), N), outs: tags(t('outTag'), M) }; }
+
+function renderLib() {
+  const int = (el, lo, hi) => { const v = parseNum(el.value); const ok = Number.isInteger(v) && v >= lo && v <= hi; el.classList.toggle('invalid', !ok); return ok ? v : null; };
+  const N = int($('libN'), 1, 12), M = int($('libM'), 2, 12);
+  const belt = BELTS.find(b => b.id === $('libBelt').value) || BELTS[3];
+  const rv = parseNum($('libRate').value);
+  const rateOk = $('libRate').value.trim() === '' || rv > 0;
+  $('libRate').classList.toggle('invalid', !rateOk);
+  $('libRate').placeholder = fmt(belt.cap);
+  Object.assign(LIB, { n: $('libN').value, m: $('libM').value, rate: $('libRate').value, belt: belt.id });
+  saveLib();
+  if (!N || !M || !rateOk) { $('libOut').innerHTML = `<p class="lead">${t('invalid')}</p>`; return; }
+  workbench($('libOut'), {
+    N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
+    labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
+  });
+}
+
+function renderCatalog() {
+  $('catGrid').innerHTML = CATALOG.map((c, i) => {
+    const d = balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
+    return `<div class="plate cat">
+      <div class="thumb" aria-hidden="true">${balancerBuild(d, libLabels(c.n, c.m)).svg}</div>
+      <h4>${esc(cap1(designName(d)))}</h4>
+      <p>${t(c.ds)}</p>
+      <button type="button" class="pbtn" data-cat="${i}">${t('catExample', c.n, c.m)}</button>
+    </div>`;
+  }).join('');
+}
+
+function openCatalog(i) {
+  const c = CATALOG[i];
+  $('libN').value = c.n; $('libM').value = c.m; $('libRate').value = fmt(c.rate);
+  LIB.view = c.kind;
+  renderLib();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('gen').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
+// ---- Diálogo com a montagem do balancer do plano ----
+let lastRender = null;
+function openDesign(ctx) {
+  $('dlgTitle').textContent = t('lbBalTitle', ctx.N, ctx.M);
+  workbench($('dlgBody'), ctx);
+  $('balDlg').showModal();
+  $('dlgBody').querySelector('.ponder').focus();
+}
+// key: 'plan' para o balancer N→M da alternativa, 'g<i>' para a árvore de uma doadora.
+function openFromPlan(key) {
+  if (!lastRender) return;
+  const { p, alt } = lastRender;
+  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS };
+  if (key === 'plan' && alt.view.bal) {
+    const d = alt.view.bal.design;
+    openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d) });
+  } else if (key[0] === 'g') {
+    const gr = alt.view.groups[+key.slice(1)].gr;
+    const kind = { direct: 'matrix', loop: 'matrix-loop', sink: 'matrix-sink' }[gr.mode];
+    openDesign({ ...base, blueprints: [], N: 1, M: gr.p, rates: [gr.donor.rate], labels: { ins: [O(gr.donor)], outs: gr.members.map(dstTag) }, inUse: kind, view: kind });
+  }
+}
+
 // ---- Eventos ----
 for (const ev of ['input', 'change']) {
   $('form').addEventListener(ev, render);
@@ -2174,6 +3296,8 @@ $('form').addEventListener('click', e => {
   if (side) { addGroup(side).count.focus(); render(); }
 });
 $('out').addEventListener('click', e => {
+  const open = e.target.closest('[data-open-bal]');
+  if (open) { openFromPlan(open.dataset.openBal); return; }
   const card = e.target.closest('.alt');
   if (card) { selectedKey = card.dataset.key; render(); document.querySelector(`.alt[data-key="${selectedKey}"]`)?.focus(); }
 });
@@ -2189,6 +3313,37 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && tipBtn) hideTip(); });
 addEventListener('scroll', () => { if (tipBtn) hideTip(); }, { passive: true, capture: true });
 addEventListener('resize', () => { if (tipBtn) hideTip(); });
+$('out').addEventListener('keydown', e => {
+  const open = e.target.closest('g[data-open-bal]');
+  if (open && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openFromPlan(open.dataset.openBal); }
+});
+$('gen').addEventListener('input', e => {
+  if (e.target.closest('.bp-add')) return;
+  LIB.view = null;
+  renderLib();
+});
+$('libBelt').addEventListener('change', () => { LIB.view = null; renderLib(); });
+function bpChanged() { saveBps(); renderBps(); renderLib(); render(); }
+function addBp() {
+  const n = parseNum($('bpN').value), m = parseNum($('bpM').value);
+  const okN = Number.isInteger(n) && n >= 1 && n <= 12, okM = Number.isInteger(m) && m >= 2 && m <= 12;
+  $('bpN').classList.toggle('invalid', !okN);
+  $('bpM').classList.toggle('invalid', !okM);
+  if (!okN || !okM) return;
+  if (!BPS.some(b => b.n === n && b.m === m)) BPS.push({ n, m });
+  bpChanged();
+  $('bpN').focus();
+}
+$('bpList').addEventListener('click', e => {
+  const rm = e.target.closest('[data-bp-rm]');
+  if (rm) { BPS.splice(+rm.dataset.bpRm, 1); bpChanged(); $('bpN').focus(); }
+  else if (e.target.id === 'bpAdd') addBp();
+});
+$('bpList').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.bp-add')) addBp(); });
+$('catGrid').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) openCatalog(+b.dataset.cat); });
+$('dlgClose').addEventListener('click', () => $('balDlg').close());
+$('balDlg').addEventListener('click', e => { if (e.target === $('balDlg')) $('balDlg').close(); });
+$('balDlg').addEventListener('close', () => { const st = $('dlgBody').querySelector('.wb-stage'); if (st && st._stop) st._stop(); hideTip(); });
 $('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); });
 $('langs').addEventListener('click', e => {
   const btn = e.target.closest('[data-lang]');
@@ -2204,7 +3359,11 @@ if (saved && saved.src) {
   // Estados salvos antes dos idiomas foram digitados em português.
   if ((saved.lang || 'pt') !== LANG) convertInputs(saved.lang || 'pt');
 } else loadState(DEFAULTS);
+$('libN').value = LIB.n; $('libM').value = LIB.m; $('libRate').value = LIB.rate; $('libBelt').value = LIB.belt;
+renderBps();
+renderCatalog();
 render();
+renderLib();
 </script>
 </body>
 </html>

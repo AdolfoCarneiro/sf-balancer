@@ -281,3 +281,97 @@ test('parseNum em inglês: vírgula é milhar, ponto é decimal', () => {
     assert.equal(L.parseNum('1.200'), 1200);
   });
 });
+
+// ---- Biblioteca de load balancers ----
+const best = (n, m, r, cap, bps) => L.rankDesigns(L.balancerCandidates(n, m, [r], cap, bps));
+const kind = (list, k) => list.find(d => d.kind === k);
+
+test('balancer: cascata de mergers bate com mergersFor', () => {
+  assert.deepEqual(L.chainSizes(6), [3, 5, 6]);
+  assert.deepEqual(L.chainSizes(1), []);
+  for (let n = 1; n <= 12; n++) assert.equal(L.chainSizes(n).length, L.mergersFor(n), `n=${n}`);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map(L.chainSlot), [0, 0, 0, 1, 1, 2, 2]);
+});
+
+test('balancer: matriz 3→4 = 3 árvores de 1→4 + 4 mergers', () => {
+  const d = L.balancerDesign('matrix', 3, 4, [240], 480);
+  assert.equal(d.applies, null);
+  assert.equal(d.pieces.splitters, 9);
+  assert.equal(d.pieces.mergers, 4);
+  close(d.perOut, 180);
+  assert.ok(d.segments.every(s => s.ok));
+  assert.equal(L.balancerDesign('matrix', 3, 5, [240], 480).applies, 'notDirect');
+  assert.equal(L.balancerDesign('matrix-loop', 3, 4, [240], 480).applies, 'direct');
+  assert.equal(L.balancerDesign('funnel', 1, 4, [240], 480).applies, 'oneInput');
+});
+
+test('balancer: 2→5 a 240 na Mk4 escolhe matriz com loop porque o funil engargala', () => {
+  const r = best(2, 5, 240, 480, []);
+  assert.equal(r[0].kind, 'matrix-loop');
+  close(r[0].perOut, 96);
+  assert.equal(r[0].pieces.splitters, 8);
+  assert.equal(r[0].pieces.mergers, 7, '2 de loop + 5 saídas');
+  const f = kind(r, 'funnel-loop');
+  close(f.perOut, 80, 'esteira do loop do funil (576) limita a 480');
+  assert.ok(f.segments.some(s => s.key === 'loop' && !s.ok));
+  assert.equal(L.designWhy(r).code, 'more');
+});
+
+test('balancer: em baixa vazão o funil com loop ganha por ter menos peças', () => {
+  const r = best(2, 5, 60, 480, []);
+  assert.equal(r[0].kind, 'funnel-loop');
+  assert.equal(L.designPieces(r[0]), 6);
+  assert.equal(L.designWhy(r).code, 'fewer');
+});
+
+test('balancer: sink só perde para o loop no desempate', () => {
+  const r = best(1, 7, 480, 480, []);
+  close(kind(r, 'matrix-loop').perOut, kind(r, 'matrix-sink').perOut);
+  assert.equal(r[0].kind, 'matrix-loop');
+  assert.equal(L.designWhy(r).code, 'noSink');
+});
+
+test('balancer: blueprint do jogador é preferido quando o formato bate', () => {
+  const r = best(3, 4, 240, 480, [{ n: 3, m: 4 }]);
+  assert.equal(r[0].kind, 'blueprint');
+  assert.equal(L.designWhy(r).code, 'bp');
+  assert.equal(best(2, 4, 240, 480, [{ n: 3, m: 4 }])[0].kind, 'blueprint', 'entrada sobrando serve');
+  assert.ok(!best(3, 5, 240, 480, [{ n: 3, m: 4 }]).some(d => d.kind === 'blueprint'), 'saída diferente não serve');
+});
+
+test('balancer no plano: caso 1 tem a alternativa 6→5 e a recomendada não muda', () => {
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40 });
+  const bal = p.alternatives.filter(a => a.kind === 'balancer');
+  assert.equal(bal.length, 1, 'só o melhor design vira alternativa');
+  const a = bal[0];
+  assert.equal(a.bal.design.kind, 'matrix-loop');
+  assert.ok(a.full, 'loop limita cada entrada a 400, e 6 × 400 ainda cobre 2.400');
+  assert.equal(a.pieces.splitters, 24);
+  assert.equal(a.pieces.mergers, 21);
+  a.sources.forEach(s => close(s.out, 400));
+  conserves(p, a);
+  assert.ok(a.designAlts.length > 1);
+  assert.equal(p.alternatives[0].key, 'doadora-1-sink');
+});
+
+test('balancer no plano: com blueprint 6→5 ele vira a recomendada', () => {
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
+  const a = p.alternatives[0];
+  assert.equal(a.kind, 'balancer');
+  assert.equal(a.bal.design.kind, 'blueprint');
+  assert.equal(a.pieces.blueprints, 1);
+  assert.ok(a.full);
+  conserves(p, a);
+});
+
+test('balancer no plano: ligação direta cheia não gera balancer', () => {
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 });
+  assert.ok(!p.alternatives.some(a => a.kind === 'balancer'));
+});
+
+test('balancer: nomes nos três idiomas', () => {
+  const d = L.balancerDesign('funnel-loop', 3, 5, [60], 480);
+  assert.equal(L.designName(d), 'funil com loop');
+  assert.equal(inLang('en', () => L.designName(d)), 'looped funnel');
+  assert.equal(inLang('es', () => L.designName(d)), 'embudo con loop');
+});
