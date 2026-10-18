@@ -103,14 +103,15 @@ Por trecho e no total:
 - Números seguem o idioma: `fmt()` usa `t('locale')` (pt-BR `2.730,5`, en `2,730.5`, es `2730,5`) e `parseNum()` lê no formato do idioma atual (em inglês a vírgula é milhar).
 - Nomes de peças do jogo ficam em inglês nos três idiomas: Merger, Splitter, Smart Splitter, Awesome Sink, Any, Overflow, manifold, balancer (no espanhol, "balanceador" no texto corrido).
 - Rótulo das linhas: origem `O1` em pt/es e `S1` em en (`srcTag`), destino `D1` (`dstTag`).
-- **Inglês é o padrão.** O idioma vem de `?lang=pt|en|es`, depois da escolha salva; sem nenhum dos dois, inglês (não detecta pelo navegador). O HTML base (título, `lang`, descrição, textos com `data-i18n`) também fica em inglês.
+- **Inglês é o padrão.** O idioma vem do caminho (`/pt`, `/es`; `/` é inglês), depois de `?lang=pt|en|es`, depois da escolha salva; sem nada disso, inglês (não detecta pelo navegador). No site (`*.vercel.app`) a URL e o `canonical` acompanham o idioma; aberto do disco, a URL não muda. O HTML base (título, `lang`, descrição, textos com `data-i18n`) fica em inglês: é o que os buscadores leem primeiro.
+- **Ajuda contextual:** campos e resultados importantes têm um botão `?` (`class="tip" data-tip="chave"`, ou `tip('chave')` no HTML gerado) que abre um balão com `t(chave)`. Explicação nova = chave `tip...` nos três idiomas. A seção "Como funciona" e o FAQ no fim da página também usam `data-i18n`.
 - Seletor com bandeira em SVG + sigla (`FLAGS`): emoji de bandeira não renderiza no Windows. Idioma novo precisa de bandeira em `FLAGS`.
 - Os testes da lógica rodam em português; use `inLang('en', () => ...)` para testar outro idioma.
 
 ## Deploy e analytics
 
-- Repositório privado `AdolfoCarneiro/sf-balancer`; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
-- Só `index.html` e `vercel.json` são publicados (`.vercelignore`). Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
+- Repositório público (MIT) `AdolfoCarneiro/sf-balancer`, com README em inglês, português e espanhol (`README.md`, `README.pt-BR.md`, `README.es.md`): mudança de comportamento visível atualiza os três; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
+- Publicados (lista em `.vercelignore`): `index.html`, `vercel.json`, `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo novo do site precisa entrar nessa lista. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
 - Vercel Web Analytics via `<script defer src="/_vercel/insights/script.js">`, sem cookies. Localmente esse script dá 404, é esperado.
 
 ## Fora do escopo (v1)

@@ -3,8 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Belt Logistics Planner</title>
-<meta name="description" content="Plan belts, mergers, splitters and load balancers between two stages of a Satisfactory factory.">
+<title>Satisfactory Belt Balancer &amp; Logistics Planner</title>
+<meta name="description" content="Free Satisfactory belt planner: turn machine counts into belt lines, mergers, splitters and load balancers between two factory stages. No sign-up.">
+<meta name="theme-color" content="#0d2136">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/">
+<link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt">
+<link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es">
+<link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SF Balancer">
+<meta property="og:title" content="Satisfactory Belt Balancer &amp; Logistics Planner">
+<meta property="og:description" content="Turn machine counts into belt lines, mergers, splitters and load balancers between two stages of your Satisfactory factory.">
+<meta property="og:url" content="https://sf-balancer.vercel.app/">
+<meta property="og:image" content="https://sf-balancer.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Belt flow diagram: six source lines feeding five destination lines through a splitter tree">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SF Balancer",
+  "alternateName": "Satisfactory Belt Balancer & Logistics Planner",
+  "url": "https://sf-balancer.vercel.app/",
+  "description": "Plan belts, mergers, splitters and load balancers between two stages of a Satisfactory factory.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": ["en", "pt-BR", "es"],
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/licenses/MIT",
+  "codeRepository": "https://github.com/AdolfoCarneiro/sf-balancer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "about": { "@type": "VideoGame", "name": "Satisfactory" }
+}
+</script>
 <script defer src="/_vercel/insights/script.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,8 +162,6 @@
   .grp-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .grp-name { font: 600 14px var(--display); color: var(--ink-dim); }
   .grp-fields { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-  .grp-fields label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ink-dim); line-height: 1.2; }
-  .grp-fields label span { min-height: 2.4em; display: flex; align-items: flex-end; }
   @media (max-width: 600px) { .grp-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grp-fields .field { padding: 7px 6px; font-size: 14px; } }
   .eq { margin: 6px 0 0; font-size: 13px; color: var(--ink-dim); }
   .eq b { color: var(--ink); font-weight: 600; }
@@ -231,6 +267,52 @@
   .donor-title { font: 600 17px var(--display); margin: 14px 0 6px; }
   .donor-title:first-of-type { margin-top: 0; }
   .foot { margin-top: 28px; }
+
+  /* Ajuda: botões "?" com balão explicativo */
+  .tip {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 17px; height: 17px; margin-left: 5px; padding: 0; vertical-align: 2px;
+    border: 1px solid var(--ink-dim); border-radius: 50%; background: none; color: var(--ink-dim);
+    font: 600 11px/1 var(--display); cursor: help;
+  }
+  .tip::after { content: ""; position: absolute; inset: -8px; }
+  .tip:hover, .tip[aria-expanded="true"] { color: var(--ficsit); border-color: var(--ficsit); }
+  .tip:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  #tipbox {
+    position: fixed; z-index: 10; max-width: min(320px, calc(100vw - 32px)); padding: 10px 12px;
+    background: #0a1a2b; border: 1px solid var(--ficsit); box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    color: var(--ink); font: 400 13.5px/1.45 var(--body); pointer-events: none;
+  }
+  #tipbox[hidden] { display: none; }
+
+  .intro { margin: -8px 0 18px; max-width: 78ch; color: var(--ink-dim); font-size: 14.5px; }
+  .intro a, .guide a, .site-foot a { color: var(--ficsit); text-underline-offset: 3px; }
+  h1.kicker { font-weight: 500; }
+  .grp-fields .cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cell-head { display: flex; align-items: flex-end; min-height: 2.4em; font-size: 12px; color: var(--ink-dim); line-height: 1.2; }
+  .cell-head .tip { margin-left: 4px; vertical-align: 0; }
+
+  /* Como funciona */
+  .guide { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .guide > h2 { font: 600 28px/1.1 var(--display); margin: 0 0 6px; }
+  .guide h3 { font: 600 18px/1.2 var(--display); margin: 0 0 6px; }
+  .guide p { margin: 0 0 8px; }
+  .guide .lead { font-size: 15px; }
+  .segs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 16px 0 20px; }
+  .segs .plate { border-top: 3px solid var(--ficsit); }
+  .seg-n { font: 700 13px var(--display); color: var(--ficsit); letter-spacing: .08em; text-transform: uppercase; }
+  .guide-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .guide ul { margin: 0; padding-left: 18px; }
+  .guide li { margin: 0 0 8px; }
+  .guide li b { display: block; color: var(--ink); font-weight: 600; }
+  .faq { margin-top: 20px; }
+  .faq details { border-bottom: 1px solid var(--line); padding: 10px 0; }
+  .faq summary { cursor: pointer; font: 600 16px var(--display); }
+  .faq summary::marker { color: var(--ficsit); }
+  .faq summary:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  .faq details p { margin: 8px 0 2px; color: var(--ink-dim); max-width: 90ch; }
+  @media (max-width: 900px) { .segs, .guide-cols { grid-template-columns: 1fr; } }
+  .site-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ink-dim); }
 </style>
 </head>
 <body>
@@ -240,33 +322,34 @@
   </nav>
   <header class="top">
     <div>
-      <p class="kicker" data-i18n="kicker">Logistics between stages</p>
+      <h1 class="kicker" data-i18n="kicker">Satisfactory belt balancer · logistics between stages</h1>
       <input class="item-name" id="item" value="Iron Ingot" data-i18n-aria="itemAria" aria-label="Item name" spellcheck="false">
     </div>
     <dl class="ledger num" id="ledger"></dl>
   </header>
+  <p class="intro"><span data-i18n="intro">Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.</span> <a href="#how" data-i18n="howLink">How it works</a></p>
 
   <div id="form">
     <div class="band">
       <section class="plate">
-        <h2 data-i18n="sideSrc">Source</h2>
+        <h2><span data-i18n="sideSrc">Source</span><button type="button" class="tip" data-tip="tipSrc" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h2>
         <div id="srcGroups"></div>
         <button class="linkbtn" data-add="src" data-i18n="addGroup" type="button">+ Add machine group</button>
       </section>
       <div class="arrow" aria-hidden="true"></div>
       <section class="plate">
-        <h2 data-i18n="sideDst">Destination</h2>
+        <h2><span data-i18n="sideDst">Destination</span><button type="button" class="tip" data-tip="tipDst" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h2>
         <div id="dstGroups"></div>
         <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Add machine group</button>
       </section>
     </div>
     <section class="plate rules">
       <div class="rule">
-        <h3 data-i18n="belt">Belt</h3>
+        <h3><span data-i18n="belt">Belt</span><button type="button" class="tip" data-tip="tipBelt" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
         <select class="field" id="belt" data-i18n-aria="beltAria" aria-label="Belt tier"></select>
       </div>
       <div class="rule">
-        <h3 data-i18n="policyTitle">Source lines with no destination</h3>
+        <h3><span data-i18n="policyTitle">Source lines with no destination</span><button type="button" class="tip" data-tip="tipPolicy" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
         <div class="inline">
           <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Stay idle</span></label>
           <label class="choice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
@@ -274,7 +357,7 @@
         </div>
       </div>
       <div class="rule">
-        <h3 data-i18n="convTitle">Pieces per manifold</h3>
+        <h3><span data-i18n="convTitle">Pieces per manifold</span><button type="button" class="tip" data-tip="tipConv" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
         <div class="inline">
           <label class="choice"><input type="radio" name="conv" value="k-1" checked> <span data-i18n="convK1">k machines, k−1 pieces</span></label>
           <label class="choice"><input type="radio" name="conv" value="k"> <span data-i18n="convK">k machines, k pieces</span></label>
@@ -289,17 +372,63 @@
   <div class="foot hint">
     <button class="linkbtn" id="reset" data-i18n="reset" type="button">Back to the refinery example</button>
   </div>
+
+  <!-- Texto fixo em inglês para quem lê sem JavaScript (buscadores); applyStatic() troca pelo idioma escolhido. -->
+  <section class="guide" id="how" aria-labelledby="howTitle">
+    <h2 id="howTitle" data-i18n="guideTitle">How it works</h2>
+    <p class="lead" data-i18n="guideLead">Between two stages of a factory there are three belt segments. The tool solves each one and shows the result above.</p>
+    <div class="segs">
+      <div class="plate"><span class="seg-n" data-i18n="gCollectN">Segment 1</span><h3 data-i18n="gCollectTitle">Collection</h3><p data-i18n="gCollect">Joins the source machines into belt lines with mergers (an output manifold). Machines per line = belt capacity ÷ rate per machine, rounded down. Leftover machines share a partial line.</p></div>
+      <div class="plate"><span class="seg-n" data-i18n="gMidN">Segment 2</span><h3 data-i18n="gMidTitle">Middle</h3><p data-i18n="gMid">Connects the collection lines to the distribution lines. This is where lines get merged, topped up by a donor line or split by a load balancer.</p></div>
+      <div class="plate"><span class="seg-n" data-i18n="gDistN">Segment 3</span><h3 data-i18n="gDistTitle">Distribution</h3><p data-i18n="gDist">Splits each incoming line among the destination machines with splitters (an input manifold). A manifold balances itself across machines, so the tool only balances between lines.</p></div>
+    </div>
+    <div class="guide-cols">
+      <div>
+        <h3 data-i18n="casesTitle">The cases in the middle</h3>
+        <ul>
+          <li><b data-i18n="caseAName">Case A</b> <span data-i18n="caseAText">Source line ≥ destination line. One source line straight into each destination. The excess backs up at the source and spare lines follow your policy.</span></li>
+          <li><b data-i18n="caseBName">Case B</b> <span data-i18n="caseBText">Source line a bit short. A donor line is split into equal parts, one per destination, and each part is merged into a main line.</span></li>
+          <li><b data-i18n="caseCName">Case C</b> <span data-i18n="caseCText">Source lines much smaller than destination lines. Several whole source lines are merged into one, within the belt capacity and 3 inputs per merger.</span></li>
+          <li><b data-i18n="caseDName">Case D</b> <span data-i18n="caseDText">Mixed lines. A line with surplus sends its excess, through a Smart Splitter’s Overflow output, to a destination that is short. If no simple layout exists, the tool says so.</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 data-i18n="mechTitle">Game rules it follows</h3>
+        <ul>
+          <li><b>Splitter</b> <span data-i18n="mechSplitter">Up to 3 outputs, divides evenly among the outputs that accept items. Direct splits only reach halves and thirds (1/2, 1/3, 1/4, 1/6, 1/9…).</span></li>
+          <li><b>Merger</b> <span data-i18n="mechMerger">Up to 3 inputs, takes from them in turn. A top-up line running in series through several mergers is drained by the first ones, so the tool never suggests that.</span></li>
+          <li><b>Smart Splitter</b> <span data-i18n="mechSmart">The Overflow output only gets items when the Any output is full. That lets a line fill its own destination first and pass on only the excess.</span></li>
+          <li><b>Awesome Sink</b> <span data-i18n="mechSink">Takes any leftover. Backing up at the source is fine too: the machines there just slow down.</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="faq">
+      <h3 data-i18n="faqTitle">Questions</h3>
+      <details><summary data-i18n="faq1Q">Why can’t a splitter make 5 equal parts?</summary><p data-i18n="faq1A">A splitter divides by 2 or 3, so chaining them only reaches products of 2 and 3. For 5 parts you either build a balancer with a loop (some outputs go back to the input) or split into 6 and send the sixth part to the sink. The tool shows both.</p></details>
+      <details><summary data-i18n="faq2Q">Where do the numbers come from?</summary><p data-i18n="faq2A">From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.</p></details>
+      <details><summary data-i18n="faq3Q">Is my plan saved?</summary><p data-i18n="faq3A">Yes, only in your browser. There’s no account and nothing you type is sent to a server.</p></details>
+      <details><summary data-i18n="faq4Q">Which game version?</summary><p data-i18n="faq4A">Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).</p></details>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <a href="https://github.com/AdolfoCarneiro/sf-balancer" data-i18n="footSource">Open source on GitHub</a>
+    <span data-i18n="footLicense">MIT License</span>
+    <span data-i18n="footDisclaimer">Fan-made tool, not affiliated with Coffee Stain Studios.</span>
+  </footer>
 </div>
+<div id="tipbox" role="tooltip" hidden></div>
+<noscript><p style="text-align:center">This planner needs JavaScript to calculate.</p></noscript>
 
 <template id="grpTpl">
   <div class="grp">
     <div class="grp-head"><span class="grp-name"></span><button class="rm" data-i18n="removeGroup" type="button">Remove group</button></div>
     <div class="grp-fields">
-      <label><span data-i18n="fMachines">Machines</span><input class="field g-count" type="text" inputmode="decimal"></label>
-      <label><span data-i18n="fClock">Clock %</span><input class="field g-clock" type="text" inputmode="decimal"></label>
-      <label><span class="g-nom-label"></span><input class="field g-nom" type="text" inputmode="decimal"></label>
-      <label><span data-i18n="fTotal">Total /min</span><input class="field g-total" type="text" inputmode="decimal"></label>
-      <label><span data-i18n="fPer">Per line</span><input class="field g-per" type="text" inputmode="numeric"></label>
+      <div class="cell"><div class="cell-head"><span><label data-for="g-count" data-i18n="fMachines">Machines</label><button type="button" class="tip" data-tip="tipMachines" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-count" type="text" inputmode="decimal"></div>
+      <div class="cell"><div class="cell-head"><span><label data-for="g-clock" data-i18n="fClock">Clock %</label><button type="button" class="tip" data-tip="tipClock" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-clock" type="text" inputmode="decimal"></div>
+      <div class="cell"><div class="cell-head"><span><label data-for="g-nom" class="g-nom-label"></label><button type="button" class="tip g-nom-tip" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-nom" type="text" inputmode="decimal"></div>
+      <div class="cell"><div class="cell-head"><span><label data-for="g-total" data-i18n="fTotal">Total /min</label><button type="button" class="tip" data-tip="tipTotal" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-total" type="text" inputmode="decimal"></div>
+      <div class="cell"><div class="cell-head"><span><label data-for="g-per" data-i18n="fPer">Per line</label><button type="button" class="tip" data-tip="tipPer" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-per" type="text" inputmode="numeric"></div>
     </div>
     <p class="eq num"></p>
   </div>
@@ -314,11 +443,11 @@
 const I18N = {
   pt: {
     locale: 'pt-BR', htmlLang: 'pt-BR', langName: 'Português',
-    pageTitle: 'Logística entre Etapas',
-    metaDesc: 'Planeje esteiras, mergers, splitters e balancers entre duas etapas de uma fábrica no Satisfactory.',
+    pageTitle: 'Balancer de Esteiras para Satisfactory · Planejador de Logística',
+    metaDesc: 'Planejador gratuito de esteiras do Satisfactory: transforma máquinas em linhas de esteira, mergers, splitters e load balancers entre duas etapas da fábrica.',
     langLabel: 'Idioma',
     defaultItem: 'Barra de ferro', fallbackItem: 'Item',
-    kicker: 'Logística entre etapas', itemAria: 'Nome do item',
+    kicker: 'Balancer de esteiras do Satisfactory · logística entre etapas', itemAria: 'Nome do item',
     sideSrc: 'Origem', sideDst: 'Destino',
     addGroup: '+ Adicionar grupo de máquinas',
     belt: 'Esteira', beltAria: 'Tier da esteira',
@@ -412,14 +541,62 @@ const I18N = {
     svgHeld: h => `represa ${h}`, svgToSink: f => `${f} pro sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Linha extra',
     svgGot: (g, r) => `${g} de ${r}`, svgAria: 'Fluxo nas esteiras da alternativa escolhida', svgTitleHeld: (o, out, held) => `${o}: sai ${out}, represa ${held}`,
     treeAria: 'Árvore de splitters', treeInLoop: 'entrada: doadora + retorno', treeIn: 'entrada: doadora', treeSink: 'sink',
+    intro: 'O seu planner diz quantas máquinas; isto diz como ligar. Informe o que uma etapa produz e o que a próxima consome: a ferramenta agrupa as máquinas em linhas de esteira e mostra como conectar, direto, juntando linhas ou com balancer, com a contagem exata de peças.',
+    howLink: 'Como funciona',
+    helpLabel: 'O que é isto?',
+    tipSrc: 'A etapa que produz o item. Digite como o seu planner mostra: quantas máquinas e quanto cada uma produz por minuto a 100%. Adicione outro grupo se houver máquinas com receita ou clock diferente.',
+    tipDst: 'A etapa que consome o item: quantas máquinas e quanto cada uma consome por minuto a 100%.',
+    tipMachines: 'Quantas máquinas. Pode ser fracionado: 12,5 máquinas viram 13 rodando com o mesmo clock, mais baixo.',
+    tipClock: 'Opcional. Clock de todas as máquinas do grupo (1% a 250%). Vazio é 100%, ou o clock que sai de um número fracionado de máquinas.',
+    tipNomSrc: 'Itens por minuto que uma máquina produz com clock 100%, como aparece na receita.',
+    tipNomDst: 'Itens por minuto que uma máquina consome com clock 100%, como aparece na receita.',
+    tipTotal: 'Ou pule as máquinas e digite o fluxo total por minuto. O último campo que você editou manda no grupo; os outros mostram o equivalente.',
+    tipPer: 'Quantas máquinas dividem uma linha de esteira. Padrão: capacidade da esteira ÷ taxa por máquina, arredondado para baixo (65/min na Mk4 → 7 por linha = 455). Mude e tudo recalcula.',
+    tipBelt: 'Tier da esteira usado em todos os trechos. Define a capacidade de cada linha: Mk1 60, Mk2 120, Mk3 270, Mk4 480, Mk5 780, Mk6 1.200 itens/min.',
+    tipPolicy: 'O que fazer com linhas de origem inteiras que nenhum destino precisa. Paradas: a esteira enche e as máquinas desaceleram. Sink: vão pro Awesome Sink. Linha extra: ficam numa esteira à parte para outro uso.',
+    tipConv: 'Como contar as peças do manifold. k−1: a primeira máquina inicia a esteira, então k máquinas pedem k−1 mergers (ou splitters). k: uma peça por máquina.',
+    tipLedger: 'Oferta: tudo que a origem produz. Demanda: tudo que o destino consome a toda velocidade. A diferença é a sobra (ou a falta, em vermelho).',
+    tipAlts: 'Todas as formas de ligar as linhas que a ferramenta encontrou, a melhor primeiro. Cheios: destinos a 100%. Sink: itens/min mandados pro sink. Represa: itens/min parados na origem. Peças: mergers e splitters do meio.',
+    tipFlow: 'Linhas de origem à esquerda, de destino à direita. Losango é merger, quadrado com setas é Smart Splitter, a caixa ÷N é a árvore de splitters. Clique em outra alternativa para comparar.',
+    tipBalance: 'Cada linha: quanto produz ou pede, quanto passa de fato e para onde vai. Represa quer dizer que a esteira encheu e as máquinas de origem desaceleram; nada se perde.',
+    tipLb: 'Quando uma linha doadora precisa ser dividida em partes iguais. O splitter só divide em 2 ou 3, então a divisão direta sai em produtos de 2 e 3 (2, 3, 4, 6, 8, 9…). O resto (5, 7…) pede loop ou dividir em mais partes e mandar as extras pro sink.',
+    tipPieces: 'Mergers e splitters por trecho. A coleta junta as máquinas de origem em linhas, o meio rebalanceia as linhas, a distribuição alimenta as máquinas de destino.',
+    guideTitle: 'Como funciona',
+    guideLead: 'Entre duas etapas de uma fábrica há três trechos de esteira. A ferramenta resolve cada um e mostra o resultado acima.',
+    gCollectN: 'Trecho 1', gCollectTitle: 'Coleta',
+    gCollect: 'Junta as máquinas de origem em linhas de esteira com mergers (manifold de saída). Máquinas por linha = capacidade da esteira ÷ taxa por máquina, arredondado para baixo. As que sobram dividem uma linha incompleta.',
+    gMidN: 'Trecho 2', gMidTitle: 'Meio',
+    gMid: 'Liga as linhas da coleta nas linhas da distribuição. É aqui que as linhas são juntadas, complementadas por uma doadora ou divididas por um load balancer.',
+    gDistN: 'Trecho 3', gDistTitle: 'Distribuição',
+    gDist: 'Divide cada linha que chega entre as máquinas de destino com splitters (manifold de entrada). O manifold se equilibra sozinho entre as máquinas, então a ferramenta só equilibra entre linhas.',
+    casesTitle: 'Os casos do meio',
+    caseAName: 'Caso A', caseAText: 'Linha de origem ≥ linha de destino. Uma linha de origem direto em cada destino. O excesso represa na origem e as linhas que sobram seguem a sua política.',
+    caseBName: 'Caso B', caseBText: 'Linha de origem um pouco menor. Uma linha doadora é dividida em partes iguais, uma por destino, e cada parte entra num merger com uma linha principal.',
+    caseCName: 'Caso C', caseCText: 'Linhas de origem bem menores que as de destino. Várias linhas de origem inteiras viram uma, respeitando a capacidade da esteira e as 3 entradas do merger.',
+    caseDName: 'Caso D', caseDText: 'Linhas misturadas. Uma linha com sobra manda o excesso, pela saída Overflow de um Smart Splitter, para um destino que está com falta. Se não houver montagem simples, a ferramenta avisa.',
+    mechTitle: 'Regras do jogo que ela respeita',
+    mechSplitter: 'Até 3 saídas, divide igual entre as saídas que aceitam item. A divisão direta só chega em metades e terços (1/2, 1/3, 1/4, 1/6, 1/9…).',
+    mechMerger: 'Até 3 entradas, puxa de cada uma por vez. Uma linha de complemento passando em série por vários mergers é drenada pelos primeiros, então a ferramenta nunca sugere isso.',
+    mechSmart: 'A saída Overflow só recebe item quando a saída Any está cheia. É isso que deixa uma linha encher o próprio destino primeiro e passar adiante só o excesso.',
+    mechSink: 'Recebe qualquer sobra. Represar na origem também serve: as máquinas de lá só desaceleram.',
+    faqTitle: 'Perguntas',
+    faq1Q: 'Por que um splitter não faz 5 partes iguais?',
+    faq1A: 'O splitter divide em 2 ou 3, então em cascata ele só chega em produtos de 2 e 3. Para 5 partes, ou você monta um balancer com loop (algumas saídas voltam para a entrada), ou divide em 6 e manda a sexta parte pro sink. A ferramenta mostra as duas opções.',
+    faq2Q: 'De onde vêm os números?',
+    faq2A: 'De você. A ferramenta não conhece receitas: digite a quantidade de máquinas e a taxa por minuto do seu planner ou da receita no jogo.',
+    faq3Q: 'O meu plano fica salvo?',
+    faq3A: 'Fica, só no seu navegador. Não tem conta e nada do que você digita vai para um servidor.',
+    faq4Q: 'Qual versão do jogo?',
+    faq4A: 'Satisfactory 1.0 em diante, com esteiras da Mk1 (60/min) à Mk6 (1.200/min).',
+    footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
   },
   en: {
     locale: 'en-US', htmlLang: 'en', langName: 'English',
-    pageTitle: 'Belt Logistics Planner',
-    metaDesc: 'Plan belts, mergers, splitters and load balancers between two stages of a Satisfactory factory.',
+    pageTitle: 'Satisfactory Belt Balancer & Logistics Planner',
+    metaDesc: 'Free Satisfactory belt planner: turn machine counts into belt lines, mergers, splitters and load balancers between two factory stages. No sign-up.',
     langLabel: 'Language',
     defaultItem: 'Iron Ingot', fallbackItem: 'Item',
-    kicker: 'Logistics between stages', itemAria: 'Item name',
+    kicker: 'Satisfactory belt balancer · logistics between stages', itemAria: 'Item name',
     sideSrc: 'Source', sideDst: 'Destination',
     addGroup: '+ Add machine group',
     belt: 'Belt', beltAria: 'Belt tier',
@@ -513,14 +690,62 @@ const I18N = {
     svgHeld: h => `holds back ${h}`, svgToSink: f => `${f} to sink`, svgStopped: 'idle', svgSink: 'Awesome Sink', svgExtra: 'Extra line',
     svgGot: (g, r) => `${g} of ${r}`, svgAria: 'Belt flow for the selected alternative', svgTitleHeld: (o, out, held) => `${o}: out ${out}, holds back ${held}`,
     treeAria: 'Splitter tree', treeInLoop: 'input: donor + return', treeIn: 'input: donor', treeSink: 'sink',
+    intro: 'Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.',
+    howLink: 'How it works',
+    helpLabel: 'What is this?',
+    tipSrc: 'The stage that produces the item. Enter it the way your planner shows it: how many machines and how much each one makes per minute at 100%. Add another group for machines on a different recipe or clock.',
+    tipDst: 'The stage that consumes the item: how many machines and how much each one consumes per minute at 100%.',
+    tipMachines: 'How many machines. Fractions are fine: 12.5 machines become 13 running at the same, lower clock.',
+    tipClock: 'Optional. Clock speed for every machine in the group (1% to 250%). Empty means 100%, or whatever clock a fractional machine count works out to.',
+    tipNomSrc: 'Items per minute one machine produces at 100% clock, as shown in the recipe.',
+    tipNomDst: 'Items per minute one machine consumes at 100% clock, as shown in the recipe.',
+    tipTotal: 'Or skip the machines and type the total flow per minute. The field you edited last drives the group; the others show the equivalent.',
+    tipPer: 'How many machines share one belt line. Default: belt capacity ÷ rate per machine, rounded down (65/min on a Mk4 → 7 per line = 455). Change it and everything recalculates.',
+    tipBelt: 'Belt tier used in every segment. It sets the capacity of each line: Mk1 60, Mk2 120, Mk3 270, Mk4 480, Mk5 780, Mk6 1,200 items/min.',
+    tipPolicy: 'What to do with whole source lines no destination needs. Idle: the belt backs up and the machines slow down. Sink: sent to the Awesome Sink. Extra line: left on a separate belt for something else.',
+    tipConv: 'How manifold pieces are counted. k−1: the first machine starts the belt, so k machines need k−1 mergers (or splitters). k: one piece per machine.',
+    tipLedger: 'Supply: everything the source makes. Demand: everything the destination consumes at full speed. The difference is the surplus (or the shortfall, in red).',
+    tipAlts: 'Every way the tool found to connect the lines, best first. Full: destinations at 100%. Sink: items/min sent to the sink. Held: items/min backed up at the source. Pieces: mergers and splitters in the middle.',
+    tipFlow: 'Source lines on the left, destination lines on the right. A diamond is a merger, a square with arrows is a Smart Splitter, the ÷N box is the splitter tree. Click another alternative to compare.',
+    tipBalance: 'Each line: how much it makes or asks for, how much actually flows and where it goes. Held means the belt backed up and the source machines slow down; nothing is lost.',
+    tipLb: 'When a donor line has to be split into equal parts. A splitter only divides into 2 or 3, so direct splits are products of 2 and 3 (2, 3, 4, 6, 8, 9…). Anything else (5, 7…) needs a loop, or splitting into more parts and sinking the extras.',
+    tipPieces: 'Mergers and splitters per segment. Collection joins the source machines into lines, the middle rebalances the lines, distribution feeds the destination machines.',
+    guideTitle: 'How it works',
+    guideLead: 'Between two stages of a factory there are three belt segments. The tool solves each one and shows the result above.',
+    gCollectN: 'Segment 1', gCollectTitle: 'Collection',
+    gCollect: 'Joins the source machines into belt lines with mergers (an output manifold). Machines per line = belt capacity ÷ rate per machine, rounded down. Leftover machines share a partial line.',
+    gMidN: 'Segment 2', gMidTitle: 'Middle',
+    gMid: 'Connects the collection lines to the distribution lines. This is where lines get merged, topped up by a donor line or split by a load balancer.',
+    gDistN: 'Segment 3', gDistTitle: 'Distribution',
+    gDist: 'Splits each incoming line among the destination machines with splitters (an input manifold). A manifold balances itself across machines, so the tool only balances between lines.',
+    casesTitle: 'The cases in the middle',
+    caseAName: 'Case A', caseAText: 'Source line ≥ destination line. One source line straight into each destination. The excess backs up at the source and spare lines follow your policy.',
+    caseBName: 'Case B', caseBText: 'Source line a bit short. A donor line is split into equal parts, one per destination, and each part is merged into a main line.',
+    caseCName: 'Case C', caseCText: 'Source lines much smaller than destination lines. Several whole source lines are merged into one, within the belt capacity and 3 inputs per merger.',
+    caseDName: 'Case D', caseDText: 'Mixed lines. A line with surplus sends its excess, through a Smart Splitter’s Overflow output, to a destination that is short. If no simple layout exists, the tool says so.',
+    mechTitle: 'Game rules it follows',
+    mechSplitter: 'Up to 3 outputs, divides evenly among the outputs that accept items. Direct splits only reach halves and thirds (1/2, 1/3, 1/4, 1/6, 1/9…).',
+    mechMerger: 'Up to 3 inputs, takes from them in turn. A top-up line running in series through several mergers is drained by the first ones, so the tool never suggests that.',
+    mechSmart: 'The Overflow output only gets items when the Any output is full. That lets a line fill its own destination first and pass on only the excess.',
+    mechSink: 'Takes any leftover. Backing up at the source is fine too: the machines there just slow down.',
+    faqTitle: 'Questions',
+    faq1Q: 'Why can’t a splitter make 5 equal parts?',
+    faq1A: 'A splitter divides by 2 or 3, so chaining them only reaches products of 2 and 3. For 5 parts you either build a balancer with a loop (some outputs go back to the input) or split into 6 and send the sixth part to the sink. The tool shows both.',
+    faq2Q: 'Where do the numbers come from?',
+    faq2A: 'From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.',
+    faq3Q: 'Is my plan saved?',
+    faq3A: 'Yes, only in your browser. There’s no account and nothing you type is sent to a server.',
+    faq4Q: 'Which game version?',
+    faq4A: 'Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).',
+    footSource: 'Open source on GitHub', footLicense: 'MIT License', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
   },
   es: {
     locale: 'es-ES', htmlLang: 'es', langName: 'Español',
-    pageTitle: 'Logística entre Etapas',
-    metaDesc: 'Planifica cintas, mergers, splitters y balanceadores entre dos etapas de una fábrica en Satisfactory.',
+    pageTitle: 'Balanceador de Cintas para Satisfactory · Planificador de Logística',
+    metaDesc: 'Planificador gratuito de cintas de Satisfactory: convierte máquinas en líneas de cinta, mergers, splitters y balanceadores entre dos etapas de la fábrica.',
     langLabel: 'Idioma',
     defaultItem: 'Lingote de hierro', fallbackItem: 'Ítem',
-    kicker: 'Logística entre etapas', itemAria: 'Nombre del ítem',
+    kicker: 'Balanceador de cintas de Satisfactory · logística entre etapas', itemAria: 'Nombre del ítem',
     sideSrc: 'Origen', sideDst: 'Destino',
     addGroup: '+ Añadir grupo de máquinas',
     belt: 'Cinta', beltAria: 'Nivel de la cinta',
@@ -614,6 +839,54 @@ const I18N = {
     svgHeld: h => `retiene ${h}`, svgToSink: f => `${f} al sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Línea extra',
     svgGot: (g, r) => `${g} de ${r}`, svgAria: 'Flujo en las cintas de la alternativa elegida', svgTitleHeld: (o, out, held) => `${o}: sale ${out}, retiene ${held}`,
     treeAria: 'Árbol de splitters', treeInLoop: 'entrada: donante + retorno', treeIn: 'entrada: donante', treeSink: 'sink',
+    intro: 'Tu planificador te dice cuántas máquinas; esto te dice cómo conectarlas. Indica lo que produce una etapa y lo que consume la siguiente: la herramienta agrupa las máquinas en líneas de cinta y muestra cómo conectarlas, directo, juntando líneas o con un balanceador, con el número exacto de piezas.',
+    howLink: 'Cómo funciona',
+    helpLabel: '¿Qué es esto?',
+    tipSrc: 'La etapa que produce el ítem. Escríbelo como lo muestra tu planificador: cuántas máquinas y cuánto produce cada una por minuto al 100%. Añade otro grupo si hay máquinas con otra receta u otro clock.',
+    tipDst: 'La etapa que consume el ítem: cuántas máquinas y cuánto consume cada una por minuto al 100%.',
+    tipMachines: 'Cuántas máquinas. Puede ser fraccionario: 12,5 máquinas pasan a ser 13 con el mismo clock, más bajo.',
+    tipClock: 'Opcional. Clock de todas las máquinas del grupo (1% a 250%). Vacío es 100%, o el clock que resulta de un número fraccionario de máquinas.',
+    tipNomSrc: 'Ítems por minuto que produce una máquina con el clock al 100%, como aparece en la receta.',
+    tipNomDst: 'Ítems por minuto que consume una máquina con el clock al 100%, como aparece en la receta.',
+    tipTotal: 'O sáltate las máquinas y escribe el flujo total por minuto. El último campo que editaste manda en el grupo; los demás muestran el equivalente.',
+    tipPer: 'Cuántas máquinas comparten una línea de cinta. Por defecto: capacidad de la cinta ÷ tasa por máquina, redondeado hacia abajo (65/min en Mk4 → 7 por línea = 455). Cámbialo y todo se recalcula.',
+    tipBelt: 'Nivel de cinta usado en todos los tramos. Define la capacidad de cada línea: Mk1 60, Mk2 120, Mk3 270, Mk4 480, Mk5 780, Mk6 1200 ítems/min.',
+    tipPolicy: 'Qué hacer con las líneas de origen enteras que ningún destino necesita. Paradas: la cinta se llena y las máquinas desaceleran. Sink: van al Awesome Sink. Línea extra: quedan en una cinta aparte para otro uso.',
+    tipConv: 'Cómo contar las piezas del manifold. k−1: la primera máquina inicia la cinta, así que k máquinas necesitan k−1 mergers (o splitters). k: una pieza por máquina.',
+    tipLedger: 'Oferta: todo lo que produce el origen. Demanda: todo lo que consume el destino a máxima velocidad. La diferencia es el sobrante (o el faltante, en rojo).',
+    tipAlts: 'Todas las formas de conectar las líneas que encontró la herramienta, la mejor primero. Llenos: destinos al 100%. Sink: ítems/min enviados al sink. Retenido: ítems/min parados en el origen. Piezas: mergers y splitters del medio.',
+    tipFlow: 'Líneas de origen a la izquierda, de destino a la derecha. El rombo es un merger, el cuadrado con flechas es un Smart Splitter, la caja ÷N es el árbol de splitters. Haz clic en otra alternativa para comparar.',
+    tipBalance: 'Cada línea: cuánto produce o pide, cuánto pasa de verdad y adónde va. Retenido significa que la cinta se llenó y las máquinas de origen desaceleran; no se pierde nada.',
+    tipLb: 'Cuando una línea donante tiene que dividirse en partes iguales. El splitter solo divide en 2 o 3, así que la división directa sale en productos de 2 y 3 (2, 3, 4, 6, 8, 9…). El resto (5, 7…) necesita un loop, o dividir en más partes y mandar las sobrantes al sink.',
+    tipPieces: 'Mergers y splitters por tramo. La recolección junta las máquinas de origen en líneas, el medio reequilibra las líneas y la distribución alimenta las máquinas de destino.',
+    guideTitle: 'Cómo funciona',
+    guideLead: 'Entre dos etapas de una fábrica hay tres tramos de cinta. La herramienta resuelve cada uno y muestra el resultado arriba.',
+    gCollectN: 'Tramo 1', gCollectTitle: 'Recolección',
+    gCollect: 'Junta las máquinas de origen en líneas de cinta con mergers (manifold de salida). Máquinas por línea = capacidad de la cinta ÷ tasa por máquina, redondeado hacia abajo. Las que sobran comparten una línea incompleta.',
+    gMidN: 'Tramo 2', gMidTitle: 'Medio',
+    gMid: 'Conecta las líneas de la recolección con las de la distribución. Aquí es donde las líneas se juntan, se complementan con una donante o se dividen con un balanceador.',
+    gDistN: 'Tramo 3', gDistTitle: 'Distribución',
+    gDist: 'Divide cada línea que llega entre las máquinas de destino con splitters (manifold de entrada). El manifold se equilibra solo entre las máquinas, así que la herramienta solo equilibra entre líneas.',
+    casesTitle: 'Los casos del medio',
+    caseAName: 'Caso A', caseAText: 'Línea de origen ≥ línea de destino. Una línea de origen directo a cada destino. El exceso se queda retenido en el origen y las líneas que sobran siguen tu política.',
+    caseBName: 'Caso B', caseBText: 'Línea de origen un poco corta. Una línea donante se divide en partes iguales, una por destino, y cada parte entra en un merger con una línea principal.',
+    caseCName: 'Caso C', caseCText: 'Líneas de origen mucho menores que las de destino. Varias líneas de origen enteras se juntan en una, respetando la capacidad de la cinta y las 3 entradas del merger.',
+    caseDName: 'Caso D', caseDText: 'Líneas mezcladas. Una línea con sobrante manda el exceso, por la salida Overflow de un Smart Splitter, a un destino al que le falta. Si no hay un montaje simple, la herramienta lo dice.',
+    mechTitle: 'Reglas del juego que respeta',
+    mechSplitter: 'Hasta 3 salidas, divide en partes iguales entre las salidas que aceptan ítems. La división directa solo llega a mitades y tercios (1/2, 1/3, 1/4, 1/6, 1/9…).',
+    mechMerger: 'Hasta 3 entradas, toma de cada una por turnos. Una línea de complemento que pasa en serie por varios mergers la vacían los primeros, así que la herramienta nunca lo sugiere.',
+    mechSmart: 'La salida Overflow solo recibe ítems cuando la salida Any está llena. Eso permite que una línea llene primero su propio destino y pase solo el exceso.',
+    mechSink: 'Recibe cualquier sobrante. Retener en el origen también vale: las máquinas de allí solo desaceleran.',
+    faqTitle: 'Preguntas',
+    faq1Q: '¿Por qué un splitter no hace 5 partes iguales?',
+    faq1A: 'El splitter divide en 2 o 3, así que en cascada solo llega a productos de 2 y 3. Para 5 partes, o montas un balanceador con loop (algunas salidas vuelven a la entrada), o divides en 6 y mandas la sexta parte al sink. La herramienta muestra las dos opciones.',
+    faq2Q: '¿De dónde salen los números?',
+    faq2A: 'De ti. La herramienta no conoce recetas: escribe el número de máquinas y la tasa por minuto de tu planificador o de la receta en el juego.',
+    faq3Q: '¿Se guarda mi plan?',
+    faq3A: 'Sí, solo en tu navegador. No hay cuenta y nada de lo que escribes se envía a un servidor.',
+    faq4Q: '¿Qué versión del juego?',
+    faq4A: 'Satisfactory 1.0 en adelante, con cintas de la Mk1 (60/min) a la Mk6 (1200/min).',
+    footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
   },
 };
 const LANGS = Object.keys(I18N);
@@ -1246,8 +1519,14 @@ const O = l => srcTag(l.id);
 const Dn = l => dstTag(l.id);
 
 // ---- Idioma ----
-// Ordem: ?lang= na URL, escolha salva, inglês.
+// Cada idioma tem um endereço próprio no site (/, /pt, /es) para os buscadores; o vercel.json reescreve para o index.html.
+const SITE = 'https://sf-balancer.vercel.app';
+const LANG_PATH = { en: '/', pt: '/pt', es: '/es' };
+const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
+// Ordem: caminho (/pt, /es), ?lang= na URL, escolha salva, inglês.
 function pickLang() {
+  const fromPath = (location.pathname.match(/^\/(pt|es|en)\/?$/) || [])[1];
+  if (I18N[fromPath]) return fromPath;
   const fromUrl = new URLSearchParams(location.search).get('lang');
   if (I18N[fromUrl]) return fromUrl;
   let saved = null;
@@ -1268,6 +1547,11 @@ function applyStatic() {
   document.documentElement.lang = t('htmlLang');
   document.title = t('pageTitle');
   document.querySelector('meta[name=description]').content = t('metaDesc');
+  let canon = document.querySelector('link[rel=canonical]');
+  if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
+  canon.href = SITE + LANG_PATH[LANG];
+  // No site, o endereço acompanha o idioma; aberto direto do disco ou em outro servidor, fica como está.
+  if (onVercel && location.pathname !== LANG_PATH[LANG]) history.replaceState(null, '', LANG_PATH[LANG] + location.hash);
   const roots = [document, $('grpTpl').content];
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
@@ -1309,10 +1593,18 @@ function changeLang(l) {
 // ---- Grupos de máquinas editáveis (origem e destino) ----
 const rows = { src: [], dst: [] };
 const CONTAINER = { src: 'srcGroups', dst: 'dstGroups' };
+let groupSeq = 0;
 
 function addGroup(side, v = { driver: 'machines', count: '', clock: '', nominal: '', total: '', per: '' }) {
   const el = $('grpTpl').content.firstElementChild.cloneNode(true);
   const q = c => el.querySelector(c);
+  // O "?" fica fora do <label>, então o rótulo aponta para o campo por id.
+  const uid = ++groupSeq;
+  el.querySelectorAll('label[data-for]').forEach(lb => {
+    const input = q('.' + lb.dataset.for);
+    input.id = `${lb.dataset.for}-${uid}`;
+    lb.htmlFor = input.id;
+  });
   const row = { el, side, driver: v.driver || 'machines', count: q('.g-count'), clock: q('.g-clock'), nominal: q('.g-nom'), total: q('.g-total'), per: q('.g-per'), eq: q('.eq'), name: q('.grp-name'), rm: q('.rm') };
   for (const k of ['count', 'clock', 'nominal', 'total', 'per']) row[k].value = v[k] || '';
   // Quem foi preenchido por último manda; os outros viram equivalência.
@@ -1339,7 +1631,34 @@ function syncGroups(side) {
     r.name.textContent = rows[side].length > 1 ? t('groupN', i + 1) : '';
     r.rm.hidden = rows[side].length === 1;
     r.el.querySelector('.g-nom-label').textContent = t(side === 'src' ? 'fNomSrc' : 'fNomDst');
+    r.el.querySelector('.g-nom-tip').dataset.tip = side === 'src' ? 'tipNomSrc' : 'tipNomDst';
   });
+}
+
+// ---- Ajuda: balão dos botões "?" ----
+// Abre ao passar o mouse ou focar; clique fixa (no celular é o único jeito); Esc, clique fora ou rolagem fecham.
+const tip = key => `<button type="button" class="tip" data-tip="${key}" aria-label="${esc(t('helpLabel'))}">?</button>`;
+let tipBtn = null, tipPinned = false;
+function showTip(btn, pin = false) {
+  if (tipBtn && tipBtn !== btn) hideTip();
+  const box = $('tipbox');
+  box.textContent = t(btn.dataset.tip);
+  box.hidden = false;
+  const r = btn.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  const below = r.bottom + 8 + h <= innerHeight;
+  box.style.left = `${left}px`;
+  box.style.top = `${below ? r.bottom + 8 : Math.max(8, r.top - h - 8)}px`;
+  btn.setAttribute('aria-describedby', 'tipbox');
+  btn.setAttribute('aria-expanded', 'true');
+  tipBtn = btn;
+  tipPinned = pin;
+}
+function hideTip() {
+  if (tipBtn) { tipBtn.removeAttribute('aria-describedby'); tipBtn.setAttribute('aria-expanded', 'false'); }
+  $('tipbox').hidden = true;
+  tipBtn = null;
+  tipPinned = false;
 }
 
 function readGroups(side, mark) {
@@ -1434,6 +1753,7 @@ function showEquivalences(side, info, cap) {
 
 // ---- Render ----
 function render() {
+  if (tipBtn && $('out').contains(tipBtn)) hideTip();
   const { valid, input } = readInput();
   const out = $('out');
   saveState();
@@ -1449,7 +1769,7 @@ function render() {
 
   const surplus = p.supply - p.demand;
   $('ledger').innerHTML = `
-    <div><dt>${t('supply')}</dt><dd>${fmt(p.supply)}<small>/min</small></dd></div>
+    <div><dt>${t('supply')}${tip('tipLedger')}</dt><dd>${fmt(p.supply)}<small>/min</small></dd></div>
     <div><dt>${t('demand')}</dt><dd>${fmt(p.demand)}<small>/min</small></dd></div>
     <div><dt>${surplus >= 0 ? t('surplus') : t('shortfall')}</dt><dd class="${surplus < 0 ? 'neg' : ''}">${fmt(Math.abs(surplus))}<small>/min</small></dd></div>`;
   $('warns').innerHTML = p.warnings.map(w => `<div class="warn ${w.level === 'bad' ? 'bad' : ''}">${esc(w.text)}</div>`).join('');
@@ -1461,12 +1781,12 @@ function render() {
   out.innerHTML = `
     <div class="work">
       <aside>
-        <h2 class="section-title">${t('alts')}</h2>
+        <h2 class="section-title">${t('alts')}${tip('tipAlts')}</h2>
         <p class="lead">${t('altsLead')}</p>
         <div class="alts" role="radiogroup" aria-label="${t('alts')}">${alts.map((a, i) => altCard(a, i, alt)).join('')}</div>
       </aside>
       <section>
-        <h2 class="section-title">${esc(alt.title)}</h2>
+        <h2 class="section-title">${esc(alt.title)}${tip('tipFlow')}</h2>
         <p class="lead">${esc(alt.sub)} ${t('flowLead')}</p>
         <div class="sheet">
           ${flowSvg(p, alt)}
@@ -1489,7 +1809,7 @@ function render() {
       </section>
     </div>
     <div class="pair">
-      <section class="plate"><h2 class="section-title">${t('balanceTitle')}</h2>${balanceTable(alt)}</section>
+      <section class="plate"><h2 class="section-title">${t('balanceTitle')}${tip('tipBalance')}</h2>${balanceTable(alt)}</section>
       <section class="plate"><h2 class="section-title">${t('stepsTitle')}</h2><ol class="steps">${planSteps(p, alt).map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
     </div>
     <div class="pair">
@@ -1603,8 +1923,8 @@ function planSteps(p, a) {
 function balancerSection(p, a) {
   const groups = a.view.groups.filter(v => v.gr.p > 1);
   const smart = a.view.feeds.filter(f => f.overflowNode !== null);
-  if (!groups.length && !smart.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
-  let html = `<section class="plate"><h2 class="section-title">${t('lbTitle')}</h2>`;
+  if (!groups.length && !smart.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
+  let html = `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2>`;
   if (smart.length) {
     const fl = e => a.sim.flow[e];
     html += `<h3 class="donor-title">${t('lbSmartTitle')}</h3><div class="opt on"><ul>
@@ -1648,7 +1968,7 @@ function balancerSection(p, a) {
 function piecesTable(p, a) {
   const conv = p.conv === 'k' ? 'k' : 'k−1';
   const pc = a.pieces;
-  return `<section class="plate"><h2 class="section-title">${t('pcTitle')}</h2>
+  return `<section class="plate"><h2 class="section-title">${t('pcTitle')}${tip('tipPieces')}</h2>
   <div class="tablewrap"><table>
     <tr><th>${t('thSection')}</th><th class="l">${t('thLines')}</th><th>${t('thMergers')}</th><th>${t('thSplitters')}</th><th>${t('thSmart')}</th></tr>
     <tr><td>${t('rowCollect')}</td><td class="l">${summarizeRates(p.src.lines)}</td><td>${p.collectMergers}</td><td>0</td><td>0</td></tr>
@@ -1853,6 +2173,18 @@ $('out').addEventListener('click', e => {
   const card = e.target.closest('.alt');
   if (card) { selectedKey = card.dataset.key; render(); document.querySelector(`.alt[data-key="${selectedKey}"]`)?.focus(); }
 });
+document.addEventListener('mouseover', e => { const b = e.target.closest('.tip'); if (b && !tipPinned) showTip(b); });
+document.addEventListener('mouseout', e => { const b = e.target.closest('.tip'); if (b && b === tipBtn && !tipPinned && !b.contains(e.relatedTarget)) hideTip(); });
+document.addEventListener('focusin', e => { if (e.target.classList.contains('tip')) showTip(e.target); });
+document.addEventListener('focusout', e => { if (e.target === tipBtn) hideTip(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.tip');
+  if (b) { e.preventDefault(); if (b === tipBtn && tipPinned) hideTip(); else showTip(b, true); }
+  else if (tipBtn) hideTip();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && tipBtn) hideTip(); });
+addEventListener('scroll', () => { if (tipBtn) hideTip(); }, { passive: true, capture: true });
+addEventListener('resize', () => { if (tipBtn) hideTip(); });
 $('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); });
 $('langs').addEventListener('click', e => {
   const btn = e.target.closest('[data-lang]');
