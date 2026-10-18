@@ -85,6 +85,10 @@ Los issues y pull requests son bienvenidos. Unas pocas reglas mantienen el proye
 
 `AGENTS.md` tiene la especificación completa (en portugués) y sirve de instrucciones para agentes de IA.
 
+## Apoyo
+
+Si la herramienta te ahorró algunas cuentas, puedes [invitarme un café en Ko-fi](https://ko-fi.com/dofal). Totalmente opcional: la herramienta sigue siendo gratis.
+
 ## Licencia
 
 [MIT](LICENSE). Herramienta hecha por fans, sin relación con Coffee Stain Studios. Satisfactory es una marca registrada de Coffee Stain Studios.

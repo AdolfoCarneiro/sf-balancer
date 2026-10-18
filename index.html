@@ -313,6 +313,8 @@
   .faq summary:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
   .faq details p { margin: 8px 0 2px; color: var(--ink-dim); max-width: 90ch; }
   @media (max-width: 900px) { .segs, .guide-cols { grid-template-columns: 1fr; } }
+  .site-foot a.coffee { color: var(--ink); text-decoration: none; border: 1px solid var(--ficsit); border-radius: 4px; padding: 1px 8px; }
+  .site-foot a.coffee:hover, .site-foot a.coffee:focus-visible { background: var(--ficsit); color: var(--paper); }
   .site-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ink-dim); }
 </style>
 </head>
@@ -415,6 +417,7 @@
   <footer class="site-foot">
     <a href="https://github.com/AdolfoCarneiro/sf-balancer" data-i18n="footSource">Open source on GitHub</a>
     <span data-i18n="footLicense">MIT License</span>
+    <a class="coffee" href="https://ko-fi.com/dofal" target="_blank" rel="noopener" data-i18n="footCoffee">Buy me a coffee</a>
     <span data-i18n="footDisclaimer">Fan-made tool, not affiliated with Coffee Stain Studios.</span>
   </footer>
 </div>
@@ -589,7 +592,7 @@ const I18N = {
     faq3A: 'Fica, só no seu navegador. Não tem conta e nada do que você digita vai para um servidor.',
     faq4Q: 'Qual versão do jogo?',
     faq4A: 'Satisfactory 1.0 em diante, com esteiras da Mk1 (60/min) à Mk6 (1.200/min).',
-    footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
+    footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footCoffee: 'Me paga um café', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
   },
   en: {
     locale: 'en-US', htmlLang: 'en', langName: 'English',
@@ -738,7 +741,7 @@ const I18N = {
     faq3A: 'Yes, only in your browser. There’s no account and nothing you type is sent to a server.',
     faq4Q: 'Which game version?',
     faq4A: 'Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).',
-    footSource: 'Open source on GitHub', footLicense: 'MIT License', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
+    footSource: 'Open source on GitHub', footLicense: 'MIT License', footCoffee: 'Buy me a coffee', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
   },
   es: {
     locale: 'es-ES', htmlLang: 'es', langName: 'Español',
@@ -887,7 +890,7 @@ const I18N = {
     faq3A: 'Sí, solo en tu navegador. No hay cuenta y nada de lo que escribes se envía a un servidor.',
     faq4Q: '¿Qué versión del juego?',
     faq4A: 'Satisfactory 1.0 en adelante, con cintas de la Mk1 (60/min) a la Mk6 (1200/min).',
-    footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
+    footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footCoffee: 'Invítame un café', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
   },
 };
 const LANGS = Object.keys(I18N);

@@ -85,6 +85,10 @@ Issues and pull requests are welcome. A few rules keep the project healthy:
 
 `AGENTS.md` has the full spec (in Portuguese) and works as instructions for AI coding agents.
 
+## Support
+
+If the tool saved you some math, you can [buy me a coffee on Ko-fi](https://ko-fi.com/dofal). Totally optional: the tool stays free.
+
 ## License
 
 [MIT](LICENSE). Fan-made tool, not affiliated with Coffee Stain Studios. Satisfactory is a trademark of Coffee Stain Studios.
