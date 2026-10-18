@@ -103,7 +103,8 @@ Por trecho e no total:
 - Números seguem o idioma: `fmt()` usa `t('locale')` (pt-BR `2.730,5`, en `2,730.5`, es `2730,5`) e `parseNum()` lê no formato do idioma atual (em inglês a vírgula é milhar).
 - Nomes de peças do jogo ficam em inglês nos três idiomas: Merger, Splitter, Smart Splitter, Awesome Sink, Any, Overflow, manifold, balancer (no espanhol, "balanceador" no texto corrido).
 - Rótulo das linhas: origem `O1` em pt/es e `S1` em en (`srcTag`), destino `D1` (`dstTag`).
-- O idioma vem de `?lang=pt|en|es`, depois da escolha salva, depois do navegador; o padrão é inglês.
+- **Inglês é o padrão.** O idioma vem de `?lang=pt|en|es`, depois da escolha salva; sem nenhum dos dois, inglês (não detecta pelo navegador). O HTML base (título, `lang`, descrição, textos com `data-i18n`) também fica em inglês.
+- Seletor com bandeira em SVG + sigla (`FLAGS`): emoji de bandeira não renderiza no Windows. Idioma novo precisa de bandeira em `FLAGS`.
 - Os testes da lógica rodam em português; use `inLang('en', () => ...)` para testar outro idioma.
 
 ## Deploy e analytics

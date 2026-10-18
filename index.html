@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Logística entre Etapas</title>
-<meta name="description" content="Planeje esteiras, mergers, splitters e balancers entre duas etapas de uma fábrica no Satisfactory.">
+<title>Belt Logistics Planner</title>
+<meta name="description" content="Plan belts, mergers, splitters and load balancers between two stages of a Satisfactory factory.">
 <script defer src="/_vercel/insights/script.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,7 +56,9 @@
   /* Seletor de idioma */
   .langbar { display: flex; justify-content: flex-end; padding-top: 14px; }
   .langs { display: flex; border: 1px solid var(--line); }
-  .langs button { background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 4px 10px; font: 600 13px var(--display); }
+  .langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 5px 10px; font: 600 13px var(--display); }
+  .langs svg { width: 20px; height: 14px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); opacity: .7; }
+  .langs button:hover svg, .langs button[aria-pressed="true"] svg { opacity: 1; }
   .langs button:first-child { border-left: 0; }
   .langs button:hover { color: var(--ink); }
   .langs button[aria-pressed="true"] { background: var(--plate); color: var(--ficsit); }
@@ -234,12 +236,12 @@
 <body>
 <div class="wrap">
   <nav class="langbar">
-    <div class="langs" role="group" id="langs" data-i18n-aria="langLabel" aria-label="Idioma"></div>
+    <div class="langs" role="group" id="langs" data-i18n-aria="langLabel" aria-label="Language"></div>
   </nav>
   <header class="top">
     <div>
-      <p class="kicker" data-i18n="kicker">Logística entre etapas</p>
-      <input class="item-name" id="item" value="Barra de ferro" data-i18n-aria="itemAria" aria-label="Nome do item" spellcheck="false">
+      <p class="kicker" data-i18n="kicker">Logistics between stages</p>
+      <input class="item-name" id="item" value="Iron Ingot" data-i18n-aria="itemAria" aria-label="Item name" spellcheck="false">
     </div>
     <dl class="ledger num" id="ledger"></dl>
   </header>
@@ -247,35 +249,35 @@
   <div id="form">
     <div class="band">
       <section class="plate">
-        <h2 data-i18n="sideSrc">Origem</h2>
+        <h2 data-i18n="sideSrc">Source</h2>
         <div id="srcGroups"></div>
-        <button class="linkbtn" data-add="src" data-i18n="addGroup" type="button">+ Adicionar grupo de máquinas</button>
+        <button class="linkbtn" data-add="src" data-i18n="addGroup" type="button">+ Add machine group</button>
       </section>
       <div class="arrow" aria-hidden="true"></div>
       <section class="plate">
-        <h2 data-i18n="sideDst">Destino</h2>
+        <h2 data-i18n="sideDst">Destination</h2>
         <div id="dstGroups"></div>
-        <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Adicionar grupo de máquinas</button>
+        <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Add machine group</button>
       </section>
     </div>
     <section class="plate rules">
       <div class="rule">
-        <h3 data-i18n="belt">Esteira</h3>
-        <select class="field" id="belt" data-i18n-aria="beltAria" aria-label="Tier da esteira"></select>
+        <h3 data-i18n="belt">Belt</h3>
+        <select class="field" id="belt" data-i18n-aria="beltAria" aria-label="Belt tier"></select>
       </div>
       <div class="rule">
-        <h3 data-i18n="policyTitle">Linhas de origem sem destino</h3>
+        <h3 data-i18n="policyTitle">Source lines with no destination</h3>
         <div class="inline">
-          <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Ficam paradas</span></label>
-          <label class="choice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Vão pro Awesome Sink</span></label>
-          <label class="choice"><input type="radio" name="policy" value="extra"> <span data-i18n="policyExtra">Saem numa linha extra</span></label>
+          <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Stay idle</span></label>
+          <label class="choice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
+          <label class="choice"><input type="radio" name="policy" value="extra"> <span data-i18n="policyExtra">Leave on an extra line</span></label>
         </div>
       </div>
       <div class="rule">
-        <h3 data-i18n="convTitle">Peças por manifold</h3>
+        <h3 data-i18n="convTitle">Pieces per manifold</h3>
         <div class="inline">
-          <label class="choice"><input type="radio" name="conv" value="k-1" checked> <span data-i18n="convK1">k máquinas, k−1 peças</span></label>
-          <label class="choice"><input type="radio" name="conv" value="k"> <span data-i18n="convK">k máquinas, k peças</span></label>
+          <label class="choice"><input type="radio" name="conv" value="k-1" checked> <span data-i18n="convK1">k machines, k−1 pieces</span></label>
+          <label class="choice"><input type="radio" name="conv" value="k"> <span data-i18n="convK">k machines, k pieces</span></label>
         </div>
       </div>
     </section>
@@ -285,19 +287,19 @@
   <div id="out"></div>
 
   <div class="foot hint">
-    <button class="linkbtn" id="reset" data-i18n="reset" type="button">Voltar ao exemplo das refinarias</button>
+    <button class="linkbtn" id="reset" data-i18n="reset" type="button">Back to the refinery example</button>
   </div>
 </div>
 
 <template id="grpTpl">
   <div class="grp">
-    <div class="grp-head"><span class="grp-name"></span><button class="rm" data-i18n="removeGroup" type="button">Remover grupo</button></div>
+    <div class="grp-head"><span class="grp-name"></span><button class="rm" data-i18n="removeGroup" type="button">Remove group</button></div>
     <div class="grp-fields">
-      <label><span data-i18n="fMachines">Máquinas</span><input class="field g-count" type="text" inputmode="decimal"></label>
+      <label><span data-i18n="fMachines">Machines</span><input class="field g-count" type="text" inputmode="decimal"></label>
       <label><span data-i18n="fClock">Clock %</span><input class="field g-clock" type="text" inputmode="decimal"></label>
       <label><span class="g-nom-label"></span><input class="field g-nom" type="text" inputmode="decimal"></label>
       <label><span data-i18n="fTotal">Total /min</span><input class="field g-total" type="text" inputmode="decimal"></label>
-      <label><span data-i18n="fPer">Por linha</span><input class="field g-per" type="text" inputmode="numeric"></label>
+      <label><span data-i18n="fPer">Per line</span><input class="field g-per" type="text" inputmode="numeric"></label>
     </div>
     <p class="eq num"></p>
   </div>
@@ -1244,19 +1246,22 @@ const O = l => srcTag(l.id);
 const Dn = l => dstTag(l.id);
 
 // ---- Idioma ----
-// Ordem: ?lang= na URL, escolha salva, idioma do navegador, inglês.
+// Ordem: ?lang= na URL, escolha salva, inglês.
 function pickLang() {
   const fromUrl = new URLSearchParams(location.search).get('lang');
   if (I18N[fromUrl]) return fromUrl;
   let saved = null;
   try { saved = localStorage.getItem(LANG_STORE); } catch (e) { /* sem storage */ }
   if (I18N[saved]) return saved;
-  for (const l of navigator.languages || [navigator.language || '']) {
-    const base = String(l).slice(0, 2).toLowerCase();
-    if (I18N[base]) return base;
-  }
   return 'en';
 }
+
+// Bandeiras em SVG: emoji de bandeira não aparece no Windows.
+const FLAGS = {
+  pt: `<svg viewBox="0 0 20 14" aria-hidden="true"><rect width="20" height="14" fill="#009c3b"/><path d="M10 1.8 18 7l-8 5.2L2 7z" fill="#ffdf00"/><circle cx="10" cy="7" r="3.1" fill="#002776"/><path d="M7 6.3c2-.6 4.2-.4 6 .7" stroke="#fff" stroke-width=".6" fill="none"/></svg>`,
+  en: `<svg viewBox="0 0 20 14" aria-hidden="true"><rect width="20" height="14" fill="#fff"/><path d="M0 0h20v1.08H0zm0 2.15h20v1.08H0zm0 2.16h20v1.07H0zm0 2.15h20v1.08H0zm0 2.16h20v1.07H0zm0 2.15h20v1.08H0zm0 2.15h20V14H0z" fill="#b22234"/><rect width="8.5" height="7.54" fill="#3c3b6e"/><g fill="#fff"><circle cx="1.6" cy="1.4" r=".45"/><circle cx="4.25" cy="1.4" r=".45"/><circle cx="6.9" cy="1.4" r=".45"/><circle cx="2.9" cy="3.77" r=".45"/><circle cx="5.6" cy="3.77" r=".45"/><circle cx="1.6" cy="6.1" r=".45"/><circle cx="4.25" cy="6.1" r=".45"/><circle cx="6.9" cy="6.1" r=".45"/></g></svg>`,
+  es: `<svg viewBox="0 0 20 14" aria-hidden="true"><rect width="20" height="14" fill="#aa151b"/><rect y="3.5" width="20" height="7" fill="#f1bf00"/></svg>`,
+};
 
 // Textos fixos do HTML (inclusive os dos grupos já clonados do template).
 function applyStatic() {
@@ -1271,7 +1276,7 @@ function applyStatic() {
   const belt = $('belt').value;
   $('belt').innerHTML = BELTS.map(b => `<option value="${b.id}">${b.id}, ${fmt(b.cap)}/min</option>`).join('');
   $('belt').value = belt || 'Mk4';
-  $('langs').innerHTML = LANGS.map(l => `<button type="button" data-lang="${l}" lang="${I18N[l].htmlLang}" title="${I18N[l].langName}" aria-pressed="${l === LANG}">${l.toUpperCase()}</button>`).join('');
+  $('langs').innerHTML = LANGS.map(l => `<button type="button" data-lang="${l}" lang="${I18N[l].htmlLang}" title="${I18N[l].langName}" aria-pressed="${l === LANG}">${FLAGS[l]}${l.toUpperCase()}</button>`).join('');
   syncGroups('src');
   syncGroups('dst');
 }
