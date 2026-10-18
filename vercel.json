@@ -5,7 +5,7 @@
     { "source": "/en", "destination": "/", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/:lang(pt|es)", "destination": "/index.html" }
+    { "source": "/:lang(pt|es)", "destination": "/" }
   ],
   "headers": [
     {
