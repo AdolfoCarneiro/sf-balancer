@@ -1,0 +1,4 @@
+# Publica só o site; o resto fica no repositório
+*
+!index.html
+!vercel.json
