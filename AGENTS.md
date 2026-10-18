@@ -80,7 +80,7 @@ Por trecho e no total:
 ## Interface
 
 - Um único `.html`, sem build. Dependências só se forem via CDN, e de preferência nenhuma.
-- **PT-BR**, números no formato brasileiro (vírgula decimal, ponto de milhar), igual meu planner.
+- **Três idiomas: português (pt-BR), inglês e espanhol.** Ver a seção "Idiomas" abaixo.
 - Dark mode (vou usar do lado do jogo).
 - Resultado atualiza ao vivo enquanto digito.
 - Exemplo 1 já pré-carregado.
@@ -91,6 +91,26 @@ Por trecho e no total:
 - Separar a **lógica em funções puras** (cálculo e classificação) da interface, e testar essas funções com os casos de teste acima antes de mexer na UI.
 - Começar pequeno: casos A e B funcionando bem. C e D depois.
 - Na dúvida sobre mecânica do jogo ou sobre o que eu quero, **pergunte** em vez de assumir.
+
+## Idiomas (obrigatório em toda mudança)
+
+**Tudo que aparece na tela existe em português, inglês e espanhol.** Isso vale para qualquer feature nova, aviso, rótulo, tooltip, `aria-label`, texto de SVG, título e descrição da página.
+
+- Os textos ficam no objeto `I18N` no começo do bloco de lógica do `index.html` (`pt`, `en`, `es`). Nada de texto solto no código: use `t('chave')` ou `t('chave', ...args)`.
+- Chave nova entra **nos três idiomas na mesma mudança**. O teste `idiomas: as mesmas chaves, do mesmo tipo, nos três` quebra se faltar alguma.
+- Texto com número ou plural vira função: `stepUnfed: d => \`${d} fica sem alimentação...\``. Os números chegam já formatados com `fmt()`.
+- Texto fixo do HTML usa `data-i18n="chave"` (conteúdo) ou `data-i18n-aria="chave"` (`aria-label`); `applyStatic()` aplica.
+- Números seguem o idioma: `fmt()` usa `t('locale')` (pt-BR `2.730,5`, en `2,730.5`, es `2730,5`) e `parseNum()` lê no formato do idioma atual (em inglês a vírgula é milhar).
+- Nomes de peças do jogo ficam em inglês nos três idiomas: Merger, Splitter, Smart Splitter, Awesome Sink, Any, Overflow, manifold, balancer (no espanhol, "balanceador" no texto corrido).
+- Rótulo das linhas: origem `O1` em pt/es e `S1` em en (`srcTag`), destino `D1` (`dstTag`).
+- O idioma vem de `?lang=pt|en|es`, depois da escolha salva, depois do navegador; o padrão é inglês.
+- Os testes da lógica rodam em português; use `inLang('en', () => ...)` para testar outro idioma.
+
+## Deploy e analytics
+
+- Repositório privado `AdolfoCarneiro/sf-balancer`; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
+- Só `index.html` e `vercel.json` são publicados (`.vercelignore`). Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
+- Vercel Web Analytics via `<script defer src="/_vercel/insights/script.js">`, sem cookies. Localmente esse script dá 404, é esperado.
 
 ## Fora do escopo (v1)
 

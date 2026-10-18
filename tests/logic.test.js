@@ -231,3 +231,53 @@ test('carvão: excesso de 3 linhas cobre a falta da quarta via overflow', () => 
   assert.equal(d4.inbound.length, 3);
   conserves(p, a);
 });
+
+// ---- Idiomas ----
+// Roda o bloco em outro idioma e sempre volta pro português, que é o padrão dos outros testes.
+const inLang = (lang, fn) => { L.setLang(lang); try { return fn(); } finally { L.setLang('pt'); } };
+
+test('idiomas: as mesmas chaves, do mesmo tipo, nos três', () => {
+  const ref = L.I18N.pt;
+  assert.deepEqual(L.LANGS, ['pt', 'en', 'es']);
+  for (const lang of L.LANGS) {
+    const dict = L.I18N[lang];
+    assert.deepEqual(Object.keys(dict).sort(), Object.keys(ref).sort(), `chaves de ${lang}`);
+    for (const k of Object.keys(ref)) assert.equal(typeof dict[k], typeof ref[k], `${lang}.${k}`);
+  }
+});
+
+test('idiomas: caso 1 em inglês e espanhol', () => {
+  const input = { ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40 };
+  const en = inLang('en', () => {
+    const p = L.computePlan(input);
+    const a = p.alternatives.find(x => x.key === 'doadora-1-sink');
+    return { title: a.title, sub: a.sub, caseLabel: a.caseLabel, tree: L.describeTree(a.groups[0].tree), total: L.fmt(2730) };
+  });
+  assert.equal(en.title, 'Top-up with 1 donor, extra parts to the sink');
+  assert.equal(en.caseLabel, 'case B');
+  assert.equal(en.tree, '1 splitter into 3, then 3 splitters into 2 (one on each output) = 6 parts');
+  assert.equal(en.total, '2,730');
+  const es = inLang('es', () => L.computePlan(input).alternatives[0]);
+  assert.equal(es.title, 'Complemento con 1 donante, partes de más al sink');
+  assert.equal(es.caseLabel, 'caso B');
+});
+
+test('idiomas: avisos traduzidos', () => {
+  const w = inLang('en', () => L.computePlan({ ...base, srcCount: 10, srcRate: 65, dstCount: 60, dstRate: 40 }).warnings);
+  assert.ok(w.some(x => x.text.startsWith('Demand (')), w.map(x => x.text).join(' | '));
+  assert.ok(!w.some(x => /demanda|oferta/i.test(x.text)));
+});
+
+test('parseNum em inglês: vírgula é milhar, ponto é decimal', () => {
+  inLang('en', () => {
+    assert.equal(L.parseNum('1,200'), 1200);
+    assert.equal(L.parseNum('1,200.5'), 1200.5);
+    assert.equal(L.parseNum('22.5'), 22.5);
+    assert.equal(L.parseNum('1.200'), 1.2);
+    assert.equal(L.parseNum('65,5'), 65.5);
+  });
+  inLang('es', () => {
+    assert.equal(L.parseNum('65,5'), 65.5);
+    assert.equal(L.parseNum('1.200'), 1200);
+  });
+});
