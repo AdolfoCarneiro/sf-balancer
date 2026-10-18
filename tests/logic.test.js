@@ -108,7 +108,7 @@ test('3×480 + 320 com doadora ÷3: a linha principal represa, não a doadora', 
 });
 
 test('vários grupos: 3 × 600 + 1 × 300 em Mk5', () => {
-  const src = L.buildSourceLines([{ mode: 'machines', count: 3, rate: 600 }, { mode: 'machines', count: 1, rate: 300 }], 780);
+  const src = L.buildLines([{ mode: 'machines', count: 3, rate: 600 }, { mode: 'machines', count: 1, rate: 300 }], 780);
   assert.deepEqual(src.lines.map(l => l.rate), [600, 600, 600, 300]);
   assert.equal(src.total, 2100);
 });
@@ -128,7 +128,7 @@ test('origens diferentes: a linha menor cobre o destino pequeno e a grande vira 
 
 test('sobras de grupos diferentes dividem uma linha', () => {
   // 3 × 200 em Mk4: uma linha de 2 (400) e sobra 1; a máquina de 120 junta com ela.
-  const src = L.buildSourceLines([{ mode: 'machines', count: 3, rate: 200 }, { mode: 'machines', count: 1, rate: 120 }], 480);
+  const src = L.buildLines([{ mode: 'machines', count: 3, rate: 200 }, { mode: 'machines', count: 1, rate: 120 }], 480);
   assert.deepEqual(src.lines.map(l => l.rate), [400, 320]);
   const mixed = src.lines[1];
   assert.equal(L.lineComp(mixed), '1 × 200 + 1 × 120');
@@ -136,7 +136,7 @@ test('sobras de grupos diferentes dividem uma linha', () => {
 });
 
 test('origem por total contínuo: 3.500 em Mk5', () => {
-  const src = L.buildSourceLines([{ mode: 'total', rate: 3500 }], 780);
+  const src = L.buildLines([{ mode: 'total', rate: 3500 }], 780);
   assert.deepEqual(src.lines.map(l => l.rate), [780, 780, 780, 780, 380]);
   const p = L.computePlan({ ...base, cap: 780, belt: 'Mk5', srcGroups: [{ mode: 'total', rate: 3500 }], dstCount: 60, dstRate: 40 });
   assert.equal(p.collectMergers, 0);
@@ -145,7 +145,7 @@ test('origem por total contínuo: 3.500 em Mk5', () => {
 });
 
 test('máquina acima da esteira fica sozinha e avisa', () => {
-  const src = L.buildSourceLines([{ mode: 'machines', count: 2, rate: 600 }], 480);
+  const src = L.buildLines([{ mode: 'machines', count: 2, rate: 600 }], 480);
   assert.deepEqual(src.lines.map(l => l.rate), [480, 480]);
   assert.ok(src.warnings.length);
 });
@@ -191,4 +191,43 @@ test('parseNum aceita formato brasileiro', () => {
   assert.equal(L.parseNum('1.200'), 1200);
   assert.equal(L.parseNum('22.5'), 22.5);
   assert.ok(Number.isNaN(L.parseNum('abc')));
+});
+
+test('equivalências: fracionado, inteiro com clock e total', () => {
+  const a = L.resolveGroup({ driver: 'machines', count: 43.38, nominal: 40 });
+  assert.equal(a.N, 44);
+  close(a.total, 1735.2);
+  close(a.clock * 100, 98.59);
+  const b = L.resolveGroup({ driver: 'clock', count: 44, clock: 98.6, nominal: 40 });
+  close(b.total, 1735.36);
+  close(b.n, 43.384);
+  const c = L.resolveGroup({ driver: 'total', total: 1735.14, nominal: 40 });
+  assert.equal(c.N, 44);
+  close(c.n, 43.38);
+  close(c.perMachine, 1735.14 / 44);
+  assert.ok(L.resolveGroup({ driver: 'total', total: 1440 }).continuous);
+});
+
+test('destino fracionado usa a taxa real por máquina nas linhas', () => {
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstGroups: [{ driver: 'total', total: 1735.14, nominal: 40 }] });
+  close(p.demand, 1735.14);
+  const g = p.dst.groups[0];
+  assert.equal(g.perLine, 12, '480 / 39,43 = 12 por linha');
+  assert.deepEqual(p.dst.lines.map(l => l.machines), [12, 12, 12, 8]);
+  close(p.dst.lines[0].rate, 12 * 1735.14 / 44);
+});
+
+test('carvão: excesso de 3 linhas cobre a falta da quarta via overflow', () => {
+  const p = L.computePlan({ ...base,
+    srcGroups: [{ driver: 'total', total: 1440 }, { driver: 'machines', count: 1, nominal: 300, per: 1 }],
+    dstGroups: [{ driver: 'machines', count: 43, nominal: 40, per: 11 }] });
+  assert.deepEqual(p.dst.lines.map(l => l.rate), [440, 440, 440, 400]);
+  const a = p.alternatives[0];
+  assert.equal(a.key, 'redistribuir');
+  assert.ok(a.full);
+  assert.equal(a.pieces.smart, 3);
+  a.dests.forEach(d => close(d.got, d.line.rate));
+  const d4 = a.view.feeds.find(f => f.f.dst.rate === 400);
+  assert.equal(d4.inbound.length, 3);
+  conserves(p, a);
 });
