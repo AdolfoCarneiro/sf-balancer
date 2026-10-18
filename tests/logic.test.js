@@ -23,9 +23,9 @@ const conserves = (p, a) => close(a.served + a.sinkRate + a.extraRate + a.held, 
 
 test('caso 1: 42 × 65 → 60 × 40, Mk4', () => {
   const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40 });
-  assert.equal(p.src.perLine, 7);
+  assert.equal(p.src.groups[0].perLine, 7);
   assert.equal(p.src.lines.length, 6);
-  assert.equal(p.src.lineRate, 455);
+  assert.equal(p.src.groups[0].lineRate, 455);
   assert.equal(p.collectMergers, 36);
   assert.equal(p.dst.lines.length, 5);
   assert.equal(p.dst.total, 2400);
@@ -79,7 +79,7 @@ test('caso 2: 42 × 65 → 4 linhas de 440 = ligação direta', () => {
 test('caso 3: caso 1 com 6 refinarias por linha', () => {
   const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, srcPer: 6 });
   assert.equal(p.src.lines.length, 7);
-  assert.equal(p.src.lineRate, 390);
+  assert.equal(p.src.groups[0].lineRate, 390);
   assert.equal(p.collectMergers, 35);
   const a = p.alternatives[0];
   assert.equal(a.kind, 'donor');
@@ -105,6 +105,49 @@ test('3×480 + 320 com doadora ÷3: a linha principal represa, não a doadora', 
   close(a.sources.get(d4.f.mains[0].id).held, 135, 'linha do D4 represa 135');
   close(a.sinkRate, 455, 'linha que sobra vai pro sink');
   conserves(p, a);
+});
+
+test('vários grupos: 3 × 600 + 1 × 300 em Mk5', () => {
+  const src = L.buildSourceLines([{ mode: 'machines', count: 3, rate: 600 }, { mode: 'machines', count: 1, rate: 300 }], 780);
+  assert.deepEqual(src.lines.map(l => l.rate), [600, 600, 600, 300]);
+  assert.equal(src.total, 2100);
+});
+
+test('origens diferentes: a linha menor cobre o destino pequeno e a grande vira doadora', () => {
+  const p = L.computePlan({ ...base, cap: 780, belt: 'Mk5', dstCount: 45, dstRate: 40,
+    srcGroups: [{ mode: 'machines', count: 3, rate: 600 }, { mode: 'machines', count: 1, rate: 300 }] });
+  assert.deepEqual(p.dst.lines.map(l => l.rate), [760, 760, 280]);
+  const a = p.alternatives[0];
+  assert.ok(a.full, `recomendada enche tudo (${a.key})`);
+  const d3 = a.view.feeds.find(f => f.f.dst.rate === 280);
+  assert.equal(d3.f.mains[0].rate, 300);
+  assert.equal(a.groups[0].donor.rate, 600);
+  assert.equal(a.groups[0].p, 2);
+  conserves(p, a);
+});
+
+test('sobras de grupos diferentes dividem uma linha', () => {
+  // 3 × 200 em Mk4: uma linha de 2 (400) e sobra 1; a máquina de 120 junta com ela.
+  const src = L.buildSourceLines([{ mode: 'machines', count: 3, rate: 200 }, { mode: 'machines', count: 1, rate: 120 }], 480);
+  assert.deepEqual(src.lines.map(l => l.rate), [400, 320]);
+  const mixed = src.lines[1];
+  assert.equal(L.lineComp(mixed), '1 × 200 + 1 × 120');
+  assert.equal(mixed.machines, 2);
+});
+
+test('origem por total contínuo: 3.500 em Mk5', () => {
+  const src = L.buildSourceLines([{ mode: 'total', rate: 3500 }], 780);
+  assert.deepEqual(src.lines.map(l => l.rate), [780, 780, 780, 780, 380]);
+  const p = L.computePlan({ ...base, cap: 780, belt: 'Mk5', srcGroups: [{ mode: 'total', rate: 3500 }], dstCount: 60, dstRate: 40 });
+  assert.equal(p.collectMergers, 0);
+  assert.ok(p.alternatives[0].full);
+  conserves(p, p.alternatives[0]);
+});
+
+test('máquina acima da esteira fica sozinha e avisa', () => {
+  const src = L.buildSourceLines([{ mode: 'machines', count: 2, rate: 600 }], 480);
+  assert.deepEqual(src.lines.map(l => l.rate), [480, 480]);
+  assert.ok(src.warnings.length);
 });
 
 test('caso C: linhas de 120 alimentando 480', () => {

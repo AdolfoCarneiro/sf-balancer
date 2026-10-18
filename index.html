@@ -6,213 +6,277 @@
 <title>Logística entre Etapas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #1a1f26;
-    --surface: #222a33;
-    --raised: #2b343f;
-    --rule: #364250;
-    --text: #e9e6df;
-    --muted: #97a3b0;
-    --ficsit: #f39a4a;
-    --ficsit-dim: #f39a4a26;
-    --flow: #5cc0cf;
-    --donor: #ab8fe0;
-    --sink: #e8616c;
-    --held: #7c8796;
-    --ok: #7fcf8e;
-    --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
-    --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --paper: #0d2136;
+    --sheet: #112a44;
+    --plate: #15324f;
+    --grid: #1a3858;
+    --grid-fine: #13304c;
+    --ink: #e4eef8;
+    --ink-dim: #8eabc6;
+    --line: #2d5176;
+    --ficsit: #ff9b3d;
+    --ficsit-ink: #1b1206;
+    --flow: #e4eef8;
+    --donor: #c6a6ff;
+    --sink: #ff6d7c;
+    --held: #7f9bb8;
+    --ok: #8fe3a4;
+    --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --cut: 14px;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--body); }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font: 15px/1.5 var(--body);
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(var(--grid-fine) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-fine) 1px, transparent 1px);
+    background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  }
+  .wrap { max-width: 1480px; margin: 0 auto; padding: 0 28px 56px; }
+  @media (max-width: 760px) { .wrap { padding: 0 16px 40px; } }
   .num { font-variant-numeric: tabular-nums; }
 
-  /* Cabeçalho: o item é o título, editável. */
-  .top {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: 8px 32px;
-    padding: 22px 24px 18px;
-    border-bottom: 1px solid var(--rule);
+  /* Placas com canto chanfrado, como os painéis do jogo. */
+  .plate {
+    background: var(--plate);
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+    padding: 16px 18px 18px;
   }
+
+  /* Cabeçalho */
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 40px; flex-wrap: wrap; padding: 26px 0 20px; }
+  .kicker { margin: 0 0 2px; color: var(--ink-dim); font: 500 15px var(--display); }
   .item-name {
-    font: 700 40px/1 var(--display);
-    letter-spacing: .01em;
-    color: var(--text);
+    font: 700 46px/1.05 var(--display);
+    color: var(--ink);
     background: transparent;
     border: 0;
-    border-bottom: 2px solid transparent;
-    padding: 0 0 2px;
-    width: 100%;
-    max-width: 560px;
+    border-bottom: 2px dashed transparent;
+    padding: 0;
+    width: min(620px, 100%);
   }
-  .item-name:hover { border-bottom-color: var(--rule); }
+  .item-name:hover { border-bottom-color: var(--line); }
   .item-name:focus { outline: none; border-bottom-color: var(--ficsit); }
-  .route { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
-  .route b { color: var(--text); font-weight: 600; }
-  .ledger { display: flex; gap: 28px; margin: 0; }
-  .ledger div { text-align: right; }
-  .ledger dt { color: var(--muted); font-size: 13px; }
-  .ledger dd { margin: 0; font: 600 30px/1.05 var(--display); }
-  .ledger dd small { font: 500 14px var(--body); color: var(--muted); margin-left: 2px; }
+  .ledger { display: flex; gap: 0; margin: 0; }
+  .ledger div { padding: 0 22px; border-left: 1px solid var(--line); }
+  .ledger div:first-child { border-left: 0; padding-left: 0; }
+  .ledger dt { color: var(--ink-dim); font-size: 13px; }
+  .ledger dd { margin: 0; font: 600 34px/1.05 var(--display); }
+  .ledger dd small { font: 500 14px var(--body); color: var(--ink-dim); margin-left: 3px; }
   .ledger .neg { color: var(--sink); }
-  @media (max-width: 760px) {
-    .top { grid-template-columns: 1fr; padding: 16px; }
-    .ledger { gap: 18px; }
-    .ledger div { text-align: left; }
-    .item-name { font-size: 32px; }
+  @media (max-width: 760px) { .item-name { font-size: 34px; } .ledger dd { font-size: 26px; } .ledger div { padding: 0 14px; } }
+
+  /* Faixa de entrada: origem → destino → esteira */
+  .band { display: grid; grid-template-columns: minmax(0, 1.5fr) 44px minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
+  .arrow { position: relative; }
+  .arrow::before { content: ""; position: absolute; left: 0; right: 10px; top: 50%; height: 10px; margin-top: -5px;
+    background: repeating-linear-gradient(90deg, var(--ficsit) 0 8px, transparent 8px 14px); opacity: .7; }
+  .arrow::after { content: ""; position: absolute; right: 0; top: 50%; margin-top: -9px; border: 9px solid transparent; border-left: 12px solid var(--ficsit); border-right: 0; }
+  .band .opts { margin-left: 14px; }
+  @media (max-width: 1100px) {
+    .band { grid-template-columns: 1fr; gap: 12px; }
+    .arrow { display: none; }
+    .band .opts { margin-left: 0; }
   }
-
-  main { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 24px; padding: 20px 24px 48px; max-width: 1440px; }
-  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px 16px 40px; } }
-
-  /* Entradas */
-  .form { align-self: start; position: sticky; top: 16px; }
-  @media (max-width: 960px) { .form { position: static; } }
-  .group { padding: 0 0 16px; margin: 0 0 16px; border-bottom: 1px solid var(--rule); }
-  .group:last-of-type { border-bottom: 0; }
-  .group h2 { font: 600 19px/1.2 var(--display); margin: 0 0 8px; letter-spacing: .01em; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+  .plate h2 { font: 600 21px/1.1 var(--display); margin: 0 0 10px; }
+  label, .colhead { display: block; font-size: 13px; color: var(--ink-dim); margin: 0 0 4px; }
   .field {
     width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    color: var(--text);
-    border-radius: 5px;
-    padding: 8px 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 0;
+    padding: 7px 9px;
     font: 500 15px var(--body);
     font-variant-numeric: tabular-nums;
   }
-  .field:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; border-color: transparent; }
+  .field:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 0; border-color: var(--ficsit); }
   .field.invalid { border-color: var(--sink); }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .choice { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 5px 0; cursor: pointer; }
+  .field::placeholder { color: var(--ink-dim); opacity: .8; }
+  select.field { padding-right: 4px; }
+
+  .rows { display: grid; grid-template-columns: 112px minmax(54px, 1fr) 14px minmax(64px, 1.1fr) minmax(60px, 1fr) 28px; gap: 6px; align-items: center; }
+  .band > section, .work > *, .pair > * { min-width: 0; }
+  @media (max-width: 600px) {
+    .rows { grid-template-columns: minmax(84px, 1.2fr) minmax(40px, .8fr) 10px minmax(50px, 1fr) minmax(48px, .9fr) 20px; gap: 4px; }
+    .rows .field { padding: 7px 5px; font-size: 14px; }
+    .dst-grid { gap: 4px; }
+  }
+  .rows .x { color: var(--ink-dim); text-align: center; }
+  .rows .hide { visibility: hidden; }
+  .rm { background: none; border: 0; color: var(--ink-dim); font-size: 20px; line-height: 1; cursor: pointer; padding: 0; height: 32px; }
+  .rm:hover { color: var(--sink); }
+  .rm:focus-visible, .linkbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  .rm[disabled] { visibility: hidden; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--ficsit); cursor: pointer; font: 500 14px var(--body); margin-top: 10px; }
+  .linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .dst-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .hint { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
+  .choice { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 4px 0; cursor: pointer; }
   .choice input { accent-color: var(--ficsit); margin: 0; }
-  .textbtn { background: none; border: 0; padding: 0; color: var(--ficsit); cursor: pointer; font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
-  .textbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  .opts h3 { font: 600 15px var(--display); margin: 12px 0 2px; color: var(--ink-dim); }
+  .opts h3:first-of-type { margin-top: 0; }
 
-  /* Resultados */
-  .results { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
-  section h2 { font: 600 24px/1.15 var(--display); margin: 0 0 4px; letter-spacing: .01em; }
-  section > .lead { margin: 0 0 12px; color: var(--muted); font-size: 14px; max-width: 72ch; }
-  h3 { font: 600 18px/1.2 var(--display); margin: 18px 0 6px; }
+  .warns { display: flex; flex-direction: column; gap: 4px; margin: 14px 0 0; }
+  .warn { font-size: 14px; padding-left: 14px; position: relative; max-width: 100ch; }
+  .warn::before { content: ""; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; background: var(--ficsit); transform: rotate(45deg); }
+  .warn.bad::before { background: var(--sink); }
 
-  .warns { display: flex; flex-direction: column; gap: 6px; }
-  .warn { border-left: 3px solid var(--ficsit); padding: 4px 0 4px 12px; font-size: 14px; max-width: 90ch; }
-  .warn.bad { border-color: var(--sink); }
+  /* Área de trabalho: alternativas à esquerda, planta à direita */
+  .work { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 20px; margin-top: 24px; align-items: start; }
+  @media (max-width: 1100px) { .work { grid-template-columns: 1fr; } }
+  .section-title { font: 600 24px/1.1 var(--display); margin: 0 0 4px; }
+  .lead { margin: 0 0 12px; color: var(--ink-dim); font-size: 14px; max-width: 70ch; }
+
+  .alts { display: flex; flex-direction: column; gap: 8px; }
+  .alt {
+    display: block; width: 100%; text-align: left; cursor: pointer; color: var(--ink);
+    background: var(--plate); border: 0; padding: 12px 14px 12px 16px; font: inherit;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    position: relative;
+  }
+  .alt::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: transparent; }
+  .alt:hover { background: #1a3b5d; }
+  .alt.sel { background: #1d4269; }
+  .alt.sel::before { background: var(--ficsit); }
+  .alt:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
+  .alt-title { font: 600 16px/1.25 var(--display); display: block; }
+  .alt-sub { display: block; color: var(--ink-dim); font-size: 13px; margin-top: 2px; }
+  .rec { color: var(--ficsit); font-size: 12.5px; font-weight: 600; display: block; margin-bottom: 2px; }
+  .stats { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 2px 16px; margin: 8px 0 0; }
+  .stats dt { font-size: 11.5px; color: var(--ink-dim); }
+  .stats dd { margin: 0; font: 600 15px var(--display); font-variant-numeric: tabular-nums; }
+
+  .sheet {
+    position: relative;
+    border: 1px solid var(--line);
+    background: rgba(13, 33, 54, .55);
+    padding: 18px 18px 64px;
+    overflow-x: auto;
+  }
+  .titleblock {
+    position: absolute; right: 0; bottom: 0;
+    display: grid; grid-template-columns: auto auto auto; border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-dim); background: var(--paper);
+  }
+  .titleblock div { padding: 5px 12px; border-right: 1px solid var(--line); }
+  .titleblock div:last-child { border-right: 0; }
+  .titleblock b { display: block; color: var(--ink); font: 600 14px var(--display); }
+  svg { display: block; }
+  svg text { font-family: var(--body); fill: var(--ink); font-size: 13px; }
+  svg .lbl { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  svg .sm { font-size: 11.5px; fill: var(--ink-dim); }
+  svg .rate { font-family: var(--display); font-weight: 600; font-size: 13.5px; }
+  .items { stroke-dasharray: 2 10; stroke-linecap: round; animation: run var(--dur, 2s) linear infinite; }
+  @keyframes run { to { stroke-dashoffset: -24; } }
+  @media (prefers-reduced-motion: reduce) { .items { animation: none; } }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-dim); margin-top: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 20px; height: 4px; }
+  .legend i.held { height: 10px; width: 14px; background: repeating-linear-gradient(135deg, var(--held) 0 2px, transparent 2px 5px); border: 1px solid var(--held); }
+  .legend i.piece { width: 10px; height: 10px; border: 2px solid var(--ficsit); transform: rotate(45deg); }
+
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
+  @media (max-width: 1100px) { .pair { grid-template-columns: 1fr; } }
 
   .tablewrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-  th, td { text-align: right; padding: 8px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   th:first-child, td:first-child { text-align: left; padding-left: 0; }
-  th { font-size: 13px; color: var(--muted); font-weight: 500; }
+  th:last-child, td:last-child { padding-right: 0; }
+  th { font-size: 12.5px; color: var(--ink-dim); font-weight: 500; }
   td.l, th.l { text-align: left; }
+  td .sm { color: var(--ink-dim); font-size: 12.5px; }
   tr.sum td { font-weight: 600; border-bottom: 0; }
   .ok { color: var(--ok); }
   .bad { color: var(--sink); }
-  .muted { color: var(--muted); }
+  .dim { color: var(--ink-dim); }
+  .plate .section-title { font-size: 21px; margin-bottom: 10px; }
 
-  /* Tabela de alternativas */
-  .alts tr.alt { cursor: pointer; }
-  .alts tr.alt td:first-child { position: relative; padding-left: 14px; white-space: normal; min-width: 260px; }
-  .alts tr.alt td:first-child::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: transparent; }
-  .alts tr.alt.sel td:first-child::before { background: var(--ficsit); }
-  .alts tr.alt.sel { background: var(--surface); }
-  .alts tr.alt:hover { background: var(--surface); }
-  .alts input { position: absolute; opacity: 0; pointer-events: none; }
-  .alts tr.alt:focus-within td:first-child::before { background: var(--ficsit); }
-  .alt-title { font-weight: 600; }
-  .alt-sub { display: block; color: var(--muted); font-size: 13px; }
-  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--ficsit); margin-left: 6px; }
-  .case { color: var(--muted); font-size: 13px; }
+  ol.steps { margin: 0; padding-left: 26px; }
+  ol.steps li { margin: 7px 0; padding-left: 4px; }
+  ol.steps li::marker { color: var(--ficsit); font: 600 15px var(--display); }
 
-  /* Diagrama */
-  .canvas { background: var(--surface); border-radius: 8px; padding: 16px; overflow-x: auto; }
-  svg { display: block; }
-  svg text { font-family: var(--body); fill: var(--text); font-size: 13px; }
-  svg .lbl { font-family: var(--display); font-weight: 600; font-size: 15px; }
-  svg .sm { font-size: 11.5px; fill: var(--muted); }
-  svg .rate { font-family: var(--display); font-weight: 600; font-size: 13.5px; }
-  .items { stroke-dasharray: 1.6 9; stroke-linecap: round; animation: run var(--dur, 2s) linear infinite; }
-  @keyframes run { to { stroke-dashoffset: -21.2; } }
-  @media (prefers-reduced-motion: reduce) { .items { animation: none; } }
-  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 10px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; }
-  .legend i.held { height: 10px; width: 14px; background: repeating-linear-gradient(135deg, var(--held) 0 2px, transparent 2px 5px); border: 1px solid var(--held); }
-
-  .split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; }
-  @media (max-width: 1180px) { .split { grid-template-columns: 1fr; } }
-  ol.steps { margin: 0; padding-left: 22px; max-width: 75ch; }
-  ol.steps li { margin: 6px 0; }
-  ol.steps li::marker { color: var(--ficsit); font-family: var(--display); font-weight: 600; }
-
-  .bal { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 900px) { .bal { grid-template-columns: 1fr; } }
-  .opt { border-top: 2px solid var(--rule); padding-top: 8px; }
+  .bal { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .bal { grid-template-columns: 1fr; } }
+  .opt { border-top: 2px solid var(--line); padding-top: 8px; }
   .opt.on { border-top-color: var(--ficsit); }
   .opt h4 { margin: 0 0 4px; font: 600 16px var(--display); }
   .opt ul { margin: 0; padding-left: 18px; font-size: 14px; }
   .opt li { margin: 3px 0; }
+  .donor-title { font: 600 17px var(--display); margin: 14px 0 6px; }
+  .donor-title:first-of-type { margin-top: 0; }
+  .foot { margin-top: 28px; }
 </style>
 </head>
 <body>
-<header class="top">
-  <div>
-    <input class="item-name" id="item" value="Barra de ferro" aria-label="Nome do item" spellcheck="false">
-    <p class="route num" id="route"></p>
-  </div>
-  <dl class="ledger num" id="ledger"></dl>
-</header>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="kicker">Logística entre etapas</p>
+      <input class="item-name" id="item" value="Barra de ferro" aria-label="Nome do item" spellcheck="false">
+    </div>
+    <dl class="ledger num" id="ledger"></dl>
+  </header>
 
-<main>
-  <aside class="form" id="form">
-    <div class="group">
+  <div class="band" id="form">
+    <section class="plate">
       <h2>Origem</h2>
-      <div class="pair">
-        <div><label for="srcCount">Máquinas</label><input class="field" type="text" inputmode="numeric" id="srcCount" value="42"></div>
-        <div><label for="srcRate">Cada uma produz /min</label><input class="field" type="text" inputmode="decimal" id="srcRate" value="65"></div>
+      <div class="rows" id="srcHead">
+        <span class="colhead">Tipo</span><span class="colhead">Qtd</span><span></span><span class="colhead">/min cada</span><span class="colhead">Por linha</span><span></span>
       </div>
-      <label for="srcPer">Máquinas por linha</label>
-      <input class="field" type="text" inputmode="numeric" id="srcPer" placeholder="automático">
-      <div class="hint" id="srcPerHint"></div>
-    </div>
-    <div class="group">
+      <div class="rows" id="srcRows"></div>
+      <button class="linkbtn" id="addSrc" type="button">+ Adicionar grupo de máquinas</button>
+    </section>
+    <div class="arrow" aria-hidden="true"></div>
+    <section class="plate">
       <h2>Destino</h2>
-      <div class="pair">
+      <div class="dst-grid">
         <div><label for="dstCount">Máquinas</label><input class="field" type="text" inputmode="numeric" id="dstCount" value="60"></div>
-        <div><label for="dstRate">Cada uma consome /min</label><input class="field" type="text" inputmode="decimal" id="dstRate" value="40"></div>
+        <div><label for="dstRate">Consome /min</label><input class="field" type="text" inputmode="decimal" id="dstRate" value="40"></div>
+        <div><label for="dstPer">Por linha</label><input class="field" type="text" inputmode="numeric" id="dstPer" placeholder="auto"></div>
       </div>
-      <label for="dstPer">Máquinas por linha</label>
-      <input class="field" type="text" inputmode="numeric" id="dstPer" placeholder="automático">
-      <div class="hint" id="dstPerHint"></div>
-    </div>
-    <div class="group">
-      <h2>Esteira</h2>
+      <div class="hint" id="dstHint"></div>
+    </section>
+    <section class="plate opts">
+      <h2>Esteira e regras</h2>
       <select class="field" id="belt" aria-label="Tier da esteira"></select>
-    </div>
-    <div class="group">
-      <h2>Linhas de origem sem destino</h2>
-      <label class="choice"><input type="radio" name="policy" value="represar" checked> Ficam paradas (represa)</label>
+      <h3>Linhas de origem sem destino</h3>
+      <label class="choice"><input type="radio" name="policy" value="represar" checked> Ficam paradas</label>
       <label class="choice"><input type="radio" name="policy" value="sink"> Vão pro Awesome Sink</label>
       <label class="choice"><input type="radio" name="policy" value="extra"> Saem numa linha extra</label>
-    </div>
-    <div class="group">
-      <h2>Contagem dos manifolds</h2>
-      <label class="choice"><input type="radio" name="conv" value="k-1" checked> k máquinas usam k−1 peças</label>
-      <label class="choice"><input type="radio" name="conv" value="k"> k máquinas usam k peças</label>
-      <div class="hint">Com k−1, a primeira máquina começa a esteira de saída e a última fecha a esteira de entrada.</div>
-    </div>
-    <button class="textbtn" id="reset" type="button">Voltar ao exemplo das refinarias</button>
-  </aside>
+      <h3>Peças por manifold</h3>
+      <label class="choice"><input type="radio" name="conv" value="k-1" checked> k máquinas, k−1 peças</label>
+      <label class="choice"><input type="radio" name="conv" value="k"> k máquinas, k peças</label>
+    </section>
+  </div>
+  <div class="warns" id="warns"></div>
 
-  <div class="results" id="out"></div>
-</main>
+  <div id="out"></div>
+
+  <div class="foot hint">
+    <button class="linkbtn" id="reset" type="button">Voltar ao exemplo das refinarias</button>
+  </div>
+</div>
+
+<template id="srcRowTpl">
+  <select class="field s-mode" aria-label="Tipo de origem"><option value="machines">Máquinas</option><option value="total">Total /min</option></select>
+  <input class="field s-count" type="text" inputmode="numeric" aria-label="Quantidade de máquinas">
+  <span class="x s-x">×</span>
+  <input class="field s-rate" type="text" inputmode="decimal" aria-label="Produção por máquina por minuto">
+  <input class="field s-per" type="text" inputmode="numeric" placeholder="auto" aria-label="Máquinas por linha">
+  <button class="rm s-rm" type="button" aria-label="Remover grupo">×</button>
+</template>
 
 <script>
 // LOGIC-START: funções puras, testadas em tests/logic.test.js
@@ -223,7 +287,7 @@ const BELTS = [
 const EPS = 1e-6;
 const INF = Infinity;
 
-// Agrupa máquinas em linhas de esteira. perLineOverride vazio/0 = automático.
+// Agrupa máquinas iguais em linhas de esteira. perLineOverride vazio/0 = automático.
 function groupLines(count, rate, cap, perLineOverride) {
   const auto = rate > 0 ? Math.max(1, Math.floor(cap / rate + EPS)) : 1;
   const perLine = perLineOverride > 0 ? Math.floor(perLineOverride) : auto;
@@ -239,6 +303,60 @@ function groupLines(count, rate, cap, perLineOverride) {
     overCap: perLine * rate > cap + EPS,
     machineOverCap: rate > cap + EPS,
   };
+}
+
+// Linhas de origem a partir de vários grupos: máquinas × taxa, ou um total contínuo.
+// As máquinas que sobram de cada grupo são empacotadas juntas, maior primeiro.
+function buildSourceLines(groups, cap) {
+  const lines = [], info = [], warnings = [], loose = [];
+  groups.forEach((g, gi) => {
+    if (g.mode === 'total') {
+      const full = Math.floor(g.rate / cap + EPS);
+      for (let i = 0; i < full; i++) lines.push({ machines: 0, rate: cap, partial: false, comp: [{ gi, total: true, rate: cap }] });
+      const rem = g.rate - full * cap;
+      if (rem > EPS) lines.push({ machines: 0, rate: rem, partial: true, comp: [{ gi, total: true, rate: rem }] });
+      info.push({ gi, mode: 'total', rate: g.rate, lines: full + (rem > EPS ? 1 : 0), total: g.rate });
+      return;
+    }
+    const eff = Math.min(g.rate, cap);
+    if (g.rate > cap + EPS) warnings.push({ level: 'warn', text: `Grupo ${gi + 1}: cada máquina produz ${fmt(g.rate)}/min, mas a esteira leva ${fmt(cap)}/min. Cada uma fica numa linha só dela e ${fmt(g.rate - cap)}/min represam na máquina.` });
+    const auto = Math.max(1, Math.floor(cap / eff + EPS));
+    const perLine = g.per > 0 ? Math.floor(g.per) : auto;
+    if (perLine * eff > cap + EPS) warnings.push({ level: 'bad', text: `Grupo ${gi + 1}: ${perLine} máquinas por linha dão ${fmt(perLine * eff)}/min, acima da esteira (${fmt(cap)}/min). O máximo é ${auto}.` });
+    const full = Math.floor(g.count / perLine);
+    for (let i = 0; i < full; i++) lines.push({ machines: perLine, rate: perLine * eff, partial: false, comp: [{ gi, count: perLine, rate: g.rate }] });
+    const rem = g.count - full * perLine;
+    for (let i = 0; i < rem; i++) loose.push({ gi, rate: eff, raw: g.rate });
+    info.push({ gi, mode: 'machines', count: g.count, rate: g.rate, auto, perLine, fullLines: full, lineRate: perLine * eff, rem, total: g.count * eff });
+  });
+  loose.sort((a, b) => b.rate - a.rate || a.gi - b.gi);
+  const packed = [];
+  for (const m of loose) {
+    let line = packed.find(l => l.rate + m.rate <= cap + EPS);
+    if (!line) { line = { machines: 0, rate: 0, partial: true, comp: [] }; packed.push(line); }
+    line.machines++;
+    line.rate += m.rate;
+    const c = line.comp.find(x => x.gi === m.gi);
+    if (c) c.count++; else line.comp.push({ gi: m.gi, count: 1, rate: m.raw });
+  }
+  lines.push(...packed);
+  return { lines, groups: info, packed: packed.length, warnings, total: lines.reduce((a, l) => a + l.rate, 0) };
+}
+
+// Texto curto da composição de uma linha: "7 × 65" ou "2 × 300 + 1 × 120".
+function lineComp(l) {
+  if (!l.comp) return `${l.machines} × ${fmt(l.rate / Math.max(1, l.machines))}`;
+  return l.comp.map(c => (c.total ? 'fluxo contínuo' : `${c.count} × ${fmt(c.rate)}`)).join(' + ');
+}
+
+// Resumo das taxas: "5 × 455 + 1 × 300".
+function summarizeRates(lines) {
+  const counts = [];
+  for (const l of lines) {
+    const c = counts.find(x => Math.abs(x.rate - l.rate) < EPS);
+    if (c) c.n++; else counts.push({ rate: l.rate, n: 1 });
+  }
+  return counts.map(c => `${c.n} × ${fmt(c.rate)}`).join(' + ');
 }
 
 // Peças de manifold (mergers na coleta, splitters na distribuição).
@@ -512,8 +630,8 @@ function buildGraph(plan, cap) {
       group: slot ? slot.group : null,
     });
   });
-  view.groups.forEach(v => {
-    if (v.donorEdge === null) v.donorEdge = view.feeds.find(fv => fv.group === view.groups.indexOf(v)).partEdge;
+  view.groups.forEach((v, gi) => {
+    if (v.donorEdge === null) v.donorEdge = view.feeds.find(fv => fv.group === gi).partEdge;
   });
 
   plan.leftovers.forEach(l => {
@@ -576,15 +694,61 @@ function generatePlans(srcLines, dstLines, cap, policy) {
     ...extra,
   });
 
-  const k = Math.min(S.length, D.length);
-  const direct = D.slice(0, k).map((d, i) => ({ dst: d, mains: [S[i]] }));
-  plans.push(mk('direto', 'direct', 'Ligação direta', direct, [], S.slice(k),
+  // Melhor encaixe: cada destino (do maior pro menor) pega a menor linha que o cobre sozinha;
+  // se nenhuma cobre, pega a maior que sobrou. Com linhas iguais dá o mesmo que parear em ordem.
+  const avail = S.slice();
+  const fit = [];
+  for (const d of D) {
+    if (!avail.length) break;
+    const covering = avail.filter(l => l.rate + EPS >= d.rate);
+    const pick = covering.length ? covering[covering.length - 1] : avail[0];
+    avail.splice(avail.indexOf(pick), 1);
+    fit.push({ dst: d, mains: [pick], deficit: Math.max(0, d.rate - pick.rate) });
+  }
+  const direct = fit.map(f => ({ dst: f.dst, mains: f.mains }));
+  plans.push(mk('direto', 'direct', 'Ligação direta', direct, [], avail.slice(),
     { sub: 'Uma linha de origem em cada destino, sem peças no meio. O que não cabe represa.' }));
   if (direct.some(f => f.mains[0].rate > f.dst.rate + EPS)) {
     plans.push(mk('direto-sink', 'direct', 'Ligação direta, excesso pro sink',
-      direct.map(f => ({ ...f, overflow: f.mains[0].rate > f.dst.rate + EPS })), [], S.slice(k),
+      direct.map(f => ({ ...f, overflow: f.mains[0].rate > f.dst.rate + EPS })), [], avail.slice(),
       { sub: 'Smart Splitter com overflow antes de cada destino que recebe mais do que consome.' }));
   }
+
+  // Complemento: divide doadoras do pool entre os destinos com déficit.
+  const seenSig = new Set();
+  const donorPlans = (base, pool, multi, tag) => {
+    pool = pool.slice().sort((a, b) => b.rate - a.rate);
+    const needs = base.filter(f => f.deficit > EPS).sort((a, b) => b.deficit - a.deficit);
+    let found = 0;
+    for (let kd = 1; needs.length && kd <= pool.length && found < 3; kd++) {
+      const groups = tryDonors(needs, pool, kd, cap);
+      if (!groups) continue;
+      const sig = JSON.stringify([base.map(f => [f.dst.id, f.mains.map(l => l.id)]), groups.map(gr => [gr.donor.id, gr.members.map(f => f.dst.id)])]);
+      if (seenSig.has(sig)) continue;
+      seenSig.add(sig);
+      found++;
+      const allDirect = groups.every(gr => gr.division.direct);
+      const variants = allDirect ? ['direct'] : ['sink', 'loop'];
+      const used = new Set(groups.map(gr => gr.donor.id));
+      for (const v of variants) {
+        const gs = groups.map(gr => ({
+          donor: gr.donor, members: gr.members.map(f => f.dst.id), maxDeficit: gr.maxDeficit,
+          division: gr.division, mode: gr.division.direct ? 'direct' : v,
+          tree: gr.division.tree, p: gr.division.p, n: gr.division.n,
+        }));
+        const nd = `${kd} doadora${kd > 1 ? 's' : ''}`;
+        const title = (multi ? 'Juntar linhas + complemento' : 'Complemento') + ` com ${nd}`;
+        const sub = v === 'direct'
+          ? `Cada doadora é dividida em partes iguais só com splitters, uma parte por destino.`
+          : v === 'sink'
+            ? `Divide a doadora num número que o splitter alcança e manda as partes a mais pro sink.`
+            : `Balancer com loop: divisão exata, sem sink. A sobra represa na doadora.`;
+        plans.push(mk(`doadora${tag}-${kd}-${v}`, 'donor', title + (v === 'sink' ? ', partes a mais pro sink' : v === 'loop' ? ', balancer com loop' : ''),
+          base.map(f => ({ dst: f.dst, mains: f.mains, deficit: f.deficit })), gs,
+          pool.filter(l => !used.has(l.id)), { sub, multi }));
+      }
+    }
+  };
 
   const s = S[0].rate;
   const full = S.filter(l => Math.abs(l.rate - s) < EPS);
@@ -605,38 +769,9 @@ function generatePlans(srcLines, dstLines, cap, policy) {
       const mains = full.slice(i, i + floorQ[j]); i += floorQ[j];
       return { dst: d, mains, deficit: Math.max(0, d.rate - floorQ[j] * s) };
     });
-    const pool = full.slice(i).concat(rest).sort((a, b) => b.rate - a.rate);
-    const needs = base.filter(f => f.deficit > EPS).sort((a, b) => b.deficit - a.deficit);
-    const multi = floorQ.some(q => q > 1);
-    let found = 0;
-    for (let kd = 1; needs.length && kd <= pool.length && found < 3; kd++) {
-      const groups = tryDonors(needs, pool, kd, cap);
-      if (!groups) continue;
-      found++;
-      const allDirect = groups.every(gr => gr.division.direct);
-      const variants = allDirect ? ['direct'] : ['sink', 'loop'];
-      const used = new Set(groups.map(gr => gr.donor.id));
-      for (const v of variants) {
-        const gs = groups.map(gr => {
-          const mode = gr.division.direct ? 'direct' : v;
-          return {
-            donor: gr.donor, members: gr.members.map(f => f.dst.id), maxDeficit: gr.maxDeficit,
-            division: gr.division, mode, tree: gr.division.tree, p: gr.division.p, n: gr.division.n,
-          };
-        });
-        const nd = `${kd} doadora${kd > 1 ? 's' : ''}`;
-        const title = (multi ? 'Juntar linhas + complemento' : 'Complemento') + ` com ${nd}`;
-        const sub = v === 'direct'
-          ? `Cada doadora é dividida em partes iguais só com splitters, uma parte por destino.`
-          : v === 'sink'
-            ? `Divide a doadora num número que o splitter alcança e manda as partes a mais pro sink.`
-            : `Balancer com loop: divisão exata, sem sink. A sobra represa na doadora.`;
-        plans.push(mk(`doadora-${kd}-${v}`, 'donor', title + (v === 'sink' ? ', partes a mais pro sink' : v === 'loop' ? ', balancer com loop' : ''),
-          base.map(f => ({ dst: f.dst, mains: f.mains, deficit: f.deficit })), gs,
-          pool.filter(l => !used.has(l.id)), { sub, multi }));
-      }
-    }
+    donorPlans(base, full.slice(i).concat(rest), floorQ.some(q => q > 1), '');
   }
+  if (fit.length === D.length) donorPlans(fit, avail, false, '-encaixe');
   return plans;
 }
 
@@ -646,26 +781,27 @@ function rankPlans(evaluated) {
     (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
 }
 
-// Plano completo a partir das entradas.
+// Plano completo a partir das entradas. srcGroups: [{ mode: 'machines'|'total', count, rate, per }].
 function computePlan(input) {
   const cap = input.cap;
   const policy = input.policy || 'represar';
   const conv = input.conv || 'k-1';
-  const src = groupLines(input.srcCount, input.srcRate, cap, input.srcPer);
+  const srcGroups = input.srcGroups || [{ mode: 'machines', count: input.srcCount, rate: input.srcRate, per: input.srcPer }];
+  const src = buildSourceLines(srcGroups, cap);
   const dst = groupLines(input.dstCount, input.dstRate, cap, input.dstPer);
   const alternatives = rankPlans(generatePlans(src.lines, dst.lines, cap, policy).map(p => evaluatePlan(p, cap)));
   const supply = src.total, demand = dst.total;
 
-  const warnings = [];
-  if (src.machineOverCap) warnings.push({ level: 'bad', text: `Uma máquina de origem sozinha (${fmt(input.srcRate)}/min) já passa da esteira ${input.belt} (${fmt(cap)}/min).` });
-  else if (src.overCap) warnings.push({ level: 'bad', text: `Coleta: ${src.perLine} máquinas por linha dão ${fmt(src.lineRate)}/min, acima da esteira ${input.belt} (${fmt(cap)}/min). O máximo é ${src.auto}.` });
+  const warnings = [...src.warnings];
   if (dst.machineOverCap) warnings.push({ level: 'bad', text: `Uma máquina de destino sozinha (${fmt(input.dstRate)}/min) já passa da esteira ${input.belt} (${fmt(cap)}/min).` });
   else if (dst.overCap) warnings.push({ level: 'bad', text: `Distribuição: ${dst.perLine} máquinas por linha pedem ${fmt(dst.lineRate)}/min, acima da esteira ${input.belt} (${fmt(cap)}/min). O máximo é ${dst.auto}.` });
   if (demand > supply + EPS) {
     warnings.push({ level: 'bad', text: `A demanda (${fmt(demand)}/min) é maior que a oferta (${fmt(supply)}/min). A oferta sustenta no máximo ${Math.floor(supply / input.dstRate + EPS)} máquinas de destino.` });
   }
-  const sp = src.lines.find(l => l.partial);
-  if (sp) warnings.push({ level: 'warn', text: `Coleta: a última linha fica incompleta, com ${sp.machines} máquina${sp.machines > 1 ? 's' : ''} (${fmt(sp.rate)}/min).` });
+  if (src.packed) {
+    const mixed = src.lines.filter(l => l.partial && l.comp && !l.comp[0].total);
+    warnings.push({ level: 'warn', text: `Coleta: ${mixed.length === 1 ? 'uma linha fica' : `${mixed.length} linhas ficam`} com as máquinas que sobraram (${mixed.map(l => `${lineComp(l)} = ${fmt(l.rate)}/min`).join('; ')}).` });
+  }
   const dp = dst.lines.find(l => l.partial);
   if (dp) warnings.push({ level: 'warn', text: `Distribuição: a última linha fica incompleta, com ${dp.machines} máquina${dp.machines > 1 ? 's' : ''} (${fmt(dp.rate)}/min).` });
 
@@ -693,42 +829,71 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { BELTS, groupLines, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { BELTS, groupLines, buildSourceLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
 <script>
 const $ = id => document.getElementById(id);
-const DEFAULTS = { item: 'Barra de ferro', srcCount: '42', srcRate: '65', dstCount: '60', dstRate: '40', srcPer: '', dstPer: '', belt: 'Mk4', policy: 'represar', conv: 'k-1' };
+const DEFAULTS = {
+  item: 'Barra de ferro',
+  src: [{ mode: 'machines', count: '42', rate: '65', per: '' }],
+  dstCount: '60', dstRate: '40', dstPer: '', belt: 'Mk4', policy: 'represar', conv: 'k-1',
+};
+const STORE = 'sf-balancer:v2';
 let selectedKey = null;
 
 $('belt').innerHTML = BELTS.map(b => `<option value="${b.id}">${b.id}, ${fmt(b.cap)}/min</option>`).join('');
-$('belt').value = 'Mk4';
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const O = l => `O${l.id + 1}`;
 const Dn = l => `D${l.id + 1}`;
 
+// ---- Linhas de origem editáveis ----
+function addSrcRow(v = { mode: 'machines', count: '', rate: '', per: '' }) {
+  const frag = $('srcRowTpl').content.cloneNode(true);
+  const els = [...frag.children];
+  const row = { els, mode: els[0], count: els[1], x: els[2], rate: els[3], per: els[4], rm: els[5] };
+  row.mode.value = v.mode; row.count.value = v.count; row.rate.value = v.rate; row.per.value = v.per;
+  row.mode.addEventListener('change', () => syncRow(row));
+  row.rm.addEventListener('click', () => { els.forEach(e => e.remove()); srcRows.splice(srcRows.indexOf(row), 1); syncRm(); render(); });
+  $('srcRows').append(...els);
+  srcRows.push(row);
+  syncRow(row);
+  syncRm();
+  return row;
+}
+function syncRow(row) {
+  const total = row.mode.value === 'total';
+  [row.count, row.x, row.per].forEach(e => e.classList.toggle('hide', total));
+  row.rate.setAttribute('aria-label', total ? 'Total por minuto' : 'Produção por máquina por minuto');
+  row.rate.placeholder = total ? 'total /min' : '';
+}
+function syncRm() { srcRows.forEach(r => { r.rm.disabled = srcRows.length === 1; }); }
+const srcRows = [];
+
 function readInput() {
-  const nums = {};
   let valid = true;
-  for (const [id, opt] of [['srcCount', false], ['srcRate', false], ['dstCount', false], ['dstRate', false], ['srcPer', true], ['dstPer', true]]) {
-    const el = $(id);
+  const check = (el, opt) => {
     const raw = el.value.trim();
     const v = parseNum(raw);
     const bad = opt ? (raw !== '' && !(v >= 1)) : !(v > 0);
     el.classList.toggle('invalid', bad);
     if (bad) valid = false;
-    nums[id] = raw === '' && opt ? 0 : v;
-  }
+    return raw === '' && opt ? 0 : v;
+  };
+  const srcGroups = srcRows.map(r => {
+    const mode = r.mode.value;
+    if (mode === 'total') { r.count.classList.remove('invalid'); r.per.classList.remove('invalid'); return { mode, rate: check(r.rate, false) }; }
+    return { mode, count: Math.floor(check(r.count, false)), rate: check(r.rate, false), per: check(r.per, true) };
+  });
+  const dstCount = check($('dstCount'), false), dstRate = check($('dstRate'), false), dstPer = check($('dstPer'), true);
   const belt = BELTS.find(b => b.id === $('belt').value);
   return {
     valid,
     input: {
       item: $('item').value.trim() || 'Item',
-      srcCount: Math.floor(nums.srcCount), srcRate: nums.srcRate,
-      dstCount: Math.floor(nums.dstCount), dstRate: nums.dstRate,
-      srcPer: nums.srcPer, dstPer: nums.dstPer,
+      srcGroups, dstCount: Math.floor(dstCount), dstRate, dstPer,
       belt: belt.id, cap: belt.cap,
       policy: document.querySelector('input[name=policy]:checked').value,
       conv: document.querySelector('input[name=conv]:checked').value,
@@ -736,100 +901,136 @@ function readInput() {
   };
 }
 
+function saveState() {
+  const state = {
+    item: $('item').value,
+    src: srcRows.map(r => ({ mode: r.mode.value, count: r.count.value, rate: r.rate.value, per: r.per.value })),
+    dstCount: $('dstCount').value, dstRate: $('dstRate').value, dstPer: $('dstPer').value,
+    belt: $('belt').value,
+    policy: document.querySelector('input[name=policy]:checked').value,
+    conv: document.querySelector('input[name=conv]:checked').value,
+    selectedKey,
+  };
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* sem storage, segue sem lembrar */ }
+}
+function loadState(state) {
+  $('item').value = state.item;
+  srcRows.splice(0).forEach(r => r.els.forEach(e => e.remove()));
+  (state.src && state.src.length ? state.src : DEFAULTS.src).forEach(v => addSrcRow(v));
+  $('dstCount').value = state.dstCount; $('dstRate').value = state.dstRate; $('dstPer').value = state.dstPer;
+  $('belt').value = BELTS.some(b => b.id === state.belt) ? state.belt : 'Mk4';
+  const pol = document.querySelector(`input[name=policy][value="${state.policy}"]`);
+  if (pol) pol.checked = true;
+  const conv = document.querySelector(`input[name=conv][value="${state.conv}"]`);
+  if (conv) conv.checked = true;
+  selectedKey = state.selectedKey || null;
+}
+
+// ---- Render ----
 function render() {
   const { valid, input } = readInput();
   const out = $('out');
+  saveState();
   if (!valid) {
-    $('route').textContent = '';
     $('ledger').innerHTML = '';
-    out.innerHTML = `<p class="muted">Os campos marcados em vermelho precisam de um número positivo.</p>`;
+    $('warns').innerHTML = '';
+    out.innerHTML = `<p class="lead" style="margin-top:24px">Os campos marcados em vermelho precisam de um número positivo.</p>`;
     return;
   }
   const p = computePlan(input);
-  $('srcPerHint').innerHTML = `Automático: ${p.src.auto} (${fmt(p.cap)} ÷ ${fmt(input.srcRate)}).` + (input.srcPer ? ` <button class="textbtn" type="button" data-clear="srcPer">Usar o automático</button>` : '');
-  $('dstPerHint').innerHTML = `Automático: ${p.dst.auto} (${fmt(p.cap)} ÷ ${fmt(input.dstRate)}).` + (input.dstPer ? ` <button class="textbtn" type="button" data-clear="dstPer">Usar o automático</button>` : '');
-  $('route').innerHTML = `<b>${p.src.lines.length}</b> linhas de origem de ${fmt(p.src.lineRate)}/min para <b>${p.dst.lines.length}</b> linhas de destino de ${fmt(p.dst.lineRate)}/min, em esteira ${input.belt}`;
+
+  p.src.groups.forEach(g => {
+    const row = srcRows[g.gi];
+    if (g.mode === 'machines') row.per.placeholder = `auto ${g.auto}`;
+  });
+  $('dstPer').placeholder = `auto ${p.dst.auto}`;
+  $('dstHint').textContent = `${p.dst.lines.length} linha${p.dst.lines.length > 1 ? 's' : ''}: ${summarizeRates(p.dst.lines)} /min.`;
+
   const surplus = p.supply - p.demand;
   $('ledger').innerHTML = `
     <div><dt>Oferta</dt><dd>${fmt(p.supply)}<small>/min</small></dd></div>
     <div><dt>Demanda</dt><dd>${fmt(p.demand)}<small>/min</small></dd></div>
     <div><dt>${surplus >= 0 ? 'Sobra' : 'Falta'}</dt><dd class="${surplus < 0 ? 'neg' : ''}">${fmt(Math.abs(surplus))}<small>/min</small></dd></div>`;
+  $('warns').innerHTML = p.warnings.map(w => `<div class="warn ${w.level === 'bad' ? 'bad' : ''}">${esc(w.text)}</div>`).join('');
 
   const alts = p.alternatives;
-  if (!alts.length) { out.innerHTML = `<p class="muted">Sem linhas de origem ou de destino para ligar.</p>`; return; }
-  let alt = alts.find(a => a.key === selectedKey) || alts[0];
+  if (!alts.length) { out.innerHTML = `<p class="lead" style="margin-top:24px">Sem linhas de origem ou de destino para ligar.</p>`; return; }
+  const alt = alts.find(a => a.key === selectedKey) || alts[0];
 
-  let html = '';
-  if (p.warnings.length) html += `<div class="warns">${p.warnings.map(w => `<div class="warn ${w.level === 'bad' ? 'bad' : ''}">${esc(w.text)}</div>`).join('')}</div>`;
-  html += altsSection(p, alt);
-  html += `<section><h2>Fluxo em cada esteira</h2>
-    <p class="lead">${esc(alt.title)}. Espessura e velocidade dos itens acompanham a taxa real em regime, com mergers alternando entre as entradas.</p>
-    <div class="canvas">${flowSvg(p, alt)}</div>
-    <div class="legend">
-      <span><i style="background:var(--flow)"></i>linha principal</span>
-      <span><i style="background:var(--donor)"></i>doadora</span>
-      <span><i style="background:var(--sink)"></i>pro sink</span>
-      <span><i class="held"></i>represado na origem</span>
-      <span><i style="background:var(--ficsit);width:9px;height:9px;transform:rotate(45deg)"></i>merger ou splitter</span>
+  out.innerHTML = `
+    <div class="work">
+      <aside>
+        <h2 class="section-title">Alternativas</h2>
+        <p class="lead">Primeiro as que enchem todos os destinos, depois as com menos peças e menos sink.</p>
+        <div class="alts" role="radiogroup" aria-label="Alternativas">${alts.map((a, i) => altCard(a, i, alt)).join('')}</div>
+      </aside>
+      <section>
+        <h2 class="section-title">${esc(alt.title)}</h2>
+        <p class="lead">${esc(alt.sub)} A espessura e a velocidade dos itens seguem a taxa real, com os mergers alternando entre as entradas.</p>
+        <div class="sheet">
+          ${flowSvg(p, alt)}
+          <div class="legend">
+            <span><i style="background:var(--flow)"></i>linha principal</span>
+            <span><i style="background:var(--donor)"></i>doadora</span>
+            <span><i style="background:var(--sink)"></i>pro sink</span>
+            <span><i class="held"></i>represado na origem</span>
+            <span><i class="piece"></i>merger, splitter</span>
+          </div>
+          ${alt.warnings.map(w => `<div class="warn" style="margin-top:10px">${esc(w)}</div>`).join('')}
+          <div class="titleblock num">
+            <div>Item<b>${esc(input.item)}</b></div>
+            <div>Esteira<b>${input.belt}, ${fmt(p.cap)}/min</b></div>
+            <div>Meio<b>${alt.caseLabel}</b></div>
+          </div>
+        </div>
+      </section>
     </div>
-    ${alt.warnings.map(w => `<div class="warn" style="margin-top:10px">${esc(w)}</div>`).join('')}
-  </section>`;
-  html += `<div class="split">
-    <section><h2>Balanço por linha</h2>${balanceTable(alt)}</section>
-    <section><h2>Passo a passo</h2><ol class="steps">${planSteps(p, alt).map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
-  </div>`;
-  html += balancerSection(p, alt);
-  html += piecesTable(p, alt);
-  out.innerHTML = html;
+    <div class="pair">
+      <section class="plate"><h2 class="section-title">Balanço por linha</h2>${balanceTable(alt)}</section>
+      <section class="plate"><h2 class="section-title">Passo a passo</h2><ol class="steps">${planSteps(p, alt).map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
+    </div>
+    <div class="pair">
+      ${balancerSection(p, alt)}
+      ${piecesTable(p, alt)}
+    </div>`;
 }
 
-function altsSection(p, sel) {
-  const rows = p.alternatives.map((a, i) => {
-    const pc = a.pieces;
-    const parts = [];
-    if (pc.mergers) parts.push(`${pc.mergers} merger${pc.mergers > 1 ? 's' : ''}`);
-    if (pc.splitters) parts.push(`${pc.splitters} splitter${pc.splitters > 1 ? 's' : ''}`);
-    if (pc.smart) parts.push(`${pc.smart} smart`);
-    const fullCount = [...a.dests.values()].filter(d => d.short < 0.05).length;
-    return `<tr class="alt ${a.key === sel.key ? 'sel' : ''}" data-key="${a.key}">
-      <td><label><input type="radio" name="alt" value="${a.key}" ${a.key === sel.key ? 'checked' : ''}>
-        <span class="alt-title">${esc(a.title)}</span>${i === 0 ? '<span class="tag">recomendada</span>' : ''}
-        <span class="alt-sub">${esc(a.sub)} <span class="case">(${a.caseLabel})</span></span></label></td>
-      <td class="${a.full ? 'ok' : 'bad'}">${fullCount} de ${a.dests.size}</td>
-      <td>${fmt(a.served)}</td>
-      <td>${fmt(a.sinkRate)}</td>
-      <td>${fmt(a.held)}</td>
-      <td>${fmt(a.extraRate)}</td>
-      <td class="l">${parts.join(', ') || 'nenhuma'}</td>
-    </tr>`;
-  }).join('');
-  return `<section><h2>Alternativas</h2>
-    <p class="lead">Escolha uma para ver o fluxo. Ordem: atende todos os destinos primeiro, depois menos peças, depois menos sink.</p>
-    <div class="tablewrap"><table class="alts">
-      <tr><th>Alternativa</th><th>Destinos cheios</th><th>Entregue /min</th><th>Sink /min</th><th>Represa /min</th><th>Linha extra /min</th><th class="l">Peças no meio</th></tr>
-      ${rows}
-    </table></div></section>`;
+function altCard(a, i, sel) {
+  const pc = a.pieces;
+  const fullCount = [...a.dests.values()].filter(d => d.short < 0.05).length;
+  const on = a.key === sel.key;
+  return `<button class="alt ${on ? 'sel' : ''}" type="button" role="radio" aria-checked="${on}" data-key="${a.key}">
+    ${i === 0 ? '<span class="rec">Recomendada</span>' : ''}
+    <span class="alt-title">${esc(a.title)}</span>
+    <span class="alt-sub">${a.caseLabel}</span>
+    <dl class="stats">
+      <div><dt>Cheios</dt><dd class="${a.full ? 'ok' : 'bad'}">${fullCount}/${a.dests.size}</dd></div>
+      <div><dt>Sink</dt><dd>${fmt(a.sinkRate)}</dd></div>
+      <div><dt>Represa</dt><dd>${fmt(a.held)}</dd></div>
+      <div><dt>Peças</dt><dd>${pc.mergers + pc.splitters + pc.smart}</dd></div>
+    </dl>
+  </button>`;
 }
 
 function balanceTable(a) {
-  const dest = (id) => {
+  const dest = id => {
     const v = a.view;
     const fv = v.feeds.find(f => f.f.mains.some(l => l.id === id));
     if (fv) return Dn(fv.f.dst);
     const gv = v.groups.find(g => g.gr.donor.id === id);
-    if (gv) return 'doadora de ' + gv.gr.members.map(m => `D${m + 1}`).join(', ');
+    if (gv) return 'doa para ' + gv.gr.members.map(m => `D${m + 1}`).join(', ');
     return { represar: 'parada', sink: 'sink', extra: 'linha extra' }[a.policy];
   };
   const srcRows = [...a.sources.values()].sort((x, y) => x.line.id - y.line.id).map(s => `<tr>
-    <td>${O(s.line)}</td><td class="l">${dest(s.line.id)}</td><td>${fmt(s.line.rate)}</td><td>${fmt(s.out)}</td>
-    <td class="${s.held > 0.05 ? '' : 'muted'}">${fmt(s.held)}</td></tr>`).join('');
+    <td>${O(s.line)} <span class="sm">${esc(lineComp(s.line))}</span></td><td class="l">${dest(s.line.id)}</td><td>${fmt(s.line.rate)}</td><td>${fmt(s.out)}</td>
+    <td class="${s.held > 0.05 ? '' : 'dim'}">${fmt(s.held)}</td></tr>`).join('');
   const dstRows = [...a.dests.values()].sort((x, y) => x.line.id - y.line.id).map(d => `<tr>
     <td>${Dn(d.line)}</td><td>${fmt(d.line.rate)}</td><td>${fmt(d.got)}</td>
     <td class="${d.short > 0.05 ? 'bad' : 'ok'}">${d.short > 0.05 ? `faltam ${fmt(d.short)} (${fmt(100 * d.got / d.line.rate)}%)` : 'cheio'}</td></tr>`).join('');
   return `<div class="tablewrap"><table>
     <tr><th>Origem</th><th class="l">Vai para</th><th>Produz</th><th>Sai</th><th>Represa</th></tr>${srcRows}
   </table></div>
-  <div class="tablewrap" style="margin-top:14px"><table>
+  <div class="tablewrap" style="margin-top:16px"><table>
     <tr><th>Destino</th><th>Demanda</th><th>Recebe</th><th>Situação</th></tr>${dstRows}
   </table></div>
   <p class="hint">Sink: ${fmt(a.sinkRate)}/min${a.pieces.sinkBelts > 1 ? ` em ${a.pieces.sinkBelts} esteiras` : ''}. Represa: ${fmt(a.held)}/min. Linha extra: ${fmt(a.extraRate)}/min.</p>`;
@@ -839,8 +1040,15 @@ function planSteps(p, a) {
   const steps = [];
   const pieceNote = p.conv === 'k' ? 'k' : 'k−1';
   const fl = e => a.sim.flow[e];
-  steps.push(`Coleta: agrupe as ${p.input.srcCount} máquinas de origem em ${p.src.lines.length} linha${p.src.lines.length > 1 ? 's' : ''} de até ${p.src.perLine} (${fmt(p.src.lineRate)}/min), com mergers (${pieceNote} por linha).`);
-  steps.push(`Distribuição: monte ${p.dst.lines.length} linha${p.dst.lines.length > 1 ? 's' : ''} de entrada de até ${p.dst.perLine} máquinas (${fmt(p.dst.lineRate)}/min), com splitters (${pieceNote} por linha).`);
+  for (const g of p.src.groups) {
+    const lbl = p.src.groups.length > 1 ? `Grupo ${g.gi + 1}: ` : '';
+    if (g.mode === 'total') steps.push(`${lbl}fluxo de ${fmt(g.rate)}/min dividido em ${g.lines} esteira${g.lines > 1 ? 's' : ''} de até ${fmt(p.cap)}/min.`);
+    else if (g.fullLines) steps.push(`${lbl}${g.count} máquinas de ${fmt(g.rate)}/min em ${g.fullLines} linha${g.fullLines > 1 ? 's' : ''} de ${g.perLine} (${fmt(g.lineRate)}/min), com mergers (${pieceNote} por linha)${g.rem ? `. Sobra${g.rem > 1 ? 'm' : ''} ${g.rem} máquina${g.rem > 1 ? 's' : ''}` : ''}.`);
+    else steps.push(`${lbl}${g.count} máquina${g.count > 1 ? 's' : ''} de ${fmt(g.rate)}/min, sem linha cheia.`);
+  }
+  const mixed = p.src.lines.map((l, i) => ({ ...l, id: i })).filter(l => l.partial && l.comp && !l.comp[0].total);
+  if (mixed.length) steps.push(`Linhas com as máquinas que sobraram: ${mixed.map(l => `${O(l)} = ${lineComp(l)} (${fmt(l.rate)}/min)`).join('; ')}.`);
+  steps.push(`Distribuição: ${p.dst.lines.length} linha${p.dst.lines.length > 1 ? 's' : ''} de entrada de até ${p.dst.perLine} máquinas (${fmt(p.dst.lineRate)}/min), com splitters (${pieceNote} por linha).`);
   for (const v of a.view.groups) {
     const gr = v.gr, d = gr.division;
     const who = gr.members.map(m => `D${m + 1}`).join(', ');
@@ -871,11 +1079,11 @@ function planSteps(p, a) {
 
 function balancerSection(p, a) {
   const groups = a.view.groups.filter(v => v.gr.p > 1);
-  if (!groups.length) return '';
-  let html = `<section><h2>Load balancer</h2>`;
+  if (!groups.length) return `<section class="plate"><h2 class="section-title">Load balancer</h2><p class="dim" style="margin:0">Esta alternativa não divide nenhuma linha.</p></section>`;
+  let html = `<section class="plate"><h2 class="section-title">Load balancer</h2>`;
   for (const v of groups) {
     const gr = v.gr, d = gr.division;
-    html += `<h3>Doadora ${O(gr.donor)}, ${fmt(gr.donor.rate)}/min em ${gr.p} partes</h3>`;
+    html += `<h3 class="donor-title">Doadora ${O(gr.donor)}, ${fmt(gr.donor.rate)}/min em ${gr.p} partes</h3>`;
     if (d.direct) {
       html += `<div class="opt on"><ul>
         <li>Divisão direta: ${esc(describeTree(d.tree))}. ${d.tree.splitters} splitter${d.tree.splitters !== 1 ? 's' : ''}, sem loop.</li>
@@ -886,13 +1094,13 @@ function balancerSection(p, a) {
         <div class="opt ${gr.mode === 'loop' ? 'on' : ''}"><h4>Com loop</h4><ul>
           <li>${esc(describeTree(d.tree))}; ${d.loop.recirculate} saída${d.loop.recirculate > 1 ? 's voltam' : ' volta'} para um merger antes do primeiro splitter.</li>
           <li>${d.tree.splitters} splitters e 1 merger.</li>
-          <li>Cada parte: até ${fmt(d.loop.part)}/min (1/${gr.p} exato). Déficit: ${fmt(gr.maxDeficit)}/min ${d.loop.ok ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'}</li>
-          <li>Esteira entrando na árvore: ${fmt(d.loop.beltLoad)}/min ${d.loop.beltOk ? '<span class="ok">✓ cabe</span>' : `<span class="bad">✗ passa da ${p.input.belt}</span>`}</li>
+          <li>Cada parte: até ${fmt(d.loop.part)}/min. Déficit: ${fmt(gr.maxDeficit)}/min ${d.loop.ok ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'}</li>
+          <li>Entrada da árvore: ${fmt(d.loop.beltLoad)}/min ${d.loop.beltOk ? '<span class="ok">✓ cabe</span>' : `<span class="bad">✗ passa da ${p.input.belt}</span>`}</li>
         </ul>${treeSvg(d.tree, gr.p, 'loop')}</div>
         <div class="opt ${gr.mode === 'sink' ? 'on' : ''}"><h4>Em ${d.n} partes com sink</h4><ul>
           <li>${esc(describeTree(d.tree))}. ${d.tree.splitters} splitters, sem loop.</li>
           <li>${gr.p} partes vão para os mergers e ${d.sink.sinkParts} pro sink.</li>
-          <li>Cada parte: ${fmt(d.sink.part)}/min (1/${d.n}). Déficit: ${fmt(gr.maxDeficit)}/min ${d.sink.ok ? '<span class="ok">✓</span>' : '<span class="bad">✗ não cobre</span>'}</li>
+          <li>Cada parte: ${fmt(d.sink.part)}/min. Déficit: ${fmt(gr.maxDeficit)}/min ${d.sink.ok ? '<span class="ok">✓</span>' : '<span class="bad">✗ não cobre</span>'}</li>
         </ul>${treeSvg(d.tree, gr.p, 'sink')}</div>
       </div>`;
     }
@@ -902,31 +1110,24 @@ function balancerSection(p, a) {
 
 function piecesTable(p, a) {
   const conv = p.conv === 'k' ? 'k' : 'k−1';
-  const lineDesc = g => {
-    const full = g.lines.filter(l => !l.partial).length;
-    const part = g.lines.find(l => l.partial);
-    let s = `${full} × ${g.perLine} máquinas, ${fmt(g.lineRate)}/min`;
-    if (part) s += ` + 1 × ${part.machines}, ${fmt(part.rate)}/min`;
-    return s;
-  };
   const pc = a.pieces;
-  return `<section><h2>Peças por trecho</h2>
+  return `<section class="plate"><h2 class="section-title">Peças por trecho</h2>
   <div class="tablewrap"><table>
-    <tr><th>Trecho</th><th class="l">Linhas</th><th>Mergers</th><th>Splitters</th><th>Smart splitters</th></tr>
-    <tr><td>Coleta</td><td class="l">${lineDesc(p.src)}</td><td>${p.collectMergers}</td><td>0</td><td>0</td></tr>
-    <tr><td>Meio</td><td class="l">${esc(a.title)}</td><td>${pc.mergers}</td><td>${pc.splitters}</td><td>${pc.smart}</td></tr>
-    <tr><td>Distribuição</td><td class="l">${lineDesc(p.dst)}</td><td>0</td><td>${p.distSplitters}</td><td>0</td></tr>
+    <tr><th>Trecho</th><th class="l">Linhas</th><th>Mergers</th><th>Splitters</th><th>Smart</th></tr>
+    <tr><td>Coleta</td><td class="l">${summarizeRates(p.src.lines)}</td><td>${p.collectMergers}</td><td>0</td><td>0</td></tr>
+    <tr><td>Meio</td><td class="l">${a.caseLabel}</td><td>${pc.mergers}</td><td>${pc.splitters}</td><td>${pc.smart}</td></tr>
+    <tr><td>Distribuição</td><td class="l">${summarizeRates(p.dst.lines)}</td><td>0</td><td>${p.distSplitters}</td><td>0</td></tr>
     <tr class="sum"><td>Total</td><td></td><td>${p.collectMergers + pc.mergers}</td><td>${p.distSplitters + pc.splitters}</td><td>${pc.smart}</td></tr>
   </table></div>
   <p class="hint">Manifolds contados como ${conv} peças por linha de k máquinas.${pc.smart ? ' Smart Splitter com a regra Overflow na saída do sink: só desvia o que o destino não puxa.' : ''}${pc.sinkBelts > 1 ? ` ${pc.sinkBelts} esteiras chegam no sink; junte com mergers ou use mais de um sink.` : ''}</p>
   </section>`;
 }
 
-// ---- Diagrama de fluxo ----
+// ---- Planta do fluxo ----
 function flowSvg(p, a) {
   const cap = p.cap, v = a.view, fl = e => (e === null || e === undefined ? 0 : a.sim.flow[e]);
-  const rowH = 52, boxW = 178, boxH = 38, W = 940, top = 8;
-  const xSrc = 0, xDst = W - boxW, xMerge = xDst - 40, xDiv = 400;
+  const rowH = 54, boxW = 184, boxH = 40, W = 960, top = 8;
+  const xSrc = 0, xDst = W - boxW, xMerge = xDst - 42, xDiv = 410;
 
   const srcOrder = [];
   const seen = new Set();
@@ -950,17 +1151,16 @@ function flowSvg(p, a) {
   const back = [], front = [];
   const curve = (x1, y1, x2, y2) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`;
   const belt = (d, f, color, layer = front) => {
-    if (f < 0.05) { layer.push(`<path d="${d}" fill="none" stroke="var(--rule)" stroke-width="2" stroke-dasharray="4 5"/>`); return; }
+    if (f < 0.05) { layer.push(`<path d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 5"/>`); return; }
     const w = 2.5 + 7 * Math.min(1, f / cap);
-    const dur = (21.2 / (14 + 70 * Math.min(1, f / cap))).toFixed(2);
-    layer.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${w.toFixed(1)}" stroke-opacity=".55"/>
+    const dur = (24 / (14 + 70 * Math.min(1, f / cap))).toFixed(2);
+    layer.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${w.toFixed(1)}" stroke-opacity=".35"/>
       <path class="items" style="--dur:${dur}s" d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(2, w * 0.55).toFixed(1)}"/>`);
   };
   const label = (x, y, text, color, anchor = 'start') =>
     front.push(`<text class="rate" x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${text}</text>`);
-  const merger = (x, y) => front.push(`<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="var(--bg)" stroke="var(--ficsit)" stroke-width="2"/>`);
+  const piece = (x, y) => front.push(`<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>`);
 
-  // Doadoras: linha até o divisor, depois uma parte para cada merger.
   v.groups.forEach(g => {
     const gr = g.gr;
     const y0 = ySrc.get(gr.donor.id);
@@ -968,99 +1168,101 @@ function flowSvg(p, a) {
     if (gr.p === 1) {
       const fv = members[0];
       belt(curve(xSrc + boxW, y0, xMerge, yDst.get(fv.f.dst.id)), fl(fv.partEdge), 'var(--donor)');
-      label(xMerge - 14, yDst.get(fv.f.dst.id) + 18, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
+      label(xMerge - 14, yDst.get(fv.f.dst.id) + 20, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
       return;
     }
     const ys = members.map(fv => yDst.get(fv.f.dst.id));
     const mid = (Math.min(...ys) + Math.max(...ys)) / 2 + (ys.length % 2 ? rowH / 2 : 0);
     const sy = Math.max(top + 12, Math.min(mid, H - 14));
-    belt(curve(xSrc + boxW, y0, xDiv - 16, sy), fl(g.donorEdge), 'var(--donor)');
+    belt(curve(xSrc + boxW, y0, xDiv - 22, sy), fl(g.donorEdge), 'var(--donor)');
     members.forEach(fv => {
       const y = yDst.get(fv.f.dst.id);
-      belt(curve(xDiv + 16, sy, xMerge, y), fl(fv.partEdge), 'var(--donor)');
-      label(xMerge - 14, y + 18, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
+      belt(curve(xDiv + 22, sy, xMerge, y), fl(fv.partEdge), 'var(--donor)');
+      label(xMerge - 14, y + 20, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
     });
     if (g.sinkEdges.length) {
       const f = g.sinkEdges.reduce((s, e) => s + fl(e), 0);
-      belt(curve(xDiv + 16, sy, xDst, ySink), f, 'var(--sink)', back);
-      label(xDiv + 26, sy + (ySink > sy ? 22 : -10), fmt(f) + ' pro sink', 'var(--sink)');
+      belt(curve(xDiv + 22, sy, xDst, ySink), f, 'var(--sink)', back);
+      label(xDiv + 30, sy + (ySink > sy ? 24 : -12), fmt(f) + ' pro sink', 'var(--sink)');
     }
     const txt = gr.mode === 'loop' ? `÷${gr.p} ↺` : `÷${gr.mode === 'sink' ? gr.n : gr.p}`;
-    front.push(`<rect x="${xDiv - 22}" y="${sy - 14}" width="44" height="28" rx="4" fill="var(--bg)" stroke="var(--ficsit)" stroke-width="2"/>
+    front.push(`<polygon points="${xDiv - 24},${sy - 15} ${xDiv + 16},${sy - 15} ${xDiv + 24},${sy - 7} ${xDiv + 24},${sy + 15} ${xDiv - 24},${sy + 15}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
       <text class="lbl" x="${xDiv}" y="${sy + 5}" text-anchor="middle" style="fill:var(--ficsit)">${txt}</text>`);
   });
 
-  // Linhas principais e merger/smart splitter de cada destino.
   v.feeds.forEach(fv => {
     const y = yDst.get(fv.f.dst.id);
     const via = fv.mergeNode !== null || fv.overflowNode !== null;
     fv.f.mains.forEach((l, i) => {
       const f = fl(fv.mainEdges[i]);
+      const held = a.sources.get(l.id).held;
       belt(curve(xSrc + boxW, ySrc.get(l.id), via ? xMerge : xDst, y), f, 'var(--flow)');
-      label(xSrc + boxW + 10, ySrc.get(l.id) - 9, fmt(f), 'var(--flow)');
+      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${ySrc.get(l.id) - 10}" style="fill:var(--flow)">${fmt(f)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">represa ${fmt(held)}</tspan>` : ''}</text>`);
     });
     if (via) {
       belt(`M${xMerge},${y} L${xDst},${y}`, fl(fv.outEdge), 'var(--flow)');
-      merger(xMerge, y);
+      piece(xMerge, y);
     }
     if (fv.overflowNode !== null) {
       belt(curve(xMerge, y, xDst, ySink), fl(fv.sinkEdge), 'var(--sink)', back);
-      if (fl(fv.sinkEdge) > 0.05) label(xMerge - 12, y + 20, fmt(fl(fv.sinkEdge)) + ' pro sink', 'var(--sink)', 'end');
+      if (fl(fv.sinkEdge) > 0.05) label(xMerge - 12, y + 22, fmt(fl(fv.sinkEdge)) + ' pro sink', 'var(--sink)', 'end');
     }
   });
 
-  // Sobras inteiras.
   v.leftovers.forEach(l => {
     const y0 = ySrc.get(l.line.id);
     if (l.edge === null) {
-      front.push(`<path d="M${xSrc + boxW},${y0} l26,0" stroke="var(--held)" stroke-width="3"/><path d="M${xSrc + boxW + 26},${y0 - 8} l0,16" stroke="var(--held)" stroke-width="3"/>`);
+      front.push(`<path d="M${xSrc + boxW},${y0} l28,0 M${xSrc + boxW + 28},${y0 - 9} l0,18" stroke="var(--held)" stroke-width="3" fill="none"/>
+        <text class="sm" x="${xSrc + boxW + 36}" y="${y0 + 4}">parada</text>`);
       return;
     }
     const isSink = a.g.edges[l.edge].to === v.sink;
-    belt(curve(xSrc + boxW, y0, xDst, isSink ? ySink : yExtra), fl(l.edge), isSink ? 'var(--sink)' : 'var(--muted)', back);
-    label(xSrc + boxW + 10, y0 - 9, fmt(fl(l.edge)), isSink ? 'var(--sink)' : 'var(--muted)');
+    belt(curve(xSrc + boxW, y0, xDst, isSink ? ySink : yExtra), fl(l.edge), isSink ? 'var(--sink)' : 'var(--ink-dim)', back);
+    label(xSrc + boxW + 10, y0 - 10, fmt(fl(l.edge)), isSink ? 'var(--sink)' : 'var(--ink-dim)');
   });
 
-  // Caixas de origem: barra mostra quanto sai e quanto represa.
   const boxes = [];
+  const plateBox = (x, y, stroke) => `<polygon points="${x},${y} ${x + boxW - 10},${y} ${x + boxW},${y + 10} ${x + boxW},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
   srcOrder.forEach(l => {
     const y = ySrc.get(l.id) - boxH / 2;
     const st = a.sources.get(l.id);
-    const color = donorIds.has(l.id) ? 'var(--donor)' : v.leftovers.some(x => x.line.id === l.id) ? 'var(--muted)' : 'var(--flow)';
+    const color = donorIds.has(l.id) ? 'var(--donor)' : v.leftovers.some(x => x.line.id === l.id) ? 'var(--held)' : 'var(--flow)';
     const outW = (boxW - 16) * st.out / Math.max(l.rate, EPS);
-    boxes.push(`<rect x="${xSrc}" y="${y}" width="${boxW}" height="${boxH}" rx="5" fill="var(--raised)" stroke="${color}" stroke-width="1.5"/>
-      <text class="lbl" x="${xSrc + 10}" y="${y + 19}">${O(l)}</text>
-      <text class="sm" x="${xSrc + boxW - 10}" y="${y + 18}" text-anchor="end">${st.held > 0.05 ? `represa ${fmt(st.held)}` : 'tudo sai'} · ${fmt(l.rate)}</text>
-      <rect x="${xSrc + 8}" y="${y + boxH - 11}" width="${boxW - 16}" height="5" rx="2" fill="url(#hatch)"/>
-      <rect x="${xSrc + 8}" y="${y + boxH - 11}" width="${outW.toFixed(1)}" height="5" rx="2" fill="${color}"/>`);
+    boxes.push(`${plateBox(xSrc, y, color)}
+      <text class="lbl" x="${xSrc + 10}" y="${y + 20}">${O(l)}</text>
+      <text class="sm" x="${xSrc + 40}" y="${y + 19}">${esc(lineComp(l))}</text>
+      <text class="rate" x="${xSrc + boxW - 12}" y="${y + 20}" text-anchor="end">${fmt(l.rate)}</text>
+      <rect x="${xSrc + 8}" y="${y + boxH - 11}" width="${boxW - 16}" height="5" fill="url(#hatch)"/>
+      <rect x="${xSrc + 8}" y="${y + boxH - 11}" width="${outW.toFixed(1)}" height="5" fill="${color}"/>
+      ${st.held > 0.05 ? `<title>${O(l)}: sai ${fmt(st.out)}, represa ${fmt(st.held)}</title>` : ''}`);
   });
   dstOrder.forEach(d => {
     const y = yDst.get(d.id) - boxH / 2;
     const st = a.dests.get(d.id);
     const fill = (boxW - 16) * Math.min(1, st.got / d.rate);
     const short = st.short > 0.05;
-    boxes.push(`<rect x="${xDst}" y="${y}" width="${boxW}" height="${boxH}" rx="5" fill="var(--raised)" stroke="${short ? 'var(--sink)' : 'var(--ok)'}" stroke-width="1.5"/>
-      <text class="lbl" x="${xDst + 10}" y="${y + 19}">${Dn(d)}</text>
-      <text class="sm" x="${xDst + boxW - 10}" y="${y + 18}" text-anchor="end" style="${short ? 'fill:var(--sink)' : ''}">${fmt(st.got)} de ${fmt(d.rate)}</text>
-      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${boxW - 16}" height="5" rx="2" fill="var(--rule)"/>
-      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${fill.toFixed(1)}" height="5" rx="2" fill="${short ? 'var(--sink)' : 'var(--ok)'}"/>`);
+    boxes.push(`${plateBox(xDst, y, short ? 'var(--sink)' : 'var(--ok)')}
+      <text class="lbl" x="${xDst + 10}" y="${y + 20}">${Dn(d)}</text>
+      <text class="rate" x="${xDst + boxW - 12}" y="${y + 20}" text-anchor="end" style="${short ? 'fill:var(--sink)' : ''}">${fmt(st.got)} de ${fmt(d.rate)}</text>
+      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${boxW - 16}" height="5" fill="var(--line)"/>
+      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${fill.toFixed(1)}" height="5" fill="${short ? 'var(--sink)' : 'var(--ok)'}"/>`);
   });
   if (hasSink) {
     const y = ySink - boxH / 2;
-    boxes.push(`<rect x="${xDst}" y="${y}" width="${boxW}" height="${boxH}" rx="5" fill="var(--raised)" stroke="var(--sink)" stroke-width="1.5"/>
-      <text class="lbl" x="${xDst + 10}" y="${y + 24}">Awesome Sink</text>
-      <text class="rate" x="${xDst + boxW - 10}" y="${y + 24}" text-anchor="end" style="fill:var(--sink)">${fmt(a.sinkRate)}/min</text>`);
+    boxes.push(`${plateBox(xDst, y, 'var(--sink)')}
+      <text class="lbl" x="${xDst + 10}" y="${y + 25}">Awesome Sink</text>
+      <text class="rate" x="${xDst + boxW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--sink)">${fmt(a.sinkRate)}/min</text>`);
   }
   if (hasExtra) {
     const y = yExtra - boxH / 2;
-    boxes.push(`<rect x="${xDst}" y="${y}" width="${boxW}" height="${boxH}" rx="5" fill="var(--raised)" stroke="var(--muted)" stroke-width="1.5"/>
-      <text class="lbl" x="${xDst + 10}" y="${y + 24}">Linha extra</text>
-      <text class="rate" x="${xDst + boxW - 10}" y="${y + 24}" text-anchor="end" style="fill:var(--muted)">${fmt(a.extraRate)}/min</text>`);
+    boxes.push(`${plateBox(xDst, y, 'var(--ink-dim)')}
+      <text class="lbl" x="${xDst + 10}" y="${y + 25}">Linha extra</text>
+      <text class="rate" x="${xDst + boxW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--ink-dim)">${fmt(a.extraRate)}/min</text>`);
   }
 
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Fluxo nas esteiras da alternativa escolhida">
     <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="5" height="5" fill="var(--rule)"/><rect width="2" height="5" fill="var(--held)"/></pattern></defs>
+      <rect width="5" height="5" fill="var(--line)"/><rect width="2" height="5" fill="var(--held)"/></pattern></defs>
     ${back.join('')}${front.join('')}${boxes.join('')}</svg>`;
 }
 
@@ -1071,7 +1273,7 @@ function treeSvg(tree, useful, kind) {
   const H = (tree.levels.length + 1) * levelH + 26;
   const countAt = lv => tree.factors.slice(0, lv).reduce((a, b) => a * b, 1);
   const xOf = (lv, i) => 10 + ((W - 20) / countAt(lv)) * (i + 0.5);
-  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="margin-top:10px" role="img" aria-label="Árvore de splitters">`;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="margin-top:10px;max-width:100%;height:auto" role="img" aria-label="Árvore de splitters">`;
   s += `<text x="${W / 2}" y="12" text-anchor="middle" class="sm">${kind === 'loop' ? 'entrada: doadora + retorno' : 'entrada: doadora'}</text>`;
   for (let lv = 0; lv <= tree.levels.length; lv++) {
     const y = 28 + lv * levelH;
@@ -1080,7 +1282,7 @@ function treeSvg(tree, useful, kind) {
       if (lv < tree.levels.length) {
         const ways = tree.factors[lv];
         for (let c = 0; c < ways; c++) s += `<line x1="${x}" y1="${y + 12}" x2="${xOf(lv + 1, i * ways + c)}" y2="${y + levelH - 4}" stroke="var(--donor)" stroke-width="2" opacity=".8"/>`;
-        s += `<rect x="${x - 12}" y="${y - 4}" width="24" height="18" rx="3" fill="var(--bg)" stroke="var(--ficsit)" stroke-width="1.5"/><text x="${x}" y="${y + 10}" text-anchor="middle" class="sm" style="fill:var(--ficsit)">${ways}</text>`;
+        s += `<rect x="${x - 12}" y="${y - 4}" width="24" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text x="${x}" y="${y + 10}" text-anchor="middle" class="sm" style="fill:var(--ficsit)">${ways}</text>`;
       } else {
         const extra = i >= useful;
         s += `<circle cx="${x}" cy="${y + 2}" r="6" fill="${extra ? 'var(--sink)' : 'var(--flow)'}"/><text x="${x}" y="${y + 22}" text-anchor="middle" class="sm">${extra ? (kind === 'loop' ? '↺' : 'sink') : i + 1}</text>`;
@@ -1090,31 +1292,21 @@ function treeSvg(tree, useful, kind) {
   return s + `</svg>`;
 }
 
-function loadDefaults() {
-  for (const k of ['item', 'srcCount', 'srcRate', 'dstCount', 'dstRate', 'srcPer', 'dstPer']) $(k).value = DEFAULTS[k];
-  $('belt').value = DEFAULTS.belt;
-  document.querySelector(`input[name=policy][value=${DEFAULTS.policy}]`).checked = true;
-  document.querySelector(`input[name=conv][value="${DEFAULTS.conv}"]`).checked = true;
-  selectedKey = null;
-  render();
-}
-
+// ---- Eventos ----
 for (const ev of ['input', 'change']) {
   $('form').addEventListener(ev, render);
   $('item').addEventListener(ev, render);
 }
-$('form').addEventListener('click', e => {
-  const clear = e.target.dataset && e.target.dataset.clear;
-  if (clear) { $(clear).value = ''; render(); }
-});
+$('addSrc').addEventListener('click', () => { addSrcRow().count.focus(); render(); });
 $('out').addEventListener('click', e => {
-  const row = e.target.closest('tr.alt');
-  if (row) { selectedKey = row.dataset.key; render(); }
+  const card = e.target.closest('.alt');
+  if (card) { selectedKey = card.dataset.key; render(); document.querySelector(`.alt[data-key="${selectedKey}"]`)?.focus(); }
 });
-$('out').addEventListener('change', e => {
-  if (e.target.name === 'alt') { selectedKey = e.target.value; render(); }
-});
-$('reset').addEventListener('click', loadDefaults);
+$('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); });
+
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { saved = null; }
+loadState(saved && saved.src ? saved : DEFAULTS);
 render();
 </script>
 </body>
