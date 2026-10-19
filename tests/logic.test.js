@@ -306,7 +306,7 @@ test('balancer: matriz 3→4 = 3 árvores de 1→4 + 4 mergers', () => {
 });
 
 test('balancer: 2→5 a 240 na Mk4 escolhe matriz com loop porque o funil engargala', () => {
-  const r = best(2, 5, 240, 480, []);
+  const r = best(2, 5, 240, 480, []).filter(d => !d.kind.startsWith('butterfly'));
   assert.equal(r[0].kind, 'matrix-loop');
   close(r[0].perOut, 96);
   assert.equal(r[0].pieces.splitters, 8);
@@ -384,8 +384,33 @@ test('borboleta: blocos por rodada e peças', () => {
   assert.equal(pieces(8), 48);
   assert.equal(pieces(6), 24);
   assert.equal(L.designPieces(L.balancerDesign('matrix', 4, 4, [480], 480)), 20);
-  assert.equal(L.butterflyDesign(3, 4, [480], 480).applies, 'butterflyShape', 'entradas ≠ saídas');
-  assert.equal(L.butterflyDesign(5, 5, [480], 480).applies, 'butterflyShape', '5 não é feito de 2 e 3');
+  assert.equal(L.butterflyDesign(3, 4, [480], 480).applies, null, '3→4 usa a borboleta de 4 com uma faixa vazia');
+  assert.equal(L.butterflyDesign(5, 5, [480], 480).applies, 'bfExtra', '5 não é feito de 2 e 3: só com loop ou sink');
+  assert.equal(L.butterflyDesign(1, 4, [480], 480).applies, 'butterflyShape');
+  assert.equal(L.butterflyDesign(4, 1, [480], 480, 'butterfly-loop').applies, 'butterflyShape');
+  assert.equal(L.butterflyDesign(4, 4, [480], 480, 'butterfly-loop').applies, 'direct');
+});
+
+test('borboleta generalizada: peças dos casos que motivaram', () => {
+  const pc = (n, m, k = 'butterfly') => L.designPieces(L.butterflyDesign(n, m, [100], 480, k));
+  assert.equal(pc(3, 4), 13, '3 splitters + 2 mergers na 1ª rodada, 4 + 4 na 2ª');
+  assert.equal(pc(5, 5, 'butterfly-loop'), 24, 'borboleta de 6, a 6ª faixa volta pra ela mesma');
+  assert.equal(L.designPieces(L.balancerDesign('matrix-loop', 5, 5, [100], 480)), 35);
+  assert.equal(pc(7, 7, 'butterfly-loop'), 48);
+  assert.equal(pc(2, 5, 'butterfly-loop'), 9, '2 entradas + retorno num 3→3, cada um em 2');
+  const r = best(2, 5, 240, 480, []);
+  assert.equal(r[0].kind, 'butterfly-loop');
+  close(r[0].perOut, 96);
+  assert.equal(L.designWhy(r).code, 'fewer');
+});
+
+test('borboleta com loop: retorno acima da esteira avisa e reduz a vazão', () => {
+  // Caso 1: 6 linhas de 455 → 5 saídas; o retorno levaria 546/min numa Mk4.
+  const d = L.butterflyDesign(6, 5, [455], 480, 'butterfly-loop');
+  assert.ok(d.segments.some(s => s.key === 'bfLoop' && !s.ok));
+  assert.ok(d.perOut < 480 * 0.9);
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40 });
+  assert.equal(p.alternatives.find(a => a.kind === 'balancer').bal.design.kind, 'matrix-loop');
 });
 
 test('borboleta: 4→4 cheio ganha da matriz por ter menos peças', () => {
@@ -417,4 +442,129 @@ test('vertical: andares e lifts', () => {
   const loop = L.designFloors(L.balancerDesign('matrix-loop', 1, 5, [240], 480));
   assert.ok(loop.edges.some(e => e.kind === 'loop'));
   assert.equal(L.designFloors(L.blueprintDesign({ n: 3, m: 4 }, 3, 4, [240], 480)), null, 'blueprint não tem andares');
+});
+
+// ---- Borboleta: todos os formatos de 1→1 a 9→9 ----
+// Faz o fluxo passar pela rede faixa por faixa, sem usar as contas do design: com loop, repete até estabilizar.
+function laneFlow(d, rates) {
+  const net = d.net, K = net.K, loop = d.kind === 'butterfly-loop';
+  let back = Array(K).fill(0), out = null;
+  for (let it = 0; it < 2000; it++) {
+    let v = Array(K).fill(0);
+    net.inLane.forEach((l, i) => { v[l] += rates[i]; });
+    if (loop) net.extra.forEach(l => { v[l] += back[l]; });
+    for (const rd of net.rounds) {
+      const next = Array(K).fill(0);
+      for (const m of rd.merges) next[m.lane] = m.from.reduce((a, j) => a + v[j], 0) / rd.f;
+      v = next;
+    }
+    out = v;
+    if (!loop) break;
+    const nb = Array(K).fill(0);
+    net.extra.forEach(l => { nb[l] = v[l]; });
+    const diff = Math.max(...nb.map((x, l) => Math.abs(x - back[l])));
+    back = nb;
+    if (diff < 1e-9) break;
+  }
+  return out;
+}
+
+test('borboleta: todos os formatos N→M de 1 a 9', () => {
+  const big = 1e9;
+  const shapes = [];
+  for (let N = 1; N <= 9; N++) for (let M = 1; M <= 9; M++) {
+    const rates = Array.from({ length: N }, (_, i) => 7 + 3 * i);
+    const S = rates.reduce((a, b) => a + b, 0);
+    const K = L.nextDirect(Math.max(N, M));
+    const ds = Object.fromEntries(['butterfly', 'butterfly-loop', 'butterfly-sink'].map(k => [k, L.butterflyDesign(N, M, rates, big, k)]));
+    const tag = `${N}→${M}`;
+    if (N < 2 || M < 2) {
+      Object.values(ds).forEach(d => assert.equal(d.applies, 'butterflyShape', `${tag} ${d.kind}`));
+      shapes.push(`${tag}: —`);
+      continue;
+    }
+    if (K === M) {
+      assert.equal(ds.butterfly.applies, null, tag);
+      assert.equal(ds['butterfly-loop'].applies, 'direct', tag);
+      assert.equal(ds['butterfly-sink'].applies, 'direct', tag);
+    } else {
+      assert.equal(ds.butterfly.applies, 'bfExtra', tag);
+      assert.equal(ds['butterfly-loop'].applies, null, tag);
+      assert.equal(ds['butterfly-sink'].applies, null, tag);
+    }
+    for (const d of Object.values(ds).filter(x => !x.applies)) {
+      const net = d.net, at = `${tag} ${d.kind}`, loop = d.kind === 'butterfly-loop', E = K - M;
+      // Forma: K faixas feitas de 2 e 3, entradas e saídas em faixas distintas, extras = o resto.
+      assert.equal(net.K, K, at);
+      assert.equal(net.F.reduce((a, b) => a * b, 1), K, at);
+      assert.ok(net.F.every(f => f === 2 || f === 3), at);
+      assert.equal(new Set(net.inLane).size, N, at);
+      assert.equal(net.outLane.length, M, at);
+      assert.equal(net.extra.length, E, at);
+      assert.deepEqual([...net.outLane, ...net.extra].sort((a, b) => a - b), Array.from({ length: K }, (_, l) => l), at);
+      // Peças: splitter só em faixa com item, merger com 2 ou 3 entradas do mesmo bloco, toda faixa viva no fim.
+      let live = Array.from({ length: K }, (_, l) => net.inLane.includes(l) || (loop && net.extra.includes(l)));
+      let sp = 0, mg = 0;
+      net.rounds.forEach((rd, s) => {
+        assert.deepEqual(rd.splits, live.map((x, l) => (x ? l : -1)).filter(l => l >= 0), `${at} rodada ${s + 1}`);
+        sp += rd.splits.length;
+        const next = Array(K).fill(false);
+        for (const m of rd.merges) {
+          const block = L.butterflyGroup(net.F, s, m.lane);
+          assert.ok(m.from.length >= 1 && m.from.length <= 3, at);
+          assert.ok(m.from.every(j => block.includes(j) && live[j]), at);
+          assert.deepEqual(m.from, block.filter(j => live[j]), at);
+          if (m.from.length > 1) mg++;
+          next[m.lane] = true;
+        }
+        live = next;
+      });
+      assert.ok(live.every(Boolean), `${at}: toda faixa sai com item`);
+      assert.deepEqual(net.loopMergers, loop ? net.extra.filter(l => net.inLane.includes(l)) : [], at);
+      mg += net.loopMergers.length;
+      assert.equal(d.pieces.splitters, sp, at);
+      assert.equal(d.pieces.mergers, mg, at);
+      // Fluxo: todas as saídas iguais, nada se perde.
+      const flow = laneFlow(d, rates);
+      const each = loop ? S / M : S / K;
+      net.outLane.forEach(l => close(flow[l], each, `${at} saída na faixa ${l + 1}`));
+      close(d.perOut, each, `${at} perOut`);
+      const sunk = d.kind === 'butterfly-sink' ? E * S / K : 0;
+      close(d.sinkRate, sunk, `${at} sink`);
+      close(each * M + sunk, S, `${at} conservação`);
+      // Simulação com splitters e mergers de verdade (com loop, a divisão ideal limitada).
+      const g = L.makeGraph(big);
+      const srcs = rates.map(r => L.addNode(g, 'source', { rate: r }));
+      const cons = Array.from({ length: M }, () => L.addNode(g, 'consumer', { demand: big }));
+      const sinkNode = L.addNode(g, 'sink');
+      const v = L.buildBalancer(g, d, srcs, cons, sinkNode);
+      const sim = L.simulate(g);
+      v.outEdges.forEach((e, j) => close(sim.flow[e], each, `${at} simulação saída ${j + 1}`));
+      close(v.sinkEdges.reduce((a, e) => a + sim.flow[e], 0), sunk, `${at} simulação sink`);
+      // Vertical: um andar por camada, as entradas, saídas e retornos/sinks no lugar.
+      const fl = L.designFloors(d);
+      assert.ok(fl, at);
+      assert.equal(fl.ins.length, N, at);
+      assert.equal(fl.outs.length, M, at);
+      assert.equal(fl.edges.filter(e => e.kind === 'loop').length, loop ? E : 0, at);
+      assert.equal(fl.nodes.filter(n => n.t === 'sink').length, d.kind === 'butterfly-sink' ? E : 0, at);
+      assert.equal(fl.nodes.filter(n => n.t === 's').length, sp, at);
+      assert.equal(fl.nodes.filter(n => n.t === 'm').length, mg, at);
+    }
+    const r = L.rankDesigns(L.balancerCandidates(N, M, rates, big)).filter(d => d.kind.startsWith('butterfly'));
+    assert.ok(!r[0].applies, `${tag}: sempre tem uma borboleta`);
+    shapes.push(`${tag}: ${r[0].kind} ${L.designPieces(r[0])}`);
+  }
+  assert.equal(shapes.length, 81);
+});
+
+test('borboleta acima de 9: posições fixas, mas as saídas continuam iguais', () => {
+  for (let N = 2; N <= 12; N++) for (let M = 10; M <= 12; M++) for (const k of ['butterfly', 'butterfly-loop', 'butterfly-sink']) {
+    const rates = Array.from({ length: N }, (_, i) => 5 + i);
+    const d = L.butterflyDesign(N, M, rates, 1e9, k);
+    if (d.applies) continue;
+    const S = rates.reduce((a, b) => a + b, 0);
+    const flow = laneFlow(d, rates);
+    d.net.outLane.forEach(l => close(flow[l], k === 'butterfly-loop' ? S / M : S / d.net.K, `${N}→${M} ${k}`));
+  }
 });

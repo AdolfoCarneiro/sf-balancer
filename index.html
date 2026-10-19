@@ -175,6 +175,7 @@
   .linkbtn { background: none; border: 0; padding: 0; color: var(--ficsit); cursor: pointer; font: 500 14px var(--body); margin-top: 8px; }
   .linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
   .hint { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
+  .ext a { color: var(--ficsit); text-underline-offset: 3px; }
   .choice { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 3px 0; cursor: pointer; }
   .choice input { accent-color: var(--ficsit); margin: 0; }
   select.field { width: auto; min-width: 170px; }
@@ -291,7 +292,7 @@
   .intro { margin: -8px 0 18px; max-width: 78ch; color: var(--ink-dim); font-size: 14.5px; }
   .intro a, .guide a, .site-foot a { color: var(--ficsit); text-underline-offset: 3px; }
   h1.kicker { font-weight: 500; }
-  .grp-fields .cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .grp-fields .cell { display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; min-width: 0; }
   .cell-head { display: flex; align-items: flex-end; min-height: 2.4em; font-size: 12px; color: var(--ink-dim); line-height: 1.2; }
   .cell-head .tip { margin-left: 4px; vertical-align: 0; }
 
@@ -365,6 +366,10 @@
   .seg button:first-child { border-left: 0; }
   .seg button:hover { color: var(--ink); }
   .seg button[aria-checked="true"] { background: var(--plate); color: var(--ficsit); box-shadow: inset 0 -3px 0 var(--ficsit); }
+  .seg button[data-best]::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 7px; vertical-align: 2px; background: var(--ok); transform: rotate(45deg); }
+  .wb-better { flex-basis: 100%; margin: 0; font-size: 13.5px; color: var(--ink-dim); }
+  .wb-better button { background: none; border: 0; padding: 0; color: var(--ok); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .wb-better button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
   .seg button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
   .plegend i.lifti { width: 6px; height: 14px; background: var(--line); box-shadow: inset 2px 0 0 var(--ink-dim); }
   .wb-checks h4 { font: 600 16px/1.2 var(--display); margin: 0 0 4px; color: var(--ink-dim); }
@@ -380,12 +385,12 @@
   .stage { padding: 18px; overflow: auto; max-height: 68vh; }
   .stage svg { width: 100%; min-width: min(var(--w), 620px); max-width: var(--w); height: auto; margin: 0 auto; }
   .cap {
-    display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 14px; align-items: baseline;
-    min-height: 68px; padding: 12px 16px; background: var(--plate); border-top: 1px solid var(--line);
+    display: flex; gap: 12px; align-items: flex-start;
+    min-height: 64px; padding: 12px 16px; background: var(--plate); border-top: 1px solid var(--line);
     box-shadow: inset 4px 0 0 var(--holo);
   }
   .cap.done { box-shadow: inset 4px 0 0 var(--ok); }
-  .cap-n { font: 700 14px var(--display); color: var(--holo); white-space: nowrap; }
+  .cap-n { flex: none; font: 700 13px/1 var(--display); color: var(--holo); white-space: nowrap; border: 1px solid currentColor; padding: 4px 7px; margin-top: 1px; }
   .cap.done .cap-n { color: var(--ok); }
   .cap-t { margin: 0; font-size: 15px; max-width: 78ch; }
   .pctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
@@ -407,8 +412,10 @@
   .bsvg [data-s] { transition: opacity .3s ease; }
   .bsvg.stepping .fut { opacity: 0; }
   .bsvg.stepping .past { opacity: .5; }
-  .bsvg .now :is(path, rect, polygon, circle) { stroke: var(--holo) !important; stroke-dasharray: 5 3; animation: holo 1.1s linear infinite; }
-  .bsvg .now :is(rect, polygon, circle) { fill: rgba(111, 227, 255, .14) !important; }
+  /* A esteira do passo fica tracejada na cor da sua faixa, para dar para seguir a ligação; peças e caixas viram holograma. */
+  .bsvg .now path { stroke-dasharray: 6 4; animation: holo 1.1s linear infinite; filter: drop-shadow(0 0 2.5px rgba(111, 227, 255, .45)); }
+  .bsvg .now :is(rect, polygon) { stroke: var(--holo) !important; stroke-dasharray: 5 3; animation: holo 1.1s linear infinite; fill: rgba(111, 227, 255, .14) !important; }
+  .bsvg .now circle { stroke-dasharray: 3 2; }
   .bsvg .now text { fill: var(--holo) !important; }
   @keyframes holo { to { stroke-dashoffset: -16; } }
   @media (prefers-reduced-motion: reduce) { .bsvg .now * { animation: none; } .bsvg [data-s] { transition: none; } }
@@ -554,7 +561,7 @@
       <div><h3 data-i18n="lbHowTitle">How it works</h3><p data-i18n="lbHow">A splitter divides evenly among the outputs that accept items, into 2 or 3. Chaining splitters cuts a belt into any product of 2 and 3 (2, 3, 4, 6, 8, 9, 12…). A merger joins up to 3 belts, taking from each in turn. A matrix uses both: each input is cut into M equal parts and each output gets one part from every input, so every output adds up to the same.</p></div>
       <div><h3 data-i18n="lbWhyTitle">Why use one</h3><p data-i18n="lbWhy">A manifold balances itself across machines, but not across lines: if one destination line gets 455 and another 300, the machines on the second starve forever. A balancer makes every line carry the same share of the total. It’s also how you split a belt into 5 or 7, which a splitter can’t do directly.</p></div>
       <div><h3 data-i18n="lbNotTitle">When you don’t need one</h3><p data-i18n="lbNot">If each source line already covers a destination, connect them directly. If the shortfall is small, a split donor line or a Smart Splitter with overflow does it with fewer pieces. The alternatives above compare this for your case.</p></div>
-      <div class="bf"><h3 data-i18n="lbBfTitle">Butterfly and vertical builds</h3><p data-i18n="lbBf">Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build.</p></div>
+      <div class="bf"><h3 data-i18n="lbBfTitle">Butterfly and vertical builds</h3><p data-i18n="lbBf">Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.</p></div>
       <div class="build">
         <h3 data-i18n="lbBuildTitle">How to build your own</h3>
         <ol>
@@ -568,7 +575,7 @@
     </div>
     <div class="catalog">
       <h3 data-i18n="catTitle">Design catalog</h3>
-      <p class="lead" data-i18n="catLead">The six families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.</p>
+      <p class="lead" data-i18n="catLead">The design families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.</p>
       <div class="cat-grid" id="catGrid"></div>
     </div>
   </section>
@@ -607,6 +614,7 @@
       <details><summary data-i18n="faq2Q">Where do the numbers come from?</summary><p data-i18n="faq2A">From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.</p></details>
       <details><summary data-i18n="faq3Q">Is my plan saved?</summary><p data-i18n="faq3A">Yes, only in your browser. There’s no account and nothing you type is sent to a server.</p></details>
       <details><summary data-i18n="faq4Q">Which game version?</summary><p data-i18n="faq4A">Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).</p></details>
+      <details><summary data-i18n="faq5Q">Can I use a mod or a ready-made blueprint instead?</summary><p data-i18n="faq5A">Yes. If you play with mods, Modular Load Balancers (unlocked at Tier 4) adds modules that snap together into a group and split items equally among all its outputs, any size. If you play vanilla, Satisfactory Calculator has balancer blueprints shared by other players. Either way the tool still answers what comes before: how many lines, whether you need a balancer and which N→M.</p><p class="ext" id="faqExt"></p></details>
     </div>
   </section>
 
@@ -792,6 +800,8 @@ const I18N = {
     faq3A: 'Fica, só no seu navegador. Não tem conta e nada do que você digita vai para um servidor.',
     faq4Q: 'Qual versão do jogo?',
     faq4A: 'Satisfactory 1.0 em diante, com esteiras da Mk1 (60/min) à Mk6 (1.200/min).',
+    faq5Q: 'Dá para usar um mod ou um blueprint pronto em vez disso?',
+    faq5A: 'Dá. Se você joga com mod, o Modular Load Balancers (libera no Tier 4) traz módulos que se encaixam num grupo e dividem os itens igualmente entre todas as saídas, de qualquer tamanho. Se joga vanilla, o Satisfactory Calculator tem blueprints de balancer feitos por outros jogadores. Nos dois casos a ferramenta continua respondendo o que vem antes: quantas linhas, se precisa de balancer e de qual N→M.',
     footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footCoffee: 'Me paga um café', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
     caseBal: (n, m) => `balancer ${n}→${m}`,
     planBal: (n, m, name) => `Balancer ${n}→${m}, ${name}`, planBalSub: 'As linhas de origem entram num balancer que reparte o total igual entre todos os destinos.',
@@ -837,7 +847,7 @@ const I18N = {
     lbBuild4: 'Loop: as partes a mais voltam para um merger antes do primeiro splitter. Sink: vão pro Awesome Sink.',
     lbBuild5: 'Confira a esteira de cada trecho. Se o total cabe numa esteira só, o funil (juntar tudo e depois dividir) gasta bem menos peças.',
     catTitle: 'Catálogo de designs',
-    catLead: 'As seis famílias que a ferramenta monta, inclusive para 5, 7 e outros números que o splitter não alcança direto. Abra um exemplo no gerador.',
+    catLead: 'As famílias de design que a ferramenta monta, inclusive para 5, 7 e outros números que o splitter não alcança direto. Abra um exemplo no gerador.',
     dsMatrix: 'Cada entrada vira M partes; cada saída junta uma parte de cada entrada. Aguenta a vazão de várias esteiras cheias. Serve quando M é produto de 2 e 3.',
     dsFunnel: 'Junta todas as entradas numa esteira e divide em M. Gasta bem menos peças, mas tudo passa por uma esteira só: serve se o total couber nela.',
     dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árvore divide no próximo número que o splitter alcança e as partes a mais voltam pra entrada. Divisão exata, sem perda; a esteira do loop carrega mais que a entrada.',
@@ -872,6 +882,8 @@ const I18N = {
     lbBalTitle: (n, m) => `Balancer ${n}→${m}`,
     lbBalLine: (name, pieces, per) => `${name}: ${pieces} peças, até ${per}/min por saída.`,
     lbOpen: 'Ver montagem passo a passo', dlgClose: 'Fechar',
+    extHint: (mod, bp) => `Prefere não montar na mão? O mod ${mod} divide igual entre as saídas sem árvore de splitters, e o ${bp} tem blueprints de balancer prontos, feitos por outros jogadores.`,
+    extBp: 'blueprints no Satisfactory Calculator',
     whyVsTitle: 'Balancer ou outra alternativa?',
     whyIsBest: 'O balancer é a alternativa recomendada aqui: enche todos os destinos com menos peças que as outras.',
     whyVsBest: (title, full, po, pb) => `A recomendada, “${title}”, ${full ? 'também enche todos os destinos' : 'não enche todos os destinos'} com ${po} peças no meio. Este balancer usa ${pb}.`,
@@ -880,21 +892,27 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Meio: ${ins} entram num balancer ${n}→${m} (${name}). Cada destino recebe até ${per}/min; a montagem peça por peça está em “Ver montagem passo a passo”.`,
     toBalancer: list => `balancer para ${list}`,
     pcBp: n => `Inclui ${n} blueprint, contado como 1 peça.`,
-    dkButterfly: 'borboleta',
-    dsButterfly: 'Mistura as esteiras aos pares (ou trios) em rodadas: cada bloco pega 2 esteiras e devolve 2 com a média. Depois de todas as rodadas, todas ficam iguais. Serve quando entradas = saídas; em 4→4 e 8→8 gasta bem menos peças que a matriz e empilha bem.',
-    rButterfly: 'só serve com entradas = saídas, num número feito de 2 e 3',
+    dkButterfly: 'borboleta', dkButterflyLoop: 'borboleta com loop', dkButterflySink: 'borboleta com sink',
+    dsButterfly: 'Mistura as esteiras aos pares (ou trios) em rodadas: cada bloco pega 2 esteiras e devolve 2 com a média. Depois de todas as rodadas, todas ficam iguais. Entrada que falta vira faixa vazia (3→4 usa a borboleta de 4); em 4→4 e 8→8 gasta bem menos peças que a matriz e empilha bem.',
+    dsButterflyLoop: 'Borboleta para 5, 7…: usa o próximo número feito de 2 e 3 de faixas (6 para 5, 8 para 7) e a faixa que sobra volta pro começo dela mesma. No 5→5 são 24 peças, contra 35 da matriz com loop.',
+    rButterfly: 'precisa de 2 ou mais entradas e saídas (com 1 entrada é a árvore de splitters; com 1 saída, só mergers)',
+    rBfExtra: (m, k) => `usa ${k} faixas para ${m} saídas: escolha a versão com loop ou com sink`,
     segBfPart: s => `Rodada ${s}: cada parte`, segBfOut: s => `Rodada ${s}: cada esteira depois do merger`,
-    styleTitle: 'Montagem', styleNormal: 'Normal', styleButterfly: 'Borboleta', styleVertical: 'Vertical',
-    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve quando entradas = saídas e gasta menos peças em 4→4, 8→8.',
-    styleNone: 'A borboleta só serve com o mesmo número de entradas e saídas, e esse número tem que ser feito de 2 e 3 (2, 3, 4, 6, 8, 9…). Use Normal.',
+    segBfLoop: 'Retorno do loop (cada faixa)', segBfLoopIn: 'Começo da faixa (entrada + retorno)', bfEmpty: 'vazia', bfReturn: '↺ retorno',
+    styleTitle: 'Montagem', styleBestTip: 'O melhor design para este formato está nesta aba',
+    styleBetter: (tab, name, pieces, rate) => `Para este formato, o melhor design está em ${tab}: ${name}, ${pieces} peças e ${rate}/min por saída.`, styleNormal: 'Normal', styleButterfly: 'Borboleta', styleVertical: 'Vertical',
+    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve para qualquer N→M a partir de 2→2, com faixas vazias ou faixas a mais com loop ou sink, e gasta menos peças em 4→4, 8→8. Vertical: o balancer escolhido em andares, um por camada de peças, ligados por lifts.',
+    styleNone: 'A borboleta precisa de pelo menos 2 entradas e 2 saídas: com 1 entrada é a árvore de splitters, com 1 saída é só juntar com mergers. Use Normal ou Vertical.',
     thLifts: 'Lifts', floorTag: f => `Andar ${f}`, lgLift: 'lift',
-    stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em cada uma das ${n} esteiras.`,
-    stBfMerge: (round, groups) => `Rodada ${round}: um merger por esteira junta uma parte de cada esteira do bloco (${groups}). As esteiras de cada bloco saem iguais.`,
+    stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em ${n > 1 ? `cada uma das ${n} faixas com item` : 'a faixa com item'}.`,
+    stBfFan: (round, groups) => `Rodada ${round}: sem merger. Cada parte segue direto para uma faixa do bloco (faixas ${groups}), abrindo as faixas vazias.`,
+    stBfMerge: (round, groups, pass) => `Rodada ${round}: um merger por faixa junta uma parte de cada faixa do bloco (faixas ${groups}). As faixas de cada bloco saem iguais.` + (pass ? ` ${pass > 1 ? `${pass} faixas recebem` : '1 faixa recebe'} uma parte só e ${pass > 1 ? 'seguem' : 'segue'} direto, sem merger.` : ''),
+    stBfLoopBack: (k, lanes, m) => `${k > 1 ? `As faixas ${lanes} sobram e voltam` : `A faixa ${lanes} sobra e volta`} para o começo dela mesma (loop). O que volta entra de novo na mistura, então as ${m} saídas ficam iguais.`,
     stFloor: (f, sp, ways, mg, up, down) => `Andar ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + '.'
       + (up ? ` ${up} lift${up > 1 ? 's sobem' : ' sobe'} do andar de baixo.` : '') + (down ? ` ${down} lift${down > 1 ? 's descem' : ' desce'} com o retorno do loop.` : ''),
     vertNote: 'Um andar por camada de peças, ligados por lifts. A ferramenta mostra a ordem dos andares e conta os lifts; a altura de cada andar e o encaixe exato você ajusta no jogo.',
     lbBfTitle: 'Borboleta e montagem vertical',
-    lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta.',
+    lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
   },
   en: {
     locale: 'en-US', htmlLang: 'en', langName: 'English',
@@ -1043,6 +1061,8 @@ const I18N = {
     faq3A: 'Yes, only in your browser. There’s no account and nothing you type is sent to a server.',
     faq4Q: 'Which game version?',
     faq4A: 'Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).',
+    faq5Q: 'Can I use a mod or a ready-made blueprint instead?',
+    faq5A: 'Yes. If you play with mods, Modular Load Balancers (unlocked at Tier 4) adds modules that snap together into a group and split items equally among all its outputs, any size. If you play vanilla, Satisfactory Calculator has balancer blueprints shared by other players. Either way the tool still answers what comes before: how many lines, whether you need a balancer and which N→M.',
     footSource: 'Open source on GitHub', footLicense: 'MIT License', footCoffee: 'Buy me a coffee', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
     caseBal: (n, m) => `${n}→${m} balancer`,
     planBal: (n, m, name) => `${n}→${m} balancer, ${name}`, planBalSub: 'The source lines go into a balancer that splits the total evenly among every destination.',
@@ -1088,7 +1108,7 @@ const I18N = {
     lbBuild4: 'Loop: the extra parts go back to a merger before the first splitter. Sink: they go to the Awesome Sink.',
     lbBuild5: 'Check the belt on every segment. If the total fits on one belt, the funnel (merge everything, then split) uses far fewer pieces.',
     catTitle: 'Design catalog',
-    catLead: 'The six families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.',
+    catLead: 'The design families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.',
     dsMatrix: 'Each input becomes M parts; each output joins one part from every input. Handles the rate of several full belts. Works when M is a product of 2 and 3.',
     dsFunnel: 'Merges every input onto one belt and splits it into M. Far fewer pieces, but everything runs on a single belt: it works if the total fits on it.',
     dsMatrixLoop: 'Matrix for 5, 7, 10…: each tree splits into the next count a splitter can reach and the extra parts loop back to the input. Exact split, nothing lost; the loop belt carries more than the input.',
@@ -1123,6 +1143,8 @@ const I18N = {
     lbBalTitle: (n, m) => `${n}→${m} balancer`,
     lbBalLine: (name, pieces, per) => `${name}: ${pieces} pieces, up to ${per}/min per output.`,
     lbOpen: 'See the build step by step', dlgClose: 'Close',
+    extHint: (mod, bp) => `Rather not build it by hand? The ${mod} mod splits equally among its outputs with no splitter tree, and ${bp} has ready-made balancer blueprints shared by other players.`,
+    extBp: 'blueprints on Satisfactory Calculator',
     whyVsTitle: 'Balancer or another alternative?',
     whyIsBest: 'The balancer is the recommended alternative here: it fills every destination with fewer pieces than the others.',
     whyVsBest: (title, full, po, pb) => `The recommended one, “${title}”, ${full ? 'also fills every destination' : 'doesn’t fill every destination'} with ${po} pieces in the middle. This balancer uses ${pb}.`,
@@ -1131,21 +1153,27 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Middle: ${ins} go into a ${n}→${m} balancer (${name}). Each destination gets up to ${per}/min; the piece-by-piece build is under “See the build step by step”.`,
     toBalancer: list => `balancer to ${list}`,
     pcBp: n => `Includes ${n} blueprint, counted as 1 piece.`,
-    dkButterfly: 'butterfly',
-    dsButterfly: 'Mixes belts in pairs (or threes) over rounds: each block takes 2 belts and returns 2 at the average. After every round, all belts are equal. Works when inputs = outputs; for 4→4 and 8→8 it uses far fewer pieces than the matrix and stacks well.',
-    rButterfly: 'only works with inputs = outputs, at a count made of 2s and 3s',
+    dkButterfly: 'butterfly', dkButterflyLoop: 'looped butterfly', dkButterflySink: 'butterfly with sink',
+    dsButterfly: 'Mixes belts in pairs (or threes) over rounds: each block takes 2 belts and returns 2 at the average. After every round, all belts are equal. A missing input becomes an empty lane (3→4 uses the 4-lane butterfly); for 4→4 and 8→8 it uses far fewer pieces than the matrix and stacks well.',
+    dsButterflyLoop: 'Butterfly for 5, 7…: uses the next lane count made of 2s and 3s (6 for 5, 8 for 7) and the spare lane loops back to its own start. 5→5 takes 24 pieces, against 35 for the looped matrix.',
+    rButterfly: 'needs 2 or more inputs and outputs (with 1 input it’s the splitter tree; with 1 output, just mergers)',
+    rBfExtra: (m, k) => `uses ${k} lanes for ${m} outputs: pick the looped or the sink version`,
     segBfPart: s => `Round ${s}: each part`, segBfOut: s => `Round ${s}: each belt after the merger`,
-    styleTitle: 'Build', styleNormal: 'Normal', styleButterfly: 'Butterfly', styleVertical: 'Vertical',
-    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works when inputs = outputs and uses fewer pieces for 4→4, 8→8.',
-    styleNone: 'The butterfly only works with the same number of inputs and outputs, and that number has to be made of 2s and 3s (2, 3, 4, 6, 8, 9…). Use Normal.',
+    segBfLoop: 'Loop return (each lane)', segBfLoopIn: 'Lane start (input + return)', bfEmpty: 'empty', bfReturn: '↺ return',
+    styleTitle: 'Build', styleBestTip: 'The best design for this shape is in this tab',
+    styleBetter: (tab, name, pieces, rate) => `For this shape, the best design is under ${tab}: ${name}, ${pieces} pieces and ${rate}/min per output.`, styleNormal: 'Normal', styleButterfly: 'Butterfly', styleVertical: 'Vertical',
+    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works for any N→M from 2→2 up, with empty lanes or spare lanes on a loop or sink, and uses fewer pieces for 4→4, 8→8. Vertical: the chosen balancer in floors, one per layer of pieces, joined by lifts.',
+    styleNone: 'The butterfly needs at least 2 inputs and 2 outputs: with 1 input it’s the splitter tree, with 1 output it’s just mergers. Use Normal or Vertical.',
     thLifts: 'Lifts', floorTag: f => `Floor ${f}`, lgLift: 'lift',
-    stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on each of the ${n} belts.`,
-    stBfMerge: (round, groups) => `Round ${round}: one merger per belt joins one part from each belt in the block (${groups}). The belts in each block leave equal.`,
+    stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on ${n > 1 ? `each of the ${n} lanes that carry items` : 'the lane that carries items'}.`,
+    stBfFan: (round, groups) => `Round ${round}: no mergers. Each part goes straight to one lane in the block (lanes ${groups}), filling the empty lanes.`,
+    stBfMerge: (round, groups, pass) => `Round ${round}: one merger per lane joins one part from each lane in the block (lanes ${groups}). The lanes in each block leave equal.` + (pass ? ` ${pass > 1 ? `${pass} lanes get` : '1 lane gets'} a single part and ${pass > 1 ? 'go' : 'goes'} straight on, with no merger.` : ''),
+    stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Lanes ${lanes} are spare and go` : `Lane ${lanes} is spare and goes`} back to ${k > 1 ? 'their own start' : 'its own start'} (loop). What comes back is mixed again, so the ${m} outputs are equal.`,
     stFloor: (f, sp, ways, mg, up, down) => `Floor ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + '.'
       + (up ? ` ${up} lift${up > 1 ? 's come' : ' comes'} up from the floor below.` : '') + (down ? ` ${down} lift${down > 1 ? 's go' : ' goes'} down with the loop return.` : ''),
     vertNote: 'One floor per layer of pieces, joined by lifts. The tool shows the floor order and counts the lifts; you adjust each floor’s height and the exact fit in the game.',
     lbBfTitle: 'Butterfly and vertical builds',
-    lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build.',
+    lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
   },
   es: {
     locale: 'es-ES', htmlLang: 'es', langName: 'Español',
@@ -1294,6 +1322,8 @@ const I18N = {
     faq3A: 'Sí, solo en tu navegador. No hay cuenta y nada de lo que escribes se envía a un servidor.',
     faq4Q: '¿Qué versión del juego?',
     faq4A: 'Satisfactory 1.0 en adelante, con cintas de la Mk1 (60/min) a la Mk6 (1200/min).',
+    faq5Q: '¿Puedo usar un mod o un blueprint listo en su lugar?',
+    faq5A: 'Sí. Si juegas con mods, Modular Load Balancers (se desbloquea en el Tier 4) trae módulos que se encajan en un grupo y reparten los ítems por igual entre todas las salidas, de cualquier tamaño. Si juegas vanilla, Satisfactory Calculator tiene blueprints de balanceador hechos por otros jugadores. En los dos casos la herramienta sigue respondiendo lo que viene antes: cuántas líneas, si hace falta un balanceador y de qué N→M.',
     footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footCoffee: 'Invítame un café', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
     caseBal: (n, m) => `balanceador ${n}→${m}`,
     planBal: (n, m, name) => `Balanceador ${n}→${m}, ${name}`, planBalSub: 'Las líneas de origen entran en un balanceador que reparte el total en partes iguales entre todos los destinos.',
@@ -1339,7 +1369,7 @@ const I18N = {
     lbBuild4: 'Loop: las partes de más vuelven a un merger antes del primer splitter. Sink: van al Awesome Sink.',
     lbBuild5: 'Revisa la cinta de cada tramo. Si el total cabe en una sola cinta, el embudo (juntar todo y luego dividir) gasta muchas menos piezas.',
     catTitle: 'Catálogo de diseños',
-    catLead: 'Las seis familias que monta la herramienta, incluso para 5, 7 y otros números que el splitter no alcanza directo. Abre un ejemplo en el generador.',
+    catLead: 'Las familias de diseño que monta la herramienta, incluso para 5, 7 y otros números que el splitter no alcanza directo. Abre un ejemplo en el generador.',
     dsMatrix: 'Cada entrada se vuelve M partes; cada salida junta una parte de cada entrada. Aguanta la tasa de varias cintas llenas. Sirve cuando M es producto de 2 y 3.',
     dsFunnel: 'Junta todas las entradas en una cinta y la divide en M. Gasta muchas menos piezas, pero todo pasa por una sola cinta: sirve si el total cabe en ella.',
     dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árbol divide en el siguiente número que alcanza el splitter y las partes de más vuelven a la entrada. División exacta, sin pérdida; la cinta del loop lleva más que la entrada.',
@@ -1374,6 +1404,8 @@ const I18N = {
     lbBalTitle: (n, m) => `Balanceador ${n}→${m}`,
     lbBalLine: (name, pieces, per) => `${name}: ${pieces} piezas, hasta ${per}/min por salida.`,
     lbOpen: 'Ver montaje paso a paso', dlgClose: 'Cerrar',
+    extHint: (mod, bp) => `¿Prefieres no montarlo a mano? El mod ${mod} divide igual entre sus salidas sin árbol de splitters, y ${bp} tiene blueprints de balanceador listos, hechos por otros jugadores.`,
+    extBp: 'blueprints en Satisfactory Calculator',
     whyVsTitle: '¿Balanceador u otra alternativa?',
     whyIsBest: 'El balanceador es la alternativa recomendada aquí: llena todos los destinos con menos piezas que las otras.',
     whyVsBest: (title, full, po, pb) => `La recomendada, “${title}”, ${full ? 'también llena todos los destinos' : 'no llena todos los destinos'} con ${po} piezas en el medio. Este balanceador usa ${pb}.`,
@@ -1382,21 +1414,27 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Medio: ${ins} entran en un balanceador ${n}→${m} (${name}). Cada destino recibe hasta ${per}/min; el montaje pieza por pieza está en “Ver montaje paso a paso”.`,
     toBalancer: list => `balanceador a ${list}`,
     pcBp: n => `Incluye ${n} blueprint, contado como 1 pieza.`,
-    dkButterfly: 'mariposa',
-    dsButterfly: 'Mezcla las cintas de a pares (o tríos) en rondas: cada bloque toma 2 cintas y devuelve 2 con el promedio. Tras todas las rondas, todas quedan iguales. Sirve cuando entradas = salidas; en 4→4 y 8→8 gasta muchas menos piezas que la matriz y se apila bien.',
-    rButterfly: 'solo sirve con entradas = salidas, en un número hecho de 2 y 3',
+    dkButterfly: 'mariposa', dkButterflyLoop: 'mariposa con loop', dkButterflySink: 'mariposa con sink',
+    dsButterfly: 'Mezcla las cintas de a pares (o tríos) en rondas: cada bloque toma 2 cintas y devuelve 2 con el promedio. Tras todas las rondas, todas quedan iguales. La entrada que falta es un carril vacío (3→4 usa la mariposa de 4); en 4→4 y 8→8 gasta muchas menos piezas que la matriz y se apila bien.',
+    dsButterflyLoop: 'Mariposa para 5, 7…: usa el siguiente número de carriles hecho de 2 y 3 (6 para 5, 8 para 7) y el carril que sobra vuelve a su propio inicio. 5→5 lleva 24 piezas, contra 35 de la matriz con loop.',
+    rButterfly: 'necesita 2 o más entradas y salidas (con 1 entrada es el árbol de splitters; con 1 salida, solo mergers)',
+    rBfExtra: (m, k) => `usa ${k} carriles para ${m} salidas: elige la versión con loop o con sink`,
     segBfPart: s => `Ronda ${s}: cada parte`, segBfOut: s => `Ronda ${s}: cada cinta tras el merger`,
-    styleTitle: 'Montaje', styleNormal: 'Normal', styleButterfly: 'Mariposa', styleVertical: 'Vertical',
-    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve cuando entradas = salidas y gasta menos piezas en 4→4, 8→8.',
-    styleNone: 'La mariposa solo sirve con el mismo número de entradas y salidas, y ese número tiene que estar hecho de 2 y 3 (2, 3, 4, 6, 8, 9…). Usa Normal.',
+    segBfLoop: 'Retorno del loop (cada carril)', segBfLoopIn: 'Inicio del carril (entrada + retorno)', bfEmpty: 'vacío', bfReturn: '↺ retorno',
+    styleTitle: 'Montaje', styleBestTip: 'El mejor diseño para este formato está en esta pestaña',
+    styleBetter: (tab, name, pieces, rate) => `Para este formato, el mejor diseño está en ${tab}: ${name}, ${pieces} piezas y ${rate}/min por salida.`, styleNormal: 'Normal', styleButterfly: 'Mariposa', styleVertical: 'Vertical',
+    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve para cualquier N→M desde 2→2, con carriles vacíos o carriles de más con loop o sink, y gasta menos piezas en 4→4, 8→8. Vertical: el balanceador elegido en pisos, uno por capa de piezas, unidos con lifts.',
+    styleNone: 'La mariposa necesita al menos 2 entradas y 2 salidas: con 1 entrada es el árbol de splitters, con 1 salida es solo juntar con mergers. Usa Normal o Vertical.',
     thLifts: 'Lifts', floorTag: f => `Piso ${f}`, lgLift: 'lift',
-    stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en cada una de las ${n} cintas.`,
-    stBfMerge: (round, groups) => `Ronda ${round}: un merger por cinta junta una parte de cada cinta del bloque (${groups}). Las cintas de cada bloque salen iguales.`,
+    stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en ${n > 1 ? `cada uno de los ${n} carriles con ítems` : 'el carril con ítems'}.`,
+    stBfFan: (round, groups) => `Ronda ${round}: sin mergers. Cada parte va directo a un carril del bloque (carriles ${groups}), llenando los carriles vacíos.`,
+    stBfMerge: (round, groups, pass) => `Ronda ${round}: un merger por carril junta una parte de cada carril del bloque (carriles ${groups}). Los carriles de cada bloque salen iguales.` + (pass ? ` ${pass > 1 ? `${pass} carriles reciben` : '1 carril recibe'} una sola parte y ${pass > 1 ? 'siguen' : 'sigue'} directo, sin merger.` : ''),
+    stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Los carriles ${lanes} sobran y vuelven` : `El carril ${lanes} sobra y vuelve`} a su propio inicio (loop). Lo que vuelve se mezcla de nuevo, así que las ${m} salidas quedan iguales.`,
     stFloor: (f, sp, ways, mg, up, down) => `Piso ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + '.'
       + (up ? ` ${up} lift${up > 1 ? 's suben' : ' sube'} del piso de abajo.` : '') + (down ? ` ${down} lift${down > 1 ? 's bajan' : ' baja'} con el retorno del loop.` : ''),
     vertNote: 'Un piso por capa de piezas, unidos con lifts. La herramienta muestra el orden de los pisos y cuenta los lifts; la altura de cada piso y el encaje exacto los ajustas en el juego.',
     lbBfTitle: 'Mariposa y montaje vertical',
-    lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente.',
+    lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
   },
 };
 const LANGS = Object.keys(I18N);
@@ -1627,32 +1665,126 @@ function blueprintDesign(bp, N, M, rates, cap) {
   };
 }
 
-// Borboleta: M esteiras misturadas em rodadas de blocos r→r (r = 2 ou 3, os fatores de M).
-// Na rodada s, as esteiras que só diferem no dígito s (base mista) formam um bloco: cada uma vai num
-// splitter em r e cada merger junta uma parte de cada esteira do bloco. Depois de todas as rodadas,
-// todas as esteiras ficam com a média. Peças: 1 splitter + 1 merger por esteira por rodada.
+// Borboleta: K faixas misturadas em rodadas de blocos f→f (f = 2 ou 3, os fatores de K).
+// Na rodada s, as faixas que só diferem no dígito s (base mista) formam um bloco: cada uma vai num
+// splitter em f e cada merger junta uma parte de cada faixa do bloco. Depois de todas as rodadas,
+// cada faixa leva 1/K de tudo que entrou.
 function butterflyGroup(F, s, i) {
   const stride = F.slice(0, s).reduce((a, b) => a * b, 1);
   const base = i - (Math.floor(i / stride) % F[s]) * stride;
   return Array.from({ length: F[s] }, (_, k) => base + k * stride);
 }
 
-function butterflyDesign(N, M, rates, cap) {
+// K = o próximo número feito de 2 e 3 que cabe as entradas e as saídas. Faixa sem entrada fica vazia:
+// sai o splitter dela, e a faixa que recebe uma parte só segue direto, sem merger. As K − M faixas que
+// sobram na saída voltam pro começo da própria faixa (loop) ou vão pro sink.
+const BF_KINDS = ['butterfly', 'butterfly-loop', 'butterfly-sink'];
+function combos(n, k) {
+  const out = [];
+  const rec = (from, acc) => {
+    if (acc.length === k) { out.push(acc.slice()); return; }
+    for (let i = from; i <= n - (k - acc.length); i++) { acc.push(i); rec(i + 1, acc); acc.pop(); }
+  };
+  rec(0, []);
+  return out;
+}
+function orders(F) {
+  if (F.length <= 1) return [F.slice()];
+  const seen = new Set(), out = [];
+  F.forEach((f, i) => {
+    if (seen.has(f)) return;
+    seen.add(f);
+    for (const rest of orders(F.filter((_, j) => j !== i))) out.push([f, ...rest]);
+  });
+  return out;
+}
+// Rodadas a partir das faixas vivas no começo: splitter só em faixa com item, merger só onde chegam 2+ partes.
+function bfRounds(F, K, live0) {
+  let live = live0.slice(), splitters = 0, mergers = 0;
+  const rounds = F.map((f, s) => {
+    const splits = [], merges = [], next = Array(K).fill(false);
+    for (let l = 0; l < K; l++) if (live[l]) splits.push(l);
+    for (let l = 0; l < K; l++) {
+      const from = butterflyGroup(F, s, l).filter(j => live[j]);
+      if (!from.length) continue;
+      next[l] = true;
+      merges.push({ lane: l, from });
+      if (from.length > 1) mergers++;
+    }
+    splitters += splits.length;
+    live = next;
+    return { f, splits, merges };
+  });
+  return { rounds, splitters, mergers };
+}
+const BF_NETS = new Map();
+function butterflyNet(kind, N, M) {
+  const key = `${kind}:${N}:${M}`;
+  if (BF_NETS.has(key)) return BF_NETS.get(key);
+  const K = nextDirect(Math.max(N, M)), E = K - M, loop = kind === 'butterfly-loop';
+  const lanes = Array.from({ length: K }, (_, l) => l);
+  // Até 9 faixas dá para testar todas as posições; acima disso, entradas em cima e faixas extras embaixo.
+  const all = K <= 9;
+  const inSets = all ? combos(K, N) : [lanes.slice(0, N)];
+  const exSets = !loop ? [lanes.slice(M)] : all ? combos(K, E) : [lanes.slice(K - E)];
+  let best = null;
+  for (const F of orders(splitTree(K).factors)) {
+    for (const I of inSets) {
+      for (const X of exSets) {
+        const isIn = lanes.map(l => I.includes(l)), isX = lanes.map(l => X.includes(l));
+        const r = bfRounds(F, K, lanes.map(l => isIn[l] || (loop && isX[l])));
+        // Retorno numa faixa com entrada pede merger e carrega entrada + retorno: evita antes de contar peças.
+        const loopMergers = loop ? X.filter(l => isIn[l]) : [];
+        const pieces = r.splitters + r.mergers + loopMergers.length;
+        if (best && (loopMergers.length > best.loopMergers.length || (loopMergers.length === best.loopMergers.length && pieces >= best.pieces))) continue;
+        best = { K, F, inLane: I, outLane: lanes.filter(l => !isX[l]), extra: X, loopMergers, pieces, ...r, mergers: r.mergers + loopMergers.length };
+      }
+    }
+  }
+  BF_NETS.set(key, best);
+  return best;
+}
+
+function butterflyDesign(N, M, rates, cap, kind = 'butterfly') {
   const r = Array.from({ length: N }, (_, i) => rates[Math.min(i, rates.length - 1)] || 0);
   const total = r.reduce((a, b) => a + b, 0);
-  const applies = N < 2 || M !== N || !isDirect(M) ? 'butterflyShape' : null;
-  const F = applies ? [] : splitTree(M).factors;
-  const segments = [{ key: 'in', rate: Math.max(0, ...r), ok: Math.max(0, ...r) <= cap + EPS }];
-  let v = r.slice();
-  F.forEach((f, s) => {
-    segments.push({ key: 'bfPart', rate: Math.max(...v) / f, arg: s + 1, ok: Math.max(...v) / f <= cap + EPS });
-    v = v.map((_, i) => butterflyGroup(F, s, i).reduce((a, j) => a + v[j], 0) / f);
-    if (s < F.length - 1) segments.push({ key: 'bfOut', rate: Math.max(...v), arg: s + 1, ok: Math.max(...v) <= cap + EPS });
-  });
-  segments.push({ key: 'out', rate: total / M, ok: total / M <= cap + EPS });
+  const K = nextDirect(Math.max(N, M, 1)), loop = kind === 'butterfly-loop', sink = kind === 'butterfly-sink';
+  let applies = null;
+  if (N < 2 || M < 2) applies = 'butterflyShape';
+  else if (kind === 'butterfly' && K !== M) applies = 'bfExtra';
+  else if (kind !== 'butterfly' && K === M) applies = 'direct';
+  const net = applies ? null : butterflyNet(kind, N, M);
+  const segments = [];
+  const add = (key, rate, arg) => segments.push({ key, rate, arg, ok: rate <= cap + EPS });
+  add('in', Math.max(0, ...r));
+  let u = 0;
+  if (net) {
+    // Regime permanente: cada faixa que volta leva o mesmo que uma saída (total / M).
+    const back = total / M;
+    const v = Array(K).fill(0);
+    net.inLane.forEach((l, i) => { v[l] += r[i]; });
+    if (loop) {
+      net.extra.forEach(l => { v[l] += back; });
+      add('bfLoop', back);
+      if (net.loopMergers.length) add('bfLoopIn', Math.max(...net.loopMergers.map(l => v[l])));
+    }
+    let cur = v;
+    net.rounds.forEach((rd, s) => {
+      add('bfPart', Math.max(...rd.splits.map(l => cur[l])) / rd.f, s + 1);
+      const next = Array(K).fill(0);
+      rd.merges.forEach(m => { next[m.lane] = m.from.reduce((a, j) => a + cur[j], 0) / rd.f; });
+      cur = next;
+      if (s < net.rounds.length - 1) add('bfOut', Math.max(...rd.merges.filter(m => m.from.length > 1).map(m => cur[m.lane]), 0), s + 1);
+    });
+    u = cur[net.outLane[0]];
+    add('out', u);
+  } else add('out', total / M);
+  // Trecho acima da esteira: tudo anda mais devagar na mesma proporção.
+  const scale = Math.min(1, ...segments.map(sg => (sg.rate > EPS ? cap / sg.rate : 1)));
   return {
-    kind: 'butterfly', N, M, n: M, extra: 0, factors: F, tree: splitTree(M), rates: r, total, cap, applies, segments, chain: [],
-    perOut: Math.min(cap, total / M), sinkRate: 0, pieces: { splitters: M * F.length, mergers: M * F.length, blueprints: 0 },
+    kind, N, M, n: K, extra: net ? K - M : 0, net, factors: net ? net.F : [], tree: splitTree(K), rates: r, total, cap, applies, segments, chain: [],
+    perOut: net ? u * scale : Math.min(cap, total / M), sinkRate: sink && net ? u * scale * (K - M) : 0,
+    pieces: { splitters: net ? net.splitters : 0, mergers: net ? net.mergers : 0, blueprints: 0 },
   };
 }
 
@@ -1667,15 +1799,33 @@ function designFloors(d) {
   const N = d.N, M = d.M, ins = [], outs = [];
   if (d.kind === 'blueprint' || d.applies) return null;
   for (let i = 0; i < N; i++) ins.push(node('in', 0, (i + 0.5) / N, { inp: i }));
-  if (d.kind === 'butterfly') {
-    let cur = ins.slice();
-    d.factors.forEach((f, s) => {
-      const sp = cur.map((c, i) => { const id = node('s', 2 * s + 1, (i + 0.5) / M, { ways: f }); edge(c, id, s ? -1 : i); return id; });
-      const mg = cur.map((_, j) => node('m', 2 * s + 2, (j + 0.5) / M));
-      sp.forEach((id, i) => butterflyGroup(d.factors, s, i).forEach(j => edge(id, mg[j], s ? -1 : i)));
-      cur = mg;
+  if (d.net) {
+    // Uma faixa por coluna da fachada; o merger do retorno (se houver) fica no primeiro andar.
+    const net = d.net, K = net.K, x = l => (l + 0.5) / K, sh = net.loopMergers.length ? 1 : 0;
+    let cur = Array(K).fill(null);
+    const inp = Array(K).fill(-1), start = Array(K).fill(null);
+    net.inLane.forEach((l, i) => { cur[l] = ins[i]; inp[l] = i; nodes[ins[i]].x = x(l); });
+    net.loopMergers.forEach(l => { const id = node('m', 1, x(l)); edge(cur[l], id, inp[l]); cur[l] = start[l] = id; });
+    net.rounds.forEach((rd, s) => {
+      const sp = Array(K).fill(null), next = Array(K).fill(null);
+      rd.splits.forEach(l => {
+        sp[l] = node('s', sh + 2 * s + 1, x(l), { ways: rd.f });
+        if (cur[l] !== null) edge(cur[l], sp[l], s ? -1 : inp[l]);
+        if (start[l] === null) start[l] = sp[l];
+      });
+      rd.merges.forEach(m => {
+        if (m.from.length === 1) { next[m.lane] = sp[m.from[0]]; return; }
+        next[m.lane] = node('m', sh + 2 * s + 2, x(m.lane));
+        m.from.forEach(j => edge(sp[j], next[m.lane], s ? -1 : inp[j]));
+      });
+      cur = next;
     });
-    cur.forEach((c, j) => { const o = node('out', 2 * d.factors.length + 1, (j + 0.5) / M); outs.push(o); edge(c, o, -1, 'out'); });
+    const top = sh + 2 * net.rounds.length + 1;
+    net.outLane.forEach(l => { const o = node('out', top, x(l)); outs.push(o); edge(cur[l], o, -1, 'out'); });
+    net.extra.forEach(l => {
+      if (d.kind === 'butterfly-loop') edge(cur[l], start[l], -1, 'loop');
+      else edge(cur[l], node('sink', nodes[cur[l]].floor, x(l)), -1, 'sink');
+    });
   } else {
     const loop = d.kind.endsWith('-loop'), sink = d.kind.endsWith('-sink'), F = d.tree.factors, L = F.length, n = d.n;
     const tree = (from, f0, inp, x0, w) => {
@@ -1739,7 +1889,7 @@ function designFloors(d) {
 
 function balancerCandidates(N, M, rates, cap, blueprints = []) {
   const list = DESIGN_KINDS.map(k => balancerDesign(k, N, M, rates, cap));
-  list.push(butterflyDesign(N, M, rates, cap));
+  for (const k of BF_KINDS) list.push(butterflyDesign(N, M, rates, cap, k));
   for (const bp of blueprints) if (bp.m === M && bp.n >= N) list.push(blueprintDesign(bp, N, M, rates, cap));
   return list;
 }
@@ -1868,7 +2018,7 @@ function simulate(g) {
         for (const e of n.outs) set(e, Math.min(n.rate, cap, acc[e]), n.rate);
       } else if (n.type === 'splitter' || n.type === 'balancer') {
         const a = n.outs.map(e => acc[e]);
-        const f = waterfill(inFlow, a);
+        const f = waterfill(n.limit === undefined ? inFlow : Math.min(inFlow, n.limit), a);
         const offIn = n.maxIn === undefined ? inOff : Math.min(inOff, n.maxIn);
         n.outs.forEach((e, j) => {
           const a2 = a.slice(); a2[j] = INF;
@@ -1892,7 +2042,7 @@ function simulate(g) {
         else if (n.type === 'merger' || n.type === 'balancer') {
           // Balancer com várias entradas (blueprint) puxa como um merger; maxIn é o limite da esteira do loop.
           const caps = n.ins.map(x => (x === e ? INF : off[x]));
-          a = waterfill(n.type === 'merger' ? acc[n.outs[0]] : sum(n.outs, acc), caps)[idx];
+          a = waterfill(n.type === 'merger' ? acc[n.outs[0]] : Math.min(sum(n.outs, acc), n.limit === undefined ? INF : n.limit), caps)[idx];
           if (n.maxIn !== undefined) a = Math.min(a, n.maxIn);
         } else a = sum(n.outs, acc);
         acc[e] = Math.min(cap, a);
@@ -1948,15 +2098,28 @@ function buildBalancer(g, d, inputs, outputs, sink) {
     tr.slots.slice(M).forEach(s => v.sinkEdges.push(addEdge(g, s, sink)));
     return { root: tr.root, slots: tr.slots.slice(0, M) };
   };
-  if (d.kind === 'butterfly') {
-    let cur = inputs.slice();
-    d.factors.forEach((f, s) => {
-      const sp = cur.map((c, i) => { const id = addNode(g, 'splitter'); const e = addEdge(g, c, id); if (s === 0) v.inEdges[i] = e; return id; });
-      const mg = cur.map(() => addNode(g, 'merger'));
-      sp.forEach((id, i) => butterflyGroup(d.factors, s, i).forEach(j => addEdge(g, id, mg[j])));
-      cur = mg;
+  if (d.kind === 'butterfly-loop') {
+    // Com o retorno o grafo vira ciclo: entra como divisão ideal limitada pela vazão do design.
+    const hub = addNode(g, 'balancer', { limit: d.perOut * d.M });
+    inputs.forEach(s => v.inEdges.push(addEdge(g, s, hub)));
+    outputs.forEach(c => v.outEdges.push(addEdge(g, hub, c)));
+  } else if (d.net) {
+    const net = d.net;
+    let cur = Array(net.K).fill(null);
+    const inIdx = Array(net.K).fill(-1);
+    net.inLane.forEach((l, i) => { cur[l] = inputs[i]; inIdx[l] = i; });
+    net.rounds.forEach((rd, s) => {
+      const sp = Array(net.K).fill(null), next = Array(net.K).fill(null);
+      rd.splits.forEach(l => { sp[l] = addNode(g, 'splitter'); const e = addEdge(g, cur[l], sp[l]); if (s === 0) v.inEdges[inIdx[l]] = e; });
+      rd.merges.forEach(m => {
+        if (m.from.length === 1) { next[m.lane] = sp[m.from[0]]; return; }
+        next[m.lane] = addNode(g, 'merger');
+        m.from.forEach(j => addEdge(g, sp[j], next[m.lane]));
+      });
+      cur = next;
     });
-    cur.forEach((c, j) => v.outEdges.push(addEdge(g, c, outputs[j])));
+    net.outLane.forEach((l, j) => v.outEdges.push(addEdge(g, cur[l], outputs[j])));
+    net.extra.forEach(l => v.sinkEdges.push(addEdge(g, cur[l], sink)));
   } else if (d.kind === 'blueprint') {
     const hub = addNode(g, 'balancer');
     inputs.forEach(s => v.inEdges.push(addEdge(g, s, hub)));
@@ -2238,7 +2401,7 @@ function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
 
 function designName(d) {
   if (d.kind === 'blueprint') return t('dkBlueprint', d.bp.n, d.bp.m);
-  return t({ butterfly: 'dkButterfly', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
+  return t({ butterfly: 'dkButterfly', 'butterfly-loop': 'dkButterflyLoop', 'butterfly-sink': 'dkButterflySink', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
 }
 
 // Blueprint conta como uma peça: é só colar.
@@ -2303,7 +2466,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyDesign, designFloors, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -2326,6 +2489,11 @@ const Dn = l => dstTag(l.id);
 // ---- Idioma ----
 // Cada idioma tem um endereço próprio no site (/, /pt, /es) para os buscadores; o vercel.json reescreve para o index.html.
 const SITE = 'https://sf-balancer.vercel.app';
+// Atalhos externos para quem não quer montar o balancer na mão: o mod e os blueprints da comunidade.
+const EXT_MOD = 'https://ficsit.app/mod/LoadBalancers';
+const extBpUrl = () => `https://satisfactory-calculator.com/${LANG}/blueprints`;
+const extLink = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${esc(text)}</a>`;
+const extLinks = () => [extLink(EXT_MOD, 'Modular Load Balancers (ficsit.app)'), extLink(extBpUrl(), t('extBp'))].join(' · ');
 const LANG_PATH = { en: '/', pt: '/pt', es: '/es' };
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 // Ordem: caminho (/pt, /es), ?lang= na URL, escolha salva, inglês.
@@ -2369,6 +2537,7 @@ function applyStatic() {
   $('libBelt').innerHTML = $('belt').innerHTML;
   $('libBelt').value = libBelt || 'Mk4';
   $('langs').innerHTML = LANGS.map(l => `<button type="button" data-lang="${l}" lang="${I18N[l].htmlLang}" title="${I18N[l].langName}" aria-pressed="${l === LANG}">${FLAGS[l]}${l.toUpperCase()}</button>`).join('');
+  $('faqExt').innerHTML = extLinks();
   syncGroups('src');
   syncGroups('dst');
 }
@@ -3086,35 +3255,70 @@ function balancerBuild(d, labels) {
       g(under, s2, belt(curve(bx + bw, yAt(j, M), xOut, yAt(j, M)), 'var(--ink)', 3));
       g(over, s2, box(xOut, yAt(j, M), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     }
-  } else if (d.kind === 'butterfly') {
-    // Uma linha por esteira; cada rodada é uma coluna de splitters e outra de mergers.
-    const F = d.factors, K = F.length, gap = 46, cH = M * gap - (gap - boxH);
-    H = top * 2 + cH;
-    const y = i => top + i * gap + boxH / 2;
-    const colS = s => inW + 50 + s * 160, colM = s => colS(s) + 90;
-    const xOut = colM(K - 1) + 50;
+  } else if (d.net) {
+    // Uma linha por faixa (numerada à esquerda); cada rodada é uma coluna de splitters e outra de mergers.
+    // Faixa vazia não tem splitter; faixa que recebe uma parte só segue direto, sem merger.
+    const net = d.net, K = net.K, R = net.rounds.length, gap = 46, numW = 20;
+    const laneIn = Array(K).fill(-1);
+    net.inLane.forEach((l, i) => { laneIn[l] = i; });
+    const hasLM = net.loopMergers.length > 0;
+    const cH = K * gap - (gap - boxH);
+    H = top * 2 + cH + (loop ? 12 + net.extra.length * 6 : 0);
+    const y = l => top + l * gap + boxH / 2;
+    const x0 = numW + inW, xLM = x0 + 30, xStart = hasLM ? xLM + 20 : x0;
+    const colS = s => xStart + 50 + s * 160, colM = s => colS(s) + 90;
+    const merged = Array(K).fill(false);
+    const xAfter = (s, l) => (s < 0 ? (laneIn[l] >= 0 && net.loopMergers.includes(l) ? xLM + 7 : laneIn[l] >= 0 ? x0 : x0 + 16) : merged[l] ? colM(s) + 7 : colM(s));
+    const xEnd = colM(R - 1) + 7, xOut = xEnd + 50;
     W = xOut + outW + 2;
+    const color = l => (laneIn[l] >= 0 ? inColor(laneIn[l]) : 'var(--ink-dim)');
     const s0 = inStep();
-    for (let i = 0; i < N; i++) g(over, s0, box(0, y(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-    F.forEach((f, s) => {
-      // Cor por faixa: a linha i mantém a cor da sua entrada em todas as rodadas, para seguir cada ligação.
-      const color = inColor;
-      const ss = step(t('stBfSplit', s + 1, M, f));
-      for (let i = 0; i < M; i++) {
-        g(under, ss, belt(`M${s === 0 ? inW : colM(s - 1) + 7},${y(i)} L${colS(s) - 11},${y(i)}`, color(i), 3));
-        g(over, ss, splitter(colS(s), y(i), f));
-      }
-      const groups = [...new Set(Array.from({ length: M }, (_, i) => butterflyGroup(F, s, i).join(',')))]
-        .map(gs => gs.split(',').map(j => ins[+j]).join('+')).join(', ');
-      const sm = step(t('stBfMerge', s + 1, groups));
-      for (let i = 0; i < M; i++) for (const j of butterflyGroup(F, s, i)) g(under, sm, belt(curve(colS(s) + 11, y(i), colM(s) - 7, y(j)), color(i), 1.6));
-      for (let j = 0; j < M; j++) g(over, sm, merger(colM(s), y(j)));
-    });
-    const so = step(t('stOut', M, fmt(d.perOut)));
-    for (let j = 0; j < M; j++) {
-      g(under, so, belt(`M${colM(K - 1) + 7},${y(j)} L${xOut},${y(j)}`, 'var(--ink)', 3));
-      g(over, so, box(xOut, y(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    for (let l = 0; l < K; l++) {
+      g(over, s0, `<text class="sm" x="${numW - 6}" y="${y(l) + 4}" text-anchor="end" style="fill:var(--ink-dim)">${l + 1}</text>`);
+      const i = laneIn[l];
+      if (i >= 0) g(over, s0, box(numW, y(l), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+      else g(over, s0, `<rect x="${numW}" y="${y(l) - boxH / 2}" width="${inW}" height="${boxH}" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/><text class="sm" x="${numW + inW / 2}" y="${y(l) + 4}" text-anchor="middle" style="fill:var(--ink-dim)">${esc(t(loop && net.extra.includes(l) ? 'bfReturn' : 'bfEmpty'))}</text>`);
     }
+    if (hasLM) {
+      const s = step(t('stLoopM', net.loopMergers.length));
+      net.loopMergers.forEach(l => {
+        g(under, s, belt(`M${x0},${y(l)} L${xLM - 7},${y(l)}`, color(l), 3));
+        g(over, s, merger(xLM, y(l)));
+      });
+    }
+    net.rounds.forEach((rd, s) => {
+      const ss = step(t('stBfSplit', s + 1, rd.splits.length, rd.f));
+      rd.splits.forEach(l => {
+        g(under, ss, belt(`M${xAfter(s - 1, l)},${y(l)} L${colS(s) - 11},${y(l)}`, color(l), 3));
+        g(over, ss, splitter(colS(s), y(l), rd.f));
+      });
+      const blocks = [...new Set(Array.from({ length: K }, (_, l) => butterflyGroup(net.F, s, l).map(j => j + 1).join('+')))].join(', ');
+      const pass = rd.merges.filter(m => m.from.length === 1).length;
+      const sm = step(pass === rd.merges.length ? t('stBfFan', s + 1, blocks) : t('stBfMerge', s + 1, blocks, pass));
+      rd.merges.forEach(m => {
+        merged[m.lane] = m.from.length > 1;
+        for (const j of m.from) g(under, sm, belt(curve(colS(s) + 11, y(j), merged[m.lane] ? colM(s) - 7 : colM(s), y(m.lane)), color(j), 1.6));
+        if (merged[m.lane]) g(over, sm, merger(colM(s), y(m.lane)));
+      });
+    });
+    const xLast = l => xAfter(R - 1, l);
+    if (net.extra.length && loop) {
+      const s = step(t('stBfLoopBack', net.extra.length, net.extra.map(l => l + 1).join(', '), M));
+      net.extra.forEach((l, k) => {
+        const yb = top + cH + 8 + k * 6, xr = xEnd + 12 + k * 6;
+        const end = laneIn[l] >= 0 ? `H${xLM} V${y(l) + 7}` : `H${x0 + 8} V${y(l)} H${x0 + 16}`;
+        g(under, s, belt(`M${xLast(l)},${y(l)} H${xr} V${yb} ${end}`, color(l), 1.6, '5 3'));
+      });
+    }
+    if (net.extra.length && sink) {
+      const s = step(t('stSinkOut', net.extra.length));
+      net.extra.forEach(l => sinkStub(s, xLast(l), y(l)));
+    }
+    const so = step(t('stOut', M, fmt(d.perOut)));
+    net.outLane.forEach((l, j) => {
+      g(under, so, belt(`M${xLast(l)},${y(l)} L${xOut},${y(l)}`, 'var(--ink)', 3));
+      g(over, so, box(xOut, y(l), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    });
   } else if (d.kind.startsWith('funnel')) {
     const F = d.tree.factors, L = F.length, C = d.chain.length;
     const inGap = 44, cH = Math.max(N * inGap - (inGap - boxH), n * 42);
@@ -3272,9 +3476,9 @@ function verticalBuild(d, labels) {
   const { nodes, edges, floors } = fl;
   const piece = n => n.t === 's' || n.t === 'm';
   const perFloor = f => nodes.filter(n => piece(n) && n.floor === f).length;
-  const widest = Math.max(d.N, d.M, ...Array.from({ length: floors }, (_, k) => perFloor(k + 1)));
+  const widest = Math.max(d.N, d.M, d.net ? d.net.K : 0, ...Array.from({ length: floors }, (_, k) => perFloor(k + 1)));
   const padL = 74, innerW = Math.max(520, widest * 46), floorH = 74, boxH = 30, top = 12;
-  const slot = innerW / Math.max(d.N, d.M), bw = Math.min(92, slot - 8), full = bw >= 78;
+  const slot = innerW / (d.net ? d.net.K : Math.max(d.N, d.M)), bw = Math.min(92, slot - 8), full = bw >= 78;
   const hasSink = nodes.some(n => n.t === 'sink');
   const W = padL + innerW + (hasSink ? 56 : 16);
   const yOutRow = top + boxH / 2;
@@ -3419,7 +3623,7 @@ function whyText(ranked) {
 }
 
 function designNote(d, belt) {
-  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape', butterflyShape: 'rButterfly' }[d.applies], d.M);
+  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape', butterflyShape: 'rButterfly', bfExtra: 'rBfExtra' }[d.applies], d.M, d.n);
   const bad = d.segments.find(s => !s.ok);
   const note = bad ? t('rLimit', segName(bad), fmt(bad.rate), belt) : t('rNoLimit');
   return note + (d.sinkRate > 0.05 ? `; ${t('lgToSink')} ${fmt(d.sinkRate)}/min` : '');
@@ -3434,17 +3638,23 @@ function checksTable(d, belt) {
 
 // Bancada: passo a passo do design escolhido, a lista de designs testados e a vazão de cada trecho.
 // ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, style, view, inUse, onView, onStyle }
-// Montagem: normal (designs planos) ou borboleta.
-// Vertical desligado por enquanto (o corte não ficou legível); designFloors e verticalBuild continuam prontos.
-const STYLES = ['normal', 'butterfly'];
-const STYLE_FILTER = { normal: d => d.kind !== 'butterfly', butterfly: d => d.kind === 'butterfly', vertical: d => d.kind !== 'blueprint' };
+// Montagem: normal (designs planos), borboleta, ou vertical (qualquer design em andares, com lifts).
+const STYLES = ['normal', 'butterfly', 'vertical'];
+const isBf = d => d.kind.startsWith('butterfly');
+const STYLE_FILTER = { normal: d => !isBf(d), butterfly: isBf, vertical: d => d.kind !== 'blueprint' };
 function workbench(el, ctx) {
   const style = STYLES.includes(ctx.style) ? ctx.style : 'normal';
-  const cands = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints)).filter(STYLE_FILTER[style]);
+  const all = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints));
+  const cands = all.filter(STYLE_FILTER[style]);
   const best = cands[0];
+  // Aba (normal ou borboleta) onde está o melhor design de todos: marca a aba e avisa quando é outra.
+  const top = all.find(d => !d.applies);
+  const topStyle = top ? (isBf(top) ? 'butterfly' : 'normal') : null;
+  const better = top && style !== 'vertical' && topStyle !== style
+    ? `<p class="wb-better">${t('styleBetter', `<button type="button" data-style="${topStyle}">${t('style' + cap1(topStyle))}</button>`, esc(designName(top)), designPieces(top), fmt(top.perOut))}</p>` : '';
   const styleBar = `<div class="wb-style"><span class="wb-style-l">${t('styleTitle')}${tip('tipStyle')}</span>
-    <div class="seg" role="radiogroup" aria-label="${esc(t('styleTitle'))}">${STYLES.map(k => `<button type="button" role="radio" aria-checked="${k === style}" data-style="${k}">${t('style' + cap1(k))}</button>`).join('')}</div></div>`;
-  const bindStyle = () => el.querySelector('.seg').addEventListener('click', e => {
+    <div class="seg" role="radiogroup" aria-label="${esc(t('styleTitle'))}">${STYLES.map(k => `<button type="button" role="radio" aria-checked="${k === style}" data-style="${k}"${k === topStyle ? ` data-best title="${esc(t('styleBestTip'))}"` : ''}>${t('style' + cap1(k))}</button>`).join('')}</div>${better}</div>`;
+  const bindStyle = () => el.querySelector('.wb-style').addEventListener('click', e => {
     const b = e.target.closest('[data-style]');
     if (!b || b.dataset.style === style) return;
     ctx.style = b.dataset.style;
@@ -3485,7 +3695,8 @@ function workbench(el, ctx) {
         </div>
       </div>
     </aside>
-  </div>`;
+  </div>
+  <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, vertical);
   bindStyle();
   el.querySelector('.cands').addEventListener('click', e => {
@@ -3516,6 +3727,7 @@ const CATALOG = [
   { kind: 'matrix-sink', n: 1, m: 7, rate: 480, ds: 'dsMatrixSink' },
   { kind: 'funnel-sink', n: 2, m: 5, rate: 60, ds: 'dsFunnelSink' },
   { kind: 'butterfly', n: 4, m: 4, rate: 480, ds: 'dsButterfly' },
+  { kind: 'butterfly-loop', n: 5, m: 5, rate: 300, ds: 'dsButterflyLoop' },
 ];
 
 function renderBps() {
@@ -3547,7 +3759,7 @@ function renderLib() {
 
 function renderCatalog() {
   $('catGrid').innerHTML = CATALOG.map((c, i) => {
-    const d = c.kind === 'butterfly' ? butterflyDesign(c.n, c.m, [c.rate], 480) : balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
+    const d = c.kind.startsWith('butterfly') ? butterflyDesign(c.n, c.m, [c.rate], 480, c.kind) : balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
     return `<div class="plate cat">
       <div class="thumb" aria-hidden="true">${balancerBuild(d, libLabels(c.n, c.m)).svg}</div>
       <h4>${esc(cap1(designName(d)))}</h4>
@@ -3561,7 +3773,7 @@ function openCatalog(i) {
   const c = CATALOG[i];
   $('libN').value = c.n; $('libM').value = c.m; $('libRate').value = fmt(c.rate);
   LIB.view = c.kind;
-  if (c.kind === 'butterfly') LIB.style = 'butterfly';
+  if (c.kind.startsWith('butterfly')) LIB.style = 'butterfly';
   else if (LIB.style === 'butterfly') LIB.style = 'normal';
   renderLib();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3583,7 +3795,7 @@ function openFromPlan(key) {
   const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
-    openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind === 'butterfly' ? 'butterfly' : 'normal' });
+    openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind.startsWith('butterfly') ? 'butterfly' : 'normal' });
   } else if (key[0] === 'g') {
     const gr = alt.view.groups[+key.slice(1)].gr;
     const kind = { direct: 'matrix', loop: 'matrix-loop', sink: 'matrix-sink' }[gr.mode];
