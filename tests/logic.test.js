@@ -613,3 +613,72 @@ test('idiomas: textos do 3D', () => {
     assert.ok(L.t('stLevel3d', 'floors', 2, 4, 2, 0, 3, 0).length > 10);
   });
 });
+
+// ---- Vista 3D: esteiras legíveis, lifts e enquadramento ----
+const HALF = { s: [1.8, 1.2, 1.8], m: [1.8, 1.2, 1.8], sink: [1.8, 1.2, 1.8], in: [2.2, 0.4, 1.8], out: [2.2, 0.4, 1.8] };
+const inBox = (q, p, pad = 0) => q.every((v, k) => Math.abs(v - p.pos[k]) <= HALF[p.t][k] + pad);
+// Trecho [a, b] (eixo único) cruza a caixa da peça p? Amostra o trecho, que é reto e alinhado aos eixos.
+const hits = (a, b, p) => { const ax = [0, 1, 2].find(k => Math.abs(a[k] - b[k]) > 1e-9); const h = HALF[p.t]; return [0, 1, 2].every(k => (k === ax ? Math.min(a[k], b[k]) < p.pos[k] + h[k] - 0.05 && Math.max(a[k], b[k]) > p.pos[k] - h[k] + 0.05 : Math.abs(a[k] - p.pos[k]) < h[k] - 0.05)); };
+const segsOf = (lay, b) => b.pts.slice(1).map((q, i) => [b.pts[i], q]);
+
+test('3D: esteira não atravessa peça e não corre por cima de outra esteira', () => {
+  for (const [N, M] of [[4, 4], [2, 2], [3, 4], [5, 5], [2, 5], [9, 9]]) {
+    for (const d of L.balancerCandidates(N, M, [100], 1e9).filter(x => !x.applies && x.kind !== 'blueprint')) {
+      for (const mode of ['floors', 'towers']) {
+        const lay = L.layout3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
+        const byId = new Map(lay.pieces.map(p => [p.id, p]));
+        const outer = []; // trechos fora das peças das pontas
+        lay.belts.forEach((b, bi) => {
+          const A = byId.get(b.a), B = byId.get(b.b);
+          for (const [p, q] of segsOf(lay, b)) {
+            const mid = p.map((v, i) => (v + q[i]) / 2);
+            if (inBox(mid, A) || inBox(mid, B)) continue;
+            for (const o of lay.pieces) if (o !== A && o !== B) assert.ok(!hits(p, q, o), `${at}: esteira ${bi} atravessa peça ${o.id} (${o.t})`);
+            outer.push({ bi, p, q });
+          }
+        });
+        for (let i = 0; i < outer.length; i++) for (let j = i + 1; j < outer.length; j++) {
+          const s = outer[i], u = outer[j];
+          if (s.bi === u.bi) continue;
+          const ax = [0, 1, 2].find(k => Math.abs(s.p[k] - s.q[k]) > 1e-9), ux = [0, 1, 2].find(k => Math.abs(u.p[k] - u.q[k]) > 1e-9);
+          if (ax !== ux) continue;
+          if ([0, 1, 2].some(k => k !== ax && Math.abs(s.p[k] - u.p[k]) >= 1.0)) continue;
+          const lo = Math.max(Math.min(s.p[ax], s.q[ax]), Math.min(u.p[ax], u.q[ax])), hi = Math.min(Math.max(s.p[ax], s.q[ax]), Math.max(u.p[ax], u.q[ax]));
+          assert.ok(hi - lo < 0.3, `${at}: esteiras ${s.bi} e ${u.bi} correm uma sobre a outra`);
+        }
+      }
+    }
+  }
+});
+
+test('3D: a contagem de lifts é o número de esteiras com trecho vertical', () => {
+  for (const d of [L.balancerDesign('funnel', 2, 2, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.balancerDesign('matrix-loop', 2, 5, [100], 1e9)]) {
+    for (const mode of ['floors', 'towers']) {
+      const lay = L.layout3d(d, mode);
+      const vertical = lay.belts.filter(b => segsOf(lay, b).some(([p, q]) => Math.abs(p[1] - q[1]) > 1e-9)).length;
+      assert.equal(lay.lifts, vertical, `${d.kind} ${mode}`);
+    }
+  }
+});
+
+test('3D: o enquadramento inicial cabe a montagem inteira na tela', () => {
+  const dir = [0.75, 0.75, 1.1], n = Math.hypot(...dir), f = dir.map(v => v / n);
+  for (const [d, mode] of [[L.balancerDesign('matrix', 9, 9, [100], 1e9), 'towers'], [L.butterflyDesign(9, 2, [100], 1e9, 'butterfly-loop'), 'floors'], [L.butterflyDesign(4, 3, [100], 1e9, 'butterfly-loop'), 'floors']]) {
+    for (const aspect of [16 / 10, 390 / 600]) {
+      const { min, max } = L.layout3d(d, mode).bounds;
+      const c = min.map((v, i) => (v + max[i]) / 2), dist = L.fitDistance({ min, max }, 45, aspect);
+      const cam = c.map((v, i) => v + f[i] * dist);
+      // Base da câmera olhando para o centro.
+      const fw = f.map(v => -v), up0 = [0, 1, 0];
+      const rt = [fw[1] * up0[2] - fw[2] * up0[1], fw[2] * up0[0] - fw[0] * up0[2], fw[0] * up0[1] - fw[1] * up0[0]];
+      const rn = Math.hypot(...rt), r = rt.map(v => v / rn);
+      const up = [r[1] * fw[2] - r[2] * fw[1], r[2] * fw[0] - r[0] * fw[2], r[0] * fw[1] - r[1] * fw[0]];
+      const t = Math.tan(45 * Math.PI / 360);
+      for (const x of [min[0], max[0]]) for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) {
+        const v = [x - cam[0], y - cam[1], z - cam[2]], depth = v.reduce((a, b, i) => a + b * fw[i], 0);
+        const sx = v.reduce((a, b, i) => a + b * r[i], 0) / (depth * t * aspect), sy = v.reduce((a, b, i) => a + b * up[i], 0) / (depth * t);
+        assert.ok(Math.abs(sx) <= 1 && Math.abs(sy) <= 1, `${d.kind} ${mode} aspect ${aspect.toFixed(2)}: canto fora da tela (${sx.toFixed(2)}, ${sy.toFixed(2)})`);
+      }
+    }
+  }
+});

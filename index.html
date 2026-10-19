@@ -1952,20 +1952,61 @@ function layout3d(d, mode) {
   }
   const stepOf = n => (n.t === 'in' ? 0 : n.t === 'out' ? outStep : n.t === 'sink' ? stepOf(nodes[sinkFrom.get(n.id)]) : levelIdx.get(n.floor));
   const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: pos.get(n.id), step: stepOf(n) }));
-  // Retorno do loop passa por cima de tudo, cada um numa altura, para aparecer de qualquer ângulo.
+  // Esteiras correm fora do plano das peças (z = 0), cada uma numa faixa de profundidade: sai da peça de
+  // origem, anda na sua faixa, sobe ou desce por lift fora das peças e entra na de destino. A faixa é a
+  // primeira que não cruza peça nem corre por cima de outra esteira. O retorno do loop passa por cima de tudo.
+  const HALF3 = { s: [1.8, 1.2, 1.8], m: [1.8, 1.2, 1.8], sink: [1.8, 1.2, 1.8], in: [2.2, 0.4, 1.8], out: [2.2, 0.4, 1.8] };
+  const inside = (q, id, pad) => q.every((v, k) => Math.abs(v - pos.get(id)[k]) <= HALF3[nodes[id].t][k] + pad);
   const topY = Math.max(...[...pos.values()].map(q => q[1])) + L3D.floor;
+  const placed = [];
+  const axisOf = (p, q) => [0, 1, 2].find(k => Math.abs(p[k] - q[k]) > 1e-9);
+  const clash = (p, q, a, b) => {
+    const mid = p.map((v, i) => (v + q[i]) / 2);
+    if (inside(mid, a, 0) || inside(mid, b, 0)) return false;
+    const ax = axisOf(p, q);
+    // Trecho alinhado a um eixo cruza a caixa se cabe nas outras duas medidas e o intervalo encosta.
+    for (const [id, c] of pos) {
+      if (id === a || id === b) continue;
+      const h = HALF3[nodes[id].t];
+      if ([0, 1, 2].every(k => (k === ax ? Math.min(p[k], q[k]) <= c[k] + h[k] + 0.3 && Math.max(p[k], q[k]) >= c[k] - h[k] - 0.3 : Math.abs(p[k] - c[k]) <= h[k] + 0.3))) return true;
+    }
+    return placed.some(u => u.ax === ax && [0, 1, 2].every(k => k === ax || Math.abs(p[k] - u.p[k]) < 1.1)
+      && Math.min(Math.max(p[ax], q[ax]), Math.max(u.p[ax], u.q[ax])) - Math.max(Math.min(p[ax], q[ax]), Math.min(u.p[ax], u.q[ax])) > 0.2);
+  };
+  const outK = new Map(), inK = new Map();
+  // Quatro posições na largura da peça: saídas a partir da esquerda, entradas a partir da direita (peça tem até 4 ligações).
+  const SLOTS = [-1.68, -0.56, 0.56, 1.68];
+  const slot = (map, id, out) => { const k = map.get(id) || 0; map.set(id, k + 1); return out ? SLOTS[k % 4] : SLOTS[3 - (k % 4)]; };
   let loops = 0;
   const belts = edges.map(e => {
     const a = nodes[e.a], b = nodes[e.b], A = pos.get(e.a), B = pos.get(e.b);
-    let pts;
-    if (e.kind === 'loop') {
-      const y = topY + loops++ * 1.5, z = -L3D.cell;
-      pts = [A, [A[0], A[1], z], [A[0], y, z], [B[0], y, z], [B[0], B[1], z], B];
-    } else pts = [A, [B[0], A[1], A[2]], [B[0], B[1], B[2]]];
-    pts = pts.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - pts[i - 1][k]) > 1e-9));
-    if (pts.length < 2) pts.push(B);
-    const step = e.kind === 'out' ? outStep : e.kind === 'loop' || b.t === 'sink' ? stepOf(a) : stepOf(b);
-    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift: piece(a) && piece(b) && Math.abs(A[1] - B[1]) > 1e-9, step };
+    const dxo = slot(outK, e.a, true), dxi = slot(inK, e.b, false), loop = e.kind === 'loop';
+    const ly = loop ? topY + loops++ * 1.5 : null;
+    // Nas torres o lift fica no vão antes da torre de destino; nos andares, na frente ou atrás da peça.
+    const Lx = loop || mode !== 'towers' ? B[0] + dxi : B[0] - L3D.gap / 2 + dxi;
+    const route = z => {
+      const pts = [A, [A[0] + dxo, A[1], A[2]], [A[0] + dxo, A[1], z]];
+      if (loop) pts.push([A[0] + dxo, ly, z], [Lx, ly, z]);
+      else pts.push([Lx, A[1], z]);
+      pts.push([Lx, B[1], z], [B[0] + dxi, B[1], z], [B[0] + dxi, B[1], B[2]], B);
+      return pts.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - pts[i - 1][k]) > 1e-9));
+    };
+    let pts = null, best = null;
+    // Placa fora do plano (entradas na frente, saídas atrás, sinks): tenta primeiro faixas do lado dela, sem atravessar a peça.
+    const side = Math.sign(A[2]) || Math.sign(B[2]);
+    for (let i = 0; i < 400 && !pts; i++) {
+      const z = side && i < 40 ? side * (2.8 + 1.3 * i) : (i % 2 ? -1 : 1) * (2.8 + 1.3 * Math.floor(i / 2));
+      const cand = route(z);
+      const bad = cand.slice(1).filter((q, k) => clash(cand[k], q, e.a, e.b)).length;
+      if (!bad) pts = cand;
+      else if (!best || bad < best.bad) best = { cand, bad };
+    }
+    // Montagem muito cheia (alguns 7+→2 e 8+→3 em andares): fica a faixa com menos cruzamentos.
+    if (!pts) pts = best.cand;
+    pts.slice(1).forEach((q, k) => { const ax = axisOf(pts[k], q); if (ax !== undefined) placed.push({ p: pts[k], q, ax }); });
+    const step = e.kind === 'out' ? outStep : loop || b.t === 'sink' ? stepOf(a) : stepOf(b);
+    const lift = pts.slice(1).some((q, k) => Math.abs(q[1] - pts[k][1]) > 1e-9);
+    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift, step };
   });
   const steps = [{ key: 'in' }];
   levels.forEach((f, i) => {
@@ -1981,6 +2022,13 @@ function layout3d(d, mode) {
   const all = pieces.map(p => p.pos).concat(...belts.map(b => b.pts));
   const bounds = { min: [0, 1, 2].map(k => Math.min(...all.map(q => q[k]))), max: [0, 1, 2].map(k => Math.max(...all.map(q => q[k]))) };
   return { mode, pieces, belts, lifts: belts.filter(b => b.lift).length, steps, bounds };
+}
+
+// Distância da câmera para a esfera que envolve os limites caber inteira, no menor dos dois ângulos de visão.
+function fitDistance(bounds, fovDeg, aspect) {
+  const r = Math.hypot(...bounds.max.map((v, i) => v - bounds.min[i])) / 2;
+  const v = fovDeg * Math.PI / 180, h = 2 * Math.atan(Math.tan(v / 2) * aspect);
+  return Math.max(r, 4) / Math.sin(Math.min(v, h) / 2) * 1.05;
 }
 
 function balancerCandidates(N, M, rates, cap, blueprints = []) {
@@ -2562,7 +2610,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, layout3d, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, layout3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3730,8 +3778,7 @@ async function mount3d(stage, d, labels, lay) {
   controls.enableDamping = !reduce;
   controls.maxPolarAngle = Math.PI * 0.495;
   const recenter = () => {
-    // Tela em pé (celular) enxerga menos na horizontal: afasta na mesma proporção.
-    const dist = (extent * 0.95 + 14) * Math.max(1, 1.2 / camera.aspect);
+    const dist = fitDistance(lay.bounds, camera.fov, camera.aspect);
     camera.position.copy(center).add(new T.Vector3(0.75, 0.75, 1.1).normalize().multiplyScalar(dist));
     controls.target.copy(center);
     controls.update();
@@ -3937,7 +3984,10 @@ function checksTable(d, belt) {
 const STYLES = ['normal', 'butterfly', '3d'];
 const isBf = d => d.kind.startsWith('butterfly');
 const STYLE_FILTER = { normal: d => !isBf(d), butterfly: isBf, '3d': d => d.kind !== 'blueprint' };
+// Para o passo a passo (e descarta a cena 3D) do palco que vai ser substituído.
+const stopStage = el => { const st = el.querySelector('.wb-stage'); if (st && st._stop) st._stop(); };
 function workbench(el, ctx) {
+  stopStage(el);
   // Quem tinha a antiga aba Vertical salva abre no 3D.
   const style = ctx.style === 'vertical' ? '3d' : STYLES.includes(ctx.style) ? ctx.style : 'normal';
   const all = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints));
@@ -4048,7 +4098,7 @@ function renderLib() {
   $('libRate').placeholder = fmt(belt.cap);
   Object.assign(LIB, { n: $('libN').value, m: $('libM').value, rate: $('libRate').value, belt: belt.id });
   saveLib();
-  if (!N || !M || !rateOk) { $('libOut').innerHTML = `<p class="lead">${t('invalid')}</p>`; return; }
+  if (!N || !M || !rateOk) { stopStage($('libOut')); $('libOut').innerHTML = `<p class="lead">${t('invalid')}</p>`; return; }
   workbench($('libOut'), {
     N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
