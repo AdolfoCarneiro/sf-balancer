@@ -1,0 +1,628 @@
+<meta charset="utf-8">
+<title>Estilo do 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<style>
+  /* Layout: rodada 2. Um palco grande à esquerda, painel de chaves à direita (empilha no celular), resumo para copiar no fim. */
+  :root {
+    --bench: #0a1b2d;
+    --paper: #0d2136;
+    --plate: #15324f;
+    --line: #2d5176;
+    --ink: #e4eef8;
+    --ink-dim: #8eabc6;
+    --ficsit: #ff9b3d;
+    --holo: #6fe3ff;
+    --ok: #8fe3a4;
+    --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --cut: 12px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bench); color: var(--ink); font: 400 15px/1.55 var(--body); }
+  .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  header.wrap { padding-block: 28px 18px; display: grid; gap: 10px; }
+  .eyebrow { font: 600 12px var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--ficsit); }
+  h1 { font: 700 clamp(26px, 4vw, 40px)/1.05 var(--display); margin: 0; text-wrap: balance; }
+  .lead { margin: 0; max-width: 72ch; color: var(--ink-dim); }
+  .lead b { color: var(--ink); font-weight: 600; }
+
+  main.wrap { padding-block: 0 40px; display: grid; gap: 22px; }
+  .bench { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+  .view { display: grid; gap: 0; border: 1px solid var(--line); background: var(--paper);
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+  .stage { position: relative; aspect-ratio: 16 / 10; max-width: 100%; background: #000; overflow: hidden; touch-action: none; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  .hint { position: absolute; left: 10px; bottom: 10px; font: 500 12px var(--mono); padding: 4px 8px; background: rgba(6, 16, 28, .78); color: var(--ink-dim); pointer-events: none; }
+  .err { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-dim); padding: 20px; text-align: center; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .lanes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .lanes > span { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); margin-right: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--display); color: var(--ink); background: var(--bench); border: 1px solid var(--line); padding: 3px 8px; cursor: pointer; }
+  .chip i { width: 9px; height: 9px; border-radius: 50%; }
+  .chip[aria-pressed="true"] { border-color: var(--holo); color: var(--holo); }
+
+  .panel { display: grid; gap: 14px; background: var(--paper); border: 1px solid var(--line); padding: 14px; }
+  .opt { display: grid; gap: 6px; }
+  .opt > span { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); }
+  .opt small { color: var(--ink-dim); font-size: 12.5px; line-height: 1.4; }
+  .seg { display: flex; border: 1px solid var(--line); background: var(--bench); }
+  .seg button { flex: 1; font: 500 13px var(--body); color: var(--ink-dim); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--plate); color: var(--ficsit); }
+  .seg button:hover, .pbtn:hover { color: var(--ink); }
+  .chk { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: start; font-size: 13.5px; cursor: pointer; }
+  .chk input { accent-color: var(--ficsit); margin: 4px 0 0; }
+  .chk small { grid-column: 2; }
+  .pbtn { font: 500 13px var(--body); color: var(--ink-dim); background: var(--bench); border: 1px solid var(--line); padding: 5px 10px; min-width: 32px; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
+  .steps { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ticks { display: flex; gap: 4px; }
+  .tick { width: 20px; height: 8px; border: 0; padding: 0; background: var(--line); cursor: pointer; }
+  .tick.on { background: var(--holo); }
+  .tick.past { background: color-mix(in srgb, var(--holo) 40%, var(--line)); }
+  .stepcap { font: 500 13px var(--mono); min-width: 12ch; font-variant-numeric: tabular-nums; }
+
+  .choice { display: grid; gap: 12px; background: var(--paper); border: 1px solid var(--line); padding: 16px; }
+  .choice h2 { margin: 0; font: 700 21px var(--display); }
+  .sum { font: 500 13.5px/1.6 var(--mono); background: var(--bench); border: 1px solid var(--line); padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .choice textarea { width: 100%; min-height: 72px; font: 400 14px var(--body); color: var(--ink); background: var(--bench); border: 1px solid var(--line); padding: 10px 12px; resize: vertical; }
+  .choice label { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .go { font: 600 14px var(--display); letter-spacing: .06em; text-transform: uppercase; color: #1a1205; background: var(--ficsit); border: 1px solid var(--ficsit); padding: 8px 14px; cursor: pointer; }
+  .copied { color: var(--ok); font-size: 13px; }
+</style>
+
+<header class="wrap">
+  <div class="eyebrow">sf-balancer · visual da aba 3D · rodada 4 (protótipo de andares)</div>
+  <h1>Ligações como no jogo, agora em andares</h1>
+  <p class="lead">Mesmas portas da rodada 3 (splitter entra por trás e sai pela frente e pelos lados, merger entra por trás e pelos lados e sai pela frente, uma esteira por face), agora na montagem em <b>andares</b>: cada camada num andar, as entradas na frente e as saídas atrás. Como a peça de cima fica logo acima, a esteira sai pela frente ou pelo lado, sobe por um lift fora da fileira e entra pela porta certa lá em cima. A chave <b>Torres</b> continua aí para comparar.</p>
+</header>
+
+<main class="wrap">
+  <div class="bench">
+    <div class="view">
+      <div class="stage" id="stage"><span class="hint" id="hint">passe o mouse numa peça · clique para fixar</span></div>
+      <div class="ctl">
+        <div class="steps"><button type="button" class="pbtn" id="prev" aria-label="Passo anterior">‹</button><div class="ticks" id="ticks"></div><button type="button" class="pbtn" id="next" aria-label="Próximo passo">›</button><button type="button" class="pbtn" id="play" aria-label="Pausar">❚❚</button><span class="stepcap" id="cap"></span></div>
+        <div class="lanes" id="lanes"></div>
+      </div>
+    </div>
+    <aside class="panel" aria-label="Opções">
+      <div class="opt"><span>Montagem 3D</span><div class="seg" id="o-mode"><button type="button" data-v="floors">Andares</button><button type="button" data-v="towers">Torres</button></div></div>
+      <div class="opt"><span>Design</span><div class="seg" id="o-layout"><button type="button" data-v="matrix">Matriz 4→4</button><button type="button" data-v="butterfly">Butterfly 4→4</button></div></div>
+      <div class="opt"><span>Ligações</span><div class="seg" id="o-route"><button type="button" data-v="game">Como no jogo</button><button type="button" data-v="old">Atual</button></div><small>"Atual" é o roteamento que está no site hoje, para comparar.</small></div>
+      <div class="opt"><span>Leitura</span>
+        <label class="chk"><input type="checkbox" id="o-free"> Mostrar portas livres <small>contorno apagado nas setas que não têm esteira</small></label>
+        <label class="chk"><input type="checkbox" id="o-isolate"> Isolar caminho no mouse</label>
+      </div>
+      <div class="opt"><span>Como ler o topo</span><small>Seta para dentro = entrada, seta para fora = saída. Acesa na cor da faixa = porta usada. A seta comprida aponta para a frente (sentido do fluxo).</small></div>
+    </aside>
+  </div>
+
+  <section class="choice" aria-labelledby="ch">
+    <h2 id="ch">Fechou assim?</h2>
+    <div class="sum" id="sum"></div>
+    <label for="notes">Ajuste (opcional)</label>
+    <textarea id="notes" placeholder="Ex.: setas maiores, brilho só no passo atual…"></textarea>
+    <div class="row"><button type="button" class="go" id="copy">Copiar resumo</button><span class="copied" id="copied" aria-live="polite"></span></div>
+  </section>
+</main>
+
+<script>window.LAYOUTS = {"matrix":{"K":6,"bounds":{"min":[-1.68,0,-5.4],"max":[41.68,35,5.4]},"pieces":[{"t":"in","i":0,"p":[0,0,0],"s":0},{"t":"in","i":1,"p":[0,5,0],"s":0},{"t":"in","i":2,"p":[0,10,0],"s":0},{"t":"in","i":3,"p":[0,15,0],"s":0},{"t":"s","w":2,"p":[8,0,0],"s":1},{"t":"s","w":2,"p":[16,0,0],"s":2},{"t":"s","w":2,"p":[16,5,0],"s":2},{"t":"s","w":2,"p":[8,5,0],"s":1},{"t":"s","w":2,"p":[16,10,0],"s":2},{"t":"s","w":2,"p":[16,15,0],"s":2},{"t":"s","w":2,"p":[8,10,0],"s":1},{"t":"s","w":2,"p":[16,20,0],"s":2},{"t":"s","w":2,"p":[16,25,0],"s":2},{"t":"s","w":2,"p":[8,15,0],"s":1},{"t":"s","w":2,"p":[16,30,0],"s":2},{"t":"s","w":2,"p":[16,35,0],"s":2},{"t":"m","p":[24,0,0],"s":3},{"t":"m","p":[32,0,0],"s":4},{"t":"out","p":[40,0,0],"s":5},{"t":"m","p":[24,5,0],"s":3},{"t":"m","p":[32,5,0],"s":4},{"t":"out","p":[40,5,0],"s":5},{"t":"m","p":[24,10,0],"s":3},{"t":"m","p":[32,10,0],"s":4},{"t":"out","p":[40,10,0],"s":5},{"t":"m","p":[24,15,0],"s":3},{"t":"m","p":[32,15,0],"s":4},{"t":"out","p":[40,15,0],"s":5}],"belts":[{"a":0,"b":4,"i":0,"k":"n","s":1,"p":[[0,0,0],[-1.68,0,0],[-1.68,0,2.8],[5.68,0,2.8],[9.68,0,2.8],[9.68,0,0],[8,0,0]]},{"a":4,"b":5,"i":0,"k":"n","s":2,"p":[[8,0,0],[6.32,0,0],[6.32,0,-2.8],[13.68,0,-2.8],[17.68,0,-2.8],[17.68,0,0],[16,0,0]]},{"a":4,"b":6,"i":0,"k":"n","s":2,"p":[[8,0,0],[7.44,0,0],[7.44,0,4.1],[13.68,0,4.1],[13.68,5,4.1],[17.68,5,4.1],[17.68,5,0],[16,5,0]]},{"a":1,"b":7,"i":1,"k":"n","s":1,"p":[[0,5,0],[-1.68,5,0],[-1.68,5,2.8],[5.68,5,2.8],[9.68,5,2.8],[9.68,5,0],[8,5,0]]},{"a":7,"b":8,"i":1,"k":"n","s":2,"p":[[8,5,0],[6.32,5,0],[6.32,5,-2.8],[13.68,5,-2.8],[13.68,10,-2.8],[17.68,10,-2.8],[17.68,10,0],[16,10,0]]},{"a":7,"b":9,"i":1,"k":"n","s":2,"p":[[8,5,0],[7.44,5,0],[7.44,5,4.1],[13.68,5,4.1],[13.68,15,4.1],[17.68,15,4.1],[17.68,15,0],[16,15,0]]},{"a":2,"b":10,"i":2,"k":"n","s":1,"p":[[0,10,0],[-1.68,10,0],[-1.68,10,2.8],[5.68,10,2.8],[9.68,10,2.8],[9.68,10,0],[8,10,0]]},{"a":10,"b":11,"i":2,"k":"n","s":2,"p":[[8,10,0],[6.32,10,0],[6.32,10,-2.8],[13.68,10,-2.8],[13.68,20,-2.8],[17.68,20,-2.8],[17.68,20,0],[16,20,0]]},{"a":10,"b":12,"i":2,"k":"n","s":2,"p":[[8,10,0],[7.44,10,0],[7.44,10,-4.1],[13.68,10,-4.1],[13.68,25,-4.1],[17.68,25,-4.1],[17.68,25,0],[16,25,0]]},{"a":3,"b":13,"i":3,"k":"n","s":1,"p":[[0,15,0],[-1.68,15,0],[-1.68,15,2.8],[5.68,15,2.8],[9.68,15,2.8],[9.68,15,0],[8,15,0]]},{"a":13,"b":14,"i":3,"k":"n","s":2,"p":[[8,15,0],[6.32,15,0],[6.32,15,4.1],[13.68,15,4.1],[13.68,30,4.1],[17.68,30,4.1],[17.68,30,0],[16,30,0]]},{"a":13,"b":15,"i":3,"k":"n","s":2,"p":[[8,15,0],[7.44,15,0],[7.44,15,5.4],[13.68,15,5.4],[13.68,35,5.4],[17.68,35,5.4],[17.68,35,0],[16,35,0]]},{"a":5,"b":16,"i":0,"k":"n","s":3,"p":[[16,0,0],[14.32,0,0],[14.32,0,2.8],[21.68,0,2.8],[25.68,0,2.8],[25.68,0,0],[24,0,0]]},{"a":8,"b":16,"i":1,"k":"n","s":3,"p":[[16,10,0],[14.32,10,0],[14.32,10,4.1],[20.56,10,4.1],[20.56,0,4.1],[24.56,0,4.1],[24.56,0,0],[24,0,0]]},{"a":11,"b":16,"i":2,"k":"n","s":3,"p":[[16,20,0],[14.32,20,0],[14.32,20,-4.1],[19.44,20,-4.1],[19.44,0,-4.1],[23.44,0,-4.1],[23.44,0,0],[24,0,0]]},{"a":16,"b":17,"i":-1,"k":"n","s":4,"p":[[24,0,0],[22.32,0,0],[22.32,0,-2.8],[29.68,0,-2.8],[33.68,0,-2.8],[33.68,0,0],[32,0,0]]},{"a":14,"b":17,"i":3,"k":"n","s":4,"p":[[16,30,0],[14.32,30,0],[14.32,30,2.8],[28.56,30,2.8],[28.56,0,2.8],[32.56,0,2.8],[32.56,0,0],[32,0,0]]},{"a":17,"b":18,"i":-1,"k":"out","s":5,"p":[[32,0,0],[30.32,0,0],[30.32,0,4.1],[37.68,0,4.1],[41.68,0,4.1],[41.68,0,0],[40,0,0]]},{"a":5,"b":19,"i":0,"k":"n","s":3,"p":[[16,0,0],[15.44,0,0],[15.44,0,5.4],[21.68,0,5.4],[21.68,5,5.4],[25.68,5,5.4],[25.68,5,0],[24,5,0]]},{"a":8,"b":19,"i":1,"k":"n","s":3,"p":[[16,10,0],[15.44,10,0],[15.44,10,2.8],[20.56,10,2.8],[20.56,5,2.8],[24.56,5,2.8],[24.56,5,0],[24,5,0]]},{"a":11,"b":19,"i":2,"k":"n","s":3,"p":[[16,20,0],[15.44,20,0],[15.44,20,4.1],[19.44,20,4.1],[19.44,5,4.1],[23.44,5,4.1],[23.44,5,0],[24,5,0]]},{"a":19,"b":20,"i":-1,"k":"n","s":4,"p":[[24,5,0],[22.32,5,0],[22.32,5,-2.8],[29.68,5,-2.8],[33.68,5,-2.8],[33.68,5,0],[32,5,0]]},{"a":14,"b":20,"i":3,"k":"n","s":4,"p":[[16,30,0],[15.44,30,0],[15.44,30,-4.1],[28.56,30,-4.1],[28.56,5,-4.1],[32.56,5,-4.1],[32.56,5,0],[32,5,0]]},{"a":20,"b":21,"i":-1,"k":"out","s":5,"p":[[32,5,0],[30.32,5,0],[30.32,5,2.8],[37.68,5,2.8],[41.68,5,2.8],[41.68,5,0],[40,5,0]]},{"a":6,"b":22,"i":0,"k":"n","s":3,"p":[[16,5,0],[14.32,5,0],[14.32,5,-2.8],[21.68,5,-2.8],[21.68,10,-2.8],[25.68,10,-2.8],[25.68,10,0],[24,10,0]]},{"a":9,"b":22,"i":1,"k":"n","s":3,"p":[[16,15,0],[14.32,15,0],[14.32,15,2.8],[20.56,15,2.8],[20.56,10,2.8],[24.56,10,2.8],[24.56,10,0],[24,10,0]]},{"a":12,"b":22,"i":2,"k":"n","s":3,"p":[[16,25,0],[14.32,25,0],[14.32,25,5.4],[19.44,25,5.4],[19.44,10,5.4],[23.44,10,5.4],[23.44,10,0],[24,10,0]]},{"a":22,"b":23,"i":-1,"k":"n","s":4,"p":[[24,10,0],[22.32,10,0],[22.32,10,4.1],[29.68,10,4.1],[33.68,10,4.1],[33.68,10,0],[32,10,0]]},{"a":15,"b":23,"i":3,"k":"n","s":4,"p":[[16,35,0],[14.32,35,0],[14.32,35,-2.8],[28.56,35,-2.8],[28.56,10,-2.8],[32.56,10,-2.8],[32.56,10,0],[32,10,0]]},{"a":23,"b":24,"i":-1,"k":"out","s":5,"p":[[32,10,0],[30.32,10,0],[30.32,10,2.8],[37.68,10,2.8],[41.68,10,2.8],[41.68,10,0],[40,10,0]]},{"a":6,"b":25,"i":0,"k":"n","s":3,"p":[[16,5,0],[15.44,5,0],[15.44,5,-4.1],[21.68,5,-4.1],[21.68,15,-4.1],[25.68,15,-4.1],[25.68,15,0],[24,15,0]]},{"a":9,"b":25,"i":1,"k":"n","s":3,"p":[[16,15,0],[15.44,15,0],[15.44,15,-2.8],[20.56,15,-2.8],[24.56,15,-2.8],[24.56,15,0],[24,15,0]]},{"a":12,"b":25,"i":2,"k":"n","s":3,"p":[[16,25,0],[15.44,25,0],[15.44,25,-5.4],[19.44,25,-5.4],[19.44,15,-5.4],[23.44,15,-5.4],[23.44,15,0],[24,15,0]]},{"a":25,"b":26,"i":-1,"k":"n","s":4,"p":[[24,15,0],[22.32,15,0],[22.32,15,2.8],[29.68,15,2.8],[33.68,15,2.8],[33.68,15,0],[32,15,0]]},{"a":15,"b":26,"i":3,"k":"n","s":4,"p":[[16,35,0],[15.44,35,0],[15.44,35,4.1],[28.56,35,4.1],[28.56,15,4.1],[32.56,15,4.1],[32.56,15,0],[32,15,0]]},{"a":26,"b":27,"i":-1,"k":"out","s":5,"p":[[32,15,0],[30.32,15,0],[30.32,15,-2.8],[37.68,15,-2.8],[41.68,15,-2.8],[41.68,15,0],[40,15,0]]}]},"butterfly":{"K":6,"bounds":{"min":[-1.68,0,-4.1],"max":[41.68,15,4.1]},"pieces":[{"t":"in","i":0,"p":[0,0,0],"s":0},{"t":"in","i":1,"p":[0,5,0],"s":0},{"t":"in","i":2,"p":[0,10,0],"s":0},{"t":"in","i":3,"p":[0,15,0],"s":0},{"t":"s","w":2,"p":[8,0,0],"s":1},{"t":"s","w":2,"p":[8,5,0],"s":1},{"t":"s","w":2,"p":[8,10,0],"s":1},{"t":"s","w":2,"p":[8,15,0],"s":1},{"t":"m","p":[16,0,0],"s":2},{"t":"m","p":[16,5,0],"s":2},{"t":"m","p":[16,10,0],"s":2},{"t":"m","p":[16,15,0],"s":2},{"t":"s","w":2,"p":[24,0,0],"s":3},{"t":"s","w":2,"p":[24,5,0],"s":3},{"t":"s","w":2,"p":[24,10,0],"s":3},{"t":"s","w":2,"p":[24,15,0],"s":3},{"t":"m","p":[32,0,0],"s":4},{"t":"m","p":[32,5,0],"s":4},{"t":"m","p":[32,10,0],"s":4},{"t":"m","p":[32,15,0],"s":4},{"t":"out","p":[40,0,0],"s":5},{"t":"out","p":[40,5,0],"s":5},{"t":"out","p":[40,10,0],"s":5},{"t":"out","p":[40,15,0],"s":5}],"belts":[{"a":0,"b":4,"i":0,"k":"n","s":1,"p":[[0,0,0],[-1.68,0,0],[-1.68,0,2.8],[5.68,0,2.8],[9.68,0,2.8],[9.68,0,0],[8,0,0]]},{"a":1,"b":5,"i":1,"k":"n","s":1,"p":[[0,5,0],[-1.68,5,0],[-1.68,5,2.8],[5.68,5,2.8],[9.68,5,2.8],[9.68,5,0],[8,5,0]]},{"a":2,"b":6,"i":2,"k":"n","s":1,"p":[[0,10,0],[-1.68,10,0],[-1.68,10,2.8],[5.68,10,2.8],[9.68,10,2.8],[9.68,10,0],[8,10,0]]},{"a":3,"b":7,"i":3,"k":"n","s":1,"p":[[0,15,0],[-1.68,15,0],[-1.68,15,2.8],[5.68,15,2.8],[9.68,15,2.8],[9.68,15,0],[8,15,0]]},{"a":4,"b":8,"i":0,"k":"n","s":2,"p":[[8,0,0],[6.32,0,0],[6.32,0,-2.8],[13.68,0,-2.8],[17.68,0,-2.8],[17.68,0,0],[16,0,0]]},{"a":5,"b":8,"i":1,"k":"n","s":2,"p":[[8,5,0],[6.32,5,0],[6.32,5,4.1],[12.56,5,4.1],[12.56,0,4.1],[16.56,0,4.1],[16.56,0,0],[16,0,0]]},{"a":4,"b":9,"i":0,"k":"n","s":2,"p":[[8,0,0],[7.44,0,0],[7.44,0,-4.1],[13.68,0,-4.1],[13.68,5,-4.1],[17.68,5,-4.1],[17.68,5,0],[16,5,0]]},{"a":5,"b":9,"i":1,"k":"n","s":2,"p":[[8,5,0],[7.44,5,0],[7.44,5,-2.8],[12.56,5,-2.8],[16.56,5,-2.8],[16.56,5,0],[16,5,0]]},{"a":6,"b":10,"i":2,"k":"n","s":2,"p":[[8,10,0],[6.32,10,0],[6.32,10,-2.8],[13.68,10,-2.8],[17.68,10,-2.8],[17.68,10,0],[16,10,0]]},{"a":7,"b":10,"i":3,"k":"n","s":2,"p":[[8,15,0],[6.32,15,0],[6.32,15,4.1],[12.56,15,4.1],[12.56,10,4.1],[16.56,10,4.1],[16.56,10,0],[16,10,0]]},{"a":6,"b":11,"i":2,"k":"n","s":2,"p":[[8,10,0],[7.44,10,0],[7.44,10,-4.1],[13.68,10,-4.1],[13.68,15,-4.1],[17.68,15,-4.1],[17.68,15,0],[16,15,0]]},{"a":7,"b":11,"i":3,"k":"n","s":2,"p":[[8,15,0],[7.44,15,0],[7.44,15,-2.8],[12.56,15,-2.8],[16.56,15,-2.8],[16.56,15,0],[16,15,0]]},{"a":8,"b":12,"i":-1,"k":"n","s":3,"p":[[16,0,0],[14.32,0,0],[14.32,0,2.8],[21.68,0,2.8],[25.68,0,2.8],[25.68,0,0],[24,0,0]]},{"a":9,"b":13,"i":-1,"k":"n","s":3,"p":[[16,5,0],[14.32,5,0],[14.32,5,2.8],[21.68,5,2.8],[25.68,5,2.8],[25.68,5,0],[24,5,0]]},{"a":10,"b":14,"i":-1,"k":"n","s":3,"p":[[16,10,0],[14.32,10,0],[14.32,10,2.8],[21.68,10,2.8],[25.68,10,2.8],[25.68,10,0],[24,10,0]]},{"a":11,"b":15,"i":-1,"k":"n","s":3,"p":[[16,15,0],[14.32,15,0],[14.32,15,2.8],[21.68,15,2.8],[25.68,15,2.8],[25.68,15,0],[24,15,0]]},{"a":12,"b":16,"i":-1,"k":"n","s":4,"p":[[24,0,0],[22.32,0,0],[22.32,0,-2.8],[29.68,0,-2.8],[33.68,0,-2.8],[33.68,0,0],[32,0,0]]},{"a":14,"b":16,"i":-1,"k":"n","s":4,"p":[[24,10,0],[22.32,10,0],[22.32,10,4.1],[28.56,10,4.1],[28.56,0,4.1],[32.56,0,4.1],[32.56,0,0],[32,0,0]]},{"a":13,"b":17,"i":-1,"k":"n","s":4,"p":[[24,5,0],[22.32,5,0],[22.32,5,-2.8],[29.68,5,-2.8],[33.68,5,-2.8],[33.68,5,0],[32,5,0]]},{"a":15,"b":17,"i":-1,"k":"n","s":4,"p":[[24,15,0],[22.32,15,0],[22.32,15,-4.1],[28.56,15,-4.1],[28.56,5,-4.1],[32.56,5,-4.1],[32.56,5,0],[32,5,0]]},{"a":12,"b":18,"i":-1,"k":"n","s":4,"p":[[24,0,0],[23.44,0,0],[23.44,0,-4.1],[29.68,0,-4.1],[29.68,10,-4.1],[33.68,10,-4.1],[33.68,10,0],[32,10,0]]},{"a":14,"b":18,"i":-1,"k":"n","s":4,"p":[[24,10,0],[23.44,10,0],[23.44,10,-2.8],[28.56,10,-2.8],[32.56,10,-2.8],[32.56,10,0],[32,10,0]]},{"a":13,"b":19,"i":-1,"k":"n","s":4,"p":[[24,5,0],[23.44,5,0],[23.44,5,4.1],[29.68,5,4.1],[29.68,15,4.1],[33.68,15,4.1],[33.68,15,0],[32,15,0]]},{"a":15,"b":19,"i":-1,"k":"n","s":4,"p":[[24,15,0],[23.44,15,0],[23.44,15,-2.8],[28.56,15,-2.8],[32.56,15,-2.8],[32.56,15,0],[32,15,0]]},{"a":16,"b":20,"i":-1,"k":"out","s":5,"p":[[32,0,0],[30.32,0,0],[30.32,0,2.8],[37.68,0,2.8],[41.68,0,2.8],[41.68,0,0],[40,0,0]]},{"a":17,"b":21,"i":-1,"k":"out","s":5,"p":[[32,5,0],[30.32,5,0],[30.32,5,2.8],[37.68,5,2.8],[41.68,5,2.8],[41.68,5,0],[40,5,0]]},{"a":18,"b":22,"i":-1,"k":"out","s":5,"p":[[32,10,0],[30.32,10,0],[30.32,10,2.8],[37.68,10,2.8],[41.68,10,2.8],[41.68,10,0],[40,10,0]]},{"a":19,"b":23,"i":-1,"k":"out","s":5,"p":[[32,15,0],[30.32,15,0],[30.32,15,2.8],[37.68,15,2.8],[41.68,15,2.8],[41.68,15,0],[40,15,0]]}]},"matrix-floors":{"K":6,"bounds":{"min":[2.32,5,-12],"max":[61.68,20,12]},"pieces":[{"t":"in","i":0,"p":[8,5,12],"s":0},{"t":"in","i":1,"p":[24,5,12],"s":0},{"t":"in","i":2,"p":[40,5,12],"s":0},{"t":"in","i":3,"p":[56,5,12],"s":0},{"t":"s","w":2,"p":[8,5,0],"s":1},{"t":"s","w":2,"p":[4,10,0],"s":2},{"t":"s","w":2,"p":[12,10,0],"s":2},{"t":"s","w":2,"p":[24,5,0],"s":1},{"t":"s","w":2,"p":[20,10,0],"s":2},{"t":"s","w":2,"p":[28,10,0],"s":2},{"t":"s","w":2,"p":[40,5,0],"s":1},{"t":"s","w":2,"p":[36,10,0],"s":2},{"t":"s","w":2,"p":[44,10,0],"s":2},{"t":"s","w":2,"p":[56,5,0],"s":1},{"t":"s","w":2,"p":[52,10,0],"s":2},{"t":"s","w":2,"p":[60,10,0],"s":2},{"t":"m","p":[8,15,0],"s":3},{"t":"m","p":[8,20,0],"s":4},{"t":"out","p":[8,20,-12],"s":5},{"t":"m","p":[24,15,0],"s":3},{"t":"m","p":[24,20,0],"s":4},{"t":"out","p":[24,20,-12],"s":5},{"t":"m","p":[40,15,0],"s":3},{"t":"m","p":[40,20,0],"s":4},{"t":"out","p":[40,20,-12],"s":5},{"t":"m","p":[56,15,0],"s":3},{"t":"m","p":[56,20,0],"s":4},{"t":"out","p":[56,20,-12],"s":5}],"belts":[{"a":0,"b":4,"i":0,"k":"n","s":1,"p":[[8,5,12],[6.32,5,12],[6.32,5,2.8],[9.68,5,2.8],[9.68,5,0],[8,5,0]]},{"a":4,"b":5,"i":0,"k":"n","s":2,"p":[[8,5,0],[6.32,5,0],[6.32,5,2.8],[5.68,5,2.8],[5.68,10,2.8],[5.68,10,0],[4,10,0]]},{"a":4,"b":6,"i":0,"k":"n","s":2,"p":[[8,5,0],[7.44,5,0],[7.44,5,-2.8],[13.68,5,-2.8],[13.68,10,-2.8],[13.68,10,0],[12,10,0]]},{"a":1,"b":7,"i":1,"k":"n","s":1,"p":[[24,5,12],[22.32,5,12],[22.32,5,2.8],[25.68,5,2.8],[25.68,5,0],[24,5,0]]},{"a":7,"b":8,"i":1,"k":"n","s":2,"p":[[24,5,0],[22.32,5,0],[22.32,5,2.8],[21.68,5,2.8],[21.68,10,2.8],[21.68,10,0],[20,10,0]]},{"a":7,"b":9,"i":1,"k":"n","s":2,"p":[[24,5,0],[23.44,5,0],[23.44,5,-2.8],[29.68,5,-2.8],[29.68,10,-2.8],[29.68,10,0],[28,10,0]]},{"a":2,"b":10,"i":2,"k":"n","s":1,"p":[[40,5,12],[38.32,5,12],[38.32,5,2.8],[41.68,5,2.8],[41.68,5,0],[40,5,0]]},{"a":10,"b":11,"i":2,"k":"n","s":2,"p":[[40,5,0],[38.32,5,0],[38.32,5,2.8],[37.68,5,2.8],[37.68,10,2.8],[37.68,10,0],[36,10,0]]},{"a":10,"b":12,"i":2,"k":"n","s":2,"p":[[40,5,0],[39.44,5,0],[39.44,5,-2.8],[45.68,5,-2.8],[45.68,10,-2.8],[45.68,10,0],[44,10,0]]},{"a":3,"b":13,"i":3,"k":"n","s":1,"p":[[56,5,12],[54.32,5,12],[54.32,5,2.8],[57.68,5,2.8],[57.68,5,0],[56,5,0]]},{"a":13,"b":14,"i":3,"k":"n","s":2,"p":[[56,5,0],[54.32,5,0],[54.32,5,2.8],[53.68,5,2.8],[53.68,10,2.8],[53.68,10,0],[52,10,0]]},{"a":13,"b":15,"i":3,"k":"n","s":2,"p":[[56,5,0],[55.44,5,0],[55.44,5,-2.8],[61.68,5,-2.8],[61.68,10,-2.8],[61.68,10,0],[60,10,0]]},{"a":5,"b":16,"i":0,"k":"n","s":3,"p":[[4,10,0],[2.32,10,0],[2.32,10,2.8],[9.68,10,2.8],[9.68,15,2.8],[9.68,15,0],[8,15,0]]},{"a":8,"b":16,"i":1,"k":"n","s":3,"p":[[20,10,0],[18.32,10,0],[18.32,10,-2.8],[8.56,10,-2.8],[8.56,15,-2.8],[8.56,15,0],[8,15,0]]},{"a":11,"b":16,"i":2,"k":"n","s":3,"p":[[36,10,0],[34.32,10,0],[34.32,10,4.1],[7.44,10,4.1],[7.44,15,4.1],[7.44,15,0],[8,15,0]]},{"a":16,"b":17,"i":-1,"k":"n","s":4,"p":[[8,15,0],[6.32,15,0],[6.32,15,2.8],[9.68,15,2.8],[9.68,20,2.8],[9.68,20,0],[8,20,0]]},{"a":14,"b":17,"i":3,"k":"n","s":4,"p":[[52,10,0],[50.32,10,0],[50.32,10,-4.1],[8.56,10,-4.1],[8.56,20,-4.1],[8.56,20,0],[8,20,0]]},{"a":17,"b":18,"i":-1,"k":"out","s":5,"p":[[8,20,0],[6.32,20,0],[6.32,20,-2.8],[9.68,20,-2.8],[9.68,20,-12],[8,20,-12]]},{"a":5,"b":19,"i":0,"k":"n","s":3,"p":[[4,10,0],[3.44,10,0],[3.44,10,5.4],[25.68,10,5.4],[25.68,15,5.4],[25.68,15,0],[24,15,0]]},{"a":8,"b":19,"i":1,"k":"n","s":3,"p":[[20,10,0],[19.44,10,0],[19.44,10,2.8],[24.56,10,2.8],[24.56,15,2.8],[24.56,15,0],[24,15,0]]},{"a":11,"b":19,"i":2,"k":"n","s":3,"p":[[36,10,0],[35.44,10,0],[35.44,10,-2.8],[23.44,10,-2.8],[23.44,15,-2.8],[23.44,15,0],[24,15,0]]},{"a":19,"b":20,"i":-1,"k":"n","s":4,"p":[[24,15,0],[22.32,15,0],[22.32,15,2.8],[25.68,15,2.8],[25.68,20,2.8],[25.68,20,0],[24,20,0]]},{"a":14,"b":20,"i":3,"k":"n","s":4,"p":[[52,10,0],[51.44,10,0],[51.44,10,-5.4],[24.56,10,-5.4],[24.56,20,-5.4],[24.56,20,0],[24,20,0]]},{"a":20,"b":21,"i":-1,"k":"out","s":5,"p":[[24,20,0],[22.32,20,0],[22.32,20,-2.8],[25.68,20,-2.8],[25.68,20,-12],[24,20,-12]]},{"a":6,"b":22,"i":0,"k":"n","s":3,"p":[[12,10,0],[10.32,10,0],[10.32,10,6.7],[41.68,10,6.7],[41.68,15,6.7],[41.68,15,0],[40,15,0]]},{"a":9,"b":22,"i":1,"k":"n","s":3,"p":[[28,10,0],[26.32,10,0],[26.32,10,2.8],[40.56,10,2.8],[40.56,15,2.8],[40.56,15,0],[40,15,0]]},{"a":12,"b":22,"i":2,"k":"n","s":3,"p":[[44,10,0],[42.32,10,0],[42.32,10,-2.8],[39.44,10,-2.8],[39.44,15,-2.8],[39.44,15,0],[40,15,0]]},{"a":22,"b":23,"i":-1,"k":"n","s":4,"p":[[40,15,0],[38.32,15,0],[38.32,15,2.8],[41.68,15,2.8],[41.68,20,2.8],[41.68,20,0],[40,20,0]]},{"a":15,"b":23,"i":3,"k":"n","s":4,"p":[[60,10,0],[58.32,10,0],[58.32,10,4.1],[40.56,10,4.1],[40.56,20,4.1],[40.56,20,0],[40,20,0]]},{"a":23,"b":24,"i":-1,"k":"out","s":5,"p":[[40,20,0],[38.32,20,0],[38.32,20,-2.8],[41.68,20,-2.8],[41.68,20,-12],[40,20,-12]]},{"a":6,"b":25,"i":0,"k":"n","s":3,"p":[[12,10,0],[11.44,10,0],[11.44,10,-6.7],[57.68,10,-6.7],[57.68,15,-6.7],[57.68,15,0],[56,15,0]]},{"a":9,"b":25,"i":1,"k":"n","s":3,"p":[[28,10,0],[27.44,10,0],[27.44,10,5.4],[56.56,10,5.4],[56.56,15,5.4],[56.56,15,0],[56,15,0]]},{"a":12,"b":25,"i":2,"k":"n","s":3,"p":[[44,10,0],[43.44,10,0],[43.44,10,2.8],[55.44,10,2.8],[55.44,15,2.8],[55.44,15,0],[56,15,0]]},{"a":25,"b":26,"i":-1,"k":"n","s":4,"p":[[56,15,0],[54.32,15,0],[54.32,15,2.8],[57.68,15,2.8],[57.68,20,2.8],[57.68,20,0],[56,20,0]]},{"a":15,"b":26,"i":3,"k":"n","s":4,"p":[[60,10,0],[59.44,10,0],[59.44,10,2.8],[56.56,10,2.8],[56.56,20,2.8],[56.56,20,0],[56,20,0]]},{"a":26,"b":27,"i":-1,"k":"out","s":5,"p":[[56,20,0],[54.32,20,0],[54.32,20,-2.8],[57.68,20,-2.8],[57.68,20,-12],[56,20,-12]]}]},"butterfly-floors":{"K":6,"bounds":{"min":[2.32,5,-12],"max":[29.68,20,12]},"pieces":[{"t":"in","i":0,"p":[4,5,12],"s":0},{"t":"in","i":1,"p":[12,5,12],"s":0},{"t":"in","i":2,"p":[20,5,12],"s":0},{"t":"in","i":3,"p":[28,5,12],"s":0},{"t":"s","w":2,"p":[4,5,0],"s":1},{"t":"s","w":2,"p":[12,5,0],"s":1},{"t":"s","w":2,"p":[20,5,0],"s":1},{"t":"s","w":2,"p":[28,5,0],"s":1},{"t":"m","p":[4,10,0],"s":2},{"t":"m","p":[12,10,0],"s":2},{"t":"m","p":[20,10,0],"s":2},{"t":"m","p":[28,10,0],"s":2},{"t":"s","w":2,"p":[4,15,0],"s":3},{"t":"s","w":2,"p":[12,15,0],"s":3},{"t":"s","w":2,"p":[20,15,0],"s":3},{"t":"s","w":2,"p":[28,15,0],"s":3},{"t":"m","p":[4,20,0],"s":4},{"t":"m","p":[12,20,0],"s":4},{"t":"m","p":[20,20,0],"s":4},{"t":"m","p":[28,20,0],"s":4},{"t":"out","p":[4,20,-12],"s":5},{"t":"out","p":[12,20,-12],"s":5},{"t":"out","p":[20,20,-12],"s":5},{"t":"out","p":[28,20,-12],"s":5}],"belts":[{"a":0,"b":4,"i":0,"k":"n","s":1,"p":[[4,5,12],[2.32,5,12],[2.32,5,2.8],[5.68,5,2.8],[5.68,5,0],[4,5,0]]},{"a":1,"b":5,"i":1,"k":"n","s":1,"p":[[12,5,12],[10.32,5,12],[10.32,5,2.8],[13.68,5,2.8],[13.68,5,0],[12,5,0]]},{"a":2,"b":6,"i":2,"k":"n","s":1,"p":[[20,5,12],[18.32,5,12],[18.32,5,2.8],[21.68,5,2.8],[21.68,5,0],[20,5,0]]},{"a":3,"b":7,"i":3,"k":"n","s":1,"p":[[28,5,12],[26.32,5,12],[26.32,5,2.8],[29.68,5,2.8],[29.68,5,0],[28,5,0]]},{"a":4,"b":8,"i":0,"k":"n","s":2,"p":[[4,5,0],[2.32,5,0],[2.32,5,-2.8],[5.68,5,-2.8],[5.68,10,-2.8],[5.68,10,0],[4,10,0]]},{"a":5,"b":8,"i":1,"k":"n","s":2,"p":[[12,5,0],[10.32,5,0],[10.32,5,-4.1],[4.56,5,-4.1],[4.56,10,-4.1],[4.56,10,0],[4,10,0]]},{"a":4,"b":9,"i":0,"k":"n","s":2,"p":[[4,5,0],[3.44,5,0],[3.44,5,4.1],[13.68,5,4.1],[13.68,10,4.1],[13.68,10,0],[12,10,0]]},{"a":5,"b":9,"i":1,"k":"n","s":2,"p":[[12,5,0],[11.44,5,0],[11.44,5,-2.8],[12.56,5,-2.8],[12.56,10,-2.8],[12.56,10,0],[12,10,0]]},{"a":6,"b":10,"i":2,"k":"n","s":2,"p":[[20,5,0],[18.32,5,0],[18.32,5,-2.8],[21.68,5,-2.8],[21.68,10,-2.8],[21.68,10,0],[20,10,0]]},{"a":7,"b":10,"i":3,"k":"n","s":2,"p":[[28,5,0],[26.32,5,0],[26.32,5,-4.1],[20.56,5,-4.1],[20.56,10,-4.1],[20.56,10,0],[20,10,0]]},{"a":6,"b":11,"i":2,"k":"n","s":2,"p":[[20,5,0],[19.44,5,0],[19.44,5,4.1],[29.68,5,4.1],[29.68,10,4.1],[29.68,10,0],[28,10,0]]},{"a":7,"b":11,"i":3,"k":"n","s":2,"p":[[28,5,0],[27.44,5,0],[27.44,5,-2.8],[28.56,5,-2.8],[28.56,10,-2.8],[28.56,10,0],[28,10,0]]},{"a":8,"b":12,"i":-1,"k":"n","s":3,"p":[[4,10,0],[2.32,10,0],[2.32,10,2.8],[5.68,10,2.8],[5.68,15,2.8],[5.68,15,0],[4,15,0]]},{"a":9,"b":13,"i":-1,"k":"n","s":3,"p":[[12,10,0],[10.32,10,0],[10.32,10,2.8],[13.68,10,2.8],[13.68,15,2.8],[13.68,15,0],[12,15,0]]},{"a":10,"b":14,"i":-1,"k":"n","s":3,"p":[[20,10,0],[18.32,10,0],[18.32,10,2.8],[21.68,10,2.8],[21.68,15,2.8],[21.68,15,0],[20,15,0]]},{"a":11,"b":15,"i":-1,"k":"n","s":3,"p":[[28,10,0],[26.32,10,0],[26.32,10,2.8],[29.68,10,2.8],[29.68,15,2.8],[29.68,15,0],[28,15,0]]},{"a":12,"b":16,"i":-1,"k":"n","s":4,"p":[[4,15,0],[2.32,15,0],[2.32,15,2.8],[5.68,15,2.8],[5.68,20,2.8],[5.68,20,0],[4,20,0]]},{"a":14,"b":16,"i":-1,"k":"n","s":4,"p":[[20,15,0],[18.32,15,0],[18.32,15,-2.8],[4.56,15,-2.8],[4.56,20,-2.8],[4.56,20,0],[4,20,0]]},{"a":13,"b":17,"i":-1,"k":"n","s":4,"p":[[12,15,0],[10.32,15,0],[10.32,15,2.8],[13.68,15,2.8],[13.68,20,2.8],[13.68,20,0],[12,20,0]]},{"a":15,"b":17,"i":-1,"k":"n","s":4,"p":[[28,15,0],[26.32,15,0],[26.32,15,4.1],[12.56,15,4.1],[12.56,20,4.1],[12.56,20,0],[12,20,0]]},{"a":12,"b":18,"i":-1,"k":"n","s":4,"p":[[4,15,0],[3.44,15,0],[3.44,15,-4.1],[21.68,15,-4.1],[21.68,20,-4.1],[21.68,20,0],[20,20,0]]},{"a":14,"b":18,"i":-1,"k":"n","s":4,"p":[[20,15,0],[19.44,15,0],[19.44,15,2.8],[20.56,15,2.8],[20.56,20,2.8],[20.56,20,0],[20,20,0]]},{"a":13,"b":19,"i":-1,"k":"n","s":4,"p":[[12,15,0],[11.44,15,0],[11.44,15,5.4],[29.68,15,5.4],[29.68,20,5.4],[29.68,20,0],[28,20,0]]},{"a":15,"b":19,"i":-1,"k":"n","s":4,"p":[[28,15,0],[27.44,15,0],[27.44,15,2.8],[28.56,15,2.8],[28.56,20,2.8],[28.56,20,0],[28,20,0]]},{"a":16,"b":20,"i":-1,"k":"out","s":5,"p":[[4,20,0],[2.32,20,0],[2.32,20,-2.8],[5.68,20,-2.8],[5.68,20,-12],[4,20,-12]]},{"a":17,"b":21,"i":-1,"k":"out","s":5,"p":[[12,20,0],[10.32,20,0],[10.32,20,-2.8],[13.68,20,-2.8],[13.68,20,-12],[12,20,-12]]},{"a":18,"b":22,"i":-1,"k":"out","s":5,"p":[[20,20,0],[18.32,20,0],[18.32,20,-4.1],[21.68,20,-4.1],[21.68,20,-12],[20,20,-12]]},{"a":19,"b":23,"i":-1,"k":"out","s":5,"p":[[28,20,0],[26.32,20,0],[26.32,20,-2.8],[29.68,20,-2.8],[29.68,20,-12],[28,20,-12]]}]}};</script>
+<script type="module">
+import * as T from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const LANES = ['#ffd166', '#c6a6ff', '#8fe3a4', '#ff8fc7', '#a3b8ff', '#e9ff70', '#ffb3a7', '#d6c3a5'];
+const lane = i => LANES[((i ?? 0) % LANES.length + LANES.length) % LANES.length];
+const HOLO = new T.Color('#6fe3ff');
+const DEF = { layout: 'butterfly', route: 'game', free: true, isolate: true, floor: 'blueprint', pieces: 'flat', items: 'glow', cam: 'persp', casing: true, halo: false, ports: true };
+const O = { ...DEF };
+try { Object.assign(O, JSON.parse(localStorage.getItem('sf3d-r2') || '{}')); } catch (e) {}
+if (location.hash.includes('matrix')) O.layout = 'matrix';
+if (location.hash.includes('butterfly')) O.layout = 'butterfly';
+O.mode = O.mode || 'floors';
+if (location.hash.includes('towers')) O.mode = 'towers';
+const save = () => { try { localStorage.setItem('sf3d-r2', JSON.stringify(O)); } catch (e) {} };
+const S = { cur: 0, playing: true, focus: null, pinned: false };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Andares: o fluxo vai de +z para -z. Gira a cena para o fluxo ficar em +x, igual às torres (x' = -z, z' = x),
+// e o mesmo roteador serve para as duas montagens.
+for (const [k, L] of Object.entries(window.LAYOUTS)) {
+  if (!k.endsWith('-floors') || L.rot) continue;
+  const r = q => [-q[2], q[1], q[0]];
+  L.pieces.forEach(p => { p.p = r(p.p); });
+  L.belts.forEach(b => { b.p = b.p.map(r); });
+  const all = L.pieces.map(p => p.p).concat(...L.belts.map(b => b.p));
+  L.bounds = { min: [0, 1, 2].map(i => Math.min(...all.map(q => q[i])) - 1.8), max: [0, 1, 2].map(i => Math.max(...all.map(q => q[i])) + 1.8) };
+  L.rot = true;
+}
+const L = () => window.LAYOUTS[O.layout + (O.mode === 'floors' ? '-floors' : '')];
+const STEP_NAMES = k => ['Entradas', ...Array.from({ length: k - 2 }, (_, i) => `Nível ${i + 1}`), 'Saídas'];
+
+const canvasTex = (w, h, draw) => {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const tx = new T.CanvasTexture(c); tx.colorSpace = T.SRGBColorSpace; tx.anisotropy = 4;
+  return tx;
+};
+const pill = (text, dot) => canvasTex(256, 96, (g, w, h) => {
+  g.fillStyle = 'rgba(8,20,34,.9)'; g.strokeStyle = dot; g.lineWidth = 4;
+  g.beginPath(); g.roundRect(6, 14, w - 12, h - 28, 30); g.fill(); g.stroke();
+  g.fillStyle = dot; g.beginPath(); g.arc(46, h / 2, 13, 0, 7); g.fill();
+  g.fillStyle = '#e4eef8'; g.font = '700 46px "Chakra Petch", sans-serif'; g.textBaseline = 'middle';
+  g.fillText(text, 74, h / 2 + 2);
+});
+const glyph = (text, fg, bg) => canvasTex(256, 256, (g, w, h) => {
+  if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
+  g.fillStyle = fg; g.font = '700 104px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 6);
+});
+const polyline = pts => {
+  const segs = []; let tot = 0;
+  for (let k = 1; k < pts.length; k++) {
+    const a = new T.Vector3(...pts[k - 1]), b = new T.Vector3(...pts[k]), len = a.distanceTo(b);
+    if (len < 1e-6) continue;
+    segs.push({ a, b, len, s0: tot, dir: b.clone().sub(a).normalize() }); tot += len;
+  }
+  const at = (s, out) => { s = Math.max(0, Math.min(tot, s)); const g = segs.find(x => s <= x.s0 + x.len) || segs[segs.length - 1]; return out.copy(g.a).addScaledVector(g.dir, s - g.s0); };
+  const dirAt = s => (segs.find(x => s <= x.s0 + x.len) || segs[segs.length - 1]).dir;
+  return { segs, tot, at, dirAt };
+};
+const roundedPath = (pts, r) => {
+  const P = pts.map(p => new T.Vector3(...p)).filter((p, i, a) => i === 0 || p.distanceTo(a[i - 1]) > 1e-6);
+  const path = new T.CurvePath();
+  let from = P[0];
+  for (let i = 1; i < P.length - 1; i++) {
+    const a = P[i - 1], b = P[i], c = P[i + 1];
+    const rr = Math.min(r, a.distanceTo(b) / 2, b.distanceTo(c) / 2);
+    const p1 = b.clone().addScaledVector(a.clone().sub(b).normalize(), rr), p2 = b.clone().addScaledVector(c.clone().sub(b).normalize(), rr);
+    if (from.distanceTo(p1) > 1e-6) path.add(new T.LineCurve3(from.clone(), p1));
+    path.add(new T.QuadraticBezierCurve3(p1, b.clone(), p2));
+    from = p2;
+  }
+  path.add(new T.LineCurve3(from.clone(), P[P.length - 1]));
+  return path;
+};
+const HALF = { s: [1.8, 1.2, 1.8], m: [1.8, 1.2, 1.8], sink: [1.8, 1.2, 1.8], in: [2.2, 0.4, 1.8], out: [2.2, 0.4, 1.8] };
+
+const host = document.getElementById('stage');
+const renderer = new T.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.outputColorSpace = T.SRGBColorSpace;
+renderer.toneMapping = T.ACESFilmicToneMapping;
+host.prepend(renderer.domElement);
+const scene = new T.Scene();
+let camera, controls, world = null, objs = [], items = null, flows = [], pickables = [], graph = null;
+
+function build() {
+  if (world) { world.traverse(o => { o.geometry?.dispose(); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m?.map?.dispose(); m?.dispose(); }); }); scene.remove(world); }
+  world = new T.Group(); scene.add(world); objs = []; flows = []; pickables = [];
+  const lay = L(), { min, max } = lay.bounds;
+  const center = new T.Vector3((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
+  const floorY = min[1] - 1.6;
+  const span = Math.ceil((Math.max(max[0] - min[0], max[2] - min[2]) + 40) / 8) * 8;
+  const conc = O.floor === 'concrete';
+
+  // ---- céu, luz, piso (sem sombra) ----
+  scene.background = new T.Color(conc ? '#1b2430' : '#081626');
+  world.add(new T.HemisphereLight('#ffffff', conc ? '#4a4036' : '#123050', 1.4));
+  const key = new T.DirectionalLight('#ffffff', 1.7); key.position.set(30, 70, 45); world.add(key);
+  const fill = new T.DirectionalLight('#9fc2ff', 0.5); fill.position.set(-40, 15, -20); world.add(fill);
+  const floorTex = canvasTex(1024, 1024, (g, w, h) => {
+    const n = span / 4, cell = w / n;
+    if (conc) {
+      g.fillStyle = '#7f858c'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '0,0,0' : '255,255,255'},${Math.random() * .05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    } else { g.fillStyle = '#0f3150'; g.fillRect(0, 0, w, h); }
+    for (let i = 0; i <= n; i++) {
+      const x = i * cell, major = i % 2 === 0;
+      g.strokeStyle = conc ? (major ? 'rgba(28,30,34,.55)' : 'rgba(28,30,34,.16)') : (major ? 'rgba(111,200,255,.38)' : 'rgba(111,200,255,.13)');
+      g.lineWidth = major ? 3 : 1.2;
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.moveTo(0, x); g.lineTo(w, x); g.stroke();
+    }
+    if (!conc) {
+      g.globalCompositeOperation = 'destination-in';
+      const rg = g.createRadialGradient(w / 2, h / 2, w * .2, w / 2, h / 2, w / 2); rg.addColorStop(0, '#000'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(0, 0, w, h);
+    }
+  });
+  const floor = new T.Mesh(new T.PlaneGeometry(span, span), new T.MeshBasicMaterial({ map: floorTex, transparent: !conc, depthWrite: conc }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(center.x, floorY, center.z); world.add(floor);
+
+  const track = (root, step, kind, id) => {
+    const mats = [];
+    root.traverse(o => {
+      if (o.isMesh && !o.userData.noPick) pickables.push(o);
+      o.userData.obj = null;
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+        if (!m.userData.base) m.userData.base = { color: m.color?.clone(), emissive: m.emissive?.clone(), ei: m.emissiveIntensity, op: m.opacity, tr: m.transparent, dw: m.depthWrite };
+        if (!mats.includes(m)) mats.push(m);
+      });
+    });
+    const obj = { root, step, kind, id, mats };
+    root.traverse(o => { o.userData.obj = obj; });
+    world.add(root); objs.push(obj);
+    return obj;
+  };
+
+  // ---- portas como no jogo ----
+  // Fluxo em +x. Splitter: entra por trás (back, -x), sai pela frente (+x) e pelos lados (left +z, right -z).
+  // Merger: entra por trás e pelos lados, sai pela frente. Uma esteira por face.
+  const NORMAL = { back: [-1, 0, 0], front: [1, 0, 0], left: [0, 0, 1], right: [0, 0, -1] };
+  const BY = O.route === 'game' ? -0.5 : -0.95, STUB = 1.2;
+  const P = lay.pieces;
+  const outsOf = new Map(), insOf = new Map();
+  lay.belts.forEach((b, bi) => { (outsOf.get(b.a) || outsOf.set(b.a, []).get(b.a)).push(bi); (insOf.get(b.b) || insOf.set(b.b, []).get(b.b)).push(bi); });
+  const sideA = new Map(), sideB = new Map(); // belt -> face na origem / no destino
+  // Quem sobe sai pela esquerda (+z) e quem desce pela direita (-z); no merger é o espelho, para a esteira
+  // chegar do mesmo lado em que saiu e não precisar atravessar a peça.
+  const assign = (me, list, straight, other, map, inv) => {
+    const y = P[me].p[1], ord = list.slice().sort((u, v) => other(u).p[1] - other(v).p[1] || other(u).p[2] - other(v).p[2]);
+    const up = inv ? 'right' : 'left', down = inv ? 'left' : 'right';
+    if (ord.length === 1) map.set(ord[0], straight);
+    else if (ord.length === 3) ord.forEach((bi, k) => map.set(bi, [down, straight, up][k]));
+    else if (ord.length === 2) {
+      const same = ord.findIndex(bi => Math.abs(other(bi).p[1] - y) < 1e-6);
+      if (same >= 0) { map.set(ord[same], straight); const o = ord[1 - same]; map.set(o, other(o).p[1] > y ? up : down); }
+      else { map.set(ord[0], down); map.set(ord[1], up); }
+    }
+  };
+  P.forEach((p, id) => {
+    const o = outsOf.get(id) || [], n = insOf.get(id) || [];
+    if (p.t === 's') { n.forEach(bi => sideB.set(bi, 'back')); assign(id, o, 'front', bi => P[lay.belts[bi].b], sideA); }
+    else if (p.t !== 'm') { o.forEach(bi => sideA.set(bi, 'front')); n.forEach(bi => sideB.set(bi, 'back')); }
+  });
+  // Merger depois dos splitters: cada entrada prefere o lado de onde a esteira saiu (sem atravessar a peça);
+  // a que vem reta (mesma altura ou da frente de outra peça) fica com o fundo; o resto pega o que sobrou.
+  P.forEach((p, id) => {
+    if (p.t !== 'm') return;
+    (outsOf.get(id) || []).forEach(bi => sideA.set(bi, 'front'));
+    const n = (insOf.get(id) || []).slice(), free = new Set(['back', 'left', 'right']), y = p.p[1];
+    const src = bi => P[lay.belts[bi].a];
+    const take = (bi, sd) => { sideB.set(bi, sd); free.delete(sd); n.splice(n.indexOf(bi), 1); };
+    n.slice().sort((u, v) => Math.abs(src(u).p[1] - y) - Math.abs(src(v).p[1] - y)).forEach(bi => { const pref = sideA.get(bi); if ((pref === 'left' || pref === 'right') && free.has(pref)) take(bi, pref); });
+    const straight = n.find(bi => sideA.get(bi) === 'front' && free.has('back')) ?? n.find(bi => Math.abs(src(bi).p[1] - y) < 1e-6 && free.has('back'));
+    if (straight !== undefined) take(straight, 'back');
+    n.slice().sort((u, v) => src(u).p[1] - src(v).p[1]).forEach(bi => { const sd = ['back', 'left', 'right'].find(x => free.has(x)); take(bi, sd); });
+  });
+  const half = id => HALF[P[id].t];
+  const portAt = (id, side, out) => {
+    const p = P[id].p, nrm = NORMAL[side], h = half(id);
+    const q = new T.Vector3(p[0] + nrm[0] * h[0], p[1] + BY, p[2] + nrm[2] * h[2]);
+    return { q, s: q.clone().add(new T.Vector3(...nrm).multiplyScalar(STUB)), nrm };
+  };
+
+  // Roteador ortogonal: porta → toco → faixa z → coluna x (lift) → altura do destino → toco → porta.
+  // Cada trecho é uma caixa alinhada aos eixos; esteira não pode encostar em peça nem passar a menos de 0,9 m de outra.
+  const box = (a, b, pad = 0) => ({ lo: [0, 1, 2].map(k => Math.min(a[k], b[k]) - pad), hi: [0, 1, 2].map(k => Math.max(a[k], b[k]) + pad) });
+  const gap = (A, B) => Math.hypot(...[0, 1, 2].map(k => Math.max(0, A.lo[k] - B.hi[k], B.lo[k] - A.hi[k])));
+  const pieceBox = id => { const p = P[id].p, h = half(id); return box([p[0] - h[0], p[1] - h[1] + (P[id].t === 'in' || P[id].t === 'out' ? BY : 0), p[2] - h[2]], [p[0] + h[0], p[1] + h[1] + (P[id].t === 'in' || P[id].t === 'out' ? BY : 0), p[2] + h[2]]); };
+  const PB = P.map((_, id) => pieceBox(id));
+  const placed = [];
+  const xs = [...new Set(P.map(p => p.p[0]))].sort((a, b) => a - b);
+  const gaps = []; for (let i = 1; i < xs.length; i++) for (let x = xs[i - 1] + 2.4; x <= xs[i] - 2.4 + 1e-6; x += 0.6) gaps.push(+x.toFixed(2));
+  // Faixas em z: perto de cada coluna de peças (nas torres é só z = 0; nos andares, uma por peça do andar).
+  const zcols = [...new Set(P.map(p => p.p[2]))];
+  const route = (bi) => {
+    const b = lay.belts[bi], A = portAt(b.a, sideA.get(bi)), B = portAt(b.b, sideB.get(bi));
+    const s = A.s.toArray(), t = B.s.toArray();
+    const zlo = Math.min(s[2], t[2]) - 14, zhi = Math.max(s[2], t[2]) + 14;
+    const zs = [s[2], t[2]]; for (const c of zcols) { zs.push(c); for (let k = 0; k < 10; k++) zs.push(+(c + 3 + k * 1.2).toFixed(2), +(c - 3 - k * 1.2).toFixed(2)); }
+    for (let i = zs.length - 1; i >= 2; i--) if (zs[i] < zlo || zs[i] > zhi) zs.splice(i, 1);
+    const lifts = Math.abs(s[1] - t[1]) > 1e-6;
+    // Lift só no vão entre torres: colado na torre ele esbarra nas portas das peças de cima e de baixo.
+    const xl = [...(lifts ? [] : [s[0], t[0]]), ...gaps.filter(x => x > Math.min(s[0], t[0]) - 8 && x < Math.max(s[0], t[0]) + 8)];
+    // Quatro formas: sai andando em z ou em x, chega andando em x ou em z (a segunda contorna a peça de destino pelo vão).
+    // Candidatas em ordem de comprimento; fica a primeira sem colisão (ou a de menos colisões).
+    const cands = [];
+    for (const z of new Set(zs)) for (const x of new Set(xl)) for (const f of [0, 1, 2, 3]) {
+      const first = f & 1 ? [[x, s[1], s[2]], [x, s[1], z]] : [[s[0], s[1], z], [x, s[1], z]];
+      const last = f & 2 ? [[x, t[1], z], [x, t[1], t[2]]] : [[x, t[1], z], [t[0], t[1], z]];
+      const raw = [A.q.toArray(), s, ...first, ...last, t, B.q.toArray()];
+      const pts = raw.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - raw[i - 1][k]) > 1e-6));
+      let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(...[0, 1, 2].map(k => pts[i][k] - pts[i - 1][k]));
+      cands.push({ pts, len: len + pts.length * 0.6 });
+    }
+    cands.sort((u, v) => u.len - v.len);
+    let best = null;
+    for (const c of cands) {
+      const pts = c.pts;
+      let bad = 0; const why = [];
+      for (let i = 1; i < pts.length && (!best || bad < best.bad); i++) {
+        const sb = box(pts[i - 1], pts[i]);
+        const ends = i === 1 || i === pts.length - 1;
+        PB.forEach((pb, id) => { if (ends && (id === b.a || id === b.b)) return; if (gap(sb, pb) < 0.25) { bad++; why.push('p' + id + '@' + i); } });
+        placed.forEach(u => { if (u.bi !== bi && gap(sb, u.box) < 0.9) { bad++; why.push('b' + u.bi + '@' + i); } });
+      }
+      if (!best || bad < best.bad) best = { pts, bad, why };
+      if (!bad) break;
+    }
+    for (let i = 1; i < best.pts.length; i++) placed.push({ bi, box: box(best.pts[i - 1], best.pts[i]) });
+    return best;
+  };
+  const order = lay.belts.map((_, bi) => bi).sort((u, v) => {
+    const d = bi => { const b = lay.belts[bi]; return Math.abs(P[b.a].p[1] - P[b.b].p[1]) + Math.abs(P[b.a].p[0] - P[b.b].p[0]); };
+    return d(u) - d(v);
+  });
+  // Reserva o toco de toda porta antes de rotear: quem passa primeiro não pode tapar a porta de outra esteira.
+  lay.belts.forEach((b, bi) => { for (const [id, sd] of [[b.a, sideA.get(bi)], [b.b, sideB.get(bi)]]) { const pt = portAt(id, sd); placed.push({ bi, box: box(pt.q.toArray(), pt.s.toArray()) }); } });
+  const routed = new Map();
+  let clashes = 0; const dbg = [];
+  if (O.route === 'game') for (const bi of order) { const r = route(bi); routed.set(bi, r.pts); clashes += r.bad; if (r.bad) dbg.push(bi + ':' + lay.belts[bi].a + '>' + lay.belts[bi].b + ' ' + sideA.get(bi) + '/' + sideB.get(bi) + ' ' + r.why.join(',')); }
+  document.body.dataset.clashes = clashes + ' | ' + dbg.join(' ; ');
+
+  // ---- peças ----
+  const ins = P.filter(p => p.t === 'in'), outs = P.filter(p => p.t === 'out');
+  const beltColor = b => (b.i >= 0 ? lane(b.i) : '#dfe9f3');
+  const body = new RoundedBoxGeometry(3.6, 2.4, 3.6, 3, 0.06);
+  const plate = new RoundedBoxGeometry(4.4, 0.8, 3.6, 2, 0.06);
+  // Topo: setas nas quatro direções. Canvas: direita = frente (+x), cima = right (-z), baixo = left (+z), esquerda = back.
+  const topIcon = (id, base) => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
+    const isS = P[id].t === 's', c = w / 2;
+    const used = new Map();
+    (outsOf.get(id) || []).forEach(bi => used.set(sideA.get(bi), { out: true, color: beltColor(lay.belts[bi]) }));
+    (insOf.get(id) || []).forEach(bi => used.set(sideB.get(bi), { out: false, color: beltColor(lay.belts[bi]) }));
+    const DIR = { front: [1, 0], back: [-1, 0], right: [0, -1], left: [0, 1] };
+    const sides = isS ? { back: false, front: true, left: true, right: true } : { back: false, left: false, right: false, front: true };
+    for (const [side, isOut] of Object.entries(sides)) {
+      const u = used.get(side);
+      if (!u && !O.free) continue;
+      const [dx, dy] = DIR[side], long = side === 'front' || (side === 'back');
+      const r0 = 26, r1 = long ? 112 : 100;
+      // seta sai do centro (saída) ou chega no centro (entrada)
+      const from = isOut ? r0 : r1, to = isOut ? r1 : r0;
+      const x0 = c + dx * from, y0 = c + dy * from, x1 = c + dx * to, y1 = c + dy * to;
+      const ang = Math.atan2(y1 - y0, x1 - x0);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      const stroke = (col, wd) => {
+        g.strokeStyle = col; g.lineWidth = wd;
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 - Math.cos(ang) * 10, y1 - Math.sin(ang) * 10); g.stroke();
+        g.beginPath(); g.moveTo(x1 - Math.cos(ang - .55) * 34, y1 - Math.sin(ang - .55) * 34); g.lineTo(x1, y1); g.lineTo(x1 - Math.cos(ang + .55) * 34, y1 - Math.sin(ang + .55) * 34); g.stroke();
+      };
+      if (u) { stroke('#04101c', 30); stroke(u.color, 16); }
+      else { stroke('rgba(4,16,28,.35)', 10); }
+    }
+    g.fillStyle = '#04101c'; g.beginPath(); g.arc(c, c, 16, 0, 7); g.fill();
+  });
+  for (const [id, p] of P.entries()) {
+    const g = new T.Group(); g.position.set(...p.p);
+    const isS = p.t === 's', isM = p.t === 'm';
+    if (isS || isM) {
+      const base = isS ? '#e8863a' : '#3bb3a8';
+      g.add(new T.Mesh(body, new T.MeshLambertMaterial({ color: base })));
+      const top = new T.Mesh(new T.PlaneGeometry(3.6, 3.6), new T.MeshBasicMaterial({ map: topIcon(id, isS ? '#ffb877' : '#7ee5d9') }));
+      top.rotation.x = -Math.PI / 2; top.position.y = 1.205; g.add(top);
+      const label = isS ? `1→${p.w}` : `${(insOf.get(id) || []).length}→1`;
+      for (const [ry, pos] of [[0, [0, 0.1, 1.805]], [-Math.PI / 2, [-1.805, 0.1, 0]]]) {
+        const m = new T.Mesh(new T.PlaneGeometry(2.4, 1.6), new T.MeshBasicMaterial({ map: glyph(label, '#ffffff'), transparent: true, depthWrite: false }));
+        m.rotation.y = ry; m.position.set(...pos); m.userData.noPick = true; g.add(m);
+      }
+    } else {
+      const isIn = p.t === 'in', idx = isIn ? ins.indexOf(p) : outs.indexOf(p);
+      const color = isIn ? lane(p.i ?? idx) : '#8fe3a4', tag = isIn ? `E${idx + 1}` : `S${idx + 1}`;
+      const pm = new T.Mesh(plate, new T.MeshLambertMaterial({ color })); pm.position.y = BY + (O.route === 'game' ? 0 : 0.95); g.add(pm);
+      const sp = new T.Sprite(new T.SpriteMaterial({ map: pill(tag, color), depthTest: false, transparent: true }));
+      sp.scale.set(4.4, 1.65, 1); sp.position.y = 1.6; sp.renderOrder = 5; g.add(sp);
+    }
+    track(g, p.s, 'piece', id);
+  }
+
+  // ---- esteiras: tubo neon + contorno escuro + seta na saída, anel na entrada, gola na porta ----
+  const coneG = new T.ConeGeometry(0.5, 1.0, 14), ringG = new T.TorusGeometry(0.46, 0.12, 8, 20), collarG = new T.BoxGeometry(0.16, 1.0, 1.0);
+  for (const [bi, b] of lay.belts.entries()) {
+    const color = beltColor(b);
+    const pts = O.route === 'game' ? routed.get(bi) : b.p.map(q => [q[0], q[1] + BY, q[2]]);
+    const g = new T.Group();
+    const line = polyline(pts), path = roundedPath(pts, 0.6), segs = Math.max(8, Math.round(line.tot * 2.5));
+    g.add(new T.Mesh(new T.TubeGeometry(path, segs, 0.2, 8, false), new T.MeshBasicMaterial({ color })));
+    g.add(new T.Mesh(new T.TubeGeometry(path, segs, 0.36, 8, false), new T.MeshBasicMaterial({ color: '#03080f', side: T.BackSide })));
+    if (O.route === 'game') {
+      const A = portAt(b.a, sideA.get(bi)), B = portAt(b.b, sideB.get(bi));
+      for (const pt of [A, B]) {
+        const col = new T.Mesh(collarG, new T.MeshBasicMaterial({ color: '#03080f' }));
+        col.position.copy(pt.q); if (pt.nrm[2]) col.rotation.y = Math.PI / 2; col.userData.noPick = true; g.add(col);
+      }
+      const cone = new T.Mesh(coneG, new T.MeshBasicMaterial({ color }));
+      cone.position.copy(A.q).addScaledVector(new T.Vector3(...A.nrm), 0.75); cone.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(...A.nrm)); g.add(cone);
+      const ring = new T.Mesh(ringG, new T.MeshBasicMaterial({ color }));
+      ring.position.copy(B.q).addScaledVector(new T.Vector3(...B.nrm), 0.5); ring.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), new T.Vector3(...B.nrm)); g.add(ring);
+    }
+    const obj = track(g, b.s, 'belt', 'b' + bi);
+    obj.a = b.a; obj.b = b.b;
+    flows.push({ line, color: new T.Color(color), step: b.s, off: Math.random() * 2 });
+  }
+
+
+  // ---- itens ----
+  const SP = 2.2;
+  let total = 0; for (const f of flows) { f.n = Math.max(1, Math.floor(f.line.tot / SP)); f.first = total; total += f.n; }
+  const glow = O.items === 'glow';
+  items = new T.InstancedMesh(glow ? new T.SphereGeometry(.24, 10, 8) : new T.SphereGeometry(.42, 16, 12),
+    glow ? new T.MeshBasicMaterial({ color: '#ffffff' }) : new T.MeshStandardMaterial({ color: '#ffffff', roughness: .85 }), total);
+  for (const f of flows) for (let k = 0; k < f.n; k++) items.setColorAt(f.first + k, glow ? f.color.clone().lerp(new T.Color('#ffffff'), .6) : f.color.clone().lerp(new T.Color('#ffffff'), .25));
+  items.visible = O.items !== 'off';
+  world.add(items);
+
+  // ---- grafo para isolar caminhos ----
+  graph = { out: new Map(), in: new Map() };
+  objs.filter(o => o.kind === 'belt').forEach(o => {
+    (graph.out.get(o.a) || graph.out.set(o.a, []).get(o.a)).push(o);
+    (graph.in.get(o.b) || graph.in.set(o.b, []).get(o.b)).push(o);
+  });
+
+  // ---- câmera ----
+  const size = new T.Vector3(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
+  const r = size.length() / 2 + 3;
+  const w = host.clientWidth || 800, h = host.clientHeight || 500, aspect = w / h;
+  controls?.dispose();
+  if (O.cam === 'iso') {
+    const hh = r * 0.8;
+    camera = new T.OrthographicCamera(-hh * aspect, hh * aspect, hh, -hh, -500, 500);
+    camera.position.copy(center).add(new T.Vector3(1, 0.82, 1).normalize().multiplyScalar(120));
+  } else {
+    camera = new T.PerspectiveCamera(40, aspect, 0.5, 600);
+    camera.position.copy(center).add((O.mode === 'floors' ? new T.Vector3(-0.75, 0.8, 1.0) : new T.Vector3(0.8, 0.62, 1.15)).normalize().multiplyScalar(r / Math.sin(T.MathUtils.degToRad(20)) * (aspect < 1.2 ? 1 : 0.74)));
+  }
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.copy(center); controls.enableDamping = !reduce; controls.maxPolarAngle = Math.PI * 0.49;
+  controls.update();
+  resize();
+}
+
+function resize() {
+  const w = host.clientWidth || 800, h = host.clientHeight || 500;
+  renderer.setSize(w, h, false);
+  if (!camera) return;
+  if (camera.isOrthographicCamera) { const hh = camera.top; camera.left = -hh * w / h; camera.right = hh * w / h; }
+  else camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+// Caminho em foco: peça = ligações diretas; entrada = tudo a jusante; saída = tudo a montante.
+function focusSet(id) {
+  const lay = L(), t = lay.pieces[id]?.t, set = new Set([id]);
+  const walk = (n, dir) => (graph[dir].get(n) || []).forEach(o => { if (set.has(o)) return; set.add(o); const nx = dir === 'out' ? o.b : o.a; set.add(nx); if (t === 'in' || t === 'out') walk(nx, dir); });
+  if (t !== 'out') walk(id, 'out');
+  if (t !== 'in') walk(id, 'in');
+  return set;
+}
+
+const M4 = new T.Matrix4(), V = new T.Vector3(), Q = new T.Quaternion(), ONE = new T.Vector3(1, 1, 1), ZERO = new T.Vector3();
+let clock = 0;
+function frame(dt) {
+  clock += dt;
+  const K = L().K, done = S.cur >= K;
+  const k = 0.5 - 0.5 * Math.cos(clock * Math.PI * 2 / 1.15);
+  const fs = S.focus;
+  for (const o of objs) {
+    o.root.visible = done || o.step <= S.cur;
+    const now = !done && o.step === S.cur;
+    const dim = fs && !fs.has(o.kind === 'piece' ? o.id : o);
+    const state = now ? 'now' : dim ? 'dim' : 'base';
+    if (state === 'base' && o._st === 'base') continue;
+    for (const m of o.mats) {
+      const b = m.userData.base;
+      if (state === 'now') {
+        m.transparent = true; m.opacity = (b.op ?? 1) * (dim ? .1 : 0.3 + 0.45 * k); m.depthWrite = false;
+        if (m.emissive) { m.emissive.copy(HOLO); m.emissiveIntensity = 0.3 + k * 0.9; }
+        else if (b.color) m.color.copy(b.color).lerp(HOLO, 0.35 + k * 0.5);
+      } else {
+        m.transparent = dim || b.tr; m.opacity = dim ? (b.op ?? 1) * 0.1 : b.op; m.depthWrite = dim ? false : b.dw;
+        if (m.emissive) { m.emissive.copy(b.emissive); m.emissiveIntensity = b.ei; } else if (b.color) m.color.copy(b.color);
+      }
+      if (o._st !== state) m.needsUpdate = true;
+    }
+    o._st = state;
+  }
+  if (items.visible) {
+    const speed = reduce ? 0 : 3.4;
+    flows.forEach((f, fi) => {
+      const ob = objs.find(o => o.id === 'b' + fi);
+      const on = (done || f.step <= S.cur) && !(fs && !fs.has(ob));
+      for (let i = 0; i < f.n; i++) {
+        if (!on) M4.compose(V.set(0, -999, 0), Q, ZERO);
+        else { f.line.at(((f.off + clock * speed + i * f.line.tot / f.n) % f.line.tot), V); M4.compose(V, Q, ONE); }
+        items.setMatrixAt(f.first + i, M4);
+      }
+    });
+    items.instanceMatrix.needsUpdate = true;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ---- interação: mouse isola caminho ----
+const ray = new T.Raycaster(), ptr = new T.Vector2();
+const pickAt = e => {
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickables.filter(m => { let p = m; while (p) { if (!p.visible) return false; p = p.parent; } return true; }), false)[0];
+  return hit?.object.userData.obj || null;
+};
+const objFocus = o => !o ? null : o.kind === 'piece' ? focusSet(o.id) : new Set([o, o.a, o.b]);
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!O.isolate || S.pinned || e.buttons) return;
+  const o = pickAt(e); S.focus = objFocus(o); renderer.domElement.style.cursor = o ? 'pointer' : '';
+});
+renderer.domElement.addEventListener('pointerleave', () => { if (!S.pinned) S.focus = null; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!O.isolate || !down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  const o = pickAt(e);
+  S.pinned = !!o; S.focus = objFocus(o); S.lane = null; ui();
+});
+
+// ---- painel ----
+const $ = id => document.getElementById(id);
+const SEGS = ['mode', 'layout', 'route'], CHKS = ['free', 'isolate'];
+const NAMES = { mode: { floors: 'Andares', towers: 'Torres' }, layout: { matrix: 'Matriz 4→4', butterfly: 'Butterfly 4→4' }, route: { game: 'Como no jogo', old: 'Atual' } };
+function ui() {
+  const K = L().K, names = STEP_NAMES(K);
+  $('ticks').innerHTML = Array.from({ length: K + 1 }, (_, i) => `<button type="button" class="tick${i === S.cur ? ' on' : i < S.cur ? ' past' : ''}" data-i="${i}" aria-label="${i < K ? names[i] : 'Pronto'}"></button>`).join('');
+  $('cap').textContent = S.cur >= K ? 'Pronto' : `${S.cur + 1}/${K} ${names[S.cur]}`;
+  $('play').textContent = S.playing ? '❚❚' : '▶'; $('play').setAttribute('aria-label', S.playing ? 'Pausar' : 'Tocar');
+  for (const s of SEGS) $('o-' + s).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === O[s])));
+  for (const c of CHKS) $('o-' + c).checked = O[c];
+  const lay = L(), ins = lay.pieces.map((p, id) => ({ p, id })).filter(x => x.p.t === 'in'), outs = lay.pieces.map((p, id) => ({ p, id })).filter(x => x.p.t === 'out');
+  $('lanes').innerHTML = `<span>Seguir</span>` + [...ins.map((x, i) => [x.id, `E${i + 1}`, lane(x.p.i ?? i)]), ...outs.map((x, i) => [x.id, `S${i + 1}`, '#8fe3a4'])]
+    .map(([id, tag, c]) => `<button type="button" class="chip" data-id="${id}" aria-pressed="${S.lane === id}"><i style="background:${c}"></i>${tag}</button>`).join('');
+  $('hint').hidden = !O.isolate;
+  $('sum').textContent = [
+    'Rodada 4 (protótipo das ligações em andares)',
+    'Visual: perspectiva, piso blueprint, peças chapadas, tubo neon com contorno, pontos de luz, setas nas portas, isolar no mouse, holograma pulsando',
+    'Ligações: splitter entra por trás e sai pela frente/lados; merger entra por trás/lados e sai pela frente; uma esteira por face',
+    'Topo das peças: setas nas 4 direções, usadas acesas na cor da faixa' + (O.free ? ', livres em contorno' : ', livres escondidas'),
+    `Montagem olhada por último: ${NAMES.mode[O.mode]} · ${NAMES.layout[O.layout]} · ligações ${NAMES.route[O.route]}`,
+  ].join('\n') + ($('notes').value.trim() ? `\nAjuste: ${$('notes').value.trim()}` : '');
+}
+for (const s of SEGS) $('o-' + s).addEventListener('click', e => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || v === O[s]) return;
+  O[s] = v; if (s === 'layout' || s === 'mode') { S.cur = 0; S.focus = null; S.pinned = false; S.lane = null; }
+  save(); build(); ui();
+});
+for (const c of CHKS) $('o-' + c).addEventListener('change', e => { O[c] = e.target.checked; if (c === 'isolate' && !O[c]) { S.focus = null; S.pinned = false; S.lane = null; } save(); if (c === 'free') build(); ui(); });
+$('lanes').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const id = +b.dataset.id;
+  if (S.lane === id) { S.lane = null; S.focus = null; S.pinned = false; } else { S.lane = id; S.focus = focusSet(id); S.pinned = true; }
+  ui();
+});
+$('prev').addEventListener('click', () => { S.playing = false; S.cur = Math.max(0, S.cur - 1); ui(); });
+$('next').addEventListener('click', () => { S.playing = false; S.cur = Math.min(L().K, S.cur + 1); ui(); });
+$('play').addEventListener('click', () => { S.playing = !S.playing; if (S.playing && S.cur >= L().K) S.cur = 0; acc = 0; ui(); });
+$('ticks').addEventListener('click', e => { const i = e.target.closest('.tick')?.dataset.i; if (i == null) return; S.playing = false; S.cur = +i; ui(); });
+$('notes').addEventListener('input', ui);
+$('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('sum').textContent); $('copied').textContent = 'Copiado. Cola na conversa.'; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($('sum')); getSelection().removeAllRanges(); getSelection().addRange(r); $('copied').textContent = 'Texto selecionado, use Ctrl+C.'; }
+});
+addEventListener('keydown', e => { if (e.target.closest('textarea, input')) return; if (e.key === 'ArrowRight') $('next').click(); if (e.key === 'ArrowLeft') $('prev').click(); if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); $('play').click(); } });
+
+let last = performance.now(), acc = 0, visible = true;
+try { build(); } catch (e) { host.insertAdjacentHTML('beforeend', `<div class="err">Não deu para abrir o WebGL aqui (${String(e.message || e)}).</div>`); }
+new ResizeObserver(resize).observe(host);
+new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(host);
+if (location.hash.startsWith('#done')) { S.cur = L().K; S.playing = false; }
+if (location.hash === '#focus') { S.cur = L().K; S.playing = false; S.lane = 0; S.focus = focusSet(0); S.pinned = true; }
+ui();
+const tick = now => {
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (S.playing) { acc += dt; const hold = S.cur >= L().K ? 3.2 : 2.4; if (acc > hold) { acc = 0; S.cur = S.cur >= L().K ? 0 : S.cur + 1; ui(); } }
+  if (visible && items) frame(dt);
+};
+requestAnimationFrame(tick);
+</script>
