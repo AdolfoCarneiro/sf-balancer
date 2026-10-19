@@ -26,7 +26,7 @@ You can do that math by hand every time, or you can type the machine counts and 
 
 ## What it does
 
-- **Groups machines into belt lines.** Machines per line = belt capacity ÷ rate per machine, rounded down. Editable, with a warning when you overload a belt.
+- **Groups machines into belt lines.** Machines per line = belt capacity ÷ rate per machine, rounded down. On the destination the machines are split into equal lines (14 that fit 8 per line become 7 + 7), and each group keeps its own lines. Editable, with a warning when you overload a belt.
 - **Connects the lines.** Lists every layout it finds, best first: direct, merging whole lines, a donor line split into equal parts, or a Smart Splitter overflow passing excess to a line that's short.
 - **Designs the load balancer.** Exact splitter tree ("1 splitter into 2, then 2 into 3 = 6 parts", 2s first because it takes fewer pieces), whether it needs a loop, and the "split into more parts and sink the extra" alternative, with a diagram.
 - **Balancer library.** An N→M generator that tries ten designs (matrix, funnel and butterfly, each also with a loop or sink for 5, 7, 10…, plus a split looped matrix that divides each input in 2 before the loop, so a full belt doesn't bottleneck: the 14-piece 1→5 and 24-piece 1→7 the community uses), checks every internal segment against the belt tier, explains why it picked one, and shows the build step by step with the current piece highlighted like a build gun hologram. In the plan, the balancer is a block you click to open that build.

@@ -774,7 +774,9 @@ const I18N = {
     warnCollectMixed: (n, list) => `Coleta: ${n === 1 ? 'uma linha fica' : `${n} linhas ficam`} com as máquinas que sobraram (${list}).`,
     warnDistMixed: (n, list) => `Distribuição: ${n === 1 ? 'uma linha fica' : `${n} linhas ficam`} incompleta${n > 1 ? 's' : ''} (${list}).`,
     eqContinuous: (total, lines, cap) => `Fluxo contínuo de <b>${total}/min</b>, em ${lines} esteira${lines > 1 ? 's' : ''} de até ${cap}. Preencha a taxa a 100% para ver em máquinas.`,
-    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate }) => `<b>${n}</b> máquina${one ? '' : 's'} a 100% = <b>${N}</b> a <b>${clock}%</b> = <b>${total}/min</b>. Cada uma ${src ? 'produz' : 'consome'} ${per}/min; ${perLine} por linha dão ${lineRate}/min.`,
+    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate, max, lines, parts }) => `<b>${n}</b> máquina${one ? '' : 's'} a 100% = <b>${N}</b> a <b>${clock}%</b> = <b>${total}/min</b>. Cada uma ${src ? 'produz' : 'consome'} ${per}/min; ${max ? `cabem até ${max} por linha` : `${perLine} por linha dão ${lineRate}/min`}. <b>${lines} linha${lines > 1 ? 's' : ''}</b>: ${parts}.`,
+    lineParts: parts => parts.map(p => `${p.n} de ${p.k} (${p.rate}/min)`).join(' + '),
+    grpTag: n => `G${n}`,
     invalid: 'Os campos marcados em vermelho precisam de um número positivo. Máquinas e clock precisam da taxa a 100%; o total funciona sozinho.',
     supply: 'Oferta', demand: 'Demanda', surplus: 'Sobra', shortfall: 'Falta',
     noLines: 'Sem linhas de origem ou de destino para ligar.',
@@ -795,6 +797,7 @@ const I18N = {
     stepContinuous: (total, lines) => `fluxo de ${total}/min em ${lines} esteira${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` a ${c}%`,
     stepNoFull: (N, clk, per) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada), sem linha cheia.`,
+    stepBalanced: ({ N, clk, per, lines, parts, src, note, fluid }) => `${N} máquinas${clk} (${per}/min cada) em ${lines} linhas equilibradas: ${parts}, com ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por linha).`,
     stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada) em ${full} linha${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), com ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por linha)${rem ? `. ${rem === 1 ? 'A máquina restante fica' : `As ${rem} restantes ficam`} numa linha à parte` : ''}.`,
     stepMixed: list => `Linhas com as máquinas que sobraram: ${list}.`,
     stepDonorWhole: (d, who) => `Doadora ${d}: vai inteira para o merger de ${who}.`,
@@ -1080,7 +1083,9 @@ const I18N = {
     warnCollectMixed: (n, list) => `Collection: ${n === 1 ? 'one line gets' : `${n} lines get`} the leftover machines (${list}).`,
     warnDistMixed: (n, list) => `Distribution: ${n === 1 ? 'one line is' : `${n} lines are`} incomplete (${list}).`,
     eqContinuous: (total, lines, cap) => `Continuous flow of <b>${total}/min</b>, on ${lines} belt${lines > 1 ? 's' : ''} of up to ${cap}. Fill in the 100% rate to see it in machines.`,
-    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate }) => `<b>${n}</b> machine${one ? '' : 's'} at 100% = <b>${N}</b> at <b>${clock}%</b> = <b>${total}/min</b>. Each ${src ? 'produces' : 'consumes'} ${per}/min; ${perLine} per line make ${lineRate}/min.`,
+    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate, max, lines, parts }) => `<b>${n}</b> machine${one ? '' : 's'} at 100% = <b>${N}</b> at <b>${clock}%</b> = <b>${total}/min</b>. Each ${src ? 'produces' : 'consumes'} ${per}/min; ${max ? `up to ${max} fit per line` : `${perLine} per line make ${lineRate}/min`}. <b>${lines} line${lines > 1 ? 's' : ''}</b>: ${parts}.`,
+    lineParts: parts => parts.map(p => `${p.n} of ${p.k} (${p.rate}/min)`).join(' + '),
+    grpTag: n => `G${n}`,
     invalid: 'Fields marked in red need a positive number. Machines and clock need the 100% rate; total works on its own.',
     supply: 'Supply', demand: 'Demand', surplus: 'Surplus', shortfall: 'Shortfall',
     noLines: 'No source or destination lines to connect.',
@@ -1101,6 +1106,7 @@ const I18N = {
     stepContinuous: (total, lines) => `flow of ${total}/min on ${lines} belt${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` at ${c}%`,
     stepNoFull: (N, clk, per) => `${N} machine${N > 1 ? 's' : ''}${clk} (${per}/min each), no full line.`,
+    stepBalanced: ({ N, clk, per, lines, parts, src, note, fluid }) => `${N} machines${clk} (${per}/min each) in ${lines} balanced lines: ${parts}, with ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} per line).`,
     stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} machine${N > 1 ? 's' : ''}${clk} (${per}/min each) in ${full} line${full > 1 ? 's' : ''} of ${perLine} (${lineRate}/min), with ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} per line)${rem ? `. ${rem === 1 ? 'The remaining machine goes' : `The remaining ${rem} go`} on a separate line` : ''}.`,
     stepMixed: list => `Lines with the leftover machines: ${list}.`,
     stepDonorWhole: (d, who) => `Donor ${d}: goes whole into the merger of ${who}.`,
@@ -1386,7 +1392,9 @@ const I18N = {
     warnCollectMixed: (n, list) => `Recolección: ${n === 1 ? 'una línea queda' : `${n} líneas quedan`} con las máquinas sobrantes (${list}).`,
     warnDistMixed: (n, list) => `Distribución: ${n === 1 ? 'una línea queda incompleta' : `${n} líneas quedan incompletas`} (${list}).`,
     eqContinuous: (total, lines, cap) => `Flujo continuo de <b>${total}/min</b>, en ${lines} cinta${lines > 1 ? 's' : ''} de hasta ${cap}. Rellena la tasa al 100% para verlo en máquinas.`,
-    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate }) => `<b>${n}</b> máquina${one ? '' : 's'} al 100% = <b>${N}</b> al <b>${clock}%</b> = <b>${total}/min</b>. Cada una ${src ? 'produce' : 'consume'} ${per}/min; ${perLine} por línea dan ${lineRate}/min.`,
+    eqMachines: ({ n, one, N, clock, total, src, per, perLine, lineRate, max, lines, parts }) => `<b>${n}</b> máquina${one ? '' : 's'} al 100% = <b>${N}</b> al <b>${clock}%</b> = <b>${total}/min</b>. Cada una ${src ? 'produce' : 'consume'} ${per}/min; ${max ? `caben hasta ${max} por línea` : `${perLine} por línea dan ${lineRate}/min`}. <b>${lines} línea${lines > 1 ? 's' : ''}</b>: ${parts}.`,
+    lineParts: parts => parts.map(p => `${p.n} de ${p.k} (${p.rate}/min)`).join(' + '),
+    grpTag: n => `G${n}`,
     invalid: 'Los campos marcados en rojo necesitan un número positivo. Máquinas y clock necesitan la tasa al 100%; el total funciona solo.',
     supply: 'Oferta', demand: 'Demanda', surplus: 'Sobrante', shortfall: 'Faltante',
     noLines: 'No hay líneas de origen o de destino para conectar.',
@@ -1407,6 +1415,7 @@ const I18N = {
     stepContinuous: (total, lines) => `flujo de ${total}/min en ${lines} cinta${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` al ${c}%`,
     stepNoFull: (N, clk, per) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada una), sin línea llena.`,
+    stepBalanced: ({ N, clk, per, lines, parts, src, note, fluid }) => `${N} máquinas${clk} (${per}/min cada una) en ${lines} líneas equilibradas: ${parts}, con ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por línea).`,
     stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada una) en ${full} línea${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), con ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por línea)${rem ? `. ${rem === 1 ? 'La máquina restante queda' : `Las ${rem} restantes quedan`} en una línea aparte` : ''}.`,
     stepMixed: list => `Líneas con las máquinas sobrantes: ${list}.`,
     stepDonorWhole: (d, who) => `Donante ${d}: va entera al merger de ${who}.`,
@@ -1677,7 +1686,9 @@ function resolveGroup(raw) {
 
 // Linhas de esteira a partir de vários grupos. Cada grupo enche linhas com a taxa real por máquina;
 // as máquinas que sobram de cada grupo são empacotadas juntas, maior primeiro.
-function buildLines(groups, cap, side = t('group'), fluid = false) {
+// balance: no automático, divide o grupo em linhas iguais (14 → 7 + 7) em vez de encher e deixar a sobra.
+// mix: false mantém as sobras de cada grupo em linhas próprias.
+function buildLines(groups, cap, side = t('group'), fluid = false, { balance = false, mix = true } = {}) {
   const lines = [], info = [], warnings = [], loose = [];
   const name = gi => (groups.length > 1 ? t('groupOf', side, gi + 1) : side);
   groups.forEach((raw, gi) => {
@@ -1696,16 +1707,24 @@ function buildLines(groups, cap, side = t('group'), fluid = false) {
     const auto = Math.max(1, Math.floor(cap / eff + EPS));
     const perLine = r.per > 0 ? Math.floor(r.per) : auto;
     if (perLine * eff > cap + EPS) warnings.push({ level: 'bad', text: t(fluid ? 'warnPerLineOverPipe' : 'warnPerLineOver', name(gi), perLine, fmt(perLine * eff), fmt(cap), auto) });
+    if (balance && !(r.per > 0)) {
+      const n = Math.ceil(r.N / auto), k = Math.floor(r.N / n), big = r.N - k * n;
+      const sizes = Array.from({ length: n }, (_, i) => (i < big ? k + 1 : k));
+      for (const m of sizes) lines.push({ machines: m, rate: m * eff, partial: false, comp: [{ gi, count: m, rate: eff }] });
+      info.push({ gi, ...r, auto, perLine: sizes[0], fullLines: big || n, lineRate: sizes[0] * eff, rem: 0, sizes, eff, balanced: true });
+      return;
+    }
     const full = Math.floor(r.N / perLine);
     for (let i = 0; i < full; i++) lines.push({ machines: perLine, rate: perLine * eff, partial: false, comp: [{ gi, count: perLine, rate: eff }] });
     const rem = r.N - full * perLine;
     for (let i = 0; i < rem; i++) loose.push({ gi, rate: eff });
-    info.push({ gi, ...r, auto, perLine, fullLines: full, lineRate: perLine * eff, rem });
+    const sizes = Array(full).fill(perLine).concat(rem ? [rem] : []);
+    info.push({ gi, ...r, auto, perLine, fullLines: full, lineRate: perLine * eff, rem, sizes, eff });
   });
   loose.sort((a, b) => b.rate - a.rate || a.gi - b.gi);
   const packed = [];
   for (const m of loose) {
-    let line = packed.find(l => l.rate + m.rate <= cap + EPS);
+    let line = packed.find(l => l.rate + m.rate <= cap + EPS && (mix || l.comp[0].gi === m.gi));
     if (!line) { line = { machines: 0, rate: 0, partial: true, comp: [] }; packed.push(line); }
     line.machines++;
     line.rate += m.rate;
@@ -1714,6 +1733,16 @@ function buildLines(groups, cap, side = t('group'), fluid = false) {
   }
   lines.push(...packed);
   return { lines, groups: info, packed: packed.length, warnings, total: lines.reduce((a, l) => a + l.rate, 0) };
+}
+
+// Tamanhos das linhas de um grupo agrupados: [15, 15, 15, 14] → 3 de 15 + 1 de 14.
+function sizeParts(sizes, eff) {
+  const parts = [];
+  for (const k of sizes) {
+    const p = parts.find(x => x.k === k);
+    if (p) p.n++; else parts.push({ n: 1, k, rate: fmt(k * eff) });
+  }
+  return parts;
 }
 
 // Texto curto da composição de uma linha: "12 × 39,4" ou "1 × 200 + 1 × 120".
@@ -3089,7 +3118,7 @@ function computePlan(input) {
   const srcGroups = input.srcGroups || [{ driver: 'machines', count: input.srcCount, nominal: input.srcRate, per: input.srcPer }];
   const dstGroups = input.dstGroups || [{ driver: 'machines', count: input.dstCount, nominal: input.dstRate, per: input.dstPer }];
   const src = buildLines(srcGroups, cap, t('sideSrc'), fluid);
-  const dst = buildLines(dstGroups, cap, t('sideDst'), fluid);
+  const dst = buildLines(dstGroups, cap, t('sideDst'), fluid, { balance: true, mix: false });
   const ranked = rankPlans(generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || [], fluid).map(p => evaluatePlan(p, cap)));
   // Dos designs de balancer, só o melhor vira alternativa; os outros ficam para a comparação.
   const balAlts = ranked.filter(a => a.kind === 'balancer');
@@ -3174,7 +3203,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3449,10 +3478,11 @@ function showEquivalences(side, info, cap, fluid) {
     r.count.placeholder = fmt(g.n, 2);
     r.clock.placeholder = fmt(g.clock * 100, 2);
     r.total.placeholder = fmt(g.total, 2);
-    r.per.placeholder = t('perAuto', g.auto);
+    r.per.placeholder = t('perAuto', g.perLine);
     r.eq.innerHTML = t('eqMachines', {
       n: fmt(g.n, 2), one: Math.abs(g.n - 1) < EPS, N: g.N, clock: fmt(g.clock * 100, 2), total: fmt(g.total, 2),
       src: side === 'src', per: fmt(g.perMachine, 2), perLine: g.perLine, lineRate: fmt(g.lineRate, 2),
+      max: g.balanced ? g.auto : null, lines: g.sizes.length, parts: t('lineParts', sizeParts(g.sizes, g.eff)),
     });
   });
 }
@@ -3608,6 +3638,9 @@ function groupSteps(side, built, conv, fluid) {
     const clk = Math.abs(g.clock - 1) > 1e-4 ? t('stepClock', fmt(g.clock * 100, 2)) : '';
     const per = fmt(g.perMachine, 2);
     if (!g.fullLines) return lbl + t('stepNoFull', g.N, clk, per);
+    if (g.balanced && g.fullLines < g.sizes.length) {
+      return lbl + t('stepBalanced', { N: g.N, clk, per, lines: g.sizes.length, parts: t('lineParts', sizeParts(g.sizes, g.eff)), src: side === 'src', note, fluid });
+    }
     return lbl + t('stepGroup', { N: g.N, clk, per, full: g.fullLines, perLine: g.perLine, lineRate: fmt(g.lineRate), src: side === 'src', note, rem: g.rem, fluid });
   });
 }
@@ -3770,8 +3803,8 @@ function piecesTable(p, a) {
 // ---- Planta do fluxo ----
 function flowSvg(p, a) {
   const cap = p.cap, v = a.view, fl = e => (e === null || e === undefined ? 0 : a.sim.flow[e]);
-  const rowH = 54, boxW = 184, boxH = 40, W = 960, top = 8;
-  const xSrc = 0, xDst = W - boxW, xMerge = xDst - 42, xOv = xDst - 150, xDiv = 410;
+  const rowH = 54, boxW = 184, dstW = 224, boxH = 40, W = 960, top = 8;
+  const xSrc = 0, xDst = W - dstW, xMerge = xDst - 42, xOv = xDst - 150, xDiv = 410;
 
   const srcOrder = [];
   const seen = new Set();
@@ -3932,7 +3965,9 @@ function flowSvg(p, a) {
   });
 
   const boxes = [];
-  const plateBox = (x, y, stroke) => `<polygon points="${x},${y} ${x + boxW - 10},${y} ${x + boxW},${y + 10} ${x + boxW},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
+  const plateBox = (x, y, stroke, w = boxW) => `<polygon points="${x},${y} ${x + w - 10},${y} ${x + w},${y + 10} ${x + w},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
+  // Com mais de um grupo no destino, a caixa diz de qual grupo é a linha.
+  const dstComp = d => (p.dst.groups.length > 1 && d.comp ? `${t('grpTag', d.comp[0].gi + 1)} · ` : '') + lineComp(d);
   srcOrder.forEach(l => {
     const y = ySrc.get(l.id) - boxH / 2;
     const st = a.sources.get(l.id);
@@ -3949,25 +3984,26 @@ function flowSvg(p, a) {
   dstOrder.forEach(d => {
     const y = yDst.get(d.id) - boxH / 2;
     const st = a.dests.get(d.id);
-    const fill = (boxW - 16) * Math.min(1, st.got / d.rate);
+    const fill = (dstW - 16) * Math.min(1, st.got / d.rate);
     const short = st.short > 0.05;
-    boxes.push(`${plateBox(xDst, y, short ? 'var(--sink)' : 'var(--ok)')}
+    boxes.push(`${plateBox(xDst, y, short ? 'var(--sink)' : 'var(--ok)', dstW)}
       <text class="lbl" x="${xDst + 10}" y="${y + 20}">${Dn(d)}</text>
-      <text class="rate" x="${xDst + boxW - 12}" y="${y + 20}" text-anchor="end" style="${short ? 'fill:var(--sink)' : ''}">${t('svgGot', fmt(st.got), fmt(d.rate))}</text>
-      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${boxW - 16}" height="5" fill="var(--line)"/>
+      <text class="sm" x="${xDst + 40}" y="${y + 19}">${esc(dstComp(d))}</text>
+      <text class="rate" x="${xDst + dstW - 12}" y="${y + 20}" text-anchor="end" style="${short ? 'fill:var(--sink)' : ''}">${t('svgGot', fmt(st.got), fmt(d.rate))}</text>
+      <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${dstW - 16}" height="5" fill="var(--line)"/>
       <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${fill.toFixed(1)}" height="5" fill="${short ? 'var(--sink)' : 'var(--ok)'}"/>`);
   });
   if (hasSink) {
     const y = ySink - boxH / 2;
-    boxes.push(`${plateBox(xDst, y, 'var(--sink)')}
+    boxes.push(`${plateBox(xDst, y, 'var(--sink)', dstW)}
       <text class="lbl" x="${xDst + 10}" y="${y + 25}">${t('svgSink')}</text>
-      <text class="rate" x="${xDst + boxW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--sink)">${fmt(a.sinkRate)}/min</text>`);
+      <text class="rate" x="${xDst + dstW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--sink)">${fmt(a.sinkRate)}/min</text>`);
   }
   if (hasExtra) {
     const y = yExtra - boxH / 2;
-    boxes.push(`${plateBox(xDst, y, 'var(--ink-dim)')}
+    boxes.push(`${plateBox(xDst, y, 'var(--ink-dim)', dstW)}
       <text class="lbl" x="${xDst + 10}" y="${y + 25}">${t('svgExtra')}</text>
-      <text class="rate" x="${xDst + boxW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--ink-dim)">${fmt(a.extraRate)}/min</text>`);
+      <text class="rate" x="${xDst + dstW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--ink-dim)">${fmt(a.extraRate)}/min</text>`);
   }
 
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${t('svgAria')}">

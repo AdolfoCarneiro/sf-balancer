@@ -26,7 +26,7 @@ Dá para fazer essa conta na mão toda vez, ou digitar as máquinas e deixar o p
 
 ## O que ele faz
 
-- **Agrupa as máquinas em linhas de esteira.** Máquinas por linha = capacidade da esteira ÷ taxa por máquina, arredondado para baixo. Editável, com aviso quando a esteira estoura.
+- **Agrupa as máquinas em linhas de esteira.** Máquinas por linha = capacidade da esteira ÷ taxa por máquina, arredondado para baixo. No destino as máquinas são divididas em linhas iguais (14 que cabem 8 por linha viram 7 + 7), e cada grupo fica com suas próprias linhas. Editável, com aviso quando a esteira estoura.
 - **Liga as linhas.** Lista todas as montagens que encontra, a melhor primeiro: direto, juntando linhas inteiras, uma linha doadora dividida em partes iguais, ou o overflow de um Smart Splitter passando o excesso para uma linha que está com falta.
 - **Monta o load balancer.** A árvore exata de splitters ("1 splitter em 2, depois 2 em 3 = 6 partes", com os 2 primeiro porque gasta menos peças), se precisa de loop, e a alternativa "dividir em mais partes e mandar as extras pro sink", com diagrama.
 - **Biblioteca de balancers.** Um gerador N→M que testa dez designs (matriz, funil e borboleta, cada um também com loop ou sink para 5, 7, 10…, e a matriz com loop dividido, que divide cada entrada em 2 antes do loop para a esteira cheia não engargalar: o 1→5 de 14 peças e o 1→7 de 24 que a comunidade usa), confere cada trecho interno contra o tier da esteira, explica por que escolheu um e mostra a montagem passo a passo, com a peça do passo destacada como o holograma da build gun. No plano, o balancer é um bloco que você clica para abrir essa montagem.

@@ -91,7 +91,7 @@ test('caso 3: caso 1 com 6 refinarias por linha', () => {
 });
 
 test('3×480 + 320 com doadora ÷3: a linha principal represa, não a doadora', () => {
-  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 44, dstRate: 40, policy: 'sink' });
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 44, dstRate: 40, dstPer: 12, policy: 'sink' });
   assert.deepEqual(p.dst.lines.map(l => l.rate), [480, 480, 480, 320]);
   const a = alt(p, 'doadora-1-direct');
   assert.ok(a.full);
@@ -114,7 +114,7 @@ test('vários grupos: 3 × 600 + 1 × 300 em Mk5', () => {
 });
 
 test('origens diferentes: a linha menor cobre o destino pequeno e a grande vira doadora', () => {
-  const p = L.computePlan({ ...base, cap: 780, belt: 'Mk5', dstCount: 45, dstRate: 40,
+  const p = L.computePlan({ ...base, cap: 780, belt: 'Mk5', dstCount: 45, dstRate: 40, dstPer: 19,
     srcGroups: [{ mode: 'machines', count: 3, rate: 600 }, { mode: 'machines', count: 1, rate: 300 }] });
   assert.deepEqual(p.dst.lines.map(l => l.rate), [760, 760, 280]);
   const a = p.alternatives[0];
@@ -214,9 +214,9 @@ test('destino fracionado usa a taxa real por máquina nas linhas', () => {
   const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstGroups: [{ driver: 'total', total: 1735.14, nominal: 40 }] });
   close(p.demand, 1735.14);
   const g = p.dst.groups[0];
-  assert.equal(g.perLine, 12, '480 / 39,43 = 12 por linha');
-  assert.deepEqual(p.dst.lines.map(l => l.machines), [12, 12, 12, 8]);
-  close(p.dst.lines[0].rate, 12 * 1735.14 / 44);
+  assert.equal(g.auto, 12, '480 / 39,43 = cabem 12 por linha');
+  assert.deepEqual(p.dst.lines.map(l => l.machines), [11, 11, 11, 11], '44 em 4 linhas iguais');
+  close(p.dst.lines[0].rate, 11 * 1735.14 / 44);
 });
 
 test('carvão: excesso de 3 linhas cobre a falta da quarta via overflow', () => {
@@ -232,6 +232,51 @@ test('carvão: excesso de 3 linhas cobre a falta da quarta via overflow', () => 
   const d4 = a.view.feeds.find(f => f.f.dst.rate === 400);
   assert.equal(d4.inbound.length, 3);
   conserves(p, a);
+});
+
+// ---- Cenários do jogo ----
+// Cada cenário real que aparecer entra aqui: entradas como vêm do planner e o que a ferramenta tem que entregar.
+
+test('cenário: 44 × 60 → 59 × 30 + 14 × 60, destino em linhas iguais por grupo', () => {
+  const p = L.computePlan({ ...base,
+    srcGroups: [{ driver: 'machines', count: 44, nominal: 60 }],
+    dstGroups: [{ driver: 'machines', count: 59, nominal: 30 }, { driver: 'machines', count: 14, nominal: 60 }] });
+  // Origem enche a esteira: 5 linhas de 8 e a sobra de 4.
+  assert.deepEqual(p.src.lines.map(l => l.machines), [8, 8, 8, 8, 8, 4]);
+  // Destino divide cada grupo igual: 14 → 7 + 7, nunca 8 + 6; 59 → 15 + 15 + 15 + 14.
+  const [g1, g2] = p.dst.groups;
+  assert.deepEqual(g1.sizes, [15, 15, 15, 14]);
+  assert.deepEqual(g2.sizes, [7, 7]);
+  assert.equal(g2.auto, 8, 'cabem 8, mas a divisão usa 7');
+  // Nenhuma linha do destino mistura máquinas de grupos diferentes.
+  assert.ok(p.dst.lines.every(l => l.comp.length === 1), 'cada linha do destino é de um grupo só');
+  assert.deepEqual(p.dst.lines.map(l => l.rate), [450, 450, 450, 420, 420, 420]);
+  close(p.demand, 2610);
+  close(p.supply, 2640);
+  assert.ok(!p.warnings.some(w => w.text.startsWith('Distribuição')), 'linhas equilibradas não são incompletas');
+  // O meio fecha: todo destino cheio e o que sobra (30) só represa.
+  const a = p.alternatives[0];
+  assert.ok(a.full, `recomendada enche tudo (${a.key})`);
+  a.dests.forEach(d => close(d.got, d.line.rate));
+  close(a.held, 30);
+  conserves(p, a);
+});
+
+test('cenário: linhas por grupo aparecem no texto do grupo', () => {
+  const p = L.computePlan({ ...base,
+    srcGroups: [{ driver: 'machines', count: 44, nominal: 60 }],
+    dstGroups: [{ driver: 'machines', count: 59, nominal: 30 }, { driver: 'machines', count: 14, nominal: 60 }] });
+  const parts = g => L.t('lineParts', L.sizeParts(g.sizes, g.eff));
+  assert.equal(parts(p.src.groups[0]), '5 de 8 (480/min) + 1 de 4 (240/min)');
+  assert.equal(parts(p.dst.groups[0]), '3 de 15 (450/min) + 1 de 14 (420/min)');
+  assert.equal(parts(p.dst.groups[1]), '2 de 7 (420/min)');
+});
+
+test('destino com por linha digitado usa o valor exato e não mistura grupos', () => {
+  const p = L.computePlan({ ...base, srcCount: 44, srcRate: 60,
+    dstGroups: [{ driver: 'machines', count: 59, nominal: 30, per: 16 }, { driver: 'machines', count: 14, nominal: 60, per: 8 }] });
+  assert.deepEqual(p.dst.lines.map(l => l.machines), [16, 16, 16, 8, 6, 11]);
+  assert.ok(p.dst.lines.every(l => l.comp.length === 1));
 });
 
 // ---- Idiomas ----

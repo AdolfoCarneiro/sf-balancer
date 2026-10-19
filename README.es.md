@@ -26,7 +26,7 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 
 ## Qué hace
 
-- **Agrupa las máquinas en líneas de cinta.** Máquinas por línea = capacidad de la cinta ÷ tasa por máquina, redondeado hacia abajo. Editable, con aviso cuando la cinta se pasa.
+- **Agrupa las máquinas en líneas de cinta.** Máquinas por línea = capacidad de la cinta ÷ tasa por máquina, redondeado hacia abajo. En el destino las máquinas se dividen en líneas iguales (14 que caben 8 por línea quedan en 7 + 7), y cada grupo tiene sus propias líneas. Editable, con aviso cuando la cinta se pasa.
 - **Conecta las líneas.** Lista todos los montajes que encuentra, el mejor primero: directo, juntando líneas enteras, una línea donante dividida en partes iguales, o el overflow de un Smart Splitter pasando el exceso a una línea a la que le falta.
 - **Diseña el balanceador.** El árbol exacto de splitters ("1 splitter en 2, luego 2 en 3 = 6 partes", con los 2 primero porque gasta menos piezas), si necesita loop, y la alternativa "dividir en más partes y mandar las sobrantes al sink", con diagrama.
 - **Biblioteca de balanceadores.** Un generador N→M que prueba diez diseños (matriz, embudo y mariposa, cada uno también con loop o sink para 5, 7, 10…, y la matriz con loop dividido, que divide cada entrada en 2 antes del loop para que la cinta llena no se atasque: el 1→5 de 14 piezas y el 1→7 de 24 que usa la comunidad), revisa cada tramo interno contra el nivel de la cinta, explica por qué eligió uno y muestra el montaje paso a paso, con la pieza del paso resaltada como el holograma de la build gun. En el plan, el balanceador es un bloque que abres con un clic para ver ese montaje.
