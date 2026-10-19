@@ -773,3 +773,20 @@ test('idiomas: textos de seguir caminho no 3D', () => {
     assert.ok(L.t('followAria', 'E1').includes('E1'), l);
   });
 });
+
+test('3D: toque só conta com um dedo e sem arrastar', () => {
+  const g = L.tapGesture();
+  g.down(1, 10, 10);
+  assert.equal(g.up(1, 12, 11), true, 'um dedo, parado: toque');
+  g.down(1, 10, 10);
+  assert.equal(g.up(1, 40, 10), false, 'arrastou: não é toque');
+  // Pinça: dois dedos; o segundo sai quase parado e não pode contar como toque, nem o primeiro depois.
+  g.down(1, 10, 10); g.down(2, 100, 100);
+  assert.equal(g.up(2, 101, 100), false, 'segundo dedo de uma pinça');
+  assert.equal(g.up(1, 10, 10), false, 'primeiro dedo de uma pinça');
+  // Cancelado (o navegador tomou o gesto): não sobra estado.
+  g.down(3, 0, 0); g.cancel(3);
+  assert.equal(g.up(3, 0, 0), false, 'depois de cancelar');
+  g.down(4, 5, 5);
+  assert.equal(g.up(4, 5, 5), true, 'depois de tudo, um toque normal volta a contar');
+});

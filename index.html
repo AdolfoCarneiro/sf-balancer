@@ -2190,6 +2190,24 @@ function focus3d(lay, id) {
   return { pieces, belts };
 }
 
+// Toque ou clique na cena: só conta com um ponteiro durante todo o gesto e sem andar mais de 5 px.
+// Uma pinça (dois dedos) nunca vira toque, nem quando o último dedo sai parado.
+function tapGesture() {
+  const live = new Map();
+  let multi = false;
+  return {
+    down(id, x, y) { live.set(id, [x, y]); if (live.size > 1) multi = true; },
+    up(id, x, y) {
+      const p = live.get(id);
+      live.delete(id);
+      const tap = !!p && !multi && Math.hypot(x - p[0], y - p[1]) <= 5;
+      if (!live.size) multi = false;
+      return tap;
+    },
+    cancel(id) { live.delete(id); if (!live.size) multi = false; },
+  };
+}
+
 // Distância da câmera para a esfera que envolve os limites caber inteira, no menor dos dois ângulos de visão.
 function fitDistance(bounds, fovDeg, aspect) {
   const r = Math.hypot(...bounds.max.map((v, i) => v - bounds.min[i])) / 2;
@@ -2776,7 +2794,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -4047,8 +4065,9 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
   };
   const litOf = o => (o.kind === 'piece' ? focus3d(lay, o.id) : { pieces: new Set([lay.belts[o.id].a, lay.belts[o.id].b]), belts: new Set([o.id]) });
   const el = renderer.domElement;
-  let down = null;
-  el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  const tap = tapGesture();
+  el.addEventListener('pointerdown', e => tap.down(e.pointerId, e.clientX, e.clientY));
+  el.addEventListener('pointercancel', e => tap.cancel(e.pointerId));
   el.addEventListener('pointermove', e => {
     if (pinned !== null || e.buttons || e.pointerType === 'touch') return;
     const o = pickAt(e);
@@ -4058,7 +4077,7 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
   el.addEventListener('pointerleave', () => { if (pinned === null) show(null); });
   // Clique ou toque sem arrastar fixa a peça (ou solta, no vazio); arrastar continua girando a câmera.
   el.addEventListener('pointerup', e => {
-    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+    if (!tap.up(e.pointerId, e.clientX, e.clientY)) return;
     const o = pickAt(e), id = o ? (o.kind === 'piece' ? o.id : lay.belts[o.id].a) : null;
     focus(id === pinned ? null : id);
     if (opts.onFocus) opts.onFocus(pinned);
