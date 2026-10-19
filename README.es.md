@@ -36,6 +36,9 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 - **Cuenta las piezas.** Mergers, splitters y Smart Splitters de cada tramo (recolección, medio, distribución), con la convención k o k−1 que prefieras.
 - **Muestra el flujo.** Un diagrama animado donde los ítems avanzan a la velocidad del nivel de la cinta, como en el juego, y el grosor y la separación entre ítems siguen la tasa real.
 - **Avisa.** Cinta por encima de su capacidad, demanda mayor que la oferta, parte de la donante menor que el déficit, líneas incompletas.
+- **También fluidos.** Cambia a "Fluido (tubería)" y usa Pipeline Mk1 (300) y Mk2 (600 m³/min). La tubería no tiene splitter, así que en lugar del balanceador junta y divide las tuberías con Pipeline Junctions en tuberías colectoras que respetan la capacidad, y cuando una tubería de origen tiene más de lo que necesita una colectora, una junction pasa el resto a la siguiente.
+- **Guarda y comparte escenarios.** Guarda todos los escenarios que quieras en el navegador, con el nombre del ítem, y copia un enlace que lleva el escenario entero, para abrirlo en otro ordenador o mandárselo a un amigo.
+- **Reporta un caso raro.** Un enlace al final del plan abre un issue en GitHub ya rellenado con el enlace del escenario y el montaje mostrado, y solo describes qué parece estar mal.
 - **Se explica.** Cada campo y cada resultado tiene un `?` con una explicación corta, y al final de la página está la sección "Cómo funciona".
 - **Tres idiomas:** English, Português (Brasil) y Español.
 
@@ -47,7 +50,8 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 | Splitter | Hasta 3 salidas, divide en partes iguales. La división directa solo llega a productos de 2 y 3, así que 1/5 o 1/7 necesitan loop o partes extra al sink. |
 | Merger | Hasta 3 entradas, por turnos. Una línea de complemento en serie por varios mergers deja sin ítems a los últimos, así que el planificador nunca lo sugiere. |
 | Smart Splitter | La salida Overflow solo recibe ítems cuando la salida Any está llena. |
-| Awesome Sink | Recibe cualquier sobrante. Retener en el origen también vale: las máquinas solo desaceleran. |
+| Awesome Sink | Recibe cualquier sobrante de ítems. Retener en el origen también vale: las máquinas solo desaceleran. No acepta fluidos. |
+| Tubería | Pipeline Mk1 300, Mk2 600 m³/min. Sin splitter: la Pipeline Junction (4 puertos) junta o divide y el fluido va adonde hay espacio, sin garantizar partes iguales. Para un caudal exacto, usa una Valve. |
 
 El planificador no conoce recetas. Tú escribes las tasas de tu planificador o del juego.
 

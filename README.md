@@ -36,6 +36,9 @@ You can do that math by hand every time, or you can type the machine counts and 
 - **Counts the pieces.** Mergers, splitters and Smart Splitters for each segment (collection, middle, distribution), with the k or k−1 convention you prefer.
 - **Shows the flow.** An animated diagram where items move at the belt tier's speed, like in the game, and belt thickness and item spacing follow the real rate.
 - **Warns you.** Belt over capacity, demand above supply, a donor part too small to cover the deficit, incomplete lines.
+- **Fluids too.** Switch to "Fluid (pipe)" and it uses Pipeline Mk1 (300) and Mk2 (600 m³/min). Pipes have no splitter, so instead of a balancer it joins and divides pipes with Pipeline Junctions into header pipes that stay within capacity, and when a source pipe has more than one header needs, a junction passes the rest on to the next one.
+- **Saves and shares scenarios.** Save as many scenarios as you want in your browser, named after the item, and copy a link that carries the whole scenario, to open on another computer or send to a friend.
+- **Report an odd case.** A link at the bottom opens a GitHub issue already filled in with the scenario link and the layout shown, so you only describe what looks wrong.
 - **Explains itself.** Every field and result has a `?` with a short explanation, and there's a "How it works" section at the bottom.
 - **Three languages:** English, Português (Brasil) and Español.
 
@@ -47,7 +50,8 @@ You can do that math by hand every time, or you can type the machine counts and 
 | Splitter | Up to 3 outputs, splits evenly. Direct splits only reach products of 2 and 3, so 1/5 or 1/7 need a loop or extra parts to the sink. |
 | Merger | Up to 3 inputs, round-robin. A top-up line in series through several mergers starves the last ones, so the planner never suggests that. |
 | Smart Splitter | The Overflow output only gets items when the Any output is full. |
-| Awesome Sink | Takes any leftover. Backing up at the source is fine too: the machines just slow down. |
+| Awesome Sink | Takes any leftover item. Backing up at the source is fine too: the machines just slow down. It doesn't take fluids. |
+| Pipes | Pipeline Mk1 300, Mk2 600 m³/min. No splitter: a Pipeline Junction (4 ports) joins or divides and the fluid goes wherever there's room, with no guarantee of equal parts. For an exact flow, use a Valve. |
 
 The planner knows no recipes. You type the rates from your production planner or the game.
 

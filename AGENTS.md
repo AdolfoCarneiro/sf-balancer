@@ -25,7 +25,8 @@ Confirme comigo se tiver dúvida em alguma delas, não invente comportamento.
 - **Merger:** até 3 entradas, puxa alternado (round-robin) das entradas que têm item, limitado pelo que a esteira de saída aceita. Consequência importante: uma linha de complemento passando **em série** por vários mergers é drenada pelos primeiros e os últimos ficam com fome. Não sugerir esse padrão.
 - **Merge de duas fontes alimentando uma demanda** `c`**:** a demanda é atendida se a soma das duas fontes for ≥ `c`. O excesso fica represado na origem (as máquinas de lá desaceleram), o que é aceitável.
 - **Manifold** se auto-equilibra entre máquinas. A ferramenta não precisa tratar a distribuição entre máquinas, só entre linhas.
-- **Awesome Sink** recebe qualquer sobra.
+- **Awesome Sink** recebe qualquer sobra de item. Não aceita fluido.
+- **Cano (fluido):** Pipeline Mk1 300, Mk2 600 m³/min. Não tem splitter nem balancer: a Pipeline Junction (4 portas) junta ou divide e o fluido vai para onde tem espaço, sem garantir partes iguais (Valve limita a vazão). No modo fluido o meio só liga direto ou passa por canos coletores dentro da capacidade; altura e bombas ficam fora.
 
 ## Entradas (no formato do meu planner)
 
@@ -120,4 +121,6 @@ Receitas, cadeia completa, layout físico/posicionamento das máquinas, importa�
 
 ## Ideias para depois
 
-Salvar cenários, catálogo de designs de balancer N→M, importar taxas do planner, vários itens por etapa.
+Importar taxas do planner (o usado é o Satisfactory Modeler, que salva `.sfmd` em JSON só com o grafo e as receitas, sem taxas: importar exigiria conhecer as receitas), vários itens por etapa.
+
+Já feito: cenários salvos e link compartilhável (`#s=` com o estado em base64url, lido por `decodeShare`, que valida tudo), botão que abre issue no GitHub com o link do cenário, modo fluido.

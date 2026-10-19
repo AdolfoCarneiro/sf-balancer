@@ -865,3 +865,108 @@ test('idiomas: texto do passo peça por peça', () => {
     assert.match(txt, /por trás/, 'splitter entra por trás');
   });
 });
+
+// ---- Fluido ----
+const fluid = { ...base, medium: 'fluid', belt: 'Mk2', cap: 600 };
+
+test('fluido: junctionsFor conta as portas de uma cadeia de Pipeline Junctions', () => {
+  assert.equal(L.junctionsFor(2), 0, '1 cano entra, 1 sai: liga direto');
+  assert.equal(L.junctionsFor(3), 1);
+  assert.equal(L.junctionsFor(4), 1, 'uma junction tem 4 portas');
+  assert.equal(L.junctionsFor(5), 2);
+  assert.equal(L.junctionsFor(6), 2);
+});
+
+test('fluido: sem splitter, Smart Splitter nem balancer no meio', () => {
+  const p = L.computePlan({ ...fluid, srcCount: 8, srcRate: 120, dstCount: 12, dstRate: 75 });
+  assert.ok(p.fluid);
+  for (const a of p.alternatives) {
+    assert.ok(['direct', 'header'].includes(a.kind), `tipo ${a.kind}`);
+    assert.equal(a.pieces.splitters, 0);
+    assert.equal(a.pieces.smart, 0);
+    close(a.sinkRate, 0, 'fluido não vai pro sink');
+    conserves(p, a);
+  }
+});
+
+test('fluido: 3 canos de 400 → 4 de 300, coletores com um cano dividido entre os dois', () => {
+  const p = L.computePlan({ ...fluid, srcCount: 12, srcRate: 100, srcPer: 4, dstCount: 16, dstRate: 75, dstPer: 4 });
+  assert.equal(p.src.lines.length, 3);
+  assert.equal(p.dst.lines.length, 4);
+  const d = alt(p, 'direto');
+  assert.equal(d.full, false, 'direto deixa um destino sem nada');
+  const h = alt(p, 'coletor');
+  assert.ok(h.full, 'os coletores enchem os 4 destinos');
+  assert.equal(p.alternatives[0].key, 'coletor');
+  assert.equal(h.view.headers.length, 2, '2 × 300 por coletor de 600');
+  assert.equal(h.view.splits.length, 1, 'um cano de origem se divide entre os dois coletores');
+  h.view.headers.forEach(hv => assert.ok(hv.inEdges.reduce((s, e) => s + h.sim.flow[e], 0) <= 600 + 1e-6, 'coletor dentro do cano'));
+  // 2 coletores com 2 entradas e 2 saídas (1 junction cada) + 1 junction de divisão.
+  assert.equal(h.pieces.junctions, 3);
+  conserves(p, h);
+});
+
+test('fluido: 6 canos de 455 → 5 de 480 enchem tudo com coletores em cadeia', () => {
+  const p = L.computePlan({ ...fluid, srcCount: 6, srcRate: 455, dstCount: 5, dstRate: 480 });
+  const h = p.alternatives[0];
+  assert.equal(h.key, 'coletor');
+  assert.ok(h.full);
+  conserves(p, h);
+});
+
+test('fluido: cano dividido entre três coletores enche na ordem', () => {
+  const p = L.computePlan({ ...fluid, srcCount: 15, srcRate: 120, srcPer: 5, dstCount: 4, dstRate: 350 });
+  const h = alt(p, 'coletor');
+  assert.ok(h.view.splits.some(x => x.sp.headers.length === 3), 'um cano passa por 3 coletores');
+  assert.ok(h.full);
+  conserves(p, h);
+});
+
+test('fluido: o sink vira represar e a coleta conta Pipeline Junctions', () => {
+  const p = L.computePlan({ ...fluid, policy: 'sink', srcCount: 10, srcRate: 120, dstCount: 4, dstRate: 120 });
+  assert.equal(p.policy, 'represar');
+  p.alternatives.forEach(a => close(a.sinkRate, 0));
+  assert.equal(p.collectMergers, 8, '2 canos de 5 máquinas, k−1');
+});
+
+test('fluido: textos nos três idiomas', () => {
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    const p = L.computePlan({ ...fluid, srcCount: 12, srcRate: 100, srcPer: 4, dstCount: 16, dstRate: 75, dstPer: 4 });
+    assert.ok(p.alternatives.some(a => a.title === L.t('planHeader')), l);
+    assert.match(L.t('stepGroup', { N: 4, clk: '', per: '100', full: 1, perLine: 4, lineRate: '400', src: true, note: 'k−1', rem: 0, fluid: true }), /Pipeline Junctions/);
+    assert.ok(L.t('warnPerLineOverPipe', 'x', 7, '700', '600', 6).length > 20);
+  });
+});
+
+// ---- Link do cenário e issue ----
+test('link: ida e volta do cenário, com acento', () => {
+  const st = { item: 'Óleo pesado', src: [{ driver: 'machines', count: '42', clock: '', nominal: '65', total: '', per: '' }], dst: [{ driver: 'clock', count: '10', clock: '250', nominal: '40', total: '', per: '6' }], medium: 'fluid', belt: 'Mk4', pipe: 'Mk1', policy: 'extra', conv: 'k', selectedKey: 'coletor', lang: 'pt' };
+  const enc = L.encodeShare(st);
+  assert.match(enc, /^[A-Za-z0-9_-]+$/, 'seguro para URL');
+  assert.deepEqual(L.decodeShare(enc), st);
+});
+
+test('link: quebrado ou adulterado não carrega lixo', () => {
+  assert.equal(L.decodeShare('nada-disso'), null);
+  assert.equal(L.decodeShare(L.encodeShare({ src: [], dst: [] })), null);
+  const bad = L.decodeShare(L.encodeShare({ item: 'x'.repeat(500), src: [{ driver: 'evil', count: { a: 1 } }], dst: [{}], belt: 'Mk9', policy: 'boom', lang: 'xx', medium: 'gas' }));
+  assert.equal(bad.item.length, 80);
+  assert.equal(bad.src[0].driver, 'machines');
+  assert.equal(typeof bad.src[0].count, 'string');
+  assert.equal(bad.belt, 'Mk4');
+  assert.equal(bad.policy, 'represar');
+  assert.equal(bad.lang, 'en');
+  assert.equal(bad.medium, 'item');
+});
+
+test('issue: URL do GitHub com título e corpo codificados', () => {
+  const u = L.issueUrl('Caso & teste', 'linha 1\nlinha 2 #s=abc');
+  assert.ok(u.startsWith('https://github.com/AdolfoCarneiro/sf-balancer/issues/new?title='));
+  const q = new URL(u).searchParams;
+  assert.equal(q.get('title'), 'Caso & teste');
+  assert.equal(q.get('body'), 'linha 1\nlinha 2 #s=abc');
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    const body = L.t('issueBody', { link: 'L', item: 'I', medium: 'M', supply: '1', demand: '2', plan: 'P', caseLabel: 'C' });
+    for (const x of ['L', 'I', 'M', 'P', 'C']) assert.ok(body.includes(x), `${l}: ${x}`);
+  });
+});

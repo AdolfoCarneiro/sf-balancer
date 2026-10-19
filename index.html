@@ -141,6 +141,16 @@
   .rules .rule { display: flex; flex-direction: column; gap: 2px; }
   .rules .rule h3 { font: 600 15px var(--display); margin: 0 0 2px; color: var(--ink-dim); }
   .rules .inline { display: flex; gap: 16px; flex-wrap: wrap; }
+  .rules .rule[hidden] { display: none; }
+  .choice.off { opacity: .45; }
+
+  /* Cenários salvos e link */
+  .scenbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 14px; }
+  .scenbar .scen-title { display: inline-flex; align-items: center; gap: 4px; font: 600 15px var(--display); color: var(--ink-dim); }
+  .scenbar select.field { width: auto; min-width: 200px; max-width: 100%; }
+  .scenbar .scen-msg { font-size: 13px; color: var(--ink-dim); overflow-wrap: anywhere; }
+  .scenbar .scen-msg a { color: var(--ficsit); }
+  .foot .report { margin-left: 20px; text-decoration: none; display: inline-block; }
   @media (max-width: 1100px) {
     .band { grid-template-columns: 1fr; gap: 12px; }
     .arrow { display: none; }
@@ -332,6 +342,7 @@
     font: 600 14px/1.2 var(--display); padding: 6px 11px; min-width: 34px;
   }
   .pbtn:hover { border-color: var(--ficsit); }
+  .pbtn:disabled { opacity: .45; cursor: default; border-color: var(--line); }
   .pbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
   .pbtn.prim { background: var(--ficsit); border-color: var(--ficsit); color: var(--paper); }
   .pbtn.prim:hover { background: #ffb067; }
@@ -517,6 +528,14 @@
   </header>
   <p class="intro"><span data-i18n="intro">Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.</span> <span class="links"><a href="#how" data-i18n="howLink">How it works</a><a href="#library" data-i18n="libLink">Balancer library</a></span></p>
 
+  <div class="scenbar" role="group" data-i18n-aria="scenAria" aria-label="Saved scenarios">
+    <span class="scen-title"><span data-i18n="scenTitle">Scenarios</span><button type="button" class="tip" data-tip="tipScen" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
+    <select class="field" id="scenList" data-i18n-aria="scenAria" aria-label="Saved scenarios"></select>
+    <button type="button" class="pbtn" id="scenSave" data-i18n="scenSave">Save</button>
+    <button type="button" class="pbtn" id="scenDel" data-i18n="scenDel">Delete</button>
+    <button type="button" class="pbtn prim" id="shareCopy" data-i18n="shareCopy">Copy link</button>
+    <span class="scen-msg" id="scenMsg" role="status" aria-live="polite"></span>
+  </div>
   <div id="form">
     <div class="band">
       <section class="plate">
@@ -533,14 +552,25 @@
     </div>
     <section class="plate rules">
       <div class="rule">
+        <h3><span data-i18n="medTitle">Carries</span><button type="button" class="tip" data-tip="tipMedium" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
+        <div class="inline">
+          <label class="choice"><input type="radio" name="medium" value="item" checked> <span data-i18n="medItem">Items (belt)</span></label>
+          <label class="choice"><input type="radio" name="medium" value="fluid"> <span data-i18n="medFluid">Fluid (pipe)</span></label>
+        </div>
+      </div>
+      <div class="rule" id="beltRule">
         <h3><span data-i18n="belt">Belt</span><button type="button" class="tip" data-tip="tipBelt" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
         <select class="field" id="belt" data-i18n-aria="beltAria" aria-label="Belt tier"></select>
+      </div>
+      <div class="rule" id="pipeRule" hidden>
+        <h3><span data-i18n="pipe">Pipe</span><button type="button" class="tip" data-tip="tipPipe" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
+        <select class="field" id="pipe" data-i18n-aria="pipeAria" aria-label="Pipe tier"></select>
       </div>
       <div class="rule">
         <h3><span data-i18n="policyTitle">Source lines with no destination</span><button type="button" class="tip" data-tip="tipPolicy" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
         <div class="inline">
           <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Stay idle</span></label>
-          <label class="choice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
+          <label class="choice" id="policySinkChoice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
           <label class="choice"><input type="radio" name="policy" value="extra"> <span data-i18n="policyExtra">Leave on an extra line</span></label>
         </div>
       </div>
@@ -559,6 +589,7 @@
 
   <div class="foot hint">
     <button class="linkbtn" id="reset" data-i18n="reset" type="button">Back to the refinery example</button>
+    <a class="linkbtn report" id="report" href="https://github.com/AdolfoCarneiro/sf-balancer/issues/new" target="_blank" rel="noopener" data-i18n="report">Something wrong with this case? Report it on GitHub</a>
   </div>
 
   <!-- Texto fixo em inglês para quem lê sem JavaScript (buscadores); applyStatic() troca pelo idioma escolhido. -->
@@ -633,9 +664,10 @@
       <h3 data-i18n="faqTitle">Questions</h3>
       <details><summary data-i18n="faq1Q">Why can’t a splitter make 5 equal parts?</summary><p data-i18n="faq1A">A splitter divides by 2 or 3, so chaining them only reaches products of 2 and 3. For 5 parts you either build a balancer with a loop (some outputs go back to the input) or split into 6 and send the sixth part to the sink. The tool shows both.</p></details>
       <details><summary data-i18n="faq2Q">Where do the numbers come from?</summary><p data-i18n="faq2A">From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.</p></details>
-      <details><summary data-i18n="faq3Q">Is my plan saved?</summary><p data-i18n="faq3A">Yes, only in your browser. There’s no account and nothing you type is sent to a server.</p></details>
+      <details><summary data-i18n="faq3Q">Is my plan saved?</summary><p data-i18n="faq3A">Yes, only in your browser, and you can save several named scenarios. There’s no account and nothing you type is sent to a server. The Copy link address carries the scenario in the address itself, after the #, a part the browser doesn’t send to the server.</p></details>
       <details><summary data-i18n="faq4Q">Which game version?</summary><p data-i18n="faq4A">Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).</p></details>
       <details><summary data-i18n="faq5Q">Can I use a mod or a ready-made blueprint instead?</summary><p data-i18n="faq5A">Yes. If you play with mods, Modular Load Balancers (unlocked at Tier 4) adds modules that snap together into a group and split items equally among all its outputs, any size. If you play vanilla, Satisfactory Calculator has balancer blueprints shared by other players. Either way the tool still answers what comes before: how many lines, whether you need a balancer and which N→M.</p><p class="ext" id="faqExt"></p></details>
+      <details><summary data-i18n="faq6Q">Does it work with fluids?</summary><p data-i18n="faq6A">Yes. Pick "Fluid (pipe)" and the pipe tier (Mk1 300, Mk2 600 m³/min). Since pipes have no splitter, the tool doesn’t build a balancer: it groups the machines per pipe and joins or divides the pipes with Pipeline Junctions, within capacity. Height and pumps are up to you.</p></details>
     </div>
   </section>
 
@@ -688,6 +720,35 @@ const I18N = {
     policyHold: 'Ficam paradas', policySink: 'Vão pro Awesome Sink', policyExtra: 'Saem numa linha extra',
     convTitle: 'Peças por manifold', convK1: 'k máquinas, k−1 peças', convK: 'k máquinas, k peças',
     reset: 'Voltar ao exemplo das refinarias',
+    medTitle: 'O que passa', medItem: 'Itens (esteira)', medFluid: 'Fluido (cano)',
+    pipe: 'Cano', pipeAria: 'Tier do cano', pipeOpt: (id, cap) => `Pipeline ${id}, ${cap}/min`,
+    tipMedium: 'Item vai em esteira e fluido vai em cano. Cano não tem splitter nem balancer: a Pipeline Junction junta ou divide, e o fluido vai para onde tem espaço. Por isso, com fluido, o meio só junta ou divide canos pela capacidade. O Awesome Sink não aceita fluido, então a sobra represa ou sai numa linha extra.',
+    tipPipe: 'Tier do cano usado em todos os trechos: Pipeline Mk1 300 e Mk2 600 m³/min.',
+    warnMachineOverPipe: (name, per, cap, over) => `${name}: cada máquina movimenta ${per}/min, mas o cano leva ${cap}/min. Cada uma fica num cano só dela e ${over}/min ficam de fora.`,
+    warnPerLineOverPipe: (name, n, rate, cap, max) => `${name}: ${n} máquinas por cano dão ${rate}/min, acima do cano (${cap}/min). O máximo é ${max}.`,
+    eqContinuousPipe: (total, lines, cap) => `Fluxo contínuo de <b>${total}/min</b>, em ${lines} cano${lines > 1 ? 's' : ''} de até ${cap}. Preencha a taxa a 100% para ver em máquinas.`,
+    stepContinuousPipe: (total, lines) => `fluxo de ${total}/min em ${lines} cano${lines > 1 ? 's' : ''}.`,
+    planHeader: 'Cano coletor', planHeaderSub: 'Os canos de origem entram num cano só e dele saem os canos de destino, ligados com Pipeline Junctions. Cada coletor leva no máximo a capacidade do cano.',
+    caseHeader: 'cano coletor',
+    stepHeader: (ins, outs, j, flow) => `Coletor: ${ins} entram num cano só (${flow}/min) e dele saem ${outs}, com ${j} Pipeline Junction${j === 1 ? '' : 's'}.`,
+    toHeader: list => `coletor → ${list}`, svgHeader: 'coletor',
+    flowLeadPipe: 'A espessura de cada cano segue a vazão real.',
+    stepHeaderSplit: (src, list, j) => `${src} se divide entre os coletores de ${list}, com ${j} Pipeline Junction${j === 1 ? '' : 's'}: cada coletor puxa o que falta.`,
+    lgJunction: 'Pipeline Junction', tbPipe: 'Cano', thJunctions: 'Pipeline Junctions',
+    pipeTitle: 'Canos',
+    pipeNote: 'Cano não tem splitter nem balancer. A Pipeline Junction junta ou divide, e o fluido vai para onde tem espaço, sem garantir partes iguais. Com oferta maior ou igual à demanda, os destinos enchem com o tempo.',
+    pipeValve: 'Se uma linha precisa de uma vazão certa, ponha uma Valve limitando a vazão dela.',
+    pipeHeaderCap: cap => `Cada coletor leva no máximo ${cap}/min. Acima disso, a ferramenta divide em mais coletores.`,
+    pcHintPipe: conv => `Manifolds contados como ${conv} Pipeline Junctions por cano de k máquinas; grupos informados só pelo total não entram na conta.`,
+    faq6Q: 'Funciona com fluido?',
+    faq6A: 'Funciona. Escolha "Fluido (cano)" e o tier do cano (Mk1 300, Mk2 600 m³/min). Como cano não tem splitter, a ferramenta não monta balancer: ela agrupa as máquinas por cano e junta ou divide os canos com Pipeline Junctions, dentro da capacidade. Altura e bombas ficam por sua conta.',
+    scenTitle: 'Cenários', scenAria: 'Cenários salvos', scenPick: 'Cenários salvos…', scenSave: 'Salvar', scenDel: 'Apagar', shareCopy: 'Copiar link',
+    tipScen: 'Salvar guarda o cenário atual no seu navegador com o nome do item (o mesmo nome substitui o anterior). Copiar link gera um endereço com o cenário inteiro, para abrir em outro computador ou mandar para alguém.',
+    scenSaved: name => `"${name}" salvo.`, scenDeleted: name => `"${name}" apagado.`,
+    shareCopied: 'Link copiado.', shareFail: 'Não deu para copiar. Copie este link:', sharedLoaded: 'Cenário aberto a partir de um link.',
+    report: 'Algo errado neste caso? Reportar no GitHub',
+    issueTitle: item => `Caso estranho: ${item}`,
+    issueBody: ({ link, item, medium, supply, demand, plan, caseLabel }) => `**O que parece errado**\n\n(Descreva aqui.)\n\n**O que eu esperava**\n\n(Como você montaria.)\n\n**Cenário**\n\n- Link: ${link}\n- Item: ${item}\n- ${medium}\n- Oferta ${supply}/min, demanda ${demand}/min\n- Alternativa mostrada: ${plan} (${caseLabel})\n`,
     removeGroup: 'Remover grupo',
     fMachines: 'Máquinas', fClock: 'Clock %', fNomSrc: 'Cada uma produz a 100% /min', fNomDst: 'Cada uma consome a 100% /min', fTotal: 'Total /min', fPer: 'Por linha',
     group: 'Grupo', groupN: n => `Grupo ${n}`, groupOf: (side, n) => `${side}, grupo ${n}`, perAuto: n => `auto ${n}`,
@@ -734,7 +795,7 @@ const I18N = {
     stepContinuous: (total, lines) => `fluxo de ${total}/min em ${lines} esteira${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` a ${c}%`,
     stepNoFull: (N, clk, per) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada), sem linha cheia.`,
-    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada) em ${full} linha${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), com ${src ? 'mergers' : 'splitters'} (${note} por linha)${rem ? `. ${rem === 1 ? 'A máquina restante fica' : `As ${rem} restantes ficam`} numa linha à parte` : ''}.`,
+    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada) em ${full} linha${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), com ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por linha)${rem ? `. ${rem === 1 ? 'A máquina restante fica' : `As ${rem} restantes ficam`} numa linha à parte` : ''}.`,
     stepMixed: list => `Linhas com as máquinas que sobraram: ${list}.`,
     stepDonorWhole: (d, who) => `Doadora ${d}: vai inteira para o merger de ${who}.`,
     stepDonorDirect: (d, rate, tree, who) => `Doadora ${d} (${rate}/min): ${tree}, uma parte para o merger de cada destino (${who}).`,
@@ -818,7 +879,7 @@ const I18N = {
     faq2Q: 'De onde vêm os números?',
     faq2A: 'De você. A ferramenta não conhece receitas: digite a quantidade de máquinas e a taxa por minuto do seu planner ou da receita no jogo.',
     faq3Q: 'O meu plano fica salvo?',
-    faq3A: 'Fica, só no seu navegador. Não tem conta e nada do que você digita vai para um servidor.',
+    faq3A: 'Fica, só no seu navegador, e dá para salvar vários cenários com nomes. Não tem conta e nada do que você digita vai para um servidor. O link de Copiar link leva o cenário no próprio endereço, depois do #, parte que o navegador não manda para o servidor.',
     faq4Q: 'Qual versão do jogo?',
     faq4A: 'Satisfactory 1.0 em diante, com esteiras da Mk1 (60/min) à Mk6 (1.200/min).',
     faq5Q: 'Dá para usar um mod ou um blueprint pronto em vez disso?',
@@ -962,6 +1023,35 @@ const I18N = {
     policyHold: 'Stay idle', policySink: 'Go to the Awesome Sink', policyExtra: 'Leave on an extra line',
     convTitle: 'Pieces per manifold', convK1: 'k machines, k−1 pieces', convK: 'k machines, k pieces',
     reset: 'Back to the refinery example',
+    medTitle: 'Carries', medItem: 'Items (belt)', medFluid: 'Fluid (pipe)',
+    pipe: 'Pipe', pipeAria: 'Pipe tier', pipeOpt: (id, cap) => `Pipeline ${id}, ${cap}/min`,
+    tipMedium: 'Items go on belts and fluids go in pipes. Pipes have no splitter or balancer: a Pipeline Junction joins or divides, and the fluid goes wherever there is room. So with fluids the middle only joins or divides pipes by capacity. The Awesome Sink doesn’t take fluids, so leftovers back up or go out on an extra line.',
+    tipPipe: 'Pipe tier used in every segment: Pipeline Mk1 300 and Mk2 600 m³/min.',
+    warnMachineOverPipe: (name, per, cap, over) => `${name}: each machine moves ${per}/min, but the pipe carries ${cap}/min. Each one gets a pipe of its own and ${over}/min is left out.`,
+    warnPerLineOverPipe: (name, n, rate, cap, max) => `${name}: ${n} machines per pipe make ${rate}/min, above the pipe (${cap}/min). The maximum is ${max}.`,
+    eqContinuousPipe: (total, lines, cap) => `Continuous flow of <b>${total}/min</b>, in ${lines} pipe${lines > 1 ? 's' : ''} of up to ${cap}. Fill in the 100% rate to see it in machines.`,
+    stepContinuousPipe: (total, lines) => `flow of ${total}/min in ${lines} pipe${lines > 1 ? 's' : ''}.`,
+    planHeader: 'Header pipe', planHeaderSub: 'The source pipes join into a single pipe and the destination pipes branch off it, connected with Pipeline Junctions. Each header carries at most the pipe capacity.',
+    caseHeader: 'header pipe',
+    stepHeader: (ins, outs, j, flow) => `Header: ${ins} join into one pipe (${flow}/min) and ${outs} branch off it, with ${j} Pipeline Junction${j === 1 ? '' : 's'}.`,
+    toHeader: list => `header → ${list}`, svgHeader: 'header',
+    flowLeadPipe: 'The thickness of each pipe follows the actual flow.',
+    stepHeaderSplit: (src, list, j) => `${src} splits between the headers of ${list}, with ${j} Pipeline Junction${j === 1 ? '' : 's'}: each header pulls what it is missing.`,
+    lgJunction: 'Pipeline Junction', tbPipe: 'Pipe', thJunctions: 'Pipeline Junctions',
+    pipeTitle: 'Pipes',
+    pipeNote: 'Pipes have no splitter or balancer. A Pipeline Junction joins or divides, and the fluid goes wherever there is room, with no guarantee of equal parts. With supply at or above demand, the destinations fill up over time.',
+    pipeValve: 'If a line needs an exact flow, put a Valve on it to limit its flow.',
+    pipeHeaderCap: cap => `Each header carries at most ${cap}/min. Above that, the tool splits it into more headers.`,
+    pcHintPipe: conv => `Manifolds counted as ${conv} Pipeline Junctions per pipe of k machines; groups entered only by total are not counted.`,
+    faq6Q: 'Does it work with fluids?',
+    faq6A: 'Yes. Pick "Fluid (pipe)" and the pipe tier (Mk1 300, Mk2 600 m³/min). Since pipes have no splitter, the tool doesn’t build a balancer: it groups the machines per pipe and joins or divides the pipes with Pipeline Junctions, within capacity. Height and pumps are up to you.',
+    scenTitle: 'Scenarios', scenAria: 'Saved scenarios', scenPick: 'Saved scenarios…', scenSave: 'Save', scenDel: 'Delete', shareCopy: 'Copy link',
+    tipScen: 'Save keeps the current scenario in your browser under the item name (the same name replaces the previous one). Copy link makes an address with the whole scenario, to open on another computer or send to someone.',
+    scenSaved: name => `"${name}" saved.`, scenDeleted: name => `"${name}" deleted.`,
+    shareCopied: 'Link copied.', shareFail: 'Couldn’t copy. Copy this link:', sharedLoaded: 'Scenario opened from a link.',
+    report: 'Something wrong with this case? Report it on GitHub',
+    issueTitle: item => `Odd case: ${item}`,
+    issueBody: ({ link, item, medium, supply, demand, plan, caseLabel }) => `**What looks wrong**\n\n(Describe it here.)\n\n**What I expected**\n\n(How you would build it.)\n\n**Scenario**\n\n- Link: ${link}\n- Item: ${item}\n- ${medium}\n- Supply ${supply}/min, demand ${demand}/min\n- Alternative shown: ${plan} (${caseLabel})\n`,
     removeGroup: 'Remove group',
     fMachines: 'Machines', fClock: 'Clock %', fNomSrc: 'Each produces at 100% /min', fNomDst: 'Each consumes at 100% /min', fTotal: 'Total /min', fPer: 'Per line',
     group: 'Group', groupN: n => `Group ${n}`, groupOf: (side, n) => `${side}, group ${n}`, perAuto: n => `auto ${n}`,
@@ -1008,7 +1098,7 @@ const I18N = {
     stepContinuous: (total, lines) => `flow of ${total}/min on ${lines} belt${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` at ${c}%`,
     stepNoFull: (N, clk, per) => `${N} machine${N > 1 ? 's' : ''}${clk} (${per}/min each), no full line.`,
-    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem }) => `${N} machine${N > 1 ? 's' : ''}${clk} (${per}/min each) in ${full} line${full > 1 ? 's' : ''} of ${perLine} (${lineRate}/min), with ${src ? 'mergers' : 'splitters'} (${note} per line)${rem ? `. ${rem === 1 ? 'The remaining machine goes' : `The remaining ${rem} go`} on a separate line` : ''}.`,
+    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} machine${N > 1 ? 's' : ''}${clk} (${per}/min each) in ${full} line${full > 1 ? 's' : ''} of ${perLine} (${lineRate}/min), with ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} per line)${rem ? `. ${rem === 1 ? 'The remaining machine goes' : `The remaining ${rem} go`} on a separate line` : ''}.`,
     stepMixed: list => `Lines with the leftover machines: ${list}.`,
     stepDonorWhole: (d, who) => `Donor ${d}: goes whole into the merger of ${who}.`,
     stepDonorDirect: (d, rate, tree, who) => `Donor ${d} (${rate}/min): ${tree}, one part into the merger of each destination (${who}).`,
@@ -1092,7 +1182,7 @@ const I18N = {
     faq2Q: 'Where do the numbers come from?',
     faq2A: 'From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.',
     faq3Q: 'Is my plan saved?',
-    faq3A: 'Yes, only in your browser. There’s no account and nothing you type is sent to a server.',
+    faq3A: 'Yes, only in your browser, and you can save several named scenarios. There’s no account and nothing you type is sent to a server. The Copy link address carries the scenario in the address itself, after the #, a part the browser doesn’t send to the server.',
     faq4Q: 'Which game version?',
     faq4A: 'Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).',
     faq5Q: 'Can I use a mod or a ready-made blueprint instead?',
@@ -1236,6 +1326,35 @@ const I18N = {
     policyHold: 'Quedan paradas', policySink: 'Van al Awesome Sink', policyExtra: 'Salen por una línea extra',
     convTitle: 'Piezas por manifold', convK1: 'k máquinas, k−1 piezas', convK: 'k máquinas, k piezas',
     reset: 'Volver al ejemplo de las refinerías',
+    medTitle: 'Qué pasa', medItem: 'Ítems (cinta)', medFluid: 'Fluido (tubería)',
+    pipe: 'Tubería', pipeAria: 'Tier de la tubería', pipeOpt: (id, cap) => `Pipeline ${id}, ${cap}/min`,
+    tipMedium: 'Los ítems van en cinta y los fluidos en tubería. La tubería no tiene splitter ni balanceador: la Pipeline Junction junta o divide, y el fluido va adonde hay espacio. Por eso, con fluido, el medio solo junta o divide tuberías según la capacidad. El Awesome Sink no acepta fluidos, así que la sobra se queda retenida o sale en una línea extra.',
+    tipPipe: 'Tier de la tubería usado en todos los tramos: Pipeline Mk1 300 y Mk2 600 m³/min.',
+    warnMachineOverPipe: (name, per, cap, over) => `${name}: cada máquina mueve ${per}/min, pero la tubería lleva ${cap}/min. Cada una queda en una tubería propia y ${over}/min se quedan fuera.`,
+    warnPerLineOverPipe: (name, n, rate, cap, max) => `${name}: ${n} máquinas por tubería dan ${rate}/min, por encima de la tubería (${cap}/min). El máximo es ${max}.`,
+    eqContinuousPipe: (total, lines, cap) => `Flujo continuo de <b>${total}/min</b>, en ${lines} tubería${lines > 1 ? 's' : ''} de hasta ${cap}. Rellena la tasa al 100% para verlo en máquinas.`,
+    stepContinuousPipe: (total, lines) => `flujo de ${total}/min en ${lines} tubería${lines > 1 ? 's' : ''}.`,
+    planHeader: 'Tubería colectora', planHeaderSub: 'Las tuberías de origen entran en una sola y de ella salen las tuberías de destino, unidas con Pipeline Junctions. Cada colectora lleva como máximo la capacidad de la tubería.',
+    caseHeader: 'tubería colectora',
+    stepHeader: (ins, outs, j, flow) => `Colectora: ${ins} entran en una sola tubería (${flow}/min) y de ella salen ${outs}, con ${j} Pipeline Junction${j === 1 ? '' : 's'}.`,
+    toHeader: list => `colectora → ${list}`, svgHeader: 'colectora',
+    flowLeadPipe: 'El grosor de cada tubería sigue el caudal real.',
+    stepHeaderSplit: (src, list, j) => `${src} se divide entre las colectoras de ${list}, con ${j} Pipeline Junction${j === 1 ? '' : 's'}: cada colectora toma lo que le falta.`,
+    lgJunction: 'Pipeline Junction', tbPipe: 'Tubería', thJunctions: 'Pipeline Junctions',
+    pipeTitle: 'Tuberías',
+    pipeNote: 'La tubería no tiene splitter ni balanceador. La Pipeline Junction junta o divide, y el fluido va adonde hay espacio, sin garantizar partes iguales. Con oferta mayor o igual a la demanda, los destinos se llenan con el tiempo.',
+    pipeValve: 'Si una línea necesita un caudal exacto, ponle una Valve que limite su caudal.',
+    pipeHeaderCap: cap => `Cada colectora lleva como máximo ${cap}/min. Por encima, la herramienta la divide en más colectoras.`,
+    pcHintPipe: conv => `Manifolds contados como ${conv} Pipeline Junctions por tubería de k máquinas; los grupos indicados solo por el total no entran en la cuenta.`,
+    faq6Q: '¿Funciona con fluidos?',
+    faq6A: 'Sí. Elige "Fluido (tubería)" y el tier de la tubería (Mk1 300, Mk2 600 m³/min). Como la tubería no tiene splitter, la herramienta no arma balanceador: agrupa las máquinas por tubería y junta o divide las tuberías con Pipeline Junctions, dentro de la capacidad. La altura y las bombas quedan por tu cuenta.',
+    scenTitle: 'Escenarios', scenAria: 'Escenarios guardados', scenPick: 'Escenarios guardados…', scenSave: 'Guardar', scenDel: 'Borrar', shareCopy: 'Copiar enlace',
+    tipScen: 'Guardar deja el escenario actual en tu navegador con el nombre del ítem (el mismo nombre reemplaza al anterior). Copiar enlace genera una dirección con todo el escenario, para abrirlo en otro ordenador o mandárselo a alguien.',
+    scenSaved: name => `"${name}" guardado.`, scenDeleted: name => `"${name}" borrado.`,
+    shareCopied: 'Enlace copiado.', shareFail: 'No se pudo copiar. Copia este enlace:', sharedLoaded: 'Escenario abierto desde un enlace.',
+    report: '¿Algo mal en este caso? Repórtalo en GitHub',
+    issueTitle: item => `Caso raro: ${item}`,
+    issueBody: ({ link, item, medium, supply, demand, plan, caseLabel }) => `**Qué parece estar mal**\n\n(Descríbelo aquí.)\n\n**Qué esperaba**\n\n(Cómo lo montarías.)\n\n**Escenario**\n\n- Enlace: ${link}\n- Ítem: ${item}\n- ${medium}\n- Oferta ${supply}/min, demanda ${demand}/min\n- Alternativa mostrada: ${plan} (${caseLabel})\n`,
     removeGroup: 'Quitar grupo',
     fMachines: 'Máquinas', fClock: 'Clock %', fNomSrc: 'Cada una produce al 100% /min', fNomDst: 'Cada una consume al 100% /min', fTotal: 'Total /min', fPer: 'Por línea',
     group: 'Grupo', groupN: n => `Grupo ${n}`, groupOf: (side, n) => `${side}, grupo ${n}`, perAuto: n => `auto ${n}`,
@@ -1282,7 +1401,7 @@ const I18N = {
     stepContinuous: (total, lines) => `flujo de ${total}/min en ${lines} cinta${lines > 1 ? 's' : ''}.`,
     stepClock: c => ` al ${c}%`,
     stepNoFull: (N, clk, per) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada una), sin línea llena.`,
-    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada una) en ${full} línea${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), con ${src ? 'mergers' : 'splitters'} (${note} por línea)${rem ? `. ${rem === 1 ? 'La máquina restante queda' : `Las ${rem} restantes quedan`} en una línea aparte` : ''}.`,
+    stepGroup: ({ N, clk, per, full, perLine, lineRate, src, note, rem, fluid }) => `${N} máquina${N > 1 ? 's' : ''}${clk} (${per}/min cada una) en ${full} línea${full > 1 ? 's' : ''} de ${perLine} (${lineRate}/min), con ${fluid ? 'Pipeline Junctions' : src ? 'mergers' : 'splitters'} (${note} por línea)${rem ? `. ${rem === 1 ? 'La máquina restante queda' : `Las ${rem} restantes quedan`} en una línea aparte` : ''}.`,
     stepMixed: list => `Líneas con las máquinas sobrantes: ${list}.`,
     stepDonorWhole: (d, who) => `Donante ${d}: va entera al merger de ${who}.`,
     stepDonorDirect: (d, rate, tree, who) => `Donante ${d} (${rate}/min): ${tree}, una parte al merger de cada destino (${who}).`,
@@ -1366,7 +1485,7 @@ const I18N = {
     faq2Q: '¿De dónde salen los números?',
     faq2A: 'De ti. La herramienta no conoce recetas: escribe el número de máquinas y la tasa por minuto de tu planificador o de la receta en el juego.',
     faq3Q: '¿Se guarda mi plan?',
-    faq3A: 'Sí, solo en tu navegador. No hay cuenta y nada de lo que escribes se envía a un servidor.',
+    faq3A: 'Sí, solo en tu navegador, y puedes guardar varios escenarios con nombre. No hay cuenta y nada de lo que escribes se envía a un servidor. El enlace de Copiar enlace lleva el escenario en la propia dirección, después del #, parte que el navegador no envía al servidor.',
     faq4Q: '¿Qué versión del juego?',
     faq4A: 'Satisfactory 1.0 en adelante, con cintas de la Mk1 (60/min) a la Mk6 (1200/min).',
     faq5Q: '¿Puedo usar un mod o un blueprint listo en su lugar?',
@@ -1511,6 +1630,8 @@ const BELTS = [
   { id: 'Mk1', cap: 60 }, { id: 'Mk2', cap: 120 }, { id: 'Mk3', cap: 270 },
   { id: 'Mk4', cap: 480 }, { id: 'Mk5', cap: 780 }, { id: 'Mk6', cap: 1200 },
 ];
+// Fluido vai em cano (m³/min). Cano não tem splitter: a Pipeline Junction junta ou divide sem garantir partes iguais.
+const PIPES = [{ id: 'Mk1', cap: 300 }, { id: 'Mk2', cap: 600 }];
 const EPS = 1e-6;
 const INF = Infinity;
 
@@ -1547,7 +1668,7 @@ function resolveGroup(raw) {
 
 // Linhas de esteira a partir de vários grupos. Cada grupo enche linhas com a taxa real por máquina;
 // as máquinas que sobram de cada grupo são empacotadas juntas, maior primeiro.
-function buildLines(groups, cap, side = t('group')) {
+function buildLines(groups, cap, side = t('group'), fluid = false) {
   const lines = [], info = [], warnings = [], loose = [];
   const name = gi => (groups.length > 1 ? t('groupOf', side, gi + 1) : side);
   groups.forEach((raw, gi) => {
@@ -1562,10 +1683,10 @@ function buildLines(groups, cap, side = t('group')) {
     }
     if (r.clock > 2.5 + EPS || r.clock < 0.01 - EPS) warnings.push({ level: 'warn', text: t('warnClock', name(gi), fmt(r.clock * 100, 2)) });
     const eff = Math.min(r.perMachine, cap);
-    if (r.perMachine > cap + EPS) warnings.push({ level: 'warn', text: t('warnMachineOverBelt', name(gi), fmt(r.perMachine), fmt(cap), fmt(r.perMachine - cap)) });
+    if (r.perMachine > cap + EPS) warnings.push({ level: 'warn', text: t(fluid ? 'warnMachineOverPipe' : 'warnMachineOverBelt', name(gi), fmt(r.perMachine), fmt(cap), fmt(r.perMachine - cap)) });
     const auto = Math.max(1, Math.floor(cap / eff + EPS));
     const perLine = r.per > 0 ? Math.floor(r.per) : auto;
-    if (perLine * eff > cap + EPS) warnings.push({ level: 'bad', text: t('warnPerLineOver', name(gi), perLine, fmt(perLine * eff), fmt(cap), auto) });
+    if (perLine * eff > cap + EPS) warnings.push({ level: 'bad', text: t(fluid ? 'warnPerLineOverPipe' : 'warnPerLineOver', name(gi), perLine, fmt(perLine * eff), fmt(cap), auto) });
     const full = Math.floor(r.N / perLine);
     for (let i = 0; i < full; i++) lines.push({ machines: perLine, rate: perLine * eff, partial: false, comp: [{ gi, count: perLine, rate: eff }] });
     const rem = r.N - full * perLine;
@@ -1653,6 +1774,9 @@ function divisionOptions(s, p, maxDeficit, cap) {
 
 // Mergers para juntar `inputs` esteiras numa só (merger tem até 3 entradas, em cascata).
 function mergersFor(inputs) { return inputs <= 1 ? 0 : Math.ceil((inputs - 1) / 2); }
+// Pipeline Junctions para ligar `ports` canos num ponto só: cada junction tem 4 portas e
+// cada ligação entre duas junctions gasta duas, então j junctions em cadeia dão 2j + 2 portas.
+function junctionsFor(ports) { return ports <= 2 ? 0 : Math.ceil((ports - 2) / 2); }
 // Quantas entradas já estão juntas na saída de cada merger da cascata: o primeiro pega 3, os outros +2.
 function chainSizes(inputs) {
   const out = [];
@@ -2433,7 +2557,7 @@ function simulate(g) {
       } else if (n.type === 'splitter' || n.type === 'balancer') {
         const a = n.outs.map(e => acc[e]);
         const f = waterfill(n.limit === undefined ? inFlow : Math.min(inFlow, n.limit), a);
-        const offIn = n.maxIn === undefined ? inOff : Math.min(inOff, n.maxIn);
+        const offIn = Math.min(inOff, n.maxIn === undefined ? INF : n.maxIn, n.limit === undefined ? INF : n.limit);
         n.outs.forEach((e, j) => {
           const a2 = a.slice(); a2[j] = INF;
           set(e, f[j], waterfill(offIn, a2)[j]);
@@ -2558,6 +2682,7 @@ function buildGraph(plan, cap) {
   plan.feeds.forEach(f => f.mains.forEach(addSrc));
   plan.groups.forEach(gr => addSrc(gr.donor));
   if (plan.bal) plan.bal.inputs.forEach(addSrc);
+  if (plan.headers) plan.headers.forEach(h => h.inputs.forEach(addSrc));
   plan.leftovers.forEach(addSrc);
   const consumer = new Map();
   [...plan.feeds.map(f => f.dst), ...plan.unfed].forEach(d => consumer.set(d.id, addNode(g, 'consumer', { demand: d.rate, line: d })));
@@ -2599,6 +2724,42 @@ function buildGraph(plan, cap) {
       f, consumer: outs[j], mainEdges: [], partEdge: null, outEdge: view.bal.outEdges[j], mergers: 0, mergeNode: null,
       overflowNode: null, sinkEdge: null, overflowEdge: null, overflowTo: null, inbound: [], group: null,
     }));
+  } else if (plan.headers) {
+    // Cano coletor: o fluido vai para onde tem espaço, então entra como divisão ideal limitada pelo cano.
+    // Cano de origem dividido entre coletores: enche o primeiro e o resto segue para o próximo
+    // (no grafo, uma cadeia de nós com overflow; no jogo, uma junction).
+    const hubs = plan.headers.map(() => addNode(g, 'balancer', { limit: cap }));
+    const splitEdge = new Map();
+    view.splits = plan.splits.map(sp => {
+      let prev = srcNode.get(sp.line.id), first = null;
+      sp.headers.forEach((hi, k) => {
+        if (k === sp.headers.length - 1) { splitEdge.set(`${sp.line.id}:${hi}`, addEdge(g, prev, hubs[hi])); return; }
+        // A parte deste coletor é o que falta nele; o resto segue pelo overflow.
+        const n = addNode(g, 'overflow'), part = addNode(g, 'balancer', { limit: sp.parts[k] });
+        const e = addEdge(g, prev, n);
+        if (first === null) first = e;
+        addEdge(g, n, part);
+        splitEdge.set(`${sp.line.id}:${hi}`, addEdge(g, part, hubs[hi]));
+        prev = n;
+      });
+      return { sp, edge: first, junctions: junctionsFor(1 + sp.headers.length) };
+    });
+    view.headers = plan.headers.map((h, hi) => {
+      const hub = hubs[hi];
+      return {
+        h, hub,
+        inEdges: h.inputs.map(l => splitEdge.get(`${l.id}:${hi}`) ?? addEdge(g, srcNode.get(l.id), hub)),
+        outEdges: h.members.map(d => addEdge(g, hub, consumer.get(d.id))),
+        junctions: junctionsFor(h.inputs.length + h.members.length),
+      };
+    });
+    view.feeds = plan.feeds.map(f => {
+      const hv = view.headers.find(x => x.h.members.includes(f.dst));
+      return {
+        f, consumer: consumer.get(f.dst.id), mainEdges: [], partEdge: null, outEdge: hv.outEdges[hv.h.members.indexOf(f.dst)],
+        mergers: 0, mergeNode: null, overflowNode: null, sinkEdge: null, overflowEdge: null, overflowTo: null, inbound: [], group: null, header: hv,
+      };
+    });
   } else {
     // Primeiro os Smart Splitters, para a saída principal ser a primeira do nó.
     const fv = new Map(), ovNode = new Map();
@@ -2673,6 +2834,7 @@ function evaluatePlan(plan, cap) {
     splitters: view.groups.reduce((a, v) => a + v.splitters, 0) + bal.splitters,
     smart: view.feeds.filter(f => f.overflowNode !== null).length,
     blueprints: bal.blueprints,
+    junctions: (view.headers || []).reduce((a, h) => a + h.junctions, 0) + (view.splits || []).reduce((a, x) => a + x.junctions, 0),
     sinkBelts: g.nodes[view.sink].ins.length,
   };
   const warnings = [];
@@ -2686,13 +2848,14 @@ function evaluatePlan(plan, cap) {
   else if (plan.kind === 'direct') caseLabel = t('caseA');
   else if (plan.kind === 'merge') caseLabel = t('caseC');
   else if (plan.kind === 'overflow') caseLabel = t('caseD');
+  else if (plan.kind === 'header') caseLabel = t('caseHeader');
   else if (plan.kind === 'balancer') caseLabel = t('caseBal', plan.bal.inputs.length, plan.feeds.length);
   else caseLabel = plan.multi ? t('caseCB') : t('caseB');
   return { ...plan, g, view, sim, sources, dests, sinkRate, extraRate, held, served, demand, full, pieces, warnings, caseLabel };
 }
 
 // Gera as alternativas para ligar as linhas de origem nas de destino.
-function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
+function generatePlans(srcLines, dstLines, cap, policy, blueprints = [], fluid = false) {
   const S = srcLines.map((l, i) => ({ ...l, id: i })).sort((a, b) => b.rate - a.rate || a.id - b.id);
   const D = dstLines.map((l, i) => ({ ...l, id: i })).sort((a, b) => b.rate - a.rate || a.id - b.id);
   if (!S.length || !D.length) return [];
@@ -2716,6 +2879,15 @@ function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
   }
   const direct = fit.map(f => ({ dst: f.dst, mains: f.mains }));
   plans.push(mk('direto', 'direct', t('planDirect'), direct, [], avail.slice(), { sub: t('planDirectSub') }));
+  // Fluido: sem splitter, Smart Splitter nem sink. Só ligar direto ou passar por canos coletores.
+  if (fluid) {
+    const hd = headerGroups(S, D, cap);
+    if (hd.splits.length || hd.headers.some(h => h.inputs.length > 1 || h.members.length > 1)) {
+      const feeds = hd.headers.flatMap(h => h.members.map(d => ({ dst: d, mains: [] })));
+      plans.push(mk('coletor', 'header', t('planHeader'), feeds, [], hd.rest, { sub: t('planHeaderSub'), headers: hd.headers, splits: hd.splits }));
+    }
+    return plans;
+  }
   if (fit.some(f => f.excess > EPS)) {
     plans.push(mk('direto-sink', 'direct', t('planDirectSink'),
       direct.map((f, i) => ({ ...f, overflow: fit[i].excess > EPS })), [], avail.slice(), { sub: t('planDirectSinkSub') }));
@@ -2813,6 +2985,42 @@ function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
   return plans;
 }
 
+// Canos coletores: os destinos (do maior pro menor) vão para o primeiro coletor em que cabem (até `cap`).
+// Os canos de origem enchem os coletores em sequência; quando um cano tem mais do que falta num coletor,
+// uma Pipeline Junction divide ele e o resto segue para o próximo coletor (`splits`).
+function headerGroups(S, D, cap) {
+  const headers = [];
+  for (const d of D) {
+    let h = headers.find(x => x.need + d.rate <= cap + EPS);
+    if (!h) { h = { need: 0, members: [], inputs: [] }; headers.push(h); }
+    h.members.push(d);
+    h.need += d.rate;
+  }
+  const pool = S.slice(), splits = new Map();
+  let carry = null;
+  headers.forEach((h, hi) => {
+    let need = h.need;
+    const last = hi === headers.length - 1;
+    while (need > EPS) {
+      if (!carry) { if (!pool.length) break; const l = pool.shift(); carry = { line: l, left: l.rate }; }
+      h.inputs.push(carry.line);
+      if (carry.left <= need + EPS || last) {
+        if (splits.has(carry.line.id)) splits.get(carry.line.id).parts.push(carry.left);
+        need -= carry.left;
+        carry = null;
+        continue;
+      }
+      if (!splits.has(carry.line.id)) splits.set(carry.line.id, { line: carry.line, headers: [hi], parts: [] });
+      const sp = splits.get(carry.line.id);
+      sp.headers.push(hi + 1);
+      sp.parts.push(need);
+      carry.left -= need;
+      need = 0;
+    }
+  });
+  return { headers: headers.filter(h => h.inputs.length), splits: [...splits.values()], rest: pool };
+}
+
 function designName(d) {
   if (d.kind === 'blueprint') return t('dkBlueprint', d.bp.n, d.bp.m);
   return t({ butterfly: 'dkButterfly', 'butterfly-loop': 'dkButterflyLoop', 'butterfly-sink': 'dkButterflySink', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
@@ -2820,7 +3028,7 @@ function designName(d) {
 
 // Blueprint conta como uma peça: é só colar.
 function rankPlans(evaluated) {
-  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints;
+  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints + a.pieces.junctions;
   return evaluated.slice().sort((a, b) =>
     (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
 }
@@ -2829,13 +3037,15 @@ function rankPlans(evaluated) {
 // srcGroups/dstGroups: [{ driver: 'machines'|'clock'|'total', count, clock, nominal, total, per }].
 function computePlan(input) {
   const cap = input.cap;
-  const policy = input.policy || 'represar';
+  const fluid = input.medium === 'fluid';
+  // O Awesome Sink não aceita fluido: a sobra represa.
+  const policy = fluid && input.policy === 'sink' ? 'represar' : input.policy || 'represar';
   const conv = input.conv || 'k-1';
   const srcGroups = input.srcGroups || [{ driver: 'machines', count: input.srcCount, nominal: input.srcRate, per: input.srcPer }];
   const dstGroups = input.dstGroups || [{ driver: 'machines', count: input.dstCount, nominal: input.dstRate, per: input.dstPer }];
-  const src = buildLines(srcGroups, cap, t('sideSrc'));
-  const dst = buildLines(dstGroups, cap, t('sideDst'));
-  const ranked = rankPlans(generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || []).map(p => evaluatePlan(p, cap)));
+  const src = buildLines(srcGroups, cap, t('sideSrc'), fluid);
+  const dst = buildLines(dstGroups, cap, t('sideDst'), fluid);
+  const ranked = rankPlans(generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || [], fluid).map(p => evaluatePlan(p, cap)));
   // Dos designs de balancer, só o melhor vira alternativa; os outros ficam para a comparação.
   const balAlts = ranked.filter(a => a.kind === 'balancer');
   const alternatives = ranked.filter(a => a.kind !== 'balancer' || a === balAlts[0]);
@@ -2855,10 +3065,49 @@ function computePlan(input) {
   if (dstMixed.length) warnings.push({ level: 'warn', text: t('warnDistMixed', dstMixed.length, mixedList(dstMixed)) });
 
   return {
-    input, cap, conv, policy, src, dst, supply, demand, alternatives, warnings,
+    input, cap, conv, policy, fluid, src, dst, supply, demand, alternatives, warnings,
     collectMergers: manifoldPieces(src.lines, conv),
     distSplitters: manifoldPieces(dst.lines, conv),
   };
+}
+
+// ---- Link do cenário ----
+// O cenário vai no fragmento da URL (#s=...), que o navegador não manda para o servidor.
+function encodeShare(state) {
+  let bin = '';
+  new TextEncoder().encode(JSON.stringify(state)).forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+// Devolve só o que o formulário entende, com texto curto; link quebrado ou adulterado vira null.
+function decodeShare(str) {
+  let raw;
+  try {
+    const bin = atob(String(str).replace(/-/g, '+').replace(/_/g, '/'));
+    raw = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+  } catch (e) { return null; }
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.src) || !Array.isArray(raw.dst) || !raw.src.length || !raw.dst.length) return null;
+  const str40 = v => (v === undefined || v === null ? '' : String(v).slice(0, 40));
+  const row = r => {
+    const o = r && typeof r === 'object' ? r : {};
+    return { driver: ['machines', 'clock', 'total'].includes(o.driver) ? o.driver : 'machines', count: str40(o.count), clock: str40(o.clock), nominal: str40(o.nominal), total: str40(o.total), per: str40(o.per) };
+  };
+  const pick = (v, ok, def) => (ok.includes(v) ? v : def);
+  return {
+    item: String(raw.item || '').slice(0, 80),
+    src: raw.src.slice(0, 20).map(row), dst: raw.dst.slice(0, 20).map(row),
+    medium: pick(raw.medium, ['item', 'fluid'], 'item'),
+    belt: pick(raw.belt, BELTS.map(b => b.id), 'Mk4'),
+    pipe: pick(raw.pipe, PIPES.map(b => b.id), 'Mk2'),
+    policy: pick(raw.policy, ['represar', 'sink', 'extra'], 'represar'),
+    conv: pick(raw.conv, ['k-1', 'k'], 'k-1'),
+    selectedKey: typeof raw.selectedKey === 'string' ? raw.selectedKey.slice(0, 80) : null,
+    lang: pick(raw.lang, LANGS, 'en'),
+  };
+}
+// Issue nova no GitHub já preenchida.
+const REPO = 'https://github.com/AdolfoCarneiro/sf-balancer';
+function issueUrl(title, body) {
+  return `${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
 }
 
 function fmt(n, digits = 1) {
@@ -2880,7 +3129,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -2890,7 +3139,7 @@ const DEFAULTS = {
   get item() { return t('defaultItem'); },
   src: [{ driver: 'machines', count: '42', clock: '', nominal: '65', total: '', per: '' }],
   dst: [{ driver: 'machines', count: '60', clock: '', nominal: '40', total: '', per: '' }],
-  belt: 'Mk4', policy: 'represar', conv: 'k-1',
+  medium: 'item', belt: 'Mk4', pipe: 'Mk2', policy: 'represar', conv: 'k-1',
 };
 const STORE = 'sf-balancer:v3';
 const LANG_STORE = 'sf-balancer:lang';
@@ -2947,6 +3196,9 @@ function applyStatic() {
   const belt = $('belt').value;
   $('belt').innerHTML = BELTS.map(b => `<option value="${b.id}">${b.id}, ${fmt(b.cap)}/min</option>`).join('');
   $('belt').value = belt || 'Mk4';
+  const pipe = $('pipe').value;
+  $('pipe').innerHTML = PIPES.map(b => `<option value="${b.id}">${esc(t('pipeOpt', b.id, fmt(b.cap)))}</option>`).join('');
+  $('pipe').value = pipe || 'Mk2';
   const libBelt = $('libBelt').value;
   $('libBelt').innerHTML = $('belt').innerHTML;
   $('libBelt').value = libBelt || 'Mk4';
@@ -2954,6 +3206,7 @@ function applyStatic() {
   $('faqExt').innerHTML = extLinks();
   syncGroups('src');
   syncGroups('dst');
+  renderScenarios();
 }
 
 // Os números digitados mudam de formato junto com o idioma ("65,5" vira "65.5").
@@ -3090,13 +3343,15 @@ function readInput() {
   };
   const srcGroups = readGroups('src', mark);
   const dstGroups = readGroups('dst', mark);
-  const belt = BELTS.find(b => b.id === $('belt').value);
+  const medium = document.querySelector('input[name=medium]:checked').value;
+  const fluid = medium === 'fluid';
+  const belt = fluid ? PIPES.find(b => b.id === $('pipe').value) : BELTS.find(b => b.id === $('belt').value);
   return {
     valid,
     input: {
       item: $('item').value.trim() || t('fallbackItem'),
       srcGroups, dstGroups,
-      belt: belt.id, cap: belt.cap,
+      medium, belt: belt.id, cap: belt.cap,
       policy: document.querySelector('input[name=policy]:checked').value,
       conv: document.querySelector('input[name=conv]:checked').value,
       blueprints: BPS,
@@ -3105,17 +3360,20 @@ function readInput() {
 }
 
 function rowState(r) { return { driver: r.driver, count: r.count.value, clock: r.clock.value, nominal: r.nominal.value, total: r.total.value, per: r.per.value }; }
-function saveState() {
-  const state = {
+function currentState() {
+  return {
     item: $('item').value,
     src: rows.src.map(rowState), dst: rows.dst.map(rowState),
-    belt: $('belt').value,
+    medium: document.querySelector('input[name=medium]:checked').value,
+    belt: $('belt').value, pipe: $('pipe').value,
     policy: document.querySelector('input[name=policy]:checked').value,
     conv: document.querySelector('input[name=conv]:checked').value,
     selectedKey,
     lang: LANG,
   };
-  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* sem storage, segue sem lembrar */ }
+}
+function saveState() {
+  try { localStorage.setItem(STORE, JSON.stringify(currentState())); } catch (e) { /* sem storage, segue sem lembrar */ }
 }
 function loadState(state) {
   $('item').value = itemFor(state.item);
@@ -3124,6 +3382,9 @@ function loadState(state) {
     (state[side] && state[side].length ? state[side] : DEFAULTS[side]).forEach(v => addGroup(side, v));
   }
   $('belt').value = BELTS.some(b => b.id === state.belt) ? state.belt : 'Mk4';
+  $('pipe').value = PIPES.some(b => b.id === state.pipe) ? state.pipe : 'Mk2';
+  const med = document.querySelector(`input[name=medium][value="${state.medium === 'fluid' ? 'fluid' : 'item'}"]`);
+  med.checked = true;
   const pol = document.querySelector(`input[name=policy][value="${state.policy}"]`);
   if (pol) pol.checked = true;
   const conv = document.querySelector(`input[name=conv][value="${state.conv}"]`);
@@ -3132,12 +3393,12 @@ function loadState(state) {
 }
 
 // Mostra as três equivalências embaixo do grupo e nos campos que não mandam.
-function showEquivalences(side, info, cap) {
+function showEquivalences(side, info, cap, fluid) {
   info.forEach(g => {
     const r = rows[side][g.gi];
     if (g.continuous) {
       r.count.placeholder = ''; r.clock.placeholder = ''; r.per.placeholder = '';
-      r.eq.innerHTML = t('eqContinuous', fmt(g.total, 2), g.lines, fmt(cap));
+      r.eq.innerHTML = t(fluid ? 'eqContinuousPipe' : 'eqContinuous', fmt(g.total, 2), g.lines, fmt(cap));
       return;
     }
     r.count.placeholder = fmt(g.n, 2);
@@ -3151,9 +3412,24 @@ function showEquivalences(side, info, cap) {
   });
 }
 
+// Esteira ou cano, com a capacidade: "Mk4, 480/min" ou "Pipeline Mk2, 600/min".
+const tierLabel = (input, cap) => (input.medium === 'fluid' ? t('pipeOpt', input.belt, fmt(cap)) : `${input.belt}, ${fmt(cap)}/min`);
+
+// Com fluido: mostra o cano no lugar da esteira e tira o sink (o Awesome Sink não aceita fluido).
+function syncMedium() {
+  const fluid = document.querySelector('input[name=medium]:checked').value === 'fluid';
+  $('beltRule').hidden = fluid;
+  $('pipeRule').hidden = !fluid;
+  const sink = document.querySelector('input[name=policy][value=sink]');
+  sink.disabled = fluid;
+  $('policySinkChoice').classList.toggle('off', fluid);
+  if (fluid && sink.checked) document.querySelector('input[name=policy][value=represar]').checked = true;
+}
+
 // ---- Render ----
 function render() {
   if (tipBtn && $('out').contains(tipBtn)) hideTip();
+  syncMedium();
   const { valid, input } = readInput();
   const out = $('out');
   saveState();
@@ -3161,11 +3437,12 @@ function render() {
     $('ledger').innerHTML = '';
     $('warns').innerHTML = '';
     out.innerHTML = `<p class="lead" style="margin-top:24px">${t('invalid')}</p>`;
+    $('report').href = issueUrl(t('issueTitle', input.item), shareLink());
     return;
   }
   const p = computePlan(input);
-  showEquivalences('src', p.src.groups, p.cap);
-  showEquivalences('dst', p.dst.groups, p.cap);
+  showEquivalences('src', p.src.groups, p.cap, p.fluid);
+  showEquivalences('dst', p.dst.groups, p.cap, p.fluid);
 
   const surplus = p.supply - p.demand;
   $('ledger').innerHTML = `
@@ -3178,6 +3455,21 @@ function render() {
   if (!alts.length) { out.innerHTML = `<p class="lead" style="margin-top:24px">${t('noLines')}</p>`; return; }
   const alt = alts.find(a => a.key === selectedKey) || alts[0];
   lastRender = { p, alt };
+  $('report').href = issueUrl(t('issueTitle', input.item), t('issueBody', {
+    link: shareLink(), item: input.item, medium: `${t(p.fluid ? 'tbPipe' : 'tbBelt')}: ${tierLabel(input, p.cap)}`,
+    supply: fmt(p.supply), demand: fmt(p.demand), plan: alt.title, caseLabel: alt.caseLabel,
+  }));
+  const legend = p.fluid
+    ? `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
+            <span><i class="held"></i>${t('lgHeld')}</span>
+            <span><i class="piece"></i>${t('lgJunction')}</span>`
+    : `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
+            <span><i style="background:var(--donor)"></i>${t('lgDonor')}</span>
+            <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
+            <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
+            <span><i class="held"></i>${t('lgHeld')}</span>
+            <span><i class="piece"></i>${t('lgMerger')}</span>
+            <span><i class="smart"></i>${t('lgSmart')}</span>`;
 
   out.innerHTML = `
     <div class="work">
@@ -3188,22 +3480,16 @@ function render() {
       </aside>
       <section>
         <h2 class="section-title">${esc(alt.title)}${tip('tipFlow')}</h2>
-        <p class="lead">${esc(alt.sub)} ${t('flowLead')}</p>
+        <p class="lead">${esc(alt.sub)} ${t(p.fluid ? 'flowLeadPipe' : 'flowLead')}</p>
         <div class="sheet">
           ${flowSvg(p, alt)}
           <div class="legend">
-            <span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
-            <span><i style="background:var(--donor)"></i>${t('lgDonor')}</span>
-            <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
-            <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
-            <span><i class="held"></i>${t('lgHeld')}</span>
-            <span><i class="piece"></i>${t('lgMerger')}</span>
-            <span><i class="smart"></i>${t('lgSmart')}</span>
+            ${legend}
           </div>
           ${alt.warnings.map(w => `<div class="warn" style="margin-top:10px">${esc(w)}</div>`).join('')}
           <div class="titleblock num">
             <div>${t('tbItem')}<b>${esc(input.item)}</b></div>
-            <div>${t('tbBelt')}<b>${input.belt}, ${fmt(p.cap)}/min</b></div>
+            <div>${t(p.fluid ? 'tbPipe' : 'tbBelt')}<b>${esc(tierLabel(input, p.cap))}</b></div>
             <div>${t('tbMid')}<b>${alt.caseLabel}</b></div>
           </div>
         </div>
@@ -3219,7 +3505,7 @@ function render() {
     </div>`;
 }
 
-const planCost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints;
+const planCost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints + a.pieces.junctions;
 
 function altCard(a, i, sel) {
   const pc = a.pieces;
@@ -3242,6 +3528,8 @@ function balanceTable(a) {
   const dest = id => {
     const v = a.view;
     if (v.bal && a.bal.inputs.some(l => l.id === id)) return t('toBalancer', a.feeds.map(f => Dn(f.dst)).join(', '));
+    const hvs = (v.headers || []).filter(h => h.h.inputs.some(l => l.id === id));
+    if (hvs.length) return hvs.map(hv => t('toHeader', hv.h.members.map(Dn).join(', '))).join(' · ');
     const fv = v.feeds.find(f => f.f.mains.some(l => l.id === id));
     if (fv) {
       if (fv.overflowNode === null) return Dn(fv.f.dst);
@@ -3266,26 +3554,26 @@ function balanceTable(a) {
   <p class="hint">${t('balanceHint', fmt(a.sinkRate), a.pieces.sinkBelts, fmt(a.held), fmt(a.extraRate))}</p>`;
 }
 
-function groupSteps(side, built, conv) {
+function groupSteps(side, built, conv, fluid) {
   const note = conv === 'k' ? 'k' : 'k−1';
   const head = t(side === 'src' ? 'headSrc' : 'headDst');
   return built.groups.map(g => {
     const lbl = t('stepLbl', head, built.groups.length > 1 ? g.gi + 1 : null);
-    if (g.continuous) return lbl + t('stepContinuous', fmt(g.total, 2), g.lines);
+    if (g.continuous) return lbl + t(fluid ? 'stepContinuousPipe' : 'stepContinuous', fmt(g.total, 2), g.lines);
     const clk = Math.abs(g.clock - 1) > 1e-4 ? t('stepClock', fmt(g.clock * 100, 2)) : '';
     const per = fmt(g.perMachine, 2);
     if (!g.fullLines) return lbl + t('stepNoFull', g.N, clk, per);
-    return lbl + t('stepGroup', { N: g.N, clk, per, full: g.fullLines, perLine: g.perLine, lineRate: fmt(g.lineRate), src: side === 'src', note, rem: g.rem });
+    return lbl + t('stepGroup', { N: g.N, clk, per, full: g.fullLines, perLine: g.perLine, lineRate: fmt(g.lineRate), src: side === 'src', note, rem: g.rem, fluid });
   });
 }
 
 function planSteps(p, a) {
   const steps = [];
   const fl = e => a.sim.flow[e];
-  steps.push(...groupSteps('src', p.src, p.conv));
+  steps.push(...groupSteps('src', p.src, p.conv, p.fluid));
   const mixed = p.src.lines.map((l, i) => ({ ...l, id: i })).filter(l => l.partial && l.comp && l.comp.length > 1);
   if (mixed.length) steps.push(t('stepMixed', mixed.map(l => `${O(l)} = ${lineComp(l)} (${fmt(l.rate)}/min)`).join('; ')));
-  steps.push(...groupSteps('dst', p.dst, p.conv));
+  steps.push(...groupSteps('dst', p.dst, p.conv, p.fluid));
   for (const v of a.view.groups) {
     const gr = v.gr, d = gr.division;
     const who = gr.members.map(dstTag).join(', ');
@@ -3298,7 +3586,13 @@ function planSteps(p, a) {
     const d = a.view.bal.design;
     steps.push(t('stepBal', a.bal.inputs.map(O).join(', '), d.N, d.M, designName(d), fmt(d.perOut)));
   }
-  for (const fv of a.view.bal ? [] : a.view.feeds) {
+  for (const sv of a.view.splits || []) {
+    steps.push(t('stepHeaderSplit', O(sv.sp.line), sv.sp.headers.map(i => a.view.headers[i].h.members.map(Dn).join(' + ')).join(' / '), sv.junctions));
+  }
+  for (const hv of a.view.headers || []) {
+    steps.push(t('stepHeader', hv.h.inputs.map(O).join(' + '), hv.h.members.map(Dn).join(', '), hv.junctions, fmt(hv.inEdges.reduce((s, e) => s + fl(e), 0))));
+  }
+  for (const fv of a.view.bal || a.view.headers ? [] : a.view.feeds) {
     const f = fv.f, ds = a.dests.get(f.dst.id);
     const mains = f.mains.map((l, i) => {
       const held = a.sources.get(l.id).held;
@@ -3349,6 +3643,13 @@ function balSection(p, a) {
 
 function balancerSection(p, a) {
   if (a.view.bal) return balSection(p, a);
+  if (p.fluid) {
+    return `<section class="plate"><h2 class="section-title">${t('pipeTitle')}${tip('tipMedium')}</h2>
+      <p style="margin:0 0 8px">${t('pipeNote')}</p>
+      <p class="dim" style="margin:0 0 8px">${t('pipeValve')}</p>
+      ${a.view.headers ? `<p class="dim" style="margin:0">${t('pipeHeaderCap', fmt(p.cap))}</p>` : ''}
+    </section>`;
+  }
   const groups = a.view.groups.filter(v => v.gr.p > 1);
   const smart = a.view.feeds.filter(f => f.overflowNode !== null);
   if (!groups.length && !smart.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
@@ -3397,6 +3698,18 @@ function balancerSection(p, a) {
 function piecesTable(p, a) {
   const conv = p.conv === 'k' ? 'k' : 'k−1';
   const pc = a.pieces;
+  if (p.fluid) {
+    return `<section class="plate"><h2 class="section-title">${t('pcTitle')}${tip('tipPieces')}</h2>
+  <div class="tablewrap"><table>
+    <tr><th>${t('thSection')}</th><th class="l">${t('thLines')}</th><th>${t('thJunctions')}</th></tr>
+    <tr><td>${t('rowCollect')}</td><td class="l">${summarizeRates(p.src.lines)}</td><td>${p.collectMergers}</td></tr>
+    <tr><td>${t('rowMid')}</td><td class="l">${a.caseLabel}</td><td>${pc.junctions}</td></tr>
+    <tr><td>${t('rowDist')}</td><td class="l">${summarizeRates(p.dst.lines)}</td><td>${p.distSplitters}</td></tr>
+    <tr class="sum"><td>${t('rowTotal')}</td><td></td><td>${p.collectMergers + pc.junctions + p.distSplitters}</td></tr>
+  </table></div>
+  <p class="hint">${t('pcHintPipe', conv)}</p>
+  </section>`;
+  }
   return `<section class="plate"><h2 class="section-title">${t('pcTitle')}${tip('tipPieces')}</h2>
   <div class="tablewrap"><table>
     <tr><th>${t('thSection')}</th><th class="l">${t('thLines')}</th><th>${t('thMergers')}</th><th>${t('thSplitters')}</th><th>${t('thSmart')}</th></tr>
@@ -3421,6 +3734,7 @@ function flowSvg(p, a) {
   v.feeds.forEach(fv => fv.f.mains.forEach(push));
   v.groups.forEach(g => push(g.gr.donor));
   if (v.bal) a.bal.inputs.forEach(push);
+  (v.headers || []).forEach(hv => hv.h.inputs.forEach(push));
   v.leftovers.forEach(l => push(l.line));
   const dstOrder = [...v.feeds.map(fv => fv.f.dst), ...a.unfed];
   const hasSink = a.g.nodes[v.sink].ins.length > 0;
@@ -3506,7 +3820,32 @@ function flowSvg(p, a) {
       <text class="sm" x="${bx + bw / 2}" y="${ym + 31}" text-anchor="middle" style="fill:var(--holo)">${t('blkHint')}</text></g>`);
   }
 
+  // Cano coletor: os canos de origem entram num bloco e os de destino saem dele.
+  const labeled = new Set();
+  (v.headers || []).forEach(hv => {
+    // A altura do bloco vem só dos destinos, que não se repetem entre coletores: assim os blocos não se sobrepõem.
+    const ys = hv.h.members.map(d => yDst.get(d.id));
+    const ym = (Math.min(...ys) + Math.max(...ys)) / 2, half = Math.max((Math.max(...ys) - Math.min(...ys)) / 2 + 14, 22);
+    const y1 = Math.max(2, ym - half), y2 = Math.min(H - 2, ym + half);
+    const bx = 400, bw = 120;
+    hv.h.inputs.forEach((l, i) => {
+      const y = ySrc.get(l.id), f = fl(hv.inEdges[i]), held = a.sources.get(l.id).held;
+      belt(curve(xSrc + boxW, y, bx, Math.min(Math.max(y, y1 + 8), y2 - 8)), f, 'var(--flow)');
+      if (labeled.has(l.id)) return;
+      labeled.add(l.id);
+      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${y - 10}" style="fill:var(--flow)">${fmt(a.sources.get(l.id).out)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(held))}</tspan>` : ''}</text>`);
+    });
+    hv.h.members.forEach((d, j) => {
+      const y = yDst.get(d.id);
+      belt(curve(bx + bw, Math.min(Math.max(y, y1 + 8), y2 - 8), xDst, y), fl(hv.outEdges[j]), 'var(--flow)');
+    });
+    front.push(`<rect x="${bx}" y="${y1}" width="${bw}" height="${y2 - y1}" rx="${Math.min(14, (y2 - y1) / 2)}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+      <text class="lbl" x="${bx + bw / 2}" y="${ym - 2}" text-anchor="middle" style="fill:var(--ficsit)">${esc(t('svgHeader'))}</text>
+      <text class="sm" x="${bx + bw / 2}" y="${ym + 14}" text-anchor="middle">${hv.junctions} × Junction</text>`);
+  });
+
   v.feeds.forEach(fv => {
+    if (fv.header) return;
     const y = yDst.get(fv.f.dst.id);
     const ov = fv.overflowNode !== null;
     const via = fv.mergeNode !== null;
@@ -4539,7 +4878,69 @@ function openFromPlan(key) {
   }
 }
 
+// ---- Cenários salvos e link ----
+// Os cenários ficam só neste navegador; o link leva o cenário inteiro no fragmento (#s=...).
+const SCEN_STORE = 'sf-balancer:scenarios';
+let SCENS = [];
+try { const sc = JSON.parse(localStorage.getItem(SCEN_STORE) || '[]'); if (Array.isArray(sc)) SCENS = sc.filter(x => x && typeof x.name === 'string' && x.state && Array.isArray(x.state.src)); } catch (e) { /* sem storage */ }
+const saveScens = () => { try { localStorage.setItem(SCEN_STORE, JSON.stringify(SCENS)); } catch (e) { /* sem storage */ } };
+function renderScenarios(sel) {
+  const cur = sel === undefined ? $('scenList').value : String(sel);
+  $('scenList').innerHTML = `<option value="">${esc(t('scenPick'))}</option>` + SCENS.map((x, i) => `<option value="${i}">${esc(x.name)}</option>`).join('');
+  $('scenList').value = cur !== '' && SCENS[+cur] ? cur : '';
+  $('scenDel').disabled = $('scenList').value === '';
+}
+let msgTimer = null;
+function scenMsg(text) {
+  clearTimeout(msgTimer);
+  $('scenMsg').textContent = text;
+  msgTimer = setTimeout(() => { $('scenMsg').textContent = ''; }, 5000);
+}
+function shareLink() {
+  const base = onVercel ? SITE + LANG_PATH[LANG] : location.href.split('#')[0];
+  return `${base}#s=${encodeShare(currentState())}`;
+}
+// Estado salvo em outro idioma tem os números no formato daquele idioma.
+function openState(state) {
+  loadState(state);
+  const from = state.lang || 'pt';
+  if (from !== LANG) convertInputs(from);
+  render();
+}
+
 // ---- Eventos ----
+$('scenList').addEventListener('change', () => {
+  const sc = SCENS[+$('scenList').value];
+  $('scenDel').disabled = !sc;
+  if ($('scenList').value !== '' && sc) openState(sc.state);
+});
+$('scenSave').addEventListener('click', () => {
+  const name = $('item').value.trim() || t('fallbackItem');
+  let i = SCENS.findIndex(x => x.name === name);
+  if (i < 0) { SCENS.push({ name, state: null }); i = SCENS.length - 1; }
+  SCENS[i].state = currentState();
+  saveScens();
+  renderScenarios(i);
+  scenMsg(t('scenSaved', name));
+});
+$('scenDel').addEventListener('click', () => {
+  const i = +$('scenList').value;
+  if ($('scenList').value === '' || !SCENS[i]) return;
+  const [gone] = SCENS.splice(i, 1);
+  saveScens();
+  renderScenarios('');
+  scenMsg(t('scenDeleted', gone.name));
+});
+$('shareCopy').addEventListener('click', async () => {
+  const link = shareLink();
+  try {
+    await navigator.clipboard.writeText(link);
+    scenMsg(t('shareCopied'));
+  } catch (e) {
+    clearTimeout(msgTimer);
+    $('scenMsg').innerHTML = `${esc(t('shareFail'))} <a href="${esc(link)}">${esc(link)}</a>`;
+  }
+});
 for (const ev of ['input', 'change']) {
   $('form').addEventListener(ev, render);
   $('item').addEventListener(ev, render);
@@ -4607,7 +5008,14 @@ setLang(pickLang());
 applyStatic();
 let saved = null;
 try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { saved = null; }
-if (saved && saved.src) {
+// Link compartilhado ganha do que estava salvo; depois o endereço volta a ficar limpo.
+const shared = location.hash.startsWith('#s=') ? decodeShare(location.hash.slice(3)) : null;
+if (shared) {
+  loadState(shared);
+  if (shared.lang !== LANG) convertInputs(shared.lang);
+  history.replaceState(null, '', location.pathname + location.search);
+  scenMsg(t('sharedLoaded'));
+} else if (saved && saved.src) {
   loadState(saved);
   // Estados salvos antes dos idiomas foram digitados em português.
   if ((saved.lang || 'pt') !== LANG) convertInputs(saved.lang || 'pt');
