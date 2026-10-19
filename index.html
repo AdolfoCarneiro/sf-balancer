@@ -1732,6 +1732,8 @@ function buildLines(groups, cap, side = t('group'), fluid = false, { balance = f
     if (c) c.count++; else line.comp.push({ gi: m.gi, count: 1, rate: m.rate });
   }
   lines.push(...packed);
+  // Sem mistura, as linhas saem na ordem dos grupos (a sobra do grupo 1 vem antes das linhas do grupo 2).
+  if (!mix) lines.sort((a, b) => a.comp[0].gi - b.comp[0].gi);
   return { lines, groups: info, packed: packed.length, warnings, total: lines.reduce((a, l) => a + l.rate, 0) };
 }
 
@@ -2945,7 +2947,9 @@ function generatePlans(srcLines, dstLines, cap, policy, blueprints = [], fluid =
   for (const d of D) {
     if (!avail.length) break;
     const covering = avail.filter(l => l.rate + EPS >= d.rate);
-    const pick = covering.length ? covering[covering.length - 1] : avail[0];
+    // Entre linhas de mesma taxa, a de menor número: O1 vai pro primeiro destino que pedir.
+    const smallest = covering.length ? covering[covering.length - 1].rate : null;
+    const pick = covering.length ? covering.find(l => Math.abs(l.rate - smallest) < EPS) : avail[0];
     avail.splice(avail.indexOf(pick), 1);
     fit.push({ dst: d, mains: [pick], deficit: Math.max(0, d.rate - pick.rate), excess: Math.max(0, pick.rate - d.rate) });
   }
@@ -3670,7 +3674,7 @@ function planSteps(p, a) {
   for (const hv of a.view.headers || []) {
     steps.push(t('stepHeader', hv.h.inputs.map(O).join(' + '), hv.h.members.map(Dn).join(', '), hv.junctions, fmt(hv.inEdges.reduce((s, e) => s + fl(e), 0))));
   }
-  for (const fv of a.view.bal || a.view.headers ? [] : a.view.feeds) {
+  for (const fv of a.view.bal || a.view.headers ? [] : a.view.feeds.slice().sort((x, y) => x.f.dst.id - y.f.dst.id)) {
     const f = fv.f, ds = a.dests.get(f.dst.id);
     const mains = f.mains.map((l, i) => {
       const held = a.sources.get(l.id).held;
@@ -3806,15 +3810,17 @@ function flowSvg(p, a) {
   const rowH = 54, boxW = 184, dstW = 224, boxH = 40, W = 960, top = 8;
   const xSrc = 0, xDst = W - dstW, xMerge = xDst - 42, xOv = xDst - 150, xDiv = 410;
 
+  // Destinos na ordem das linhas (que é a dos grupos); cada origem fica na altura do destino que alimenta.
+  const feedsInOrder = v.feeds.slice().sort((x, y) => x.f.dst.id - y.f.dst.id);
   const srcOrder = [];
   const seen = new Set();
   const push = l => { if (!seen.has(l.id)) { seen.add(l.id); srcOrder.push(l); } };
-  v.feeds.forEach(fv => fv.f.mains.forEach(push));
+  feedsInOrder.forEach(fv => fv.f.mains.forEach(push));
   v.groups.forEach(g => push(g.gr.donor));
   if (v.bal) a.bal.inputs.forEach(push);
   (v.headers || []).forEach(hv => hv.h.inputs.forEach(push));
   v.leftovers.forEach(l => push(l.line));
-  const dstOrder = [...v.feeds.map(fv => fv.f.dst), ...a.unfed];
+  const dstOrder = [...v.feeds.map(fv => fv.f.dst), ...a.unfed].sort((x, y) => x.id - y.id);
   const hasSink = a.g.nodes[v.sink].ins.length > 0;
   const hasExtra = a.g.nodes[v.extra].ins.length > 0;
   const dstRows = dstOrder.length + (hasSink ? 1 : 0) + (hasExtra ? 1 : 0);

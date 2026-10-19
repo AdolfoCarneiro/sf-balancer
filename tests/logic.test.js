@@ -272,10 +272,26 @@ test('cenário: linhas por grupo aparecem no texto do grupo', () => {
   assert.equal(parts(p.dst.groups[1]), '2 de 7 (420/min)');
 });
 
+test('cenário: 43,38 × 60 → 1.762,71 a 30 + 14 × 60, falta cai no destino menor e O1 vai pro D1', () => {
+  const p = L.computePlan({ ...base,
+    srcGroups: [{ driver: 'machines', count: 43.38, nominal: 60 }],
+    dstGroups: [{ driver: 'total', total: 1762.71, nominal: 30 }, { driver: 'machines', count: 14, nominal: 60 }] });
+  assert.deepEqual(p.dst.lines.map(l => l.machines), [15, 15, 15, 14, 7, 7]);
+  assert.deepEqual(p.dst.lines.map(l => l.comp[0].gi), [0, 0, 0, 0, 1, 1], 'G1 junto, depois G2');
+  const a = p.alternatives[0];
+  assert.equal(a.key, 'redistribuir');
+  assert.ok(a.full);
+  const main = dstId => a.view.feeds.find(f => f.f.dst.id === dstId).f.mains[0];
+  // Linhas de origem iguais vão em ordem: O1 → D1, O2 → D2, O3 → D3; a linha curta (O6) fica com o D4, o menor.
+  assert.deepEqual([0, 1, 2, 3].map(i => main(i).id), [0, 1, 2, 5]);
+  assert.equal(a.view.feeds.find(f => f.f.dst.id === 3).inbound.length, 5, 'D4 recebe o excesso das outras 5');
+  conserves(p, a);
+});
+
 test('destino com por linha digitado usa o valor exato e não mistura grupos', () => {
   const p = L.computePlan({ ...base, srcCount: 44, srcRate: 60,
     dstGroups: [{ driver: 'machines', count: 59, nominal: 30, per: 16 }, { driver: 'machines', count: 14, nominal: 60, per: 8 }] });
-  assert.deepEqual(p.dst.lines.map(l => l.machines), [16, 16, 16, 8, 6, 11]);
+  assert.deepEqual(p.dst.lines.map(l => l.machines), [16, 16, 16, 11, 8, 6], 'linhas na ordem dos grupos, sobra junto do seu grupo');
   assert.ok(p.dst.lines.every(l => l.comp.length === 1));
 });
 
