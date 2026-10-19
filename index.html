@@ -47,6 +47,8 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Three.js só é baixado quando a aba 3D abre (import() dinâmico); o mapa só diz de onde. -->
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -409,6 +411,9 @@
   .plegend i.loopi { background: repeating-linear-gradient(90deg, var(--ink-dim) 0 5px, transparent 5px 8px); }
 
   /* Holograma da build gun: a peça do passo atual aparece tracejada e fica sólida no passo seguinte */
+  .stage3d { position: relative; height: min(68vh, 580px); min-height: 360px; }
+  .stage3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .stage3d canvas:active { cursor: grabbing; }
   .bsvg [data-s] { transition: opacity .3s ease; }
   .bsvg.stepping .fut { opacity: 0; }
   .bsvg.stepping .past { opacity: .5; }
@@ -1890,7 +1895,7 @@ function designFloors(d) {
 // Vista 3D: posições em metros (y é a altura) a partir dos níveis de designFloors.
 // Andares: cada nível é um andar, peças lado a lado. Torres: cada nível vira uma torre ao longo do fluxo,
 // com as peças empilhadas. Esteira entre alturas diferentes de duas peças sobe ou desce por lift.
-const L3D = { cell: 4, floor: 4, gap: 8 };
+const L3D = { cell: 4, floor: 5, gap: 8 };
 function layout3d(d, mode) {
   const fl = designFloors(d);
   if (!fl) return null;
@@ -1916,7 +1921,11 @@ function layout3d(d, mode) {
   } else {
     const perLevel = levels.map(f => nodes.filter(n => piece(n) && n.floor === f).length);
     const W = Math.max(...perLevel, d.N, d.M, d.net ? d.net.K : 0) * L3D.gap;
-    nodes.filter(n => n.t !== 'sink').forEach(n => pos.set(n.id, [n.x * W, n.floor * L3D.floor, 0]));
+    nodes.filter(piece).forEach(n => pos.set(n.id, [n.x * W, n.floor * L3D.floor, 0]));
+    // Entradas na frente do primeiro andar e saídas na frente do último, para não ficarem embaixo das peças.
+    const lo = levels[0] * L3D.floor, hi = levels[levels.length - 1] * L3D.floor;
+    fl.ins.forEach(id => pos.set(id, [nodes[id].x * W, lo, L3D.gap * 1.5]));
+    fl.outs.forEach(id => pos.set(id, [nodes[id].x * W, hi, L3D.gap * 1.5]));
   }
   // Sink: toco na frente da peça de onde sai, um ao lado do outro.
   const sinkCount = new Map();
@@ -3606,6 +3615,245 @@ function verticalBuild(d, labels) {
   }
   const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
   return { svg, steps };
+}
+
+// ---- Cena 3D (Three.js sob demanda) ----
+// Peças próprias: splitter laranja com "1→3", merger sextavado verde-água com "3→1", lift como tubo,
+// esteira com chevrons na cor da faixa andando no sentido do fluxo. Passo atual em holograma.
+let THREE_P = null;
+const load3d = () => (THREE_P ||= Promise.all([import('three'), import('three/addons/controls/OrbitControls.js')])
+  .then(([T, O]) => ({ T, OrbitControls: O.OrbitControls }))
+  .catch(e => { THREE_P = null; throw e; }));
+const MERGER_3D = '#4fd1c5';
+
+async function mount3d(stage, d, labels, lay) {
+  let lib, renderer;
+  try { lib = await load3d(); } catch (e) { return null; }
+  const { T, OrbitControls } = lib;
+  try { renderer = new T.WebGLRenderer({ antialias: true }); } catch (e) { return null; }
+  if (!renderer.getContext()) return null;
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const hex = c => (c.startsWith('var(') ? css(c.slice(4, -1)) : c);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const disposables = [];
+  const keep = x => (disposables.push(x), x);
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  stage.append(renderer.domElement);
+  const scene = new T.Scene();
+  scene.background = new T.Color(hex('var(--bench)'));
+  scene.add(new T.HemisphereLight(0xd6ecff, 0x0a1b2d, 1.6));
+  const sun = new T.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(40, 80, 50);
+  scene.add(sun);
+
+  const { min, max } = lay.bounds;
+  const center = new T.Vector3((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
+  const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2], 16);
+  // Piso de blueprint: placa azul com a grade das fundações (8 m) e a meia grade (4 m).
+  const span = Math.ceil((Math.max(max[0] - min[0], max[2] - min[2]) + 24) / 8) * 8;
+  const floorY = min[1] - 1.4;
+  const base = new T.Mesh(keep(new T.PlaneGeometry(span, span)), keep(new T.MeshBasicMaterial({ color: 0x0f3150, transparent: true, opacity: 0.85 })));
+  base.rotation.x = -Math.PI / 2;
+  base.position.set(center.x, floorY - 0.02, center.z);
+  scene.add(base);
+  const fine = new T.GridHelper(span, span / 4, hex('var(--grid)'), hex('var(--grid)'));
+  const coarse = new T.GridHelper(span, span / 8, hex('var(--line)'), hex('var(--line)'));
+  fine.position.set(center.x, floorY - 0.01, center.z);
+  coarse.position.set(center.x, floorY, center.z);
+  scene.add(fine, coarse);
+  disposables.push(fine.geometry, fine.material, coarse.geometry, coarse.material);
+
+  // Textura com texto (marca da peça, rótulo de entrada/saída).
+  const textTex = (text, fg, bg, w = 256, h = 256, size = 110) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10);
+    g.fillStyle = fg; g.font = `700 ${size}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 + 4);
+    const tx = keep(new T.CanvasTexture(c));
+    tx.colorSpace = T.SRGBColorSpace;
+    tx.anisotropy = 4;
+    return tx;
+  };
+  // Chevrons apontando para +u: a esteira anda no sentido do fluxo.
+  const chevCache = new Map();
+  const chevron = color => {
+    if (!chevCache.has(color)) {
+      const c = document.createElement('canvas');
+      c.width = 64; c.height = 64;
+      const g = c.getContext('2d');
+      g.fillStyle = '#1b2e42'; g.fillRect(0, 0, 64, 64);
+      g.strokeStyle = color; g.lineWidth = 9; g.lineJoin = 'miter';
+      g.beginPath(); g.moveTo(18, 10); g.lineTo(44, 32); g.lineTo(18, 54); g.stroke();
+      chevCache.set(color, c);
+    }
+    const tx = keep(new T.CanvasTexture(chevCache.get(color)));
+    tx.colorSpace = T.SRGBColorSpace;
+    tx.wrapS = tx.wrapT = T.RepeatWrapping;
+    return tx;
+  };
+
+  const objs = [];
+  const mat = (opts) => keep(new T.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15, ...opts }));
+  const add = (mesh, step, kind, extra = {}) => {
+    scene.add(mesh);
+    const mats = [];
+    mesh.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.push(m)); });
+    objs.push({ mesh, step, kind, mats, ...extra });
+  };
+  const sprite = (text, color, y) => {
+    const sm = keep(new T.SpriteMaterial({ map: textTex(text, color, 'rgba(10,27,45,.85)', 256, 96, 64), depthTest: false }));
+    const sp = new T.Sprite(sm);
+    sp.scale.set(4.2, 1.6, 1);
+    sp.position.y = y;
+    sp.renderOrder = 2;
+    return sp;
+  };
+  const C = L3D.cell;
+  const boxG = keep(new T.BoxGeometry(C * 0.9, 2.4, C * 0.9));
+  const hexG = keep(new T.CylinderGeometry(C * 0.5, C * 0.5, 2.4, 6));
+  const plateG = keep(new T.BoxGeometry(C * 1.1, 0.8, C * 0.9));
+  for (const p of lay.pieces) {
+    const g = new T.Group();
+    g.position.set(...p.pos);
+    if (p.t === 's') {
+      const face = mat({ color: hex('var(--ficsit)'), map: textTex(`1→${p.ways}`, '#1a1205', hex('var(--ficsit)')) });
+      const plain = mat({ color: hex('var(--ficsit)') });
+      g.add(new T.Mesh(boxG, [face, face, face, plain, face, face]));
+    } else if (p.t === 'm') {
+      const top = mat({ color: MERGER_3D, map: textTex('3→1', '#04201d', MERGER_3D) });
+      const side = mat({ color: MERGER_3D });
+      g.add(new T.Mesh(hexG, [side, top, side]));
+    } else if (p.t === 'sink') {
+      g.add(new T.Mesh(boxG, mat({ color: hex('var(--sink)'), map: textTex('sink', '#2a0509', hex('var(--sink)'), 256, 256, 80) })));
+    } else {
+      const isIn = p.t === 'in', i = isIn ? lay.pieces.filter(q => q.t === 'in').indexOf(p) : lay.pieces.filter(q => q.t === 'out').indexOf(p);
+      const color = isIn ? inColor(p.inp ?? i) : hex('var(--ok)');
+      g.add(new T.Mesh(plateG, mat({ color: hex('var(--plate)'), emissive: new T.Color(color), emissiveIntensity: 0.18 })));
+      g.add(sprite(isIn ? labels.ins[i] : labels.outs[i], color, 2.2));
+    }
+    add(g, p.step, 'piece');
+  }
+
+  // Esteiras: segmento horizontal = faixa achatada; vertical = lift (tubo) com a faixa subindo dentro.
+  const liftG = keep(new T.CylinderGeometry(0.95, 0.95, 1, 12, 1, true));
+  for (const [bi, b] of lay.belts.entries()) {
+    const color = b.kind === 'loop' ? hex('var(--ink-dim)') : b.inp >= 0 ? inColor(b.inp) : hex('var(--ink)');
+    const g = new T.Group();
+    const texs = [];
+    const lift = mat({ color: hex('var(--line)'), transparent: true, opacity: 0.55, side: T.DoubleSide });
+    for (let k = 1; k < b.pts.length; k++) {
+      const a = new T.Vector3(...b.pts[k - 1]), c = new T.Vector3(...b.pts[k]);
+      const dir = c.clone().sub(a), len = dir.length();
+      if (len < 1e-6) continue;
+      const mid = a.clone().add(c).multiplyScalar(0.5);
+      const tx = chevron(color);
+      texs.push(tx);
+      if (Math.abs(dir.y) > 1e-6) {
+        const tube = new T.Mesh(liftG, lift);
+        tube.scale.y = len;
+        tube.position.copy(mid);
+        g.add(tube);
+        tx.repeat.set(len / 2, 1);
+        tx.center.set(0.5, 0.5);
+        tx.rotation = dir.y > 0 ? Math.PI / 2 : -Math.PI / 2;
+        const strip = new T.Mesh(keep(new T.PlaneGeometry(0.9, len)), mat({ color: 0xffffff, map: tx, side: T.DoubleSide }));
+        strip.position.copy(mid);
+        g.add(strip);
+        const strip2 = strip.clone();
+        strip2.rotation.y = Math.PI / 2;
+        g.add(strip2);
+      } else {
+        // Leve desnível por esteira para duas faixas no mesmo trecho não piscarem uma sobre a outra.
+        const geo = keep(new T.BoxGeometry(len, 0.22, 1.1));
+        tx.repeat.set(len / 2, 1);
+        const top = mat({ color: 0xffffff, map: tx }), side = mat({ color: '#1b2e42' });
+        const m = new T.Mesh(geo, [side, side, top, side, side, side]);
+        m.position.copy(mid);
+        m.position.y += -1.0 + (bi % 5) * 0.035;
+        m.rotation.y = -Math.atan2(dir.z, dir.x);
+        g.add(m);
+      }
+    }
+    add(g, b.step, 'belt', { texs });
+  }
+
+  const camera = new T.PerspectiveCamera(45, 1, 0.5, 2000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = !reduce;
+  controls.maxPolarAngle = Math.PI * 0.495;
+  const recenter = () => {
+    const dist = extent * 0.95 + 14;
+    camera.position.copy(center).add(new T.Vector3(0.75, 0.75, 1.1).normalize().multiplyScalar(dist));
+    controls.target.copy(center);
+    controls.update();
+    draw();
+  };
+
+  // Holograma: ciano translúcido nas peças; esteira do passo translúcida e andando. Futuro escondido.
+  const HOLO = new T.Color(hex('var(--holo)'));
+  let cur = 0, K = 0;
+  const setStep = (c, k) => {
+    cur = c; K = k;
+    for (const o of objs) {
+      const done = cur >= K, holo = !done && o.step === cur;
+      o.mesh.visible = done || o.step <= cur;
+      o.moving = !reduce && (holo || (done && o.kind === 'belt'));
+      for (const m of o.mats) {
+        if (!m.userData.base) m.userData.base = { opacity: m.opacity, transparent: m.transparent, emissive: m.emissive ? m.emissive.clone() : null, ei: m.emissiveIntensity };
+        const bs = m.userData.base;
+        m.transparent = holo || bs.transparent;
+        m.opacity = holo ? (o.kind === 'belt' ? 0.6 : 0.35) : bs.opacity;
+        m.depthWrite = !holo;
+        if (m.emissive) { m.emissive.copy(holo && o.kind === 'piece' ? HOLO : bs.emissive); m.emissiveIntensity = holo && o.kind === 'piece' ? 0.7 : bs.ei; }
+        m.needsUpdate = true;
+      }
+    }
+    draw();
+  };
+
+  const size = () => {
+    const w = stage.clientWidth || 600, h = stage.clientHeight || 400;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    draw();
+  };
+  let raf = 0, last = 0, visible = true, alive = true;
+  function draw() { if (alive) renderer.render(scene, camera); }
+  const loop = now => {
+    raf = requestAnimationFrame(loop);
+    const dt = Math.min(0.1, (now - last) / 1000 || 0);
+    last = now;
+    if (!visible) return;
+    const speed = cur >= K ? 0.6 : 1.6;
+    for (const o of objs) if (o.moving && o.texs) o.texs.forEach(tx => { tx.offset.x -= dt * speed; });
+    controls.update();
+    draw();
+  };
+  const ro = new ResizeObserver(size);
+  ro.observe(stage);
+  const io = new IntersectionObserver(es => { visible = es[0].isIntersecting; });
+  io.observe(stage);
+  if (reduce) controls.addEventListener('change', draw);
+  else raf = requestAnimationFrame(loop);
+  size();
+  recenter();
+
+  const dispose = () => {
+    alive = false;
+    cancelAnimationFrame(raf);
+    ro.disconnect();
+    io.disconnect();
+    controls.dispose();
+    disposables.forEach(x => x.dispose && x.dispose());
+    renderer.dispose();
+    renderer.forceContextLoss();
+    renderer.domElement.remove();
+  };
+  return { setStep, recenter, dispose };
 }
 
 // Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
