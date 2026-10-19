@@ -885,8 +885,8 @@ const I18N = {
     rButterfly: 'só serve com entradas = saídas, num número feito de 2 e 3',
     segBfPart: s => `Rodada ${s}: cada parte`, segBfOut: s => `Rodada ${s}: cada esteira depois do merger`,
     styleTitle: 'Montagem', styleNormal: 'Normal', styleButterfly: 'Borboleta', styleVertical: 'Vertical',
-    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve quando entradas = saídas e gasta menos peças em 4→4, 8→8. Vertical: o balancer escolhido em andares, um por camada de peças, ligados por lifts.',
-    styleNone: 'A borboleta só serve com o mesmo número de entradas e saídas, e esse número tem que ser feito de 2 e 3 (2, 3, 4, 6, 8, 9…). Use Normal ou Vertical.',
+    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve quando entradas = saídas e gasta menos peças em 4→4, 8→8.',
+    styleNone: 'A borboleta só serve com o mesmo número de entradas e saídas, e esse número tem que ser feito de 2 e 3 (2, 3, 4, 6, 8, 9…). Use Normal.',
     thLifts: 'Lifts', floorTag: f => `Andar ${f}`, lgLift: 'lift',
     stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em cada uma das ${n} esteiras.`,
     stBfMerge: (round, groups) => `Rodada ${round}: um merger por esteira junta uma parte de cada esteira do bloco (${groups}). As esteiras de cada bloco saem iguais.`,
@@ -1136,8 +1136,8 @@ const I18N = {
     rButterfly: 'only works with inputs = outputs, at a count made of 2s and 3s',
     segBfPart: s => `Round ${s}: each part`, segBfOut: s => `Round ${s}: each belt after the merger`,
     styleTitle: 'Build', styleNormal: 'Normal', styleButterfly: 'Butterfly', styleVertical: 'Vertical',
-    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works when inputs = outputs and uses fewer pieces for 4→4, 8→8. Vertical: the chosen balancer in floors, one per layer of pieces, joined by lifts.',
-    styleNone: 'The butterfly only works with the same number of inputs and outputs, and that number has to be made of 2s and 3s (2, 3, 4, 6, 8, 9…). Use Normal or Vertical.',
+    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works when inputs = outputs and uses fewer pieces for 4→4, 8→8.',
+    styleNone: 'The butterfly only works with the same number of inputs and outputs, and that number has to be made of 2s and 3s (2, 3, 4, 6, 8, 9…). Use Normal.',
     thLifts: 'Lifts', floorTag: f => `Floor ${f}`, lgLift: 'lift',
     stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on each of the ${n} belts.`,
     stBfMerge: (round, groups) => `Round ${round}: one merger per belt joins one part from each belt in the block (${groups}). The belts in each block leave equal.`,
@@ -1387,8 +1387,8 @@ const I18N = {
     rButterfly: 'solo sirve con entradas = salidas, en un número hecho de 2 y 3',
     segBfPart: s => `Ronda ${s}: cada parte`, segBfOut: s => `Ronda ${s}: cada cinta tras el merger`,
     styleTitle: 'Montaje', styleNormal: 'Normal', styleButterfly: 'Mariposa', styleVertical: 'Vertical',
-    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve cuando entradas = salidas y gasta menos piezas en 4→4, 8→8. Vertical: el balanceador elegido en pisos, uno por capa de piezas, unidos con lifts.',
-    styleNone: 'La mariposa solo sirve con el mismo número de entradas y salidas, y ese número tiene que estar hecho de 2 y 3 (2, 3, 4, 6, 8, 9…). Usa Normal o Vertical.',
+    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve cuando entradas = salidas y gasta menos piezas en 4→4, 8→8.',
+    styleNone: 'La mariposa solo sirve con el mismo número de entradas y salidas, y ese número tiene que estar hecho de 2 y 3 (2, 3, 4, 6, 8, 9…). Usa Normal.',
     thLifts: 'Lifts', floorTag: f => `Piso ${f}`, lgLift: 'lift',
     stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en cada una de las ${n} cintas.`,
     stBfMerge: (round, groups) => `Ronda ${round}: un merger por cinta junta una parte de cada cinta del bloque (${groups}). Las cintas de cada bloque salen iguales.`,
@@ -3097,7 +3097,8 @@ function balancerBuild(d, labels) {
     const s0 = inStep();
     for (let i = 0; i < N; i++) g(over, s0, box(0, y(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
     F.forEach((f, s) => {
-      const color = i => (s === 0 ? inColor(i) : 'var(--ink)');
+      // Cor por faixa: a linha i mantém a cor da sua entrada em todas as rodadas, para seguir cada ligação.
+      const color = inColor;
       const ss = step(t('stBfSplit', s + 1, M, f));
       for (let i = 0; i < M; i++) {
         g(under, ss, belt(`M${s === 0 ? inW : colM(s - 1) + 7},${y(i)} L${colS(s) - 11},${y(i)}`, color(i), 3));
@@ -3433,8 +3434,9 @@ function checksTable(d, belt) {
 
 // Bancada: passo a passo do design escolhido, a lista de designs testados e a vazão de cada trecho.
 // ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, style, view, inUse, onView, onStyle }
-// Montagem: normal (designs planos), borboleta, ou vertical (qualquer design em andares, com lifts).
-const STYLES = ['normal', 'butterfly', 'vertical'];
+// Montagem: normal (designs planos) ou borboleta.
+// Vertical desligado por enquanto (o corte não ficou legível); designFloors e verticalBuild continuam prontos.
+const STYLES = ['normal', 'butterfly'];
 const STYLE_FILTER = { normal: d => d.kind !== 'butterfly', butterfly: d => d.kind === 'butterfly', vertical: d => d.kind !== 'blueprint' };
 function workbench(el, ctx) {
   const style = STYLES.includes(ctx.style) ? ctx.style : 'normal';
