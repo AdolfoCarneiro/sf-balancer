@@ -807,3 +807,61 @@ test('3D: esteira misturada leva a cor da saída para onde segue', () => {
     }
   }
 });
+
+// ---- Vista 3D: passo a passo peça por peça ----
+test('3D peça por peça: um passo por splitter ou merger, na ordem de montagem', () => {
+  for (const d of [L.balancerDesign('matrix', 4, 4, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.balancerDesign('matrix-sink', 2, 5, [100], 1e9), L.balancerDesign('matrix-loop', 2, 5, [100], 1e9)]) {
+    for (const mode of ['floors', 'towers']) {
+      const lay = lay3d(d, mode), pp = L.byPiece3d(lay), at = `${d.kind} ${mode}`;
+      const parts = lay.pieces.filter(p => p.t === 's' || p.t === 'm');
+      assert.equal(pp.steps.length, parts.length + 2, at);
+      assert.equal(pp.steps[0].key, 'in');
+      assert.equal(pp.steps[pp.steps.length - 1].key, 'out');
+      const stepOf = new Map(pp.pieces.map(p => [p.id, p.step]));
+      pp.steps.slice(1, -1).forEach((st, i) => {
+        assert.equal(st.key, 'piece', at);
+        assert.equal(stepOf.get(st.id), i + 1, `${at}: a peça do passo ${i + 1} aparece nele`);
+      });
+      assert.equal(new Set(parts.map(p => stepOf.get(p.id))).size, parts.length, `${at}: cada peça num passo só`);
+      // Ordem: nível de hoje primeiro; dentro dele, de baixo para cima e da esquerda para a direita.
+      const order = pp.steps.slice(1, -1).map(st => lay.pieces.find(p => p.id === st.id));
+      for (let i = 1; i < order.length; i++) {
+        const a = order[i - 1], b = order[i];
+        assert.ok(a.step < b.step || (a.step === b.step && (a.pos[1] < b.pos[1] || (a.pos[1] === b.pos[1] && a.pos[0] <= b.pos[0]))), `${at}: ordem de montagem`);
+      }
+      lay.pieces.filter(p => p.t === 'sink').forEach(s => {
+        const from = lay.belts.find(b => b.b === s.id).a;
+        assert.equal(stepOf.get(s.id), stepOf.get(from), `${at}: sink junto da peça de onde sai`);
+      });
+      pp.belts.forEach((b, bi) => assert.equal(b.step, Math.max(stepOf.get(b.a), stepOf.get(b.b)), `${at}: esteira ${bi} aparece quando as duas pontas existem`));
+      // Ligações do passo: uma por esteira da peça, com o lado e se a outra ponta ainda falta.
+      pp.steps.slice(1, -1).forEach(st => {
+        const mine = lay.belts.filter(b => b.a === st.id || b.b === st.id);
+        assert.equal(st.conns.length, mine.length, at);
+        for (const c of st.conns) {
+          const b = lay.belts[c.belt], out = b.a === st.id;
+          assert.equal(c.dir, out ? 'out' : 'in');
+          assert.equal(c.side, out ? b.fromSide : b.toSide);
+          assert.equal(c.pending, stepOf.get(out ? b.b : b.a) > stepOf.get(st.id));
+        }
+      });
+    }
+  }
+});
+
+test('idiomas: texto do passo peça por peça', () => {
+  const lay = lay3d(L.butterflyDesign(4, 4, [100], 1e9), 'towers'), pp = L.byPiece3d(lay);
+  const labels = { ins: ['E1', 'E2', 'E3', 'E4'], outs: ['S1', 'S2', 'S3', 'S4'] };
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    for (const mode of ['towers', 'floors']) {
+      const txt = L.pieceText3d(pp.steps[1], labels, mode);
+      assert.ok(/Splitter|Merger/.test(txt) && txt.length > 30, `${l} ${mode}: ${txt}`);
+    }
+    for (const k of ['per3dLevel', 'per3dPiece', 'per3dLabel', 'tip3dPer']) assert.ok(L.t(k).length > 2, `${l}: ${k}`);
+  });
+  inLang('pt', () => {
+    const txt = L.pieceText3d(pp.steps[1], labels, 'towers');
+    assert.match(txt, /E\d/, 'diz de qual entrada vem');
+    assert.match(txt, /por trás/, 'splitter entra por trás');
+  });
+});

@@ -397,6 +397,8 @@
   .pctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
   .ticks { display: flex; gap: 3px; flex: 1 1 180px; min-width: 120px; }
   .tick { flex: 1; height: 12px; padding: 0; border: 0; cursor: pointer; background: var(--line); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); }
+  .ticks.many { gap: 1px; }
+  .ticks.many .tick { clip-path: none; min-width: 2px; }
   .tick.done { background: var(--ficsit); }
   .tick.cur { background: var(--holo); }
   .tick:hover { background: #3d6a96; }
@@ -932,6 +934,14 @@ const I18N = {
     mode3dTowers: 'Torres', mode3dFloors: 'Andares', mode3dLabel: 'Montagem em 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada camada de peças vira uma torre, com as peças empilhadas e as esteiras cruzando de uma torre para a outra. Andares: cada camada num andar, com as peças lado a lado.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'saída da peça', lgPortIn: 'entrada da peça',
+    per3dLevel: 'Por nível', per3dPiece: 'Por peça', per3dLabel: 'Passo a passo do 3D',
+    tip3dPer: 'Por nível: um passo por torre ou andar inteiro. Por peça: um passo por splitter ou merger, com cada ligação explicada (por qual lado, de onde vem e para onde vai), para montar devagar.',
+    stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
+    where3dTowers: (lv, at) => `na torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `no andar ${lv}, ${at}ª a partir da esquerda`,
+    conn3dIn: (side, other, extra) => `Entra ${side}, vindo ${/^do /.test(other) ? '' : 'de '}${other}${extra}.`, conn3dOut: (side, other, extra) => `Sai ${side} para ${other}${extra}.`,
+    side3dBack: 'por trás', side3dFront: 'pela frente', side3dLeft: 'pela esquerda', side3dRight: 'pela direita',
+    other3dPiece: (k, where) => `o ${k} ${where}`, other3dPieceFrom: (k, where) => `do ${k} ${where}`, other3dSink: 'o sink',
+    lift3dUp: ', subindo por lift', lift3dDown: ', descendo por lift', loop3d: ', pelo retorno do loop', pending3d: ' (ainda não montado)',
     follow3d: 'Seguir', followAria: tag => `Seguir o caminho de ${tag}`, hint3dFocus: 'passe o mouse ou toque numa peça para ver só as ligações dela; clique para fixar',
     tip3dTop: 'No topo de cada splitter e merger há uma seta por porta usada, na cor da esteira: saindo do centro é saída, chegando no centro é entrada. Como no jogo, o splitter recebe por trás e solta pela frente e pelos lados, e o merger recebe por trás e pelos lados e solta pela frente. Uma esteira por face.',
     loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
@@ -1198,6 +1208,14 @@ const I18N = {
     mode3dTowers: 'Towers', mode3dFloors: 'Floors', mode3dLabel: '3D layout', recenter3d: 'Recenter',
     tip3dMode: 'Towers: each layer of pieces becomes a tower, with the pieces stacked and belts crossing from one tower to the next. Floors: each layer on a floor, with the pieces side by side.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'piece output', lgPortIn: 'piece input',
+    per3dLevel: 'By level', per3dPiece: 'By piece', per3dLabel: '3D step by step',
+    tip3dPer: 'By level: one step per whole tower or floor. By piece: one step per splitter or merger, with every connection spelled out (which side, where it comes from and where it goes), to build slowly.',
+    stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
+    where3dTowers: (lv, at) => `in tower ${lv}, height ${at}`, where3dFloors: (lv, at) => `on floor ${lv}, position ${at} from the left`,
+    conn3dIn: (side, other, extra) => `Input ${side} from ${other}${extra}.`, conn3dOut: (side, other, extra) => `Output ${side} to ${other}${extra}.`,
+    side3dBack: 'at the back', side3dFront: 'at the front', side3dLeft: 'on the left', side3dRight: 'on the right',
+    other3dPiece: (k, where) => `the ${k} ${where}`, other3dPieceFrom: (k, where) => `the ${k} ${where}`, other3dSink: 'the sink',
+    lift3dUp: ', going up a lift', lift3dDown: ', going down a lift', loop3d: ', through the loop return', pending3d: ' (not built yet)',
     follow3d: 'Follow', followAria: tag => `Follow the path of ${tag}`, hint3dFocus: 'hover or tap a piece to see only its connections; click to pin',
     tip3dTop: 'On top of each splitter and merger there is one arrow per port in use, in the belt color: pointing out from the center is an output, pointing into the center is an input. As in the game, the splitter takes input at the back and outputs at the front and sides, and the merger takes input at the back and sides and outputs at the front. One belt per face.',
     loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
@@ -1464,6 +1482,14 @@ const I18N = {
     mode3dTowers: 'Torres', mode3dFloors: 'Pisos', mode3dLabel: 'Montaje en 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada capa de piezas es una torre, con las piezas apiladas y las cintas cruzando de una torre a la siguiente. Pisos: cada capa en un piso, con las piezas lado a lado.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'salida de la pieza', lgPortIn: 'entrada de la pieza',
+    per3dLevel: 'Por nivel', per3dPiece: 'Por pieza', per3dLabel: 'Paso a paso del 3D',
+    tip3dPer: 'Por nivel: un paso por torre o piso entero. Por pieza: un paso por splitter o merger, con cada conexión explicada (por qué lado, de dónde viene y a dónde va), para montar despacio.',
+    stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
+    where3dTowers: (lv, at) => `en la torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `en el piso ${lv}, posición ${at} desde la izquierda`,
+    conn3dIn: (side, other, extra) => `Entra ${side}, desde ${other}${extra}.`, conn3dOut: (side, other, extra) => `Sale ${side} hacia ${other}${extra}.`,
+    side3dBack: 'por atrás', side3dFront: 'por el frente', side3dLeft: 'por la izquierda', side3dRight: 'por la derecha',
+    other3dPiece: (k, where) => `el ${k} ${where}`, other3dPieceFrom: (k, where) => `el ${k} ${where}`, other3dSink: 'el sink',
+    lift3dUp: ', subiendo por un lift', lift3dDown: ', bajando por un lift', loop3d: ', por el retorno del loop', pending3d: ' (todavía no montado)',
     follow3d: 'Seguir', followAria: tag => `Seguir el camino de ${tag}`, hint3dFocus: 'pasa el mouse o toca una pieza para ver solo sus conexiones; clic para fijar',
     tip3dTop: 'Arriba de cada splitter y merger hay una flecha por puerto en uso, del color de la cinta: si sale del centro es salida, si llega al centro es entrada. Como en el juego, el splitter recibe por atrás y saca por el frente y los lados, y el merger recibe por atrás y los lados y saca por el frente. Una cinta por cara.',
     loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
@@ -1985,9 +2011,11 @@ function layout3d(d, mode) {
     const main = outs.filter(ei => nodes[edges[ei].b].t !== 'sink').sort((u, v) => dy(n.id, edges[u].b) - dy(n.id, edges[v].b) || dz(n.id, edges[u].b) - dz(n.id, edges[v].b));
     const flat = main.findIndex(ei => Math.abs(dy(n.id, edges[ei].b)) < 1e-9);
     if (main.length === 1) take(main[0], 'front');
-    else if (main.length === 3) main.forEach((ei, k) => take(ei, ['right', 'front', 'left'][k]));
+    // Mesma altura para todas (Andares): pela posição na fileira, a de menor z' pela esquerda (-z').
+    const level = main.every(ei => Math.abs(dy(n.id, edges[ei].b) - dy(n.id, edges[main[0]].b)) < 1e-9);
+    if (main.length === 3) main.forEach((ei, k) => take(ei, (level ? ['left', 'front', 'right'] : ['right', 'front', 'left'])[k]));
     else if (main.length === 2 && flat >= 0) { take(main[flat], 'front'); const o = main[1 - flat]; take(o, dy(n.id, edges[o].b) > 0 ? 'left' : 'right'); }
-    else if (main.length === 2) { take(main[0], 'right'); take(main[1], 'left'); }
+    else if (main.length === 2) { take(main[0], level ? 'left' : 'right'); take(main[1], level ? 'right' : 'left'); }
   });
   nodes.filter(n => n.t === 'm').forEach(n => {
     (outsOf.get(n.id) || []).forEach(ei => { fromSide[ei] = 'front'; });
@@ -2202,6 +2230,50 @@ function focus3d(lay, id) {
   if (t !== 'out') walk(id, true);
   if (t !== 'in') walk(id, false);
   return { pieces, belts };
+}
+
+// Passo a passo peça por peça: entradas, depois cada splitter ou merger na ordem de montagem (nível de hoje;
+// dentro dele de baixo para cima e da esquerda para a direita), depois as saídas. A esteira aparece quando as
+// duas pontas existem; o sink, com a peça de onde sai. Cada passo traz as ligações da peça para o texto.
+function byPiece3d(lay) {
+  const byId = new Map(lay.pieces.map(p => [p.id, p]));
+  const isPart = p => p.t === 's' || p.t === 'm';
+  const parts = lay.pieces.filter(isPart).sort((a, b) => a.step - b.step || a.pos[1] - b.pos[1] || a.pos[0] - b.pos[0] || a.pos[2] - b.pos[2]);
+  const last = parts.length + 1, stepOf = new Map();
+  parts.forEach((p, i) => stepOf.set(p.id, i + 1));
+  lay.pieces.forEach(p => { if (p.t === 'in') stepOf.set(p.id, 0); if (p.t === 'out') stepOf.set(p.id, last); });
+  lay.pieces.filter(p => p.t === 'sink').forEach(p => stepOf.set(p.id, stepOf.get(lay.belts.find(b => b.b === p.id).a)));
+  // Onde fica a peça: em Torres, a torre (o nível) e a altura nela; em Andares, o andar e a posição da esquerda.
+  const rank = p => lay.pieces.filter(q => isPart(q) && q.step === p.step && (lay.mode === 'towers' ? q.pos[1] < p.pos[1] - 1e-9 : q.pos[0] < p.pos[0] - 1e-9)).length + 1;
+  const where = p => ({ level: p.step, at: rank(p) });
+  const ins = lay.pieces.filter(p => p.t === 'in'), outs = lay.pieces.filter(p => p.t === 'out');
+  const other = q => (q.t === 'in' ? { t: 'in', idx: ins.indexOf(q) } : q.t === 'out' ? { t: 'out', idx: outs.indexOf(q) } : q.t === 'sink' ? { t: 'sink' } : { t: q.t, ...where(q) });
+  const SIDE = ['back', 'left', 'right', 'front'];
+  const steps = [{ key: 'in' }, ...parts.map(p => {
+    const conns = lay.belts.map((b, bi) => ({ b, bi })).filter(({ b }) => b.a === p.id || b.b === p.id).map(({ b, bi }) => {
+      const out = b.a === p.id, q = byId.get(out ? b.b : b.a), dy = q.pos[1] - p.pos[1];
+      return { belt: bi, dir: out ? 'out' : 'in', side: out ? b.fromSide : b.toSide, other: other(q), loop: b.kind === 'loop',
+        lift: Math.abs(dy) < 1e-9 ? null : (out ? dy > 0 : dy < 0) ? 'up' : 'down', pending: stepOf.get(q.id) > stepOf.get(p.id) };
+    }).sort((u, v) => (u.dir === v.dir ? 0 : u.dir === 'in' ? -1 : 1) || SIDE.indexOf(u.side) - SIDE.indexOf(v.side));
+    return { key: 'piece', id: p.id, t: p.t, ways: p.ways, nin: lay.belts.filter(b => b.b === p.id).length, ...where(p), conns };
+  }), { key: 'out' }];
+  return {
+    ...lay,
+    pieces: lay.pieces.map(p => ({ ...p, step: stepOf.get(p.id) })),
+    belts: lay.belts.map(b => ({ ...b, step: Math.max(stepOf.get(b.a), stepOf.get(b.b)) })),
+    steps,
+  };
+}
+
+// Texto de um passo peça por peça: o que montar, onde, e cada ligação (lado, de onde vem ou para onde vai).
+function pieceText3d(st, labels, mode) {
+  const name = (k, ways, nin) => (k === 's' ? `Splitter 1→${ways}` : `Merger ${nin}→1`);
+  const where = (lv, at) => t(mode === 'towers' ? 'where3dTowers' : 'where3dFloors', lv, at);
+  const otherText = (o, from) => (o.t === 'in' ? labels.ins[o.idx] : o.t === 'out' ? labels.outs[o.idx] : o.t === 'sink' ? t('other3dSink')
+    : t(from ? 'other3dPieceFrom' : 'other3dPiece', o.t === 's' ? 'splitter' : 'merger', where(o.level, o.at)));
+  const conns = st.conns.map(c => t(c.dir === 'in' ? 'conn3dIn' : 'conn3dOut', t('side3d' + c.side[0].toUpperCase() + c.side.slice(1)), otherText(c.other, c.dir === 'in'),
+    (c.loop ? t('loop3d') : c.lift ? t(c.lift === 'up' ? 'lift3dUp' : 'lift3dDown') : '') + (c.pending ? t('pending3d') : '')));
+  return t('stPiece3d', name(st.t, st.ways, st.nin), where(st.level, st.at), conns.join(' '));
 }
 
 // Toque ou clique na cena: só conta com um ponteiro durante todo o gesto e sem andar mais de 5 px.
@@ -2808,7 +2880,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -4148,23 +4220,28 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
 function mountPonder(root, d, labels, view = '2d', opts = {}) {
   if (root._stop) root._stop();
   const in3d = view !== '2d';
-  const lay = in3d ? layout3d(d, view) : null;
+  // Por peça: um passo por splitter ou merger (byPiece3d); por nível: um por torre ou andar.
+  const per = in3d && opts.per === 'piece' ? 'piece' : 'level';
+  const lay0 = in3d ? opts.lay || layout3d(d, view) : null;
+  const lay = in3d && per === 'piece' ? byPiece3d(lay0) : lay0;
   const { svg, steps } = in3d
     ? { svg: '', steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
-      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
+      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, view)
+      : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
     : balancerBuild(d, labels);
   const K = steps.length;
   let cur = K, timer = null, scene = null;
   const matrix = !d.kind.startsWith('funnel');
   const ctl3d = in3d ? `<div class="s3d-ctl">
       <div class="seg" role="radiogroup" aria-label="${esc(t('mode3dLabel'))}">${['towers', 'floors'].map(m => `<button type="button" role="radio" aria-checked="${m === view}" data-mode="${m}">${t('mode3d' + cap1(m))}</button>`).join('')}</div>${tip('tip3dMode')}
+      <div class="seg" role="radiogroup" aria-label="${esc(t('per3dLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tip3dPer')}
       <button type="button" class="pbtn" data-recenter>${t('recenter3d')}</button></div>` : '';
   root.innerHTML = `<div class="ponder" tabindex="-1">
     <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}</div>
     <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
-      <div class="ticks">${steps.map((_, i) => `<button type="button" class="tick" data-p="${i}" aria-label="${esc(t('stepGoto', i + 1))}"></button>`).join('')}</div>
+      <div class="ticks${steps.length > 24 ? ' many' : ''}">${steps.map((_, i) => `<button type="button" class="tick" data-p="${i}" aria-label="${esc(t('stepGoto', i + 1))}"></button>`).join('')}</div>
       <button type="button" class="pbtn" data-p="next" aria-label="${esc(t('stepNext'))}">›</button>
       <button type="button" class="pbtn" data-p="play"></button>
       <button type="button" class="pbtn prim" data-p="toggle"></button>
@@ -4233,6 +4310,8 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
     q('.s3d-ctl').addEventListener('click', e => {
       const m = e.target.closest('[data-mode]');
       if (m && m.dataset.mode !== view && opts.onMode) opts.onMode(m.dataset.mode);
+      const pv = e.target.closest('[data-per]');
+      if (pv && pv.dataset.per !== per && opts.onPer) opts.onPer(pv.dataset.per);
       if (e.target.closest('[data-recenter]') && scene) scene.recenter();
     });
     const chips = id => root.querySelectorAll('[data-follow]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.follow === id)));
@@ -4348,7 +4427,9 @@ function workbench(el, ctx) {
   </div>
   <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, fl ? mode3d : '2d', {
+    lay: fl, per: ctx.per3d,
     onMode: m => { ctx.mode3d = m; if (ctx.onMode3d) ctx.onMode3d(m); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
+    onPer: v => { ctx.per3d = v; if (ctx.onPer3d) ctx.onPer3d(v); workbench(el, ctx); el.querySelector(`[data-per="${v}"]`)?.focus(); },
   });
   bindStyle();
   el.querySelector('.cands').addEventListener('click', e => {
@@ -4366,7 +4447,7 @@ const BP_STORE = 'sf-balancer:bp';
 const LIB_STORE = 'sf-balancer:lib';
 let BPS = [{ n: 3, m: 4 }];
 try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
-const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers' };
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers', per3d: 'level' };
 try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
 if (LIB.style === 'vertical') LIB.style = '3d';
 const saveBps = () => { try { localStorage.setItem(BP_STORE, JSON.stringify(BPS)); } catch (e) { /* sem storage */ } };
@@ -4408,6 +4489,7 @@ function renderLib() {
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
     style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
     mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); },
+    per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); },
   });
 }
 
@@ -4446,7 +4528,7 @@ function openDesign(ctx) {
 function openFromPlan(key) {
   if (!lastRender) return;
   const { p, alt } = lastRender;
-  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); } };
+  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); }, per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); } };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
     openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind.startsWith('butterfly') ? 'butterfly' : 'normal' });
