@@ -790,3 +790,20 @@ test('3D: toque só conta com um dedo e sem arrastar', () => {
   g.down(4, 5, 5);
   assert.equal(g.up(4, 5, 5), true, 'depois de tudo, um toque normal volta a contar');
 });
+
+test('3D: esteira misturada leva a cor da saída para onde segue', () => {
+  for (const d of [L.balancerDesign('matrix', 4, 4, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.butterflyDesign(5, 5, [100], 1e9, 'butterfly-loop')]) {
+    for (const mode of ['floors', 'towers']) {
+      const lay = lay3d(d, mode), at = `${d.kind} ${mode}`;
+      const outs = lay.pieces.filter(p => p.t === 'out');
+      const reach = (id, seen = new Set()) => { for (const b of lay.belts) if (b.a === id && !seen.has(b.b)) { seen.add(b.b); reach(b.b, seen); } return seen; };
+      lay.belts.forEach((b, bi) => {
+        if (b.inp >= 0 || b.kind === 'loop') return;
+        if (lay.pieces.find(p => p.id === b.b).t === 'sink') return;
+        assert.ok(b.out >= 0 && b.out < outs.length, `${at}: esteira ${bi} sem saída`);
+        const dest = outs[b.out].id;
+        assert.ok(b.b === dest || reach(b.b).has(dest), `${at}: esteira ${bi} não chega na saída ${b.out}`);
+      });
+    }
+  }
+});

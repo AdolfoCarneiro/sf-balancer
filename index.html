@@ -2150,12 +2150,26 @@ function layout3d(d, mode) {
     if (next.total < run.total) run = next;
   }
   const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: back(F.get(n.id)), step: stepOf(n) }));
+  // Esteira misturada (sem entrada única) leva a cor da saída para onde segue: a da mesma faixa, se ela chega
+  // lá; senão a primeira que ela alcança.
+  const reachOuts = new Map();
+  const reachOf = id => {
+    if (reachOuts.has(id)) return reachOuts.get(id);
+    const seen = new Set([id]), found = new Set(), stack = [id];
+    while (stack.length) { const n = stack.pop(); if (nodes[n].t === 'out') found.add(n); for (const ei of outsOf.get(n) || []) if (!seen.has(edges[ei].b)) { seen.add(edges[ei].b); stack.push(edges[ei].b); } }
+    reachOuts.set(id, found);
+    return found;
+  };
+  const outOf = id => {
+    const r = reachOf(id), same = fl.outs.find(o => r.has(o) && Math.abs(nodes[o].x - nodes[id].x) < 1e-9);
+    return fl.outs.indexOf(same ?? fl.outs.find(o => r.has(o)) ?? -1);
+  };
   const belts = edges.map((e, ei) => {
     const pts = run.out.get(ei).pts.map(back);
     const b = nodes[e.b], loop = e.kind === 'loop';
     const step = e.kind === 'out' ? outStep : loop || b.t === 'sink' ? stepOf(nodes[e.a]) : stepOf(b);
     const lift = pts.slice(1).some((q, k) => Math.abs(q[1] - pts[k][1]) > 1e-9);
-    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift, step, fromSide: fromSide[ei], toSide: toSide[ei] };
+    return { a: e.a, b: e.b, inp: e.inp, out: outOf(e.b), kind: e.kind, pts, lift, step, fromSide: fromSide[ei], toSide: toSide[ei] };
   });
   const steps = [{ key: 'in' }];
   levels.forEach((f, i) => {
@@ -3871,7 +3885,8 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
   });
   // Direção de cada face no mundo (o layout fala no referencial do fluxo; Andares é girado).
   const faceDir = side => { const n = NRM3[side]; return lay.mode === 'floors' ? new T.Vector3(n[2], n[1], -n[0]) : new T.Vector3(...n); };
-  const beltColor = b => (b.kind === 'loop' ? hex('var(--ink-dim)') : b.inp >= 0 ? inColor(b.inp) : hex('var(--ink)'));
+  // Cor da esteira: a da entrada enquanto é de uma entrada só; misturada, a da saída para onde segue.
+  const beltColor = b => (b.kind === 'loop' ? hex('var(--ink-dim)') : b.inp >= 0 ? inColor(b.inp) : b.out >= 0 ? inColor(b.out) : hex('var(--ink)'));
 
   const objs = [];
   const track = (root, step, kind, id) => {
@@ -3937,7 +3952,7 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
       g.add(new T.Mesh(bodyG, new T.MeshLambertMaterial({ color: hex('var(--sink)') })));
     } else {
       const isIn = p.t === 'in', i = isIn ? ins.indexOf(p) : outs.indexOf(p);
-      const color = isIn ? inColor(p.inp ?? i) : hex('var(--ok)');
+      const color = inColor(isIn ? p.inp ?? i : i);
       g.add(new T.Mesh(plateG, new T.MeshLambertMaterial({ color })));
       const sp = new T.Sprite(new T.SpriteMaterial({ map: pill(isIn ? labels.ins[i] : labels.outs[i], color), depthTest: false, transparent: true }));
       sp.scale.set(4.4, 1.65, 1);
@@ -4016,8 +4031,8 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
   };
 
   const M4 = new T.Matrix4(), V = new T.Vector3(), Q = new T.Quaternion(), ONE = new T.Vector3(1, 1, 1), ZERO = new T.Vector3();
-  // Estado de cada objeto: passo atual (holograma pulsando), apagado (fora do foco) ou normal.
-  const HOLO = new T.Color(hex('var(--holo)'));
+  // Estado de cada objeto: passo atual (holograma pulsando na própria cor), apagado (fora do foco) ou normal.
+  const WHITE = new T.Color(0xffffff);
   let cur = 0, K = 0, lit = null, clock = 0;
   const apply = () => {
     const done = cur >= K, k = reduce ? 0.5 : 0.5 - 0.5 * Math.cos(clock * Math.PI * 2 / 1.15);
@@ -4031,7 +4046,7 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
         const b = m.userData.base;
         if (state === 'now') {
           m.transparent = true; m.opacity = b.op * (dim ? 0.1 : 0.3 + 0.45 * k); m.depthWrite = false;
-          if (m.emissive) { m.emissive.copy(HOLO); m.emissiveIntensity = 0.3 + k * 0.9; } else if (b.color) m.color.copy(b.color).lerp(HOLO, 0.35 + k * 0.5);
+          if (m.emissive) { m.emissive.copy(b.color || WHITE); m.emissiveIntensity = 0.15 + k * 0.45; } else if (b.color) m.color.copy(b.color).lerp(WHITE, 0.1 + k * 0.3);
         } else {
           m.transparent = dim || b.tr; m.opacity = dim ? b.op * 0.1 : b.op; m.depthWrite = dim ? false : b.dw;
           if (m.emissive) { m.emissive.copy(b.emissive); m.emissiveIntensity = b.ei; } else if (b.color) m.color.copy(b.color);
@@ -4155,7 +4170,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <button type="button" class="pbtn prim" data-p="toggle"></button>
       <span class="pkeys">${t('ponderKeys')}</span>
     </div>
-    ${in3d ? `<div class="follow"><span>${t('follow3d')}</span>${[...lay.pieces.filter(p => p.t === 'in').map((p, i) => [p.id, labels.ins[i], inColor(p.inp ?? i)]), ...lay.pieces.filter(p => p.t === 'out').map((p, i) => [p.id, labels.outs[i], 'var(--ok)'])]
+    ${in3d ? `<div class="follow"><span>${t('follow3d')}</span>${[...lay.pieces.filter(p => p.t === 'in').map((p, i) => [p.id, labels.ins[i], inColor(p.inp ?? i)]), ...lay.pieces.filter(p => p.t === 'out').map((p, i) => [p.id, labels.outs[i], inColor(i)])]
       .map(([id, tag, c]) => `<button type="button" class="chip" data-follow="${id}" aria-pressed="false" aria-label="${esc(t('followAria', tag))}"><i style="background:${c}"></i>${esc(tag)}</button>`).join('')}</div>` : ''}
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
