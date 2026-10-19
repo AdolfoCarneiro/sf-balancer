@@ -327,10 +327,65 @@ test('balancer: em baixa vazão o funil com loop ganha por ter menos peças', ()
 });
 
 test('balancer: sink só perde para o loop no desempate', () => {
-  const r = best(1, 7, 480, 480, []);
+  const r = best(1, 7, 480, 480, []).filter(d => d.kind !== 'matrix-split-loop');
   close(kind(r, 'matrix-loop').perOut, kind(r, 'matrix-sink').perOut);
   assert.equal(r[0].kind, 'matrix-loop');
   assert.equal(L.designWhy(r).code, 'noSink');
+});
+
+// Vazão que sai de cada saída simulando o design no grafo, com as entradas a `rates`.
+const simOut = (d, rates, cap) => {
+  const g = L.makeGraph(cap);
+  const ins = rates.map(r => L.addNode(g, 'source', { rate: r }));
+  const outs = Array.from({ length: d.M }, () => L.addNode(g, 'consumer', { demand: cap }));
+  const v = L.buildBalancer(g, d, ins, outs, L.addNode(g, 'sink'));
+  const sim = L.simulate(g);
+  return v.outEdges.map(e => sim.flow[e]);
+};
+
+test('loop dividido: 1→5 e 1→7 com a esteira cheia, como os da comunidade', () => {
+  const r5 = best(1, 5, 480, 480, []);
+  assert.equal(r5[0].kind, 'matrix-split-loop', 'ganha por vazão');
+  assert.equal(L.designPieces(r5[0]), 14, '1 + 2 × 3 splitters, 2 mergers de loop, 5 de saída');
+  close(r5[0].perOut, 96, 'esteira cheia: 480 / 5');
+  assert.ok(r5[0].segments.every(sg => sg.ok), 'nenhum trecho estoura a Mk4');
+  close(kind(r5, 'matrix-loop').perOut, 80, 'o loop comum (576) estrangula');
+  assert.equal(L.designWhy(r5).code, 'more');
+  simOut(r5[0], [480], 480).forEach(f => close(f, 96));
+  const r7 = best(1, 7, 480, 480, []);
+  assert.equal(r7[0].kind, 'matrix-split-loop');
+  assert.equal(L.designPieces(r7[0]), 24);
+  simOut(r7[0], [480], 480).forEach(f => close(f, 480 / 7));
+});
+
+test('loop dividido: com várias entradas desiguais as saídas saem iguais', () => {
+  const d = L.balancerDesign('matrix-split-loop', 2, 5, [480, 300], 480);
+  assert.equal(d.applies, null);
+  assert.equal(d.pieces.splitters, 2 + 4 * 3);
+  assert.equal(d.pieces.mergers, 4 + 5 * L.chainSizes(4).length);
+  simOut(d, [480, 300], 480).forEach(f => close(f, 156));
+});
+
+test('loop dividido: só aparece quando o loop comum estoura', () => {
+  assert.equal(L.balancerDesign('matrix-split-loop', 1, 5, [300], 480).applies, 'loopFits');
+  assert.equal(L.balancerDesign('matrix-split-loop', 1, 6, [480], 480).applies, 'direct');
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    assert.ok(L.designName(L.balancerDesign('matrix-split-loop', 1, 5, [480], 480)).length > 5);
+    for (const k of ['dsMatrixSplitLoop', 'segHalf']) assert.ok(L.t(k).length > 5, `${l} ${k}`);
+    assert.ok(L.t('stHalves', 1, '240').length > 20);
+    assert.ok(L.t('rLoopFits').length > 10);
+  });
+});
+
+test('loop dividido: 3D sem colisão, com um splitter em 2 por entrada', () => {
+  for (const [N, M] of [[1, 5], [1, 7], [2, 5], [3, 5]]) {
+    const d = L.balancerDesign('matrix-split-loop', N, M, [480], 480);
+    for (const mode of ['floors', 'towers']) {
+      const lay = lay3d(d, mode);
+      assert.equal(lay.bad, 0, `${N}→${M} ${mode}`);
+      assert.equal(lay.pieces.filter(p => p.t === 's' || p.t === 'm').length, L.designPieces(d), `${N}→${M} ${mode}: peças batem`);
+    }
+  }
 });
 
 test('balancer: blueprint do jogador é preferido quando o formato bate', () => {

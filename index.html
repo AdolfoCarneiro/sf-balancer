@@ -887,7 +887,7 @@ const I18N = {
     footSource: 'Código aberto no GitHub', footLicense: 'Licença MIT', footCoffee: 'Me paga um café', footDisclaimer: 'Ferramenta feita por fã, sem vínculo com a Coffee Stain Studios.',
     caseBal: (n, m) => `balancer ${n}→${m}`,
     planBal: (n, m, name) => `Balancer ${n}→${m}, ${name}`, planBalSub: 'As linhas de origem entram num balancer que reparte o total igual entre todos os destinos.',
-    dkMatrix: 'matriz', dkFunnel: 'funil', dkMatrixLoop: 'matriz com loop', dkFunnelLoop: 'funil com loop', dkMatrixSink: 'matriz com sink', dkFunnelSink: 'funil com sink',
+    dkMatrix: 'matriz', dkFunnel: 'funil', dkMatrixLoop: 'matriz com loop', dkMatrixSplitLoop: 'matriz com loop dividido', dkFunnelLoop: 'funil com loop', dkMatrixSink: 'matriz com sink', dkFunnelSink: 'funil com sink',
     dkBlueprint: (n, m) => `seu blueprint ${n}→${m}`,
     libLink: 'Biblioteca de balancers',
     libTitle: 'Biblioteca de load balancers',
@@ -898,7 +898,7 @@ const I18N = {
     designsTitle: 'Designs testados', thDesign: 'Design', thPerOut: 'Por saída', thNote: 'Observação',
     tipDesigns: 'Todos os designs que a ferramenta sabe montar, o melhor primeiro: mais vazão por saída, depois blueprint seu, menos sink e menos peças. Clique numa linha para ver a montagem dele.',
     bestTag: 'melhor', inUseTag: 'em uso no plano',
-    rNotDirect: m => `${m} não sai só com splitters`, rDirect: m => `${m} já sai direto; loop e sink só gastam peça`,
+    rNotDirect: m => `${m} não sai só com splitters`, rLoopFits: () => 'o loop da matriz já cabe na esteira; dividir antes só gasta peça', rDirect: m => `${m} já sai direto; loop e sink só gastam peça`,
     rOneInput: 'com 1 entrada é igual à matriz', rShape: 'precisa de 2 saídas ou mais', rBpShape: 'formato não bate',
     rLimit: (seg, rate, belt) => `gargalo: ${seg} (${rate}/min) passa da ${belt}`, rNoLimit: 'sem gargalo',
     whyTitle: 'Por que este design', whyNotTitle: 'Por que não é o melhor',
@@ -933,12 +933,14 @@ const I18N = {
     dsMatrix: 'Cada entrada vira M partes; cada saída junta uma parte de cada entrada. Aguenta a vazão de várias esteiras cheias. Serve quando M é produto de 2 e 3.',
     dsFunnel: 'Junta todas as entradas numa esteira e divide em M. Gasta bem menos peças, mas tudo passa por uma esteira só: serve se o total couber nela.',
     dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árvore divide no próximo número que o splitter alcança e as partes a mais voltam pra entrada. Divisão exata, sem perda; a esteira do loop carrega mais que a entrada.',
+    dsMatrixSplitLoop: 'Para a esteira cheia: cada entrada passa antes por um splitter em 2, e cada metade tem a sua árvore com loop. O loop carrega só um pouco mais que meia entrada, então cabe na esteira e nada engargala. É o 1→5 de 14 peças e o 1→7 de 24 que a comunidade usa.',
+    stHalves: (n, half) => `Divida ${n > 1 ? 'cada entrada' : 'a entrada'} em 2 com um splitter (${half}/min em cada metade). Cada metade ganha a sua árvore com loop, e o loop de meia entrada cabe na esteira.`,
     dsFunnelLoop: 'Funil com loop: o jeito mais barato de dividir em 5 ou 7, se o total mais o retorno couber numa esteira.',
     dsMatrixSink: 'Matriz que divide a mais e manda as partes extras pro Awesome Sink. Sem loop e simples de montar, mas joga item fora.',
     dsFunnelSink: 'Funil que divide a mais e manda as sobras pro sink. O mais simples para 5 ou 7 em baixa vazão, quando perder item não importa.',
     catExample: (n, m) => `Abrir ${n}→${m}`,
     inTag: 'E', outTag: 'S',
-    segIn: 'Entrada', segLoop: 'Entrada da árvore (entrada + retorno)', segLevel: p => `Depois de dividir em ${p}`, segPart: n => `Cada uma das ${n} partes`,
+    segIn: 'Entrada', segHalf: 'Cada metade da entrada', segLoop: 'Entrada da árvore (entrada + retorno)', segLevel: p => `Depois de dividir em ${p}`, segPart: n => `Cada uma das ${n} partes`,
     segChain: k => `Cascata com ${k} partes juntas`, segChainIn: k => `Cascata com ${k} entradas juntas`, segFunnel: 'Esteira do funil (tudo junto)', segOut: 'Cada saída',
     checksTitle: 'Vazão por trecho', thSegment: 'Trecho', thLoad: 'Carrega', thFits: belt => `Cabe na ${belt}?`,
     checkNote: (belt, per) => `Com os limites da ${belt}, cada saída entrega até ${per}/min.`,
@@ -1190,7 +1192,7 @@ const I18N = {
     footSource: 'Open source on GitHub', footLicense: 'MIT License', footCoffee: 'Buy me a coffee', footDisclaimer: 'Fan-made tool, not affiliated with Coffee Stain Studios.',
     caseBal: (n, m) => `${n}→${m} balancer`,
     planBal: (n, m, name) => `${n}→${m} balancer, ${name}`, planBalSub: 'The source lines go into a balancer that splits the total evenly among every destination.',
-    dkMatrix: 'matrix', dkFunnel: 'funnel', dkMatrixLoop: 'looped matrix', dkFunnelLoop: 'looped funnel', dkMatrixSink: 'matrix with sink', dkFunnelSink: 'funnel with sink',
+    dkMatrix: 'matrix', dkFunnel: 'funnel', dkMatrixLoop: 'looped matrix', dkMatrixSplitLoop: 'split looped matrix', dkFunnelLoop: 'looped funnel', dkMatrixSink: 'matrix with sink', dkFunnelSink: 'funnel with sink',
     dkBlueprint: (n, m) => `your ${n}→${m} blueprint`,
     libLink: 'Balancer library',
     libTitle: 'Load balancer library',
@@ -1201,7 +1203,7 @@ const I18N = {
     designsTitle: 'Designs tried', thDesign: 'Design', thPerOut: 'Per output', thNote: 'Note',
     tipDesigns: 'Every design the tool can build, best first: more rate per output, then your own blueprint, less sink and fewer pieces. Click a row to see how it is built.',
     bestTag: 'best', inUseTag: 'used in the plan',
-    rNotDirect: m => `${m} can’t be reached with splitters alone`, rDirect: m => `${m} splits directly; a loop or sink only adds pieces`,
+    rNotDirect: m => `${m} can’t be reached with splitters alone`, rLoopFits: () => 'the matrix loop already fits on the belt; splitting first only adds pieces', rDirect: m => `${m} splits directly; a loop or sink only adds pieces`,
     rOneInput: 'with 1 input it’s the same as the matrix', rShape: 'needs 2 or more outputs', rBpShape: 'shape doesn’t match',
     rLimit: (seg, rate, belt) => `bottleneck: ${seg} (${rate}/min) exceeds ${belt}`, rNoLimit: 'no bottleneck',
     whyTitle: 'Why this design', whyNotTitle: 'Why it isn’t the best',
@@ -1236,12 +1238,14 @@ const I18N = {
     dsMatrix: 'Each input becomes M parts; each output joins one part from every input. Handles the rate of several full belts. Works when M is a product of 2 and 3.',
     dsFunnel: 'Merges every input onto one belt and splits it into M. Far fewer pieces, but everything runs on a single belt: it works if the total fits on it.',
     dsMatrixLoop: 'Matrix for 5, 7, 10…: each tree splits into the next count a splitter can reach and the extra parts loop back to the input. Exact split, nothing lost; the loop belt carries more than the input.',
+    dsMatrixSplitLoop: 'For a full belt: each input first goes through a splitter into 2, and each half gets its own looped tree. The loop carries only a bit more than half an input, so it fits on the belt and nothing bottlenecks. It’s the 14-piece 1→5 and the 24-piece 1→7 the community uses.',
+    stHalves: (n, half) => `Split ${n > 1 ? 'each input' : 'the input'} into 2 with a splitter (${half}/min on each half). Each half gets its own looped tree, and a half-input loop fits on the belt.`,
     dsFunnelLoop: 'Funnel with a loop: the cheapest way to split into 5 or 7, if the total plus the return fits on one belt.',
     dsMatrixSink: 'Matrix that splits into more parts and sends the extras to the Awesome Sink. No loop and easy to build, but it throws items away.',
     dsFunnelSink: 'Funnel that splits into more parts and sinks the extras. The simplest way to get 5 or 7 at low rates, when losing items doesn’t matter.',
     catExample: (n, m) => `Open ${n}→${m}`,
     inTag: 'I', outTag: 'O',
-    segIn: 'Input', segLoop: 'Tree input (input + return)', segLevel: p => `After splitting into ${p}`, segPart: n => `Each of the ${n} parts`,
+    segIn: 'Input', segHalf: 'Each half of the input', segLoop: 'Tree input (input + return)', segLevel: p => `After splitting into ${p}`, segPart: n => `Each of the ${n} parts`,
     segChain: k => `Chain with ${k} parts joined`, segChainIn: k => `Chain with ${k} inputs joined`, segFunnel: 'Funnel belt (everything joined)', segOut: 'Each output',
     checksTitle: 'Rate per segment', thSegment: 'Segment', thLoad: 'Carries', thFits: belt => `Fits ${belt}?`,
     checkNote: (belt, per) => `Within ${belt} limits, each output delivers up to ${per}/min.`,
@@ -1493,7 +1497,7 @@ const I18N = {
     footSource: 'Código abierto en GitHub', footLicense: 'Licencia MIT', footCoffee: 'Invítame un café', footDisclaimer: 'Herramienta hecha por fans, sin relación con Coffee Stain Studios.',
     caseBal: (n, m) => `balanceador ${n}→${m}`,
     planBal: (n, m, name) => `Balanceador ${n}→${m}, ${name}`, planBalSub: 'Las líneas de origen entran en un balanceador que reparte el total en partes iguales entre todos los destinos.',
-    dkMatrix: 'matriz', dkFunnel: 'embudo', dkMatrixLoop: 'matriz con loop', dkFunnelLoop: 'embudo con loop', dkMatrixSink: 'matriz con sink', dkFunnelSink: 'embudo con sink',
+    dkMatrix: 'matriz', dkFunnel: 'embudo', dkMatrixLoop: 'matriz con loop', dkMatrixSplitLoop: 'matriz con loop dividido', dkFunnelLoop: 'embudo con loop', dkMatrixSink: 'matriz con sink', dkFunnelSink: 'embudo con sink',
     dkBlueprint: (n, m) => `tu blueprint ${n}→${m}`,
     libLink: 'Biblioteca de balanceadores',
     libTitle: 'Biblioteca de load balancers',
@@ -1504,7 +1508,7 @@ const I18N = {
     designsTitle: 'Diseños probados', thDesign: 'Diseño', thPerOut: 'Por salida', thNote: 'Nota',
     tipDesigns: 'Todos los diseños que la herramienta sabe montar, el mejor primero: más tasa por salida, luego tu propio blueprint, menos sink y menos piezas. Haz clic en una fila para ver su montaje.',
     bestTag: 'mejor', inUseTag: 'en uso en el plan',
-    rNotDirect: m => `${m} no sale solo con splitters`, rDirect: m => `${m} ya sale directo; loop y sink solo gastan piezas`,
+    rNotDirect: m => `${m} no sale solo con splitters`, rLoopFits: () => 'el loop de la matriz ya cabe en la cinta; dividir antes solo gasta piezas', rDirect: m => `${m} ya sale directo; loop y sink solo gastan piezas`,
     rOneInput: 'con 1 entrada es igual a la matriz', rShape: 'necesita 2 salidas o más', rBpShape: 'el formato no coincide',
     rLimit: (seg, rate, belt) => `cuello de botella: ${seg} (${rate}/min) supera la ${belt}`, rNoLimit: 'sin cuello de botella',
     whyTitle: 'Por qué este diseño', whyNotTitle: 'Por qué no es el mejor',
@@ -1539,12 +1543,14 @@ const I18N = {
     dsMatrix: 'Cada entrada se vuelve M partes; cada salida junta una parte de cada entrada. Aguanta la tasa de varias cintas llenas. Sirve cuando M es producto de 2 y 3.',
     dsFunnel: 'Junta todas las entradas en una cinta y la divide en M. Gasta muchas menos piezas, pero todo pasa por una sola cinta: sirve si el total cabe en ella.',
     dsMatrixLoop: 'Matriz para 5, 7, 10…: cada árbol divide en el siguiente número que alcanza el splitter y las partes de más vuelven a la entrada. División exacta, sin pérdida; la cinta del loop lleva más que la entrada.',
+    dsMatrixSplitLoop: 'Para la cinta llena: cada entrada pasa antes por un splitter en 2, y cada mitad tiene su propio árbol con loop. El loop lleva solo un poco más de media entrada, así que cabe en la cinta y nada se atasca. Es el 1→5 de 14 piezas y el 1→7 de 24 que usa la comunidad.',
+    stHalves: (n, half) => `Divide ${n > 1 ? 'cada entrada' : 'la entrada'} en 2 con un splitter (${half}/min en cada mitad). Cada mitad tiene su propio árbol con loop, y el loop de media entrada cabe en la cinta.`,
     dsFunnelLoop: 'Embudo con loop: la forma más barata de dividir en 5 o 7, si el total más el retorno cabe en una cinta.',
     dsMatrixSink: 'Matriz que divide de más y manda las partes sobrantes al Awesome Sink. Sin loop y fácil de montar, pero tira ítems.',
     dsFunnelSink: 'Embudo que divide de más y manda lo sobrante al sink. Lo más simple para 5 o 7 con poca tasa, cuando perder ítems no importa.',
     catExample: (n, m) => `Abrir ${n}→${m}`,
     inTag: 'E', outTag: 'S',
-    segIn: 'Entrada', segLoop: 'Entrada del árbol (entrada + retorno)', segLevel: p => `Tras dividir en ${p}`, segPart: n => `Cada una de las ${n} partes`,
+    segIn: 'Entrada', segHalf: 'Cada mitad de la entrada', segLoop: 'Entrada del árbol (entrada + retorno)', segLevel: p => `Tras dividir en ${p}`, segPart: n => `Cada una de las ${n} partes`,
     segChain: k => `Cascada con ${k} partes juntas`, segChainIn: k => `Cascada con ${k} entradas juntas`, segFunnel: 'Cinta del embudo (todo junto)', segOut: 'Cada salida',
     checksTitle: 'Tasa por tramo', thSegment: 'Tramo', thLoad: 'Lleva', thFits: belt => `¿Cabe en la ${belt}?`,
     checkNote: (belt, per) => `Con los límites de la ${belt}, cada salida entrega hasta ${per}/min.`,
@@ -1791,22 +1797,26 @@ const chainSlot = i => (i < 3 ? 0 : 1 + Math.floor((i - 3) / 2));
 // Matriz: cada entrada vira M partes numa árvore de splitters e cada saída junta uma parte de cada entrada.
 // Funil: junta tudo numa esteira e divide em M. Quando M não é produto de 2 e 3, divide em n (o próximo
 // que é) e manda as n−M partes extras de volta pra entrada (loop) ou pro sink.
-const DESIGN_KINDS = ['matrix', 'funnel', 'matrix-loop', 'funnel-loop', 'matrix-sink', 'funnel-sink'];
+// Matriz com loop dividido: cada entrada passa antes por um splitter em 2 e cada metade tem o seu loop. Com a
+// entrada cheia, o loop da matriz comum estoura a esteira (leva n/M da entrada); o de meia entrada cabe.
+const DESIGN_KINDS = ['matrix', 'funnel', 'matrix-loop', 'funnel-loop', 'matrix-split-loop', 'matrix-sink', 'funnel-sink'];
 
 function balancerDesign(kind, N, M, rates, cap) {
   const r = Array.from({ length: N }, (_, i) => rates[Math.min(i, rates.length - 1)] || 0);
   const total = r.reduce((a, b) => a + b, 0), rMax = Math.max(0, ...r);
   const direct = isDirect(M);
   const loop = kind.endsWith('-loop'), sink = kind.endsWith('-sink'), funnel = kind.startsWith('funnel');
+  const halves = kind === 'matrix-split-loop', V = halves ? 2 * N : N;
   let applies = null;
   if (N < 1 || M < 2) applies = 'shape';
   else if (!loop && !sink && !direct) applies = 'notDirect';
   else if ((loop || sink) && direct) applies = 'direct';
   else if (funnel && N < 2) applies = 'oneInput';
   const n = direct ? M : nextDirect(M);
+  if (!applies && halves && rMax * n / M <= cap + EPS) applies = 'loopFits';
   const tree = splitTree(n);
   const extra = n - M;
-  const chain = chainSizes(N);
+  const chain = chainSizes(V);
   const segments = [];
   const add = (key, rate, arg) => segments.push({ key, rate, arg, ok: rate <= cap + EPS });
   add('in', rMax);
@@ -1822,11 +1832,14 @@ function balancerDesign(kind, N, M, rates, cap) {
     splitters = tree.splitters;
     mergers = chain.length + (loop ? 1 : 0);
   } else {
-    treeIn = loop ? rMax * n / M : rMax;
-    perOut = Math.min(cap, loop ? r.reduce((a, x) => a + Math.min(x, cap * M / n), 0) / M : sink ? total / n : total / M);
+    // Com metades, cada árvore recebe meia entrada.
+    const part = halves ? 2 : 1;
+    if (halves) add('half', rMax / 2);
+    treeIn = loop ? rMax / part * n / M : rMax;
+    perOut = Math.min(cap, loop ? r.reduce((a, x) => a + part * Math.min(x / part, cap * M / n), 0) / M : sink ? total / n : total / M);
     if (sink) sinkRate = total * extra / n;
-    splitters = N * tree.splitters;
-    mergers = M * chain.length + (loop ? N : 0);
+    splitters = V * tree.splitters + (halves ? N : 0);
+    mergers = M * chain.length + (loop ? V : 0);
   }
   if (loop) add('loop', treeIn);
   let prod = 1;
@@ -2050,19 +2063,27 @@ function designFloors(d) {
       const sp = splitAt(prev, d.chain.length + 1, -1, 0, 1);
       sp.leaves.forEach((s, j) => { const o = node('out', sp.top + 1, (j + 0.5) / M); outs.push(o); edge(s, o, -1, 'out'); });
     } else {
-      const trees = ins.map((c, i) => splitAt(c, 1, i, i / N, 1 / N));
+      // Com metades: um splitter em 2 no primeiro andar e uma árvore com loop para cada metade.
+      const halves = d.kind === 'matrix-split-loop', own = i => (halves ? i >> 1 : i);
+      const trees = halves
+        ? ins.flatMap((c, i) => {
+          const h = node('s', 1, (i + 0.5) / N, { ways: 2 });
+          edge(c, h, i);
+          return [0, 1].map(k => splitAt(h, 2, i, (2 * i + k) / (2 * N), 1 / (2 * N)));
+        })
+        : ins.map((c, i) => splitAt(c, 1, i, i / N, 1 / N));
       const top = trees[0].top;
       for (let j = 0; j < M; j++) {
         let prev = null, last = trees.map(tr => tr.leaves[j]);
         d.chain.forEach((k, c) => {
           const id = node('m', top + 1 + c, (j + 0.5) / M);
           if (prev !== null) edge(prev, id, -1);
-          for (let i = c === 0 ? 0 : d.chain[c - 1]; i < k; i++) edge(last[i], id, i);
+          for (let i = c === 0 ? 0 : d.chain[c - 1]; i < k; i++) edge(last[i], id, own(i));
           prev = id;
         });
         const o = node('out', top + 1 + d.chain.length, (j + 0.5) / M);
         outs.push(o);
-        edge(prev === null ? last[0] : prev, o, N > 1 ? -1 : 0, 'out');
+        edge(prev === null ? last[0] : prev, o, trees.length > 1 ? -1 : 0, 'out');
       }
     }
   }
@@ -2672,6 +2693,13 @@ function buildBalancer(g, d, inputs, outputs, sink) {
     const tr = split();
     v.inEdges = connectMany(g, inputs, tr.root).inEdges;
     tr.slots.forEach((s, j) => v.outEdges.push(addEdge(g, s, outputs[j])));
+  } else if (d.kind === 'matrix-split-loop') {
+    const trees = inputs.flatMap(s => {
+      const half = addNode(g, 'splitter');
+      v.inEdges.push(addEdge(g, s, half));
+      return [0, 1].map(() => { const tr = split(); addEdge(g, half, tr.root); return tr; });
+    });
+    outputs.forEach((c, j) => v.outEdges.push(connectMany(g, trees.map(tr => tr.slots[j]), c).outEdge));
   } else {
     const trees = inputs.map(s => { const tr = split(); v.inEdges.push(addEdge(g, s, tr.root)); return tr; });
     outputs.forEach((c, j) => v.outEdges.push(connectMany(g, trees.map(tr => tr.slots[j]), c).outEdge));
@@ -3029,7 +3057,7 @@ function headerGroups(S, D, cap) {
 
 function designName(d) {
   if (d.kind === 'blueprint') return t('dkBlueprint', d.bp.n, d.bp.m);
-  return t({ butterfly: 'dkButterfly', 'butterfly-loop': 'dkButterflyLoop', 'butterfly-sink': 'dkButterflySink', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
+  return t({ butterfly: 'dkButterfly', 'butterfly-loop': 'dkButterflyLoop', 'butterfly-sink': 'dkButterflySink', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'matrix-split-loop': 'dkMatrixSplitLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
 }
 
 // Blueprint conta como uma peça: é só colar.
@@ -4138,12 +4166,16 @@ function balancerBuild(d, labels) {
     }
   } else {
     // Matriz: uma faixa por entrada com a sua árvore; as saídas se espalham pela altura toda à direita.
+    // Com metades, cada entrada passa por um splitter em 2 e ocupa duas faixas (V = 2N), uma por metade.
+    const halves = d.kind === 'matrix-split-loop', V = halves ? 2 * N : N, own = i => (halves ? i >> 1 : i);
+    const bandTag = i => (halves ? `${ins[own(i)]}/${(i & 1) + 1}` : ins[i]);
     const F = d.tree.factors, L = F.length, C = d.chain.length;
     // A faixa cresce se as saídas (uma caixa a cada 42px) não couberem na altura das entradas.
-    const BG = loop ? 30 : 16, bandH = Math.max(n * 18, boxH + 6, (M * 42 + BG) / N - BG);
-    const cH = N * (bandH + BG) - BG;
+    const BG = loop ? 30 : 16, bandH = Math.max(n * 18, boxH + 6, (M * 42 + BG) / V - BG);
+    const cH = V * (bandH + BG) - BG;
     H = top * 2 + cH + (loop ? 8 : 0);
-    const xLM = inW + 28, xRoot = inW + (loop ? 64 : 36);
+    const xHalf = inW + 26, shift = halves ? 52 : 0;
+    const xLM = inW + 28 + shift, xRoot = inW + (loop ? 64 : 36) + shift;
     const xNode = k => xRoot + k * 58, xLeaf = xNode(L - 1) + 36;
     const xMerg = c => xLeaf + 120 + c * 32;
     const xOut = (C ? xMerg(C - 1) : xLeaf + 90) + 36;
@@ -4153,17 +4185,31 @@ function balancerBuild(d, labels) {
     const leafY = (i, j) => bandY(i) + (j + 0.5) * bandH / n;
     const nodeY = (i, k, q) => { const span = n / d.tree.levels[k].count; return bandY(i) + (q * span + span / 2) * bandH / n; };
     const outY = j => top + (j + 0.5) * cH / M;
-    const treeIn = i => (loop ? d.rates[i] * n / M : d.rates[i]);
+    const bandRate = i => (halves ? d.rates[own(i)] / 2 : d.rates[i]);
+    const treeIn = i => (loop ? bandRate(i) * n / M : bandRate(i));
     const s0 = inStep();
-    for (let i = 0; i < N; i++) {
-      g(over, s0, box(0, yc(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-      g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3));
+    if (halves) {
+      const yIn = i => (yc(2 * i) + yc(2 * i + 1)) / 2;
+      for (let i = 0; i < N; i++) {
+        g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+        g(under, s0, belt(`M${inW},${yIn(i)} L${xHalf - 11},${yIn(i)}`, inColor(i), 3));
+      }
+      const sh = step(t('stHalves', N, fmt(Math.max(...d.rates) / 2)));
+      for (let i = 0; i < N; i++) {
+        for (const b of [2 * i, 2 * i + 1]) g(under, sh, belt(curve(xHalf + 11, yIn(i), xLM - 7, yc(b)), inColor(i), 2.4));
+        g(over, sh, splitter(xHalf, yIn(i), 2));
+      }
+    } else {
+      for (let i = 0; i < N; i++) {
+        g(over, s0, box(0, yc(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+        g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3));
+      }
     }
     if (loop) {
-      const s = step(t('stLoopM', N));
-      for (let i = 0; i < N; i++) {
+      const s = step(t('stLoopM', V));
+      for (let i = 0; i < V; i++) {
         g(over, s, merger(xLM, yc(i)));
-        g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(i), 3));
+        g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(own(i)), 3));
       }
     }
     const drawLevel = (i, k, s) => {
@@ -4171,10 +4217,10 @@ function balancerBuild(d, labels) {
         const x = xNode(k), y = nodeY(i, k, q);
         for (let c = 0; c < F[k]; c++) {
           const child = q * F[k] + c;
-          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(i), 1.8));
+          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(own(i)), 1.8));
           else {
-            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(i), 1.6));
-            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(i), child >= M && loop));
+            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(own(i)), 1.6));
+            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(own(i)), child >= M && loop));
           }
         }
         g(over, s, splitter(x, y, F[k]));
@@ -4183,33 +4229,33 @@ function balancerBuild(d, labels) {
     let prod = 1;
     for (let k = 0; k < L; k++) {
       prod *= F[k];
-      const s = step(k === 0 ? t('stLevelFirst', ins[0], F[0], fmt(treeIn(0) / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn(0) / prod)));
+      const s = step(k === 0 ? t('stLevelFirst', bandTag(0), F[0], fmt(treeIn(0) / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn(0) / prod)));
       drawLevel(0, k, s);
     }
-    if (N > 1) {
-      const s = step(t('stRepeat', ins.slice(1).join(', '), d.tree.splitters));
-      for (let i = 1; i < N; i++) for (let k = 0; k < L; k++) drawLevel(i, k, s);
+    if (V > 1) {
+      const s = step(t('stRepeat', Array.from({ length: V - 1 }, (_, i) => bandTag(i + 1)).join(', '), d.tree.splitters));
+      for (let i = 1; i < V; i++) for (let k = 0; k < L; k++) drawLevel(i, k, s);
     }
     if (d.extra && loop) {
       const s = step(t('stLoopBack', d.extra, M));
-      for (let i = 0; i < N; i++) for (let j = M; j < n; j++) {
+      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) {
         const yb = bandY(i) + bandH + 8 + (j - M) * 4;
-        g(under, s, belt(`M${xLeaf + 4},${leafY(i, j)} h10 V${yb} H${xLM} V${yc(i) + 7}`, inColor(i), 1.6, '5 3'));
+        g(under, s, belt(`M${xLeaf + 4},${leafY(i, j)} h10 V${yb} H${xLM} V${yc(i) + 7}`, inColor(own(i)), 1.6, '5 3'));
       }
     }
     if (d.extra && sink) {
       const s = step(t('stSinkOut', d.extra));
-      for (let i = 0; i < N; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j));
+      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j));
     }
     const mergeOut = (j, s) => {
-      for (let i = 0; i < N; i++) g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(i), 1.4));
+      for (let i = 0; i < V; i++) g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(own(i)), 1.4));
       for (let c = 0; c < C; c++) {
         if (c) g(under, s, belt(`M${xMerg(c - 1) + 7},${outY(j)} L${xMerg(c) - 7},${outY(j)}`, 'var(--ink)', 2.4));
         g(over, s, merger(xMerg(c), outY(j)));
       }
     };
-    if (N > 1) {
-      mergeOut(0, step(t('stMerge1', outs[0], N, C)));
+    if (V > 1) {
+      mergeOut(0, step(t('stMerge1', outs[0], V, C)));
       if (M > 1) {
         const s = step(t('stMergeRest', outs.slice(1).join(', ')));
         for (let j = 1; j < M; j++) mergeOut(j, s);
@@ -4217,7 +4263,7 @@ function balancerBuild(d, labels) {
     }
     const so = step(t('stOut', M, fmt(d.perOut)));
     for (let j = 0; j < M; j++) {
-      g(under, so, N > 1 ? belt(`M${xMerg(C - 1) + 7},${outY(j)} L${xOut},${outY(j)}`, 'var(--ink)', 3) : belt(curve(xLeaf + 4, leafY(0, j), xOut, outY(j)), inColor(0), 2));
+      g(under, so, V > 1 ? belt(`M${xMerg(C - 1) + 7},${outY(j)} L${xOut},${outY(j)}`, 'var(--ink)', 3) : belt(curve(xLeaf + 4, leafY(0, j), xOut, outY(j)), inColor(0), 2));
       g(over, so, box(xOut, outY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     }
   }
@@ -4693,7 +4739,7 @@ function whyText(ranked) {
 }
 
 function designNote(d, belt) {
-  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape', butterflyShape: 'rButterfly', bfExtra: 'rBfExtra' }[d.applies], d.M, d.n);
+  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape', butterflyShape: 'rButterfly', bfExtra: 'rBfExtra', loopFits: 'rLoopFits' }[d.applies], d.M, d.n);
   const bad = d.segments.find(s => !s.ok);
   const note = bad ? t('rLimit', segName(bad), fmt(bad.rate), belt) : t('rNoLimit');
   return note + (d.sinkRate > 0.05 ? `; ${t('lgToSink')} ${fmt(d.sinkRate)}/min` : '');
@@ -4802,6 +4848,7 @@ const CATALOG = [
   { kind: 'matrix', n: 3, m: 4, rate: 240, ds: 'dsMatrix' },
   { kind: 'funnel', n: 3, m: 2, rate: 120, ds: 'dsFunnel' },
   { kind: 'matrix-loop', n: 2, m: 5, rate: 240, ds: 'dsMatrixLoop' },
+  { kind: 'matrix-split-loop', n: 1, m: 5, rate: 480, ds: 'dsMatrixSplitLoop' },
   { kind: 'funnel-loop', n: 3, m: 5, rate: 60, ds: 'dsFunnelLoop' },
   { kind: 'matrix-sink', n: 1, m: 7, rate: 480, ds: 'dsMatrixSink' },
   { kind: 'funnel-sink', n: 2, m: 5, rate: 60, ds: 'dsFunnelSink' },
