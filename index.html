@@ -358,6 +358,15 @@
   .wb { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
   .wb > * { min-width: 0; }
   .wb-checks { margin-top: 18px; }
+  .wb-style { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
+  .wb-style-l { font: 600 15px var(--display); color: var(--ink-dim); }
+  .seg { display: inline-flex; border: 1px solid var(--line); }
+  .seg button { background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; font: 600 14px var(--display); padding: 6px 14px; }
+  .seg button:first-child { border-left: 0; }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-checked="true"] { background: var(--plate); color: var(--ficsit); box-shadow: inset 0 -3px 0 var(--ficsit); }
+  .seg button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
+  .plegend i.lifti { width: 6px; height: 14px; background: var(--line); box-shadow: inset 2px 0 0 var(--ink-dim); }
   .wb-checks h4 { font: 600 16px/1.2 var(--display); margin: 0 0 4px; color: var(--ink-dim); }
   @media (max-width: 1100px) { .wb { grid-template-columns: 1fr; } }
   .ponder {
@@ -410,7 +419,7 @@
   .wb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
   .wb-shape { font: 700 52px/0.95 var(--display); color: var(--ficsit); letter-spacing: -.01em; }
   .wb-name { font: 600 20px/1.15 var(--display); }
-  .pc-grid { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0 24px; margin: 0; }
+  .pc-grid { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 0; }
   .pc-grid dt { font-size: 12px; color: var(--ink-dim); }
   .pc-grid dd { margin: 0; font: 600 26px/1.1 var(--display); }
   .pc-grid dd small { font: 500 13px var(--body); color: var(--ink-dim); margin-left: 2px; }
@@ -438,7 +447,7 @@
   /* O que é, como montar */
   .learn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 36px; margin-top: 36px; }
   .learn p { margin: 0; max-width: 68ch; color: var(--ink-dim); }
-  .learn .build { grid-column: 1 / -1; }
+  .learn .build, .learn .bf { grid-column: 1 / -1; }
   .learn ol { margin: 4px 0 0; padding-left: 26px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 28px; }
   .learn ol li { padding-left: 4px; color: var(--ink-dim); }
   .learn ol li::marker { color: var(--ficsit); font: 600 15px var(--display); }
@@ -545,6 +554,7 @@
       <div><h3 data-i18n="lbHowTitle">How it works</h3><p data-i18n="lbHow">A splitter divides evenly among the outputs that accept items, into 2 or 3. Chaining splitters cuts a belt into any product of 2 and 3 (2, 3, 4, 6, 8, 9, 12…). A merger joins up to 3 belts, taking from each in turn. A matrix uses both: each input is cut into M equal parts and each output gets one part from every input, so every output adds up to the same.</p></div>
       <div><h3 data-i18n="lbWhyTitle">Why use one</h3><p data-i18n="lbWhy">A manifold balances itself across machines, but not across lines: if one destination line gets 455 and another 300, the machines on the second starve forever. A balancer makes every line carry the same share of the total. It’s also how you split a belt into 5 or 7, which a splitter can’t do directly.</p></div>
       <div><h3 data-i18n="lbNotTitle">When you don’t need one</h3><p data-i18n="lbNot">If each source line already covers a destination, connect them directly. If the shortfall is small, a split donor line or a Smart Splitter with overflow does it with fewer pieces. The alternatives above compare this for your case.</p></div>
+      <div class="bf"><h3 data-i18n="lbBfTitle">Butterfly and vertical builds</h3><p data-i18n="lbBf">Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build.</p></div>
       <div class="build">
         <h3 data-i18n="lbBuildTitle">How to build your own</h3>
         <ol>
@@ -870,6 +880,21 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Meio: ${ins} entram num balancer ${n}→${m} (${name}). Cada destino recebe até ${per}/min; a montagem peça por peça está em “Ver montagem passo a passo”.`,
     toBalancer: list => `balancer para ${list}`,
     pcBp: n => `Inclui ${n} blueprint, contado como 1 peça.`,
+    dkButterfly: 'borboleta',
+    dsButterfly: 'Mistura as esteiras aos pares (ou trios) em rodadas: cada bloco pega 2 esteiras e devolve 2 com a média. Depois de todas as rodadas, todas ficam iguais. Serve quando entradas = saídas; em 4→4 e 8→8 gasta bem menos peças que a matriz e empilha bem.',
+    rButterfly: 'só serve com entradas = saídas, num número feito de 2 e 3',
+    segBfPart: s => `Rodada ${s}: cada parte`, segBfOut: s => `Rodada ${s}: cada esteira depois do merger`,
+    styleTitle: 'Montagem', styleNormal: 'Normal', styleButterfly: 'Borboleta', styleVertical: 'Vertical',
+    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve quando entradas = saídas e gasta menos peças em 4→4, 8→8. Vertical: o balancer escolhido em andares, um por camada de peças, ligados por lifts.',
+    styleNone: 'A borboleta só serve com o mesmo número de entradas e saídas, e esse número tem que ser feito de 2 e 3 (2, 3, 4, 6, 8, 9…). Use Normal ou Vertical.',
+    thLifts: 'Lifts', floorTag: f => `Andar ${f}`, lgLift: 'lift',
+    stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em cada uma das ${n} esteiras.`,
+    stBfMerge: (round, groups) => `Rodada ${round}: um merger por esteira junta uma parte de cada esteira do bloco (${groups}). As esteiras de cada bloco saem iguais.`,
+    stFloor: (f, sp, ways, mg, up, down) => `Andar ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + '.'
+      + (up ? ` ${up} lift${up > 1 ? 's sobem' : ' sobe'} do andar de baixo.` : '') + (down ? ` ${down} lift${down > 1 ? 's descem' : ' desce'} com o retorno do loop.` : ''),
+    vertNote: 'Um andar por camada de peças, ligados por lifts. A ferramenta mostra a ordem dos andares e conta os lifts; a altura de cada andar e o encaixe exato você ajusta no jogo.',
+    lbBfTitle: 'Borboleta e montagem vertical',
+    lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta.',
   },
   en: {
     locale: 'en-US', htmlLang: 'en', langName: 'English',
@@ -1106,6 +1131,21 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Middle: ${ins} go into a ${n}→${m} balancer (${name}). Each destination gets up to ${per}/min; the piece-by-piece build is under “See the build step by step”.`,
     toBalancer: list => `balancer to ${list}`,
     pcBp: n => `Includes ${n} blueprint, counted as 1 piece.`,
+    dkButterfly: 'butterfly',
+    dsButterfly: 'Mixes belts in pairs (or threes) over rounds: each block takes 2 belts and returns 2 at the average. After every round, all belts are equal. Works when inputs = outputs; for 4→4 and 8→8 it uses far fewer pieces than the matrix and stacks well.',
+    rButterfly: 'only works with inputs = outputs, at a count made of 2s and 3s',
+    segBfPart: s => `Round ${s}: each part`, segBfOut: s => `Round ${s}: each belt after the merger`,
+    styleTitle: 'Build', styleNormal: 'Normal', styleButterfly: 'Butterfly', styleVertical: 'Vertical',
+    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works when inputs = outputs and uses fewer pieces for 4→4, 8→8. Vertical: the chosen balancer in floors, one per layer of pieces, joined by lifts.',
+    styleNone: 'The butterfly only works with the same number of inputs and outputs, and that number has to be made of 2s and 3s (2, 3, 4, 6, 8, 9…). Use Normal or Vertical.',
+    thLifts: 'Lifts', floorTag: f => `Floor ${f}`, lgLift: 'lift',
+    stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on each of the ${n} belts.`,
+    stBfMerge: (round, groups) => `Round ${round}: one merger per belt joins one part from each belt in the block (${groups}). The belts in each block leave equal.`,
+    stFloor: (f, sp, ways, mg, up, down) => `Floor ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + '.'
+      + (up ? ` ${up} lift${up > 1 ? 's come' : ' comes'} up from the floor below.` : '') + (down ? ` ${down} lift${down > 1 ? 's go' : ' goes'} down with the loop return.` : ''),
+    vertNote: 'One floor per layer of pieces, joined by lifts. The tool shows the floor order and counts the lifts; you adjust each floor’s height and the exact fit in the game.',
+    lbBfTitle: 'Butterfly and vertical builds',
+    lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build.',
   },
   es: {
     locale: 'es-ES', htmlLang: 'es', langName: 'Español',
@@ -1342,6 +1382,21 @@ const I18N = {
     stepBal: (ins, n, m, name, per) => `Medio: ${ins} entran en un balanceador ${n}→${m} (${name}). Cada destino recibe hasta ${per}/min; el montaje pieza por pieza está en “Ver montaje paso a paso”.`,
     toBalancer: list => `balanceador a ${list}`,
     pcBp: n => `Incluye ${n} blueprint, contado como 1 pieza.`,
+    dkButterfly: 'mariposa',
+    dsButterfly: 'Mezcla las cintas de a pares (o tríos) en rondas: cada bloque toma 2 cintas y devuelve 2 con el promedio. Tras todas las rondas, todas quedan iguales. Sirve cuando entradas = salidas; en 4→4 y 8→8 gasta muchas menos piezas que la matriz y se apila bien.',
+    rButterfly: 'solo sirve con entradas = salidas, en un número hecho de 2 y 3',
+    segBfPart: s => `Ronda ${s}: cada parte`, segBfOut: s => `Ronda ${s}: cada cinta tras el merger`,
+    styleTitle: 'Montaje', styleNormal: 'Normal', styleButterfly: 'Mariposa', styleVertical: 'Vertical',
+    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve cuando entradas = salidas y gasta menos piezas en 4→4, 8→8. Vertical: el balanceador elegido en pisos, uno por capa de piezas, unidos con lifts.',
+    styleNone: 'La mariposa solo sirve con el mismo número de entradas y salidas, y ese número tiene que estar hecho de 2 y 3 (2, 3, 4, 6, 8, 9…). Usa Normal o Vertical.',
+    thLifts: 'Lifts', floorTag: f => `Piso ${f}`, lgLift: 'lift',
+    stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en cada una de las ${n} cintas.`,
+    stBfMerge: (round, groups) => `Ronda ${round}: un merger por cinta junta una parte de cada cinta del bloque (${groups}). Las cintas de cada bloque salen iguales.`,
+    stFloor: (f, sp, ways, mg, up, down) => `Piso ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + '.'
+      + (up ? ` ${up} lift${up > 1 ? 's suben' : ' sube'} del piso de abajo.` : '') + (down ? ` ${down} lift${down > 1 ? 's bajan' : ' baja'} con el retorno del loop.` : ''),
+    vertNote: 'Un piso por capa de piezas, unidos con lifts. La herramienta muestra el orden de los pisos y cuenta los lifts; la altura de cada piso y el encaje exacto los ajustas en el juego.',
+    lbBfTitle: 'Mariposa y montaje vertical',
+    lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente.',
   },
 };
 const LANGS = Object.keys(I18N);
@@ -1572,8 +1627,119 @@ function blueprintDesign(bp, N, M, rates, cap) {
   };
 }
 
+// Borboleta: M esteiras misturadas em rodadas de blocos r→r (r = 2 ou 3, os fatores de M).
+// Na rodada s, as esteiras que só diferem no dígito s (base mista) formam um bloco: cada uma vai num
+// splitter em r e cada merger junta uma parte de cada esteira do bloco. Depois de todas as rodadas,
+// todas as esteiras ficam com a média. Peças: 1 splitter + 1 merger por esteira por rodada.
+function butterflyGroup(F, s, i) {
+  const stride = F.slice(0, s).reduce((a, b) => a * b, 1);
+  const base = i - (Math.floor(i / stride) % F[s]) * stride;
+  return Array.from({ length: F[s] }, (_, k) => base + k * stride);
+}
+
+function butterflyDesign(N, M, rates, cap) {
+  const r = Array.from({ length: N }, (_, i) => rates[Math.min(i, rates.length - 1)] || 0);
+  const total = r.reduce((a, b) => a + b, 0);
+  const applies = N < 2 || M !== N || !isDirect(M) ? 'butterflyShape' : null;
+  const F = applies ? [] : splitTree(M).factors;
+  const segments = [{ key: 'in', rate: Math.max(0, ...r), ok: Math.max(0, ...r) <= cap + EPS }];
+  let v = r.slice();
+  F.forEach((f, s) => {
+    segments.push({ key: 'bfPart', rate: Math.max(...v) / f, arg: s + 1, ok: Math.max(...v) / f <= cap + EPS });
+    v = v.map((_, i) => butterflyGroup(F, s, i).reduce((a, j) => a + v[j], 0) / f);
+    if (s < F.length - 1) segments.push({ key: 'bfOut', rate: Math.max(...v), arg: s + 1, ok: Math.max(...v) <= cap + EPS });
+  });
+  segments.push({ key: 'out', rate: total / M, ok: total / M <= cap + EPS });
+  return {
+    kind: 'butterfly', N, M, n: M, extra: 0, factors: F, tree: splitTree(M), rates: r, total, cap, applies, segments, chain: [],
+    perOut: Math.min(cap, total / M), sinkRate: 0, pieces: { splitters: M * F.length, mergers: M * F.length, blueprints: 0 },
+  };
+}
+
+// Montagem vertical: cada camada de peças num andar, ligados por lifts.
+// Andar = profundidade da peça a partir das entradas (o retorno do loop não conta). Um lift por ligação
+// entre peças de andares diferentes; entradas chegam e saídas saem no andar da própria peça.
+// x (0..1) é a posição na fachada, para desenhar o corte.
+function designFloors(d) {
+  const nodes = [], edges = [];
+  const node = (t, floor, x, extra = {}) => nodes.push({ id: nodes.length, t, floor, x, ...extra }) - 1;
+  const edge = (a, b, inp, kind = 'n') => edges.push({ a, b, inp, kind });
+  const N = d.N, M = d.M, ins = [], outs = [];
+  if (d.kind === 'blueprint' || d.applies) return null;
+  for (let i = 0; i < N; i++) ins.push(node('in', 0, (i + 0.5) / N, { inp: i }));
+  if (d.kind === 'butterfly') {
+    let cur = ins.slice();
+    d.factors.forEach((f, s) => {
+      const sp = cur.map((c, i) => { const id = node('s', 2 * s + 1, (i + 0.5) / M, { ways: f }); edge(c, id, s ? -1 : i); return id; });
+      const mg = cur.map((_, j) => node('m', 2 * s + 2, (j + 0.5) / M));
+      sp.forEach((id, i) => butterflyGroup(d.factors, s, i).forEach(j => edge(id, mg[j], s ? -1 : i)));
+      cur = mg;
+    });
+    cur.forEach((c, j) => { const o = node('out', 2 * d.factors.length + 1, (j + 0.5) / M); outs.push(o); edge(c, o, -1, 'out'); });
+  } else {
+    const loop = d.kind.endsWith('-loop'), sink = d.kind.endsWith('-sink'), F = d.tree.factors, L = F.length, n = d.n;
+    const tree = (from, f0, inp, x0, w) => {
+      // Devolve, por folha, o splitter de onde ela sai.
+      let level = [{ id: null, q: 0 }];
+      let leaves = [];
+      F.forEach((f, k) => {
+        const cnt = d.tree.levels[k].count;
+        const next = [];
+        level.forEach((p, q) => {
+          const id = node('s', f0 + k, x0 + w * (q + 0.5) / cnt, { ways: f });
+          edge(p.id === null ? from : p.id, id, inp);
+          for (let c = 0; c < f; c++) (k < L - 1 ? next : leaves).push({ id, q: q * f + c });
+        });
+        level = next;
+      });
+      return leaves.map(l => l.id);
+    };
+    const splitAt = (from, f0, inp, x0, w) => {
+      let start = from, first = f0, lm = null;
+      if (loop) { lm = node('m', f0, x0 + w / 2); edge(from, lm, inp); start = lm; first = f0 + 1; }
+      const leaves = tree(start, first, inp, x0, w);
+      leaves.forEach((s, j) => {
+        if (j >= M && loop) edge(s, lm, inp, 'loop');
+        if (j >= M && sink) edge(s, node('sink', nodes[s].floor, nodes[s].x), inp, 'sink');
+      });
+      return { leaves: leaves.slice(0, M), top: first + L - 1 };
+    };
+    if (d.kind.startsWith('funnel')) {
+      let prev = null;
+      d.chain.forEach((k, c) => {
+        const id = node('m', c + 1, 0.5);
+        if (prev !== null) edge(prev, id, -1);
+        for (let i = c === 0 ? 0 : d.chain[c - 1]; i < k; i++) edge(ins[i], id, i);
+        prev = id;
+      });
+      const sp = splitAt(prev, d.chain.length + 1, -1, 0, 1);
+      sp.leaves.forEach((s, j) => { const o = node('out', sp.top + 1, (j + 0.5) / M); outs.push(o); edge(s, o, -1, 'out'); });
+    } else {
+      const trees = ins.map((c, i) => splitAt(c, 1, i, i / N, 1 / N));
+      const top = trees[0].top;
+      for (let j = 0; j < M; j++) {
+        let prev = null, last = trees.map(tr => tr.leaves[j]);
+        d.chain.forEach((k, c) => {
+          const id = node('m', top + 1 + c, (j + 0.5) / M);
+          if (prev !== null) edge(prev, id, -1);
+          for (let i = c === 0 ? 0 : d.chain[c - 1]; i < k; i++) edge(last[i], id, i);
+          prev = id;
+        });
+        const o = node('out', top + 1 + d.chain.length, (j + 0.5) / M);
+        outs.push(o);
+        edge(prev === null ? last[0] : prev, o, N > 1 ? -1 : 0, 'out');
+      }
+    }
+  }
+  const piece = id => nodes[id].t === 's' || nodes[id].t === 'm';
+  const lifts = edges.filter(e => piece(e.a) && piece(e.b) && nodes[e.a].floor !== nodes[e.b].floor).length;
+  const floors = Math.max(...nodes.filter(x => piece(x.id)).map(x => x.floor));
+  return { nodes, edges, floors, lifts, ins, outs };
+}
+
 function balancerCandidates(N, M, rates, cap, blueprints = []) {
   const list = DESIGN_KINDS.map(k => balancerDesign(k, N, M, rates, cap));
+  list.push(butterflyDesign(N, M, rates, cap));
   for (const bp of blueprints) if (bp.m === M && bp.n >= N) list.push(blueprintDesign(bp, N, M, rates, cap));
   return list;
 }
@@ -1782,7 +1948,16 @@ function buildBalancer(g, d, inputs, outputs, sink) {
     tr.slots.slice(M).forEach(s => v.sinkEdges.push(addEdge(g, s, sink)));
     return { root: tr.root, slots: tr.slots.slice(0, M) };
   };
-  if (d.kind === 'blueprint') {
+  if (d.kind === 'butterfly') {
+    let cur = inputs.slice();
+    d.factors.forEach((f, s) => {
+      const sp = cur.map((c, i) => { const id = addNode(g, 'splitter'); const e = addEdge(g, c, id); if (s === 0) v.inEdges[i] = e; return id; });
+      const mg = cur.map(() => addNode(g, 'merger'));
+      sp.forEach((id, i) => butterflyGroup(d.factors, s, i).forEach(j => addEdge(g, id, mg[j])));
+      cur = mg;
+    });
+    cur.forEach((c, j) => v.outEdges.push(addEdge(g, c, outputs[j])));
+  } else if (d.kind === 'blueprint') {
     const hub = addNode(g, 'balancer');
     inputs.forEach(s => v.inEdges.push(addEdge(g, s, hub)));
     outputs.forEach(c => v.outEdges.push(addEdge(g, hub, c)));
@@ -2063,7 +2238,7 @@ function generatePlans(srcLines, dstLines, cap, policy, blueprints = []) {
 
 function designName(d) {
   if (d.kind === 'blueprint') return t('dkBlueprint', d.bp.n, d.bp.m);
-  return t({ matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
+  return t({ butterfly: 'dkButterfly', matrix: 'dkMatrix', funnel: 'dkFunnel', 'matrix-loop': 'dkMatrixLoop', 'funnel-loop': 'dkFunnelLoop', 'matrix-sink': 'dkMatrixSink', 'funnel-sink': 'dkFunnelSink' }[d.kind]);
 }
 
 // Blueprint conta como uma peça: é só colar.
@@ -2128,7 +2303,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyDesign, designFloors, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -2911,6 +3086,34 @@ function balancerBuild(d, labels) {
       g(under, s2, belt(curve(bx + bw, yAt(j, M), xOut, yAt(j, M)), 'var(--ink)', 3));
       g(over, s2, box(xOut, yAt(j, M), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     }
+  } else if (d.kind === 'butterfly') {
+    // Uma linha por esteira; cada rodada é uma coluna de splitters e outra de mergers.
+    const F = d.factors, K = F.length, gap = 46, cH = M * gap - (gap - boxH);
+    H = top * 2 + cH;
+    const y = i => top + i * gap + boxH / 2;
+    const colS = s => inW + 50 + s * 160, colM = s => colS(s) + 90;
+    const xOut = colM(K - 1) + 50;
+    W = xOut + outW + 2;
+    const s0 = inStep();
+    for (let i = 0; i < N; i++) g(over, s0, box(0, y(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+    F.forEach((f, s) => {
+      const color = i => (s === 0 ? inColor(i) : 'var(--ink)');
+      const ss = step(t('stBfSplit', s + 1, M, f));
+      for (let i = 0; i < M; i++) {
+        g(under, ss, belt(`M${s === 0 ? inW : colM(s - 1) + 7},${y(i)} L${colS(s) - 11},${y(i)}`, color(i), 3));
+        g(over, ss, splitter(colS(s), y(i), f));
+      }
+      const groups = [...new Set(Array.from({ length: M }, (_, i) => butterflyGroup(F, s, i).join(',')))]
+        .map(gs => gs.split(',').map(j => ins[+j]).join('+')).join(', ');
+      const sm = step(t('stBfMerge', s + 1, groups));
+      for (let i = 0; i < M; i++) for (const j of butterflyGroup(F, s, i)) g(under, sm, belt(curve(colS(s) + 11, y(i), colM(s) - 7, y(j)), color(i), 1.6));
+      for (let j = 0; j < M; j++) g(over, sm, merger(colM(s), y(j)));
+    });
+    const so = step(t('stOut', M, fmt(d.perOut)));
+    for (let j = 0; j < M; j++) {
+      g(under, so, belt(`M${colM(K - 1) + 7},${y(j)} L${xOut},${y(j)}`, 'var(--ink)', 3));
+      g(over, so, box(xOut, y(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
+    }
   } else if (d.kind.startsWith('funnel')) {
     const F = d.tree.factors, L = F.length, C = d.chain.length;
     const inGap = 44, cH = Math.max(N * inGap - (inGap - boxH), n * 42);
@@ -3058,13 +3261,84 @@ function balancerBuild(d, labels) {
   return { svg, steps };
 }
 
+// Corte vertical: andares de baixo para cima, entradas embaixo e saídas em cima, lifts entre andares.
+function verticalBuild(d, labels) {
+  const fl = designFloors(d);
+  if (!fl) return balancerBuild(d, labels);
+  const steps = [], under = [], over = [];
+  const step = text => steps.push(text) - 1;
+  const g = (layer, s, svg) => layer.push(`<g data-s="${s}">${svg}</g>`);
+  const { nodes, edges, floors } = fl;
+  const piece = n => n.t === 's' || n.t === 'm';
+  const perFloor = f => nodes.filter(n => piece(n) && n.floor === f).length;
+  const widest = Math.max(d.N, d.M, ...Array.from({ length: floors }, (_, k) => perFloor(k + 1)));
+  const padL = 74, innerW = Math.max(520, widest * 46), floorH = 74, boxH = 30, top = 12;
+  const slot = innerW / Math.max(d.N, d.M), bw = Math.min(92, slot - 8), full = bw >= 78;
+  const hasSink = nodes.some(n => n.t === 'sink');
+  const W = padL + innerW + (hasSink ? 56 : 16);
+  const yOutRow = top + boxH / 2;
+  const yFloor = f => top + boxH + 26 + (floors - f) * floorH + floorH / 2;
+  const yInRow = yFloor(1) + floorH / 2 + 22 + boxH / 2;
+  const H = yInRow + boxH / 2 + top;
+  const X = n => padL + n.x * innerW;
+  const Y = n => (n.t === 'in' ? yInRow : n.t === 'out' ? yOutRow : yFloor(n.floor));
+  const color = e => (e.inp >= 0 ? inColor(e.inp) : 'var(--ink)');
+  const term = (n, tag, rate, stroke) => `<rect x="${X(n) - bw / 2}" y="${Y(n) - boxH / 2}" width="${bw}" height="${boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`
+    + (full ? `<text class="lbl" x="${X(n) - bw / 2 + 7}" y="${Y(n) + 5}">${esc(tag)}</text><text class="rate" x="${X(n) + bw / 2 - 7}" y="${Y(n) + 5}" text-anchor="end">${rate}</text>`
+      : `<text class="lbl" x="${X(n)}" y="${Y(n) + 5}" text-anchor="middle">${esc(tag)}</text>`);
+  const pieceSvg = n => (n.t === 's'
+    ? `<rect x="${X(n) - 11}" y="${Y(n) - 9}" width="22" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text class="sm" x="${X(n)}" y="${Y(n) + 4}" text-anchor="middle" style="fill:var(--ficsit)">${n.ways}</text>`
+    : `<rect x="${X(n) - 6.5}" y="${Y(n) - 6.5}" width="13" height="13" transform="rotate(45 ${X(n)} ${Y(n)})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/>`);
+  // Ligação: sai da peça, sobe (ou desce) pelo lift ao lado dela e anda no andar de destino.
+  const outIdx = new Map(), inIdx = new Map();
+  const route = e => {
+    const a = nodes[e.a], b = nodes[e.b];
+    const k = outIdx.get(e.a) || 0;
+    outIdx.set(e.a, k + 1);
+    const c = color(e), xa = X(a), ya = Y(a), xb = X(b), yb = Y(b);
+    if (b.t === 'sink') return `<path d="M${xa + 11},${ya} h22" stroke="var(--sink)" stroke-width="2" fill="none"/><text class="sm" x="${xa + 36}" y="${ya + 4}" style="fill:var(--sink)">sink</text>`;
+    if (a.t === 'in' || b.t === 'out' || a.floor === b.floor) return `<path d="${a.floor === b.floor && piece(a) && piece(b) ? `M${xa},${ya} L${xb},${yb}` : `M${xa},${ya} V${(ya + yb) / 2} H${xb} V${yb}`}" stroke="${c}" stroke-width="2" fill="none"/>`;
+    // A esteira anda no andar de origem até embaixo da peça de destino e sobe (ou desce) pelo lift.
+    const j = inIdx.get(e.b) || 0;
+    inIdx.set(e.b, j + 1);
+    const dir = yb < ya ? -1 : 1;
+    const yr = ya + dir * (13 + k * 7), lx = xb - 9 + j * 6;
+    return `<path d="M${lx},${yr} V${yb - dir * 10}" stroke="var(--line)" stroke-width="6" fill="none"/>`
+      + `<path d="M${xa},${ya + dir * 9} V${yr} H${lx} V${yb - dir * 10} H${xb}" stroke="${c}" stroke-width="1.6" fill="none"${e.kind === 'loop' ? ' stroke-dasharray="5 3"' : ''}/>`;
+  };
+  for (let f = 1; f <= floors; f++) {
+    const yb = yFloor(f) + floorH / 2 - 4;
+    under.push(`<path d="M${padL - 6},${yb} H${W - 8}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text class="sm" x="0" y="${yFloor(f) + 4}">${esc(t('floorTag', f))}</text>`);
+  }
+  const s0 = step(t('stIn', d.N, labels.ins.join(', '), rateList(d.rates)));
+  fl.ins.forEach((id, i) => g(over, s0, term(nodes[id], labels.ins[i], fmt(d.rates[i]), inColor(i))));
+  const stepOf = [];
+  for (let f = 1; f <= floors; f++) {
+    const here = nodes.filter(n => piece(n) && n.floor === f);
+    const sp = here.filter(n => n.t === 's');
+    const up = edges.filter(e => piece(nodes[e.a]) && nodes[e.b].floor === f && nodes[e.a].floor < f).length;
+    const down = edges.filter(e => e.kind === 'loop' && nodes[e.a].floor === f).length;
+    stepOf[f] = step(t('stFloor', f, sp.length, sp.length ? sp[0].ways : 0, here.length - sp.length, up, down));
+    here.forEach(n => g(over, stepOf[f], pieceSvg(n)));
+  }
+  const so = step(t('stOut', d.M, fmt(d.perOut)));
+  fl.outs.forEach((id, j) => g(over, so, term(nodes[id], labels.outs[j], fmt(d.perOut), 'var(--ok)')));
+  for (const e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    const s = e.kind === 'out' ? so : e.kind === 'loop' || b.t === 'sink' ? stepOf[a.floor] : stepOf[b.floor];
+    g(under, s, route(e));
+  }
+  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
+  return { svg, steps };
+}
+
 // Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
-function mountPonder(root, d, labels) {
+function mountPonder(root, d, labels, vertical = false) {
   if (root._stop) root._stop();
-  const { svg, steps } = balancerBuild(d, labels);
+  const { svg, steps } = vertical ? verticalBuild(d, labels) : balancerBuild(d, labels);
   const K = steps.length;
   let cur = K, timer = null;
-  const matrix = d.kind === 'matrix' || d.kind === 'matrix-loop' || d.kind === 'matrix-sink' || d.kind === 'blueprint';
+  const matrix = !d.kind.startsWith('funnel');
   root.innerHTML = `<div class="ponder" tabindex="-1">
     <div class="stage">${svg}</div>
     <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
@@ -3079,6 +3353,7 @@ function mountPonder(root, d, labels) {
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
       <span><i class="holo"></i>${t('lgHolo')}</span>
+      ${vertical ? `<span><i class="lifti"></i>${t('lgLift')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-sink') ? `<span><i style="background:var(--sink)"></i>${t('lgToSink')}</span>` : ''}
     </div>
@@ -3143,7 +3418,7 @@ function whyText(ranked) {
 }
 
 function designNote(d, belt) {
-  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape' }[d.applies], d.M);
+  if (d.applies) return t({ notDirect: 'rNotDirect', direct: 'rDirect', oneInput: 'rOneInput', shape: 'rShape', bpShape: 'rBpShape', butterflyShape: 'rButterfly' }[d.applies], d.M);
   const bad = d.segments.find(s => !s.ok);
   const note = bad ? t('rLimit', segName(bad), fmt(bad.rate), belt) : t('rNoLimit');
   return note + (d.sinkRate > 0.05 ? `; ${t('lgToSink')} ${fmt(d.sinkRate)}/min` : '');
@@ -3157,20 +3432,41 @@ function checksTable(d, belt) {
 }
 
 // Bancada: passo a passo do design escolhido, a lista de designs testados e a vazão de cada trecho.
-// ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, view, inUse, onView }
+// ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, style, view, inUse, onView, onStyle }
+// Montagem: normal (designs planos), borboleta, ou vertical (qualquer design em andares, com lifts).
+const STYLES = ['normal', 'butterfly', 'vertical'];
+const STYLE_FILTER = { normal: d => d.kind !== 'butterfly', butterfly: d => d.kind === 'butterfly', vertical: d => d.kind !== 'blueprint' };
 function workbench(el, ctx) {
-  const cands = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints));
+  const style = STYLES.includes(ctx.style) ? ctx.style : 'normal';
+  const cands = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints)).filter(STYLE_FILTER[style]);
   const best = cands[0];
-  if (best.applies) { el.innerHTML = `<p class="lead">${t('whyNone')}</p>`; return; }
+  const styleBar = `<div class="wb-style"><span class="wb-style-l">${t('styleTitle')}${tip('tipStyle')}</span>
+    <div class="seg" role="radiogroup" aria-label="${esc(t('styleTitle'))}">${STYLES.map(k => `<button type="button" role="radio" aria-checked="${k === style}" data-style="${k}">${t('style' + cap1(k))}</button>`).join('')}</div></div>`;
+  const bindStyle = () => el.querySelector('.seg').addEventListener('click', e => {
+    const b = e.target.closest('[data-style]');
+    if (!b || b.dataset.style === style) return;
+    ctx.style = b.dataset.style;
+    if (ctx.onStyle) ctx.onStyle(ctx.style);
+    workbench(el, ctx);
+    el.querySelector(`[data-style="${ctx.style}"]`)?.focus();
+  });
+  if (!best || best.applies) {
+    el.innerHTML = `${styleBar}<p class="lead">${t(style === 'butterfly' ? 'styleNone' : 'whyNone')}</p>`;
+    bindStyle();
+    return;
+  }
   const d = cands.find(x => !x.applies && designKey(x) === ctx.view) || best;
   const pc = d.pieces;
+  const vertical = style === 'vertical';
+  const fl = vertical ? designFloors(d) : null;
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
-  el.innerHTML = `<div class="wb">
-    <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}</div></div>
+  el.innerHTML = `${styleBar}<div class="wb">
+    <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}${fl ? `<p class="hint">${t('vertNote')}</p>` : ''}</div></div>
     <aside class="wb-side">
       <div class="wb-head"><span class="wb-shape num">${d.N}→${d.M}</span><span class="wb-name">${esc(cap1(designName(d)))}${tag(d)}</span></div>
       <dl class="pc-grid num">
         ${pc.blueprints ? `<div><dt>Blueprint</dt><dd>${pc.blueprints}</dd></div>` : `<div><dt>${t('thSplitters')}</dt><dd>${pc.splitters}</dd></div><div><dt>${t('thMergers')}</dt><dd>${pc.mergers}</dd></div>`}
+        ${fl ? `<div><dt>${t('thLifts')}</dt><dd>${fl.lifts}</dd></div>` : ''}
         <div><dt>${t('thPerOut')}</dt><dd>${fmt(d.perOut)}<small>/min</small></dd></div>
       </dl>
       <div>${d === best ? `<h4>${t('whyTitle')}</h4><p>${esc(whyText(cands))}</p>` : `<h4>${t('whyNotTitle')}</h4><p>${esc(`${cap1(designName(best))}: ${whyText([best, d])}`)}</p>`}</div>
@@ -3188,7 +3484,8 @@ function workbench(el, ctx) {
       </div>
     </aside>
   </div>`;
-  mountPonder(el.querySelector('.wb-stage'), d, ctx.labels);
+  mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, vertical);
+  bindStyle();
   el.querySelector('.cands').addEventListener('click', e => {
     const b = e.target.closest('.cand');
     if (!b || b.disabled) return;
@@ -3204,7 +3501,7 @@ const BP_STORE = 'sf-balancer:bp';
 const LIB_STORE = 'sf-balancer:lib';
 let BPS = [{ n: 3, m: 4 }];
 try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
-const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null };
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal' };
 try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
 const saveBps = () => { try { localStorage.setItem(BP_STORE, JSON.stringify(BPS)); } catch (e) { /* sem storage */ } };
 const saveLib = () => { try { localStorage.setItem(LIB_STORE, JSON.stringify(LIB)); } catch (e) { /* sem storage */ } };
@@ -3216,6 +3513,7 @@ const CATALOG = [
   { kind: 'funnel-loop', n: 3, m: 5, rate: 60, ds: 'dsFunnelLoop' },
   { kind: 'matrix-sink', n: 1, m: 7, rate: 480, ds: 'dsMatrixSink' },
   { kind: 'funnel-sink', n: 2, m: 5, rate: 60, ds: 'dsFunnelSink' },
+  { kind: 'butterfly', n: 4, m: 4, rate: 480, ds: 'dsButterfly' },
 ];
 
 function renderBps() {
@@ -3241,12 +3539,13 @@ function renderLib() {
   workbench($('libOut'), {
     N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
+    style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
   });
 }
 
 function renderCatalog() {
   $('catGrid').innerHTML = CATALOG.map((c, i) => {
-    const d = balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
+    const d = c.kind === 'butterfly' ? butterflyDesign(c.n, c.m, [c.rate], 480) : balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
     return `<div class="plate cat">
       <div class="thumb" aria-hidden="true">${balancerBuild(d, libLabels(c.n, c.m)).svg}</div>
       <h4>${esc(cap1(designName(d)))}</h4>
@@ -3260,6 +3559,8 @@ function openCatalog(i) {
   const c = CATALOG[i];
   $('libN').value = c.n; $('libM').value = c.m; $('libRate').value = fmt(c.rate);
   LIB.view = c.kind;
+  if (c.kind === 'butterfly') LIB.style = 'butterfly';
+  else if (LIB.style === 'butterfly') LIB.style = 'normal';
   renderLib();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   $('gen').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
@@ -3280,7 +3581,7 @@ function openFromPlan(key) {
   const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
-    openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d) });
+    openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind === 'butterfly' ? 'butterfly' : 'normal' });
   } else if (key[0] === 'g') {
     const gr = alt.view.groups[+key.slice(1)].gr;
     const kind = { direct: 'matrix', loop: 'matrix-loop', sink: 'matrix-sink' }[gr.mode];

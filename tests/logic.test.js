@@ -375,3 +375,46 @@ test('balancer: nomes nos três idiomas', () => {
   assert.equal(inLang('en', () => L.designName(d)), 'looped funnel');
   assert.equal(inLang('es', () => L.designName(d)), 'embudo con loop');
 });
+
+test('borboleta: blocos por rodada e peças', () => {
+  assert.deepEqual([0, 1, 2, 3].map(i => L.butterflyGroup([2, 2], 0, i)), [[0, 1], [0, 1], [2, 3], [2, 3]]);
+  assert.deepEqual([0, 1, 2, 3].map(i => L.butterflyGroup([2, 2], 1, i)), [[0, 2], [1, 3], [0, 2], [1, 3]]);
+  const pieces = m => L.designPieces(L.butterflyDesign(m, m, [480], 480));
+  assert.equal(pieces(4), 16);
+  assert.equal(pieces(8), 48);
+  assert.equal(pieces(6), 24);
+  assert.equal(L.designPieces(L.balancerDesign('matrix', 4, 4, [480], 480)), 20);
+  assert.equal(L.butterflyDesign(3, 4, [480], 480).applies, 'butterflyShape', 'entradas ≠ saídas');
+  assert.equal(L.butterflyDesign(5, 5, [480], 480).applies, 'butterflyShape', '5 não é feito de 2 e 3');
+});
+
+test('borboleta: 4→4 cheio ganha da matriz por ter menos peças', () => {
+  const r = best(4, 4, 480, 480, []);
+  assert.equal(r[0].kind, 'butterfly');
+  assert.equal(L.designWhy(r).code, 'fewer');
+  assert.ok(r[0].segments.every(s => s.ok));
+});
+
+test('borboleta no plano: entradas desiguais saem iguais', () => {
+  // Origem: 3 linhas de 480 e 1 de 300; destino: 4 linhas de 430.
+  const p = L.computePlan({ ...base, srcGroups: [{ driver: 'total', total: 1440 }, { driver: 'total', total: 300 }], dstCount: 4, dstRate: 430, dstPer: 1 });
+  const a = p.alternatives.find(x => x.kind === 'balancer');
+  assert.equal(a.bal.design.kind, 'butterfly');
+  assert.ok(a.full);
+  a.dests.forEach(d => close(d.got, 430));
+  assert.equal(a.pieces.splitters, 8);
+  assert.equal(a.pieces.mergers, 8);
+  conserves(p, a);
+});
+
+test('vertical: andares e lifts', () => {
+  const bf = L.designFloors(L.butterflyDesign(4, 4, [480], 480));
+  assert.equal(bf.floors, 4, '2 rodadas × (splitters, mergers)');
+  assert.equal(bf.lifts, 20, '8 + 4 + 8');
+  const mx = L.designFloors(L.balancerDesign('matrix', 3, 4, [240], 480));
+  assert.equal(mx.floors, 3, '2 níveis de árvore + 1 merger');
+  assert.equal(mx.lifts, 6 + 12, '3 árvores × 2 lifts até o 2º nível + 12 partes até os mergers');
+  const loop = L.designFloors(L.balancerDesign('matrix-loop', 1, 5, [240], 480));
+  assert.ok(loop.edges.some(e => e.kind === 'loop'));
+  assert.equal(L.designFloors(L.blueprintDesign({ n: 3, m: 4 }, 3, 4, [240], 480)), null, 'blueprint não tem andares');
+});
