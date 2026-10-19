@@ -570,18 +570,21 @@ test('borboleta acima de 9: posições fixas, mas as saídas continuam iguais', 
 });
 
 // ---- Vista 3D ----
+// O roteamento das esteiras é a parte cara: cada montagem é calculada uma vez para todos os testes.
+const LAY3 = new Map();
+const lay3d = (d, mode) => { const k = JSON.stringify(d) + mode; if (!LAY3.has(k)) LAY3.set(k, L.layout3d(d, mode)); return LAY3.get(k); };
 test('3D: andares batem com designFloors', () => {
   const d = L.butterflyDesign(4, 4, [480], 480);
-  const fl = L.designFloors(d), lay = L.layout3d(d, 'floors');
+  const fl = L.designFloors(d), lay = lay3d(d, 'floors');
   assert.equal(lay.lifts, fl.lifts);
   assert.equal(lay.steps.length, fl.floors + 2, 'entradas + 4 andares + saídas');
   assert.equal(lay.pieces.filter(p => p.t === 's').length, 8);
-  assert.equal(L.layout3d(L.blueprintDesign({ n: 3, m: 4 }, 3, 4, [240], 480), 'towers'), null);
+  assert.equal(lay3d(L.blueprintDesign({ n: 3, m: 4 }, 3, 4, [240], 480), 'towers'), null);
 });
 
 test('3D: torres empilham cada camada numa coluna', () => {
   const d = L.balancerDesign('matrix', 3, 4, [240], 480);
-  const lay = L.layout3d(d, 'towers');
+  const lay = lay3d(d, 'towers');
   const xsOfLevel = lv => new Set(lay.pieces.filter(p => p.step === lv + 1).map(p => p.pos[0]));
   for (let lv = 0; lv < lay.steps.length - 2; lv++) assert.equal(xsOfLevel(lv).size, 1, `nível ${lv + 1} numa torre só`);
   assert.ok(lay.belts.every(b => b.pts.length >= 2));
@@ -591,7 +594,7 @@ test('3D: todos os formatos de 2 a 9, nas duas montagens', () => {
   for (let N = 2; N <= 9; N++) for (let M = 2; M <= 9; M++) {
     for (const d of L.balancerCandidates(N, M, [100], 1e9).filter(x => !x.applies && x.kind !== 'blueprint')) {
       for (const mode of ['floors', 'towers']) {
-        const lay = L.layout3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
+        const lay = lay3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
         const key = p => p.pos.map(v => v.toFixed(2)).join(',');
         assert.equal(new Set(lay.pieces.map(key)).size, lay.pieces.length, `${at}: peças não se sobrepõem`);
         assert.equal(lay.pieces.filter(p => p.t === 'in').length, N, at);
@@ -625,7 +628,7 @@ test('3D: esteira não atravessa peça e não corre por cima de outra esteira', 
   for (const [N, M] of [[4, 4], [2, 2], [3, 4], [5, 5], [2, 5], [9, 9]]) {
     for (const d of L.balancerCandidates(N, M, [100], 1e9).filter(x => !x.applies && x.kind !== 'blueprint')) {
       for (const mode of ['floors', 'towers']) {
-        const lay = L.layout3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
+        const lay = lay3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
         const byId = new Map(lay.pieces.map(p => [p.id, p]));
         const outer = []; // trechos fora das peças das pontas
         lay.belts.forEach((b, bi) => {
@@ -654,7 +657,7 @@ test('3D: esteira não atravessa peça e não corre por cima de outra esteira', 
 test('3D: a contagem de lifts é o número de esteiras com trecho vertical', () => {
   for (const d of [L.balancerDesign('funnel', 2, 2, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.balancerDesign('matrix-loop', 2, 5, [100], 1e9)]) {
     for (const mode of ['floors', 'towers']) {
-      const lay = L.layout3d(d, mode);
+      const lay = lay3d(d, mode);
       const vertical = lay.belts.filter(b => segsOf(lay, b).some(([p, q]) => Math.abs(p[1] - q[1]) > 1e-9)).length;
       assert.equal(lay.lifts, vertical, `${d.kind} ${mode}`);
     }
@@ -665,7 +668,7 @@ test('3D: o enquadramento inicial cabe a montagem inteira na tela', () => {
   const dir = [0.75, 0.75, 1.1], n = Math.hypot(...dir), f = dir.map(v => v / n);
   for (const [d, mode] of [[L.balancerDesign('matrix', 9, 9, [100], 1e9), 'towers'], [L.butterflyDesign(9, 2, [100], 1e9, 'butterfly-loop'), 'floors'], [L.butterflyDesign(4, 3, [100], 1e9, 'butterfly-loop'), 'floors']]) {
     for (const aspect of [16 / 10, 390 / 600]) {
-      const { min, max } = L.layout3d(d, mode).bounds;
+      const { min, max } = lay3d(d, mode).bounds;
       const c = min.map((v, i) => (v + max[i]) / 2), dist = L.fitDistance({ min, max }, 45, aspect);
       const cam = c.map((v, i) => v + f[i] * dist);
       // Base da câmera olhando para o centro.
@@ -680,5 +683,73 @@ test('3D: o enquadramento inicial cabe a montagem inteira na tela', () => {
         assert.ok(Math.abs(sx) <= 1 && Math.abs(sy) <= 1, `${d.kind} ${mode} aspect ${aspect.toFixed(2)}: canto fora da tela (${sx.toFixed(2)}, ${sy.toFixed(2)})`);
       }
     }
+  }
+});
+
+// ---- Vista 3D: portas como no jogo ----
+// Referencial do fluxo: Torres é o próprio mundo; Andares gira (x' = -z, z' = x).
+const NRM3 = { front: [1, 0, 0], back: [-1, 0, 0], left: [0, 0, -1], right: [0, 0, 1] };
+const toWorld = (mode, v) => (mode === 'floors' ? [v[2], v[1], -v[0]] : v);
+const toFrame = (mode, v) => (mode === 'floors' ? [-v[2], v[1], v[0]] : v);
+const faceOf = (mode, p, side) => {
+  const c = toFrame(mode, p.pos), h = L.L3D.half[p.t], n = NRM3[side];
+  return toWorld(mode, c.map((v, k) => v + n[k] * h[k]));
+};
+const near = (a, b, eps = 1e-6) => a.every((v, k) => Math.abs(v - b[k]) < eps);
+
+test('3D: portas como no jogo, uma esteira por face', () => {
+  for (let N = 2; N <= 9; N++) for (let M = 2; M <= 9; M++) {
+    for (const d of L.balancerCandidates(N, M, [100], 1e9).filter(x => !x.applies && x.kind !== 'blueprint')) {
+      for (const mode of ['floors', 'towers']) {
+        const lay = lay3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
+        const byId = new Map(lay.pieces.map(p => [p.id, p]));
+        const used = new Set();
+        lay.belts.forEach((b, bi) => {
+          const A = byId.get(b.a), B = byId.get(b.b);
+          assert.ok(L.PORT3D[A.t].out.includes(b.fromSide), `${at}: esteira ${bi} sai de ${A.t} por ${b.fromSide}`);
+          assert.ok(L.PORT3D[B.t].in.includes(b.toSide), `${at}: esteira ${bi} entra em ${B.t} por ${b.toSide}`);
+          for (const key of [`${b.a}:${b.fromSide}`, `${b.b}:${b.toSide}`]) {
+            assert.ok(!used.has(key), `${at}: duas esteiras na face ${key}`);
+            used.add(key);
+          }
+          const n = b.pts.length, f0 = faceOf(mode, A, b.fromSide), f1 = faceOf(mode, B, b.toSide);
+          assert.ok(near(b.pts[0], f0), `${at}: esteira ${bi} começa no centro da face`);
+          assert.ok(near(b.pts[n - 1], f1), `${at}: esteira ${bi} termina no centro da face`);
+          const out0 = toWorld(mode, NRM3[b.fromSide]), in1 = toWorld(mode, NRM3[b.toSide]);
+          assert.ok(near(b.pts[1], f0.map((v, k) => v + out0[k] * 1.2)), `${at}: esteira ${bi} sai perpendicular, 1,2 m`);
+          assert.ok(near(b.pts[n - 2], f1.map((v, k) => v + in1[k] * 1.2)), `${at}: esteira ${bi} entra perpendicular, 1,2 m`);
+        });
+      }
+    }
+  }
+});
+
+test('3D: sink encostado na peça, sem sobrepor', () => {
+  for (const d of [L.balancerDesign('matrix-sink', 2, 5, [100], 1e9), L.balancerDesign('funnel-sink', 3, 5, [100], 1e9), L.butterflyDesign(9, 2, [100], 1e9, 'butterfly-sink')]) {
+    for (const mode of ['floors', 'towers']) {
+      const lay = lay3d(d, mode), at = `${d.kind} ${mode}`;
+      const byId = new Map(lay.pieces.map(p => [p.id, p]));
+      const sinks = lay.pieces.filter(p => p.t === 'sink');
+      for (const s of sinks) {
+        const b = lay.belts.find(x => x.b === s.id), A = byId.get(b.a);
+        assert.ok(Math.hypot(...s.pos.map((v, k) => v - A.pos[k])) <= 6 + 1e-6, `${at}: sink perto da peça de origem`);
+        assert.ok(['front', 'left', 'right'].includes(b.fromSide), at);
+      }
+      const box = p => { const c = toFrame(mode, p.pos), h = L.L3D.half[p.t]; return { lo: c.map((v, k) => v - h[k]), hi: c.map((v, k) => v + h[k]) }; };
+      for (let i = 0; i < lay.pieces.length; i++) for (let j = i + 1; j < lay.pieces.length; j++) {
+        const u = box(lay.pieces[i]), v = box(lay.pieces[j]);
+        assert.ok(![0, 1, 2].every(k => u.lo[k] < v.hi[k] - 1e-6 && v.lo[k] < u.hi[k] - 1e-6), `${at}: peças ${i} e ${j} se sobrepõem`);
+      }
+    }
+  }
+});
+
+test('3D: montagem cheia continua rápida', () => {
+  const d = L.balancerDesign('matrix', 9, 9, [100], 1e9);
+  for (const mode of ['floors', 'towers']) {
+    const t0 = Date.now();
+    L.layout3d(d, mode);
+    // Andares 9→9 em matriz é o caso mais cheio da ferramenta (153 esteiras numa fileira de 72 m): até 0,8 s.
+    assert.ok(Date.now() - t0 < (mode === 'floors' ? 800 : 400), `${mode}: ${Date.now() - t0} ms`);
   }
 });

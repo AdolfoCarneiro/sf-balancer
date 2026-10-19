@@ -1910,7 +1910,11 @@ function designFloors(d) {
 // Vista 3D: posições em metros (y é a altura) a partir dos níveis de designFloors.
 // Andares: cada nível é um andar, peças lado a lado. Torres: cada nível vira uma torre ao longo do fluxo,
 // com as peças empilhadas. Esteira entre alturas diferentes de duas peças sobe ou desce por lift.
-const L3D = { cell: 4, floor: 5, gap: 8 };
+const L3D = { cell: 4, floor: 5, gap: 8, half: { s: [1.8, 1.2, 1.8], m: [1.8, 1.2, 1.8], sink: [1.8, 1.2, 1.8], in: [2.2, 0.4, 2.2], out: [2.2, 0.4, 2.2] } };
+// Faces de cada peça, como no jogo, no referencial do fluxo (frente = sentido do fluxo, direita = +z').
+const PORT3D = { s: { in: ['back'], out: ['front', 'left', 'right'] }, m: { in: ['back', 'left', 'right'], out: ['front'] }, in: { in: [], out: ['front'] }, out: { in: ['back'], out: [] }, sink: { in: ['back'], out: [] } };
+const NRM3 = { front: [1, 0, 0], back: [-1, 0, 0], left: [0, 0, -1], right: [0, 0, 1] };
+const STUB3 = 1.2, CROSS3 = 25;
 function layout3d(d, mode) {
   const fl = designFloors(d);
   if (!fl) return null;
@@ -1942,71 +1946,202 @@ function layout3d(d, mode) {
     fl.ins.forEach(id => pos.set(id, [nodes[id].x * W, lo, L3D.gap * 1.5]));
     fl.outs.forEach(id => pos.set(id, [nodes[id].x * W, hi, -L3D.gap * 1.5]));
   }
-  // Sink: toco na frente da peça de onde sai, um ao lado do outro.
-  const sinkCount = new Map();
-  for (const [id, from] of sinkFrom) {
-    const k = sinkCount.get(from) || 0;
-    sinkCount.set(from, k + 1);
-    const [x, y] = pos.get(from);
-    pos.set(id, [x + k * L3D.cell, y, L3D.gap / 2]);
-  }
   const stepOf = n => (n.t === 'in' ? 0 : n.t === 'out' ? outStep : n.t === 'sink' ? stepOf(nodes[sinkFrom.get(n.id)]) : levelIdx.get(n.floor));
-  const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: pos.get(n.id), step: stepOf(n) }));
-  // Esteiras correm fora do plano das peças (z = 0), cada uma numa faixa de profundidade: sai da peça de
-  // origem, anda na sua faixa, sobe ou desce por lift fora das peças e entra na de destino. A faixa é a
-  // primeira que não cruza peça nem corre por cima de outra esteira. O retorno do loop passa por cima de tudo.
-  const HALF3 = { s: [1.8, 1.2, 1.8], m: [1.8, 1.2, 1.8], sink: [1.8, 1.2, 1.8], in: [2.2, 0.4, 1.8], out: [2.2, 0.4, 1.8] };
-  const inside = (q, id, pad) => q.every((v, k) => Math.abs(v - pos.get(id)[k]) <= HALF3[nodes[id].t][k] + pad);
-  const topY = Math.max(...[...pos.values()].map(q => q[1])) + L3D.floor;
-  const placed = [];
-  const axisOf = (p, q) => [0, 1, 2].find(k => Math.abs(p[k] - q[k]) > 1e-9);
-  const clash = (p, q, a, b) => {
-    const mid = p.map((v, i) => (v + q[i]) / 2);
-    if (inside(mid, a, 0) || inside(mid, b, 0)) return false;
-    const ax = axisOf(p, q);
-    // Trecho alinhado a um eixo cruza a caixa se cabe nas outras duas medidas e o intervalo encosta.
-    for (const [id, c] of pos) {
-      if (id === a || id === b) continue;
-      const h = HALF3[nodes[id].t];
-      if ([0, 1, 2].every(k => (k === ax ? Math.min(p[k], q[k]) <= c[k] + h[k] + 0.3 && Math.max(p[k], q[k]) >= c[k] - h[k] - 0.3 : Math.abs(p[k] - c[k]) <= h[k] + 0.3))) return true;
-    }
-    return placed.some(u => u.ax === ax && [0, 1, 2].every(k => k === ax || Math.abs(p[k] - u.p[k]) < 1.1)
-      && Math.min(Math.max(p[ax], q[ax]), Math.max(u.p[ax], u.q[ax])) - Math.max(Math.min(p[ax], q[ax]), Math.min(u.p[ax], u.q[ax])) > 0.2);
-  };
-  const outK = new Map(), inK = new Map();
-  // Quatro posições na largura da peça: saídas a partir da esquerda, entradas a partir da direita (peça tem até 4 ligações).
-  const SLOTS = [-1.68, -0.56, 0.56, 1.68];
-  const slot = (map, id, out) => { const k = map.get(id) || 0; map.set(id, k + 1); return out ? SLOTS[k % 4] : SLOTS[3 - (k % 4)]; };
-  let loops = 0;
-  const belts = edges.map(e => {
-    const a = nodes[e.a], b = nodes[e.b], A = pos.get(e.a), B = pos.get(e.b);
-    const dxo = slot(outK, e.a, true), dxi = slot(inK, e.b, false), loop = e.kind === 'loop';
-    const ly = loop ? topY + loops++ * 1.5 : null;
-    // Nas torres o lift fica no vão antes da torre de destino; nos andares, na frente ou atrás da peça.
-    const Lx = loop || mode !== 'towers' ? B[0] + dxi : B[0] - L3D.gap / 2 + dxi;
-    const route = z => {
-      const pts = [A, [A[0] + dxo, A[1], A[2]], [A[0] + dxo, A[1], z]];
-      if (loop) pts.push([A[0] + dxo, ly, z], [Lx, ly, z]);
-      else pts.push([Lx, A[1], z]);
-      pts.push([Lx, B[1], z], [B[0] + dxi, B[1], z], [B[0] + dxi, B[1], B[2]], B);
-      return pts.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - pts[i - 1][k]) > 1e-9));
+  // Daqui em diante tudo é calculado no referencial do fluxo (fluxo em +x'): Torres já é assim; Andares gira
+  // (as entradas ficam em +z e as saídas em -z, então x' = -z, z' = x). As portas são as do jogo: splitter
+  // entra por trás e sai pela frente e pelos lados; merger entra por trás e pelos lados e sai pela frente.
+  const fr = q => (mode === 'floors' ? [-q[2], q[1], q[0]] : q.slice());
+  const back = q => (mode === 'floors' ? [q[2], q[1], -q[0]] : q);
+  const F = new Map([...pos].map(([id, q]) => [id, fr(q)]));
+  const half = id => L3D.half[nodes[id].t];
+  const outsOf = new Map(), insOf = new Map();
+  edges.forEach((e, ei) => { (outsOf.get(e.a) || outsOf.set(e.a, []).get(e.a)).push(ei); (insOf.get(e.b) || insOf.set(e.b, []).get(e.b)).push(ei); });
+  const fromSide = [], toSide = [];
+  // Lados: quem sobe sai pela esquerda e quem desce pela direita (empate de altura: pela posição na fileira);
+  // o merger recebe do mesmo lado de onde a esteira saiu, para não precisar contornar a peça.
+  const dy = (id, o) => F.get(o)[1] - F.get(id)[1], dz = (id, o) => F.get(o)[2] - F.get(id)[2];
+  nodes.forEach(n => {
+    const outs = outsOf.get(n.id) || [], ins = insOf.get(n.id) || [];
+    if (n.t === 'm') return; // depois dos splitters, abaixo
+    if (n.t !== 's') { ins.forEach(ei => { toSide[ei] = 'back'; }); outs.forEach(ei => { fromSide[ei] = 'front'; }); return; }
+    ins.forEach(ei => { toSide[ei] = 'back'; });
+    const free = new Set(PORT3D.s.out);
+    const take = (ei, want) => { const sd = free.has(want) ? want : PORT3D.s.out.find(x => free.has(x)); fromSide[ei] = sd; free.delete(sd); };
+    outs.filter(ei => nodes[edges[ei].b].t === 'sink').forEach(ei => take(ei, (mode === 'floors' ? ['front', 'left', 'right'] : ['left', 'right', 'front']).find(x => free.has(x))));
+    const main = outs.filter(ei => nodes[edges[ei].b].t !== 'sink').sort((u, v) => dy(n.id, edges[u].b) - dy(n.id, edges[v].b) || dz(n.id, edges[u].b) - dz(n.id, edges[v].b));
+    const flat = main.findIndex(ei => Math.abs(dy(n.id, edges[ei].b)) < 1e-9);
+    if (main.length === 1) take(main[0], 'front');
+    else if (main.length === 3) main.forEach((ei, k) => take(ei, ['right', 'front', 'left'][k]));
+    else if (main.length === 2 && flat >= 0) { take(main[flat], 'front'); const o = main[1 - flat]; take(o, dy(n.id, edges[o].b) > 0 ? 'left' : 'right'); }
+    else if (main.length === 2) { take(main[0], 'right'); take(main[1], 'left'); }
+  });
+  nodes.filter(n => n.t === 'm').forEach(n => {
+    (outsOf.get(n.id) || []).forEach(ei => { fromSide[ei] = 'front'; });
+    const left = (insOf.get(n.id) || []).slice(), free = new Set(PORT3D.m.in);
+    const take = (ei, sd) => { toSide[ei] = sd; free.delete(sd); left.splice(left.indexOf(ei), 1); };
+    const src = ei => edges[ei].a;
+    left.slice().sort((u, v) => Math.abs(dy(n.id, src(u))) - Math.abs(dy(n.id, src(v))))
+      .forEach(ei => { const sd = fromSide[ei]; if ((sd === 'left' || sd === 'right') && free.has(sd)) take(ei, sd); });
+    const straight = left.find(ei => fromSide[ei] === 'front') ?? left.find(ei => Math.abs(dy(n.id, src(ei))) < 1e-9);
+    if (straight !== undefined && free.has('back')) take(straight, 'back');
+    left.slice().sort((u, v) => dy(n.id, src(u)) - dy(n.id, src(v))).forEach(ei => take(ei, PORT3D.m.in.find(x => free.has(x))));
+  });
+  // Sink: na frente da face da peça de origem, com os dois tocos (o dela e o dele) entre as duas.
+  for (const [id, from] of sinkFrom) {
+    const ei = edges.findIndex(e => e.b === id), nv = NRM3[fromSide[ei]], c = F.get(from), h = half(from);
+    F.set(id, c.map((v, k) => v + nv[k] * (h[k] + 2 * STUB3 + L3D.half.sink[k])));
+  }
+  const portOf = (id, side) => { const c = F.get(id), h = half(id), nv = NRM3[side]; const q = c.map((v, k) => v + nv[k] * h[k]); return { q, s: q.map((v, k) => v + nv[k] * STUB3) }; };
+
+  // Roteador ortogonal: porta → toco → faixa z' → coluna x' (lift) → altura do destino → toco → porta.
+  // Trechos são caixas alinhadas aos eixos. Proibido: encostar numa peça (< 0,25 m) ou correr junto de outra
+  // esteira (paralela a menos de 0,9 m). Cruzar outra em ângulo reto é permitido, mas caro: às vezes não tem
+  // como evitar (três entradas na mesma altura indo para o mesmo merger). Candidatas em ordem de comprimento.
+  const box = (a, b) => ({ lo: [0, 1, 2].map(k => Math.min(a[k], b[k])), hi: [0, 1, 2].map(k => Math.max(a[k], b[k])) });
+  // Folga entre duas caixas em cada eixo (é chamada milhões de vezes nas montagens cheias).
+  const G = [0, 0, 0];
+  const gaps3 = (A, B) => { for (let k = 0; k < 3; k++) G[k] = Math.max(0, A.lo[k] - B.hi[k], B.lo[k] - A.hi[k]); return G; };
+  const pieceBox = id => { const c = F.get(id), h = half(id); return { lo: c.map((v, k) => v - h[k]), hi: c.map((v, k) => v + h[k]) }; };
+  // Colunas das peças (o sink fica de fora: ele já é obstáculo e não deve tirar as faixas da frente da fileira).
+  const xcols = [...new Set(nodes.filter(n => n.t !== 'sink').map(n => F.get(n.id)[0]))].sort((a, b) => a - b);
+  const zcols = [...new Set(nodes.map(n => +F.get(n.id)[2].toFixed(3)))].sort((a, b) => a - b);
+  const gaps = [];
+  for (let i = 1; i < xcols.length; i++) for (let x = xcols[i - 1] + 2.4; x <= xcols[i] - 2.4 + 1e-6; x += 0.6) gaps.push(+x.toFixed(3));
+  // E faixas para fora da primeira e da última coluna (montagem cheia precisa).
+  const outer = [];
+  for (let k = 0; k < 60; k++) outer.push(+(xcols[0] - 3 - 1.2 * k).toFixed(3), +(xcols[xcols.length - 1] + 3 + 1.2 * k).toFixed(3));
+  const topY = Math.max(...[...F.values()].map(q => q[1])) + L3D.floor;
+  const len = pts => pts.slice(1).reduce((s, q, i) => s + Math.abs(q[0] - pts[i][0]) + Math.abs(q[1] - pts[i][1]) + Math.abs(q[2] - pts[i][2]), 0) + pts.length * 0.6;
+  const clean = raw => raw.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - raw[i - 1][k]) > 1e-9));
+
+  function routeAll(order) {
+    // Grade espacial de 4 m para as caixas (peças, tocos reservados e trechos já roteados).
+    const grid = new Map(), C = 4;
+    const cells = (b, pad) => { const r = []; for (let x = Math.floor((b.lo[0] - pad) / C); x <= Math.floor((b.hi[0] + pad) / C); x++) for (let y = Math.floor((b.lo[1] - pad) / C); y <= Math.floor((b.hi[1] + pad) / C); y++) for (let z = Math.floor((b.lo[2] - pad) / C); z <= Math.floor((b.hi[2] + pad) / C); z++) r.push(((x + 512) * 1024 + y + 512) * 1024 + z + 512); return r; };
+    const axis = b => [0, 1, 2].find(k => b.hi[k] - b.lo[k] > 1e-9);
+    const put = it => { it.ax = axis(it.box); cells(it.box, 0).forEach(k => (grid.get(k) || grid.set(k, []).get(k)).push(it)); };
+    nodes.forEach(n => put({ box: pieceBox(n.id), piece: n.id }));
+    edges.forEach((e, ei) => { for (const [id, sd] of [[e.a, fromSide[ei]], [e.b, toSide[ei]]]) { const p = portOf(id, sd); put({ box: box(p.q, p.s), ei }); } });
+    let stamp = 0;
+    // Pontuação de um trecho: 1000 por colisão proibida, CROSS3 por cruzamento em ângulo reto.
+    const hits = (b, ei, ends, limit) => {
+      stamp++;
+      let score = 0;
+      const ax = axis(b);
+      const x0 = Math.floor((b.lo[0] - 1) / C), x1 = Math.floor((b.hi[0] + 1) / C), y0 = Math.floor((b.lo[1] - 1) / C), y1 = Math.floor((b.hi[1] + 1) / C), z0 = Math.floor((b.lo[2] - 1) / C), z1 = Math.floor((b.hi[2] + 1) / C);
+      for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) {
+        const list = grid.get(((x + 512) * 1024 + y + 512) * 1024 + z + 512);
+        if (!list) continue;
+        for (const it of list) {
+          if (it.seen === stamp) continue;
+          it.seen = stamp;
+          if (it.piece !== undefined) {
+            if (it.piece === ends[0] || it.piece === ends[1]) continue;
+            const g = gaps3(b, it.box);
+            if (g[0] * g[0] + g[1] * g[1] + g[2] * g[2] < 0.0625) score += 1000;
+          } else if (it.ei !== ei) {
+            const g = gaps3(b, it.box), ux = it.ax;
+            // Na mesma direção: proibido se fica a menos de 1 m de lado nas duas outras medidas e se encosta na
+            // própria direção. Em direções diferentes: cruzamento, se passa a menos de 0,9 m.
+            if (ax === ux && ax !== undefined) { if ((ax === 0 ? g[0] < 0.9 : g[0] < 1) && (ax === 1 ? g[1] < 0.9 : g[1] < 1) && (ax === 2 ? g[2] < 0.9 : g[2] < 1)) score += 1000; }
+            else if (g[0] * g[0] + g[1] * g[1] + g[2] * g[2] < 0.81) score += ax === undefined || ux === undefined ? 1000 : CROSS3;
+          }
+          if (score >= limit) return score;
+        }
+      }
+      return score;
     };
-    let pts = null, best = null;
-    // Placa fora do plano (entradas na frente, saídas atrás, sinks): tenta primeiro faixas do lado dela, sem atravessar a peça.
-    const side = Math.sign(A[2]) || Math.sign(B[2]);
-    for (let i = 0; i < 400 && !pts; i++) {
-      const z = side && i < 40 ? side * (2.8 + 1.3 * i) : (i % 2 ? -1 : 1) * (2.8 + 1.3 * Math.floor(i / 2));
-      const cand = route(z);
-      const bad = cand.slice(1).filter((q, k) => clash(cand[k], q, e.a, e.b)).length;
-      if (!bad) pts = cand;
-      else if (!best || bad < best.bad) best = { cand, bad };
+    const out = new Map();
+    let total = 0, loops = 0;
+    // Uma esteira: primeiro só faixas e colunas perto das pontas; se não sair limpa, abre as de fora.
+    const routeOne = (ei, ly, wide) => {
+      const e = edges[ei], A = portOf(e.a, fromSide[ei]), B = portOf(e.b, toSide[ei]), s = A.s, t = B.s, loop = e.kind === 'loop';
+      const reach = 8, lanes = 5;
+      const zlo = Math.min(s[2], t[2]) - reach, zhi = Math.max(s[2], t[2]) + reach;
+      // Faixas: as das pontas, as que se afastam delas e as dos vãos entre colunas de peças.
+      const zs = new Set([s[2], t[2]]);
+      for (const c of new Set([F.get(e.a)[2], F.get(e.b)[2]])) for (let k = 0; k < lanes; k++) { zs.add(+(c + 3 + 1.2 * k).toFixed(3)); zs.add(+(c - 3 - 1.2 * k).toFixed(3)); }
+      for (let i = 1; i < zcols.length; i++) { const mz = (zcols[i - 1] + zcols[i]) / 2; if (zcols[i] - zcols[i - 1] >= 6) for (const o of [0, -0.6, 0.6, -1.2, 1.2]) zs.add(+(mz + o).toFixed(3)); }
+      const cols = wide ? gaps.concat(outer) : gaps;
+      const lifts = Math.abs(s[1] - t[1]) > 1e-9;
+      const near = x0 => cols.filter(x => Math.abs(x - x0) <= 8);
+      // A fase larga só tenta as colunas que a estreita não tentou, inclusive as de fora: é onde as esteiras
+      // compridas de uma montagem cheia acham faixa própria.
+      const inReach = x => x >= Math.min(s[0], t[0]) - reach && x <= Math.max(s[0], t[0]) + reach;
+      const xs = [...new Set([...(lifts ? [] : [s[0], t[0]]), ...cols.filter(x => (wide ? !gaps.includes(x) || !inReach(x) : inReach(x)))])];
+      // Candidata = faixa z, coluna(s) x e forma f (sai andando em z ou em x; chega andando em x ou em z).
+      // O custo usado para ordenar é o comprimento em Manhattan, que não depende da forma e nunca passa do real.
+      const m = (u, v) => Math.abs(u - v);
+      const cz = [], cx1 = [], cx2 = [], cost = [];
+      for (const z of zs) {
+        if (z < zlo || z > zhi) continue;
+        if (loop) {
+          for (const x1 of near(s[0])) for (const x2 of near(t[0])) { cz.push(z); cx1.push(x1); cx2.push(x2); cost.push(m(x1, s[0]) + m(z, s[2]) + 2 * ly - s[1] - t[1] + m(x2, x1) + m(t[0], x2) + m(t[2], z)); }
+        } else {
+          for (const x of xs) { cz.push(z); cx1.push(x); cx2.push(x); cost.push(m(x, s[0]) + m(z, s[2]) + m(t[1], s[1]) + m(t[0], x) + m(t[2], z)); }
+        }
+      }
+      // Heap de mínimo sobre os índices: só sai da fila o que for avaliado (quase sempre poucas dezenas).
+      const heap = cost.map((_, i) => i);
+      const less = (i, j) => cost[heap[i]] < cost[heap[j]];
+      const sift = i => { for (;;) { const l = 2 * i + 1, r = l + 1; let k = i; if (l < heap.length && less(l, k)) k = l; if (r < heap.length && less(r, k)) k = r; if (k === i) return; [heap[i], heap[k]] = [heap[k], heap[i]]; i = k; } };
+      for (let i = (heap.length >> 1) - 1; i >= 0; i--) sift(i);
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; sift(0); } return top; };
+      const pathOf = (ci, f) => {
+        const z = cz[ci], x1 = cx1[ci], x2 = cx2[ci];
+        const first = f & 1 ? [[x1, s[1], s[2]], [x1, s[1], z]] : [[s[0], s[1], z], [x1, s[1], z]];
+        const last = f & 2 ? [[x2, t[1], z], [x2, t[1], t[2]]] : [[x2, t[1], z], [t[0], t[1], z]];
+        return clean([A.q, s, ...first, ...(loop ? [[x1, ly, z], [x2, ly, z]] : []), ...last, t, B.q]);
+      };
+      // Pontuação total = comprimento + colisões; como estão em ordem de comprimento, para quando a próxima
+      // já é mais comprida que a melhor pontuação.
+      const NOEND = [], ENDS = [e.a, e.b];
+      let best = null;
+      for (let n = 0; heap.length; n++) {
+        const ci = pop();
+        // Teto de 60 só vale quando já tem caminho sem colisão proibida; senão segue procurando (até 400, ou 4000 na fase larga).
+        if (best && (cost[ci] >= best.score || n > (best.bad ? (wide ? 4000 : 400) : 60))) break;
+        for (let f = 0; f < 4; f++) {
+          const pts = pathOf(ci, f), base = len(pts);
+          let pen = 0;
+          for (let i = 1; i < pts.length && (!best || base + pen < best.score); i++) {
+            pen += hits(box(pts[i - 1], pts[i]), ei, i === 1 || i === pts.length - 1 ? ENDS : NOEND, best ? best.score - base - pen : Infinity);
+          }
+          if (!best || base + pen < best.score) best = { pts, score: base + pen, bad: Math.floor(pen / 1000) };
+        }
+      }
+      return best;
+    };
+    for (const ei of order) {
+      const ly = topY + loops * 1.5;
+      if (edges[ei].kind === 'loop') loops++;
+      let best = routeOne(ei, ly, false);
+      if (best.bad) { const wide = routeOne(ei, ly, true); if (wide.score < best.score) best = wide; }
+      best.pts.slice(1).forEach((q, i) => put({ box: box(best.pts[i], q), ei }));
+      out.set(ei, best);
+      total += best.bad;
     }
-    // Montagem muito cheia (alguns 7+→2 e 8+→3 em andares): fica a faixa com menos cruzamentos.
-    if (!pts) pts = best.cand;
-    pts.slice(1).forEach((q, k) => { const ax = axisOf(pts[k], q); if (ax !== undefined) placed.push({ p: pts[k], q, ax }); });
-    const step = e.kind === 'out' ? outStep : loop || b.t === 'sink' ? stepOf(a) : stepOf(b);
+    return { out, total };
+  }
+  // Mais curtas primeiro; se sobrar colisão, até 3 novas passadas com as que colidiram na frente da fila.
+  let order = edges.map((_, ei) => ei).sort((u, v) => {
+    const d = ei => { const a = F.get(edges[ei].a), b = F.get(edges[ei].b); return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) + (edges[ei].kind === 'loop' ? 1e6 : 0); };
+    return d(u) - d(v);
+  });
+  let run = routeAll(order);
+  for (let pass = 0; pass < 1 && run.total; pass++) {
+    const bad = order.filter(ei => run.out.get(ei).bad);
+    order = [...bad, ...order.filter(ei => !run.out.get(ei).bad)];
+    const next = routeAll(order);
+    if (next.total < run.total) run = next;
+  }
+  const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: back(F.get(n.id)), step: stepOf(n) }));
+  const belts = edges.map((e, ei) => {
+    const pts = run.out.get(ei).pts.map(back);
+    const b = nodes[e.b], loop = e.kind === 'loop';
+    const step = e.kind === 'out' ? outStep : loop || b.t === 'sink' ? stepOf(nodes[e.a]) : stepOf(b);
     const lift = pts.slice(1).some((q, k) => Math.abs(q[1] - pts[k][1]) > 1e-9);
-    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift, step };
+    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift, step, fromSide: fromSide[ei], toSide: toSide[ei] };
   });
   const steps = [{ key: 'in' }];
   levels.forEach((f, i) => {
@@ -2610,7 +2745,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, layout3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
