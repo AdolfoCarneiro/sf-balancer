@@ -1887,6 +1887,77 @@ function designFloors(d) {
   return { nodes, edges, floors, lifts, ins, outs };
 }
 
+// Vista 3D: posições em metros (y é a altura) a partir dos níveis de designFloors.
+// Andares: cada nível é um andar, peças lado a lado. Torres: cada nível vira uma torre ao longo do fluxo,
+// com as peças empilhadas. Esteira entre alturas diferentes de duas peças sobe ou desce por lift.
+const L3D = { cell: 4, floor: 4, gap: 8 };
+function layout3d(d, mode) {
+  const fl = designFloors(d);
+  if (!fl) return null;
+  const { nodes, edges } = fl;
+  const piece = n => n.t === 's' || n.t === 'm';
+  const levels = [...new Set(nodes.filter(piece).map(n => n.floor))].sort((a, b) => a - b);
+  const levelIdx = new Map(levels.map((f, i) => [f, i + 1]));
+  const outStep = levels.length + 1;
+  const pos = new Map();
+  const sinkFrom = new Map(edges.filter(e => nodes[e.b].t === 'sink').map(e => [e.b, e.a]));
+  if (mode === 'towers') {
+    for (const f of levels) {
+      nodes.filter(n => piece(n) && n.floor === f).sort((a, b) => a.x - b.x)
+        .forEach((n, k) => pos.set(n.id, [levelIdx.get(f) * L3D.gap, k * L3D.floor, 0]));
+    }
+    // Entradas e saídas numa torre própria, na ordem da altura da peça em que ligam.
+    const firstY = id => { const e = edges.find(x => x.a === id); return pos.get(e.b)[1]; };
+    const lastY = id => { const e = edges.find(x => x.b === id); return pos.get(e.a)[1]; };
+    fl.ins.slice().sort((a, b) => firstY(a) - firstY(b) || nodes[a].x - nodes[b].x)
+      .forEach((id, k) => pos.set(id, [0, k * L3D.floor, 0]));
+    fl.outs.slice().sort((a, b) => lastY(a) - lastY(b) || nodes[a].x - nodes[b].x)
+      .forEach((id, k) => pos.set(id, [(levels.length + 1) * L3D.gap, k * L3D.floor, 0]));
+  } else {
+    const perLevel = levels.map(f => nodes.filter(n => piece(n) && n.floor === f).length);
+    const W = Math.max(...perLevel, d.N, d.M, d.net ? d.net.K : 0) * L3D.gap;
+    nodes.filter(n => n.t !== 'sink').forEach(n => pos.set(n.id, [n.x * W, n.floor * L3D.floor, 0]));
+  }
+  // Sink: toco na frente da peça de onde sai, um ao lado do outro.
+  const sinkCount = new Map();
+  for (const [id, from] of sinkFrom) {
+    const k = sinkCount.get(from) || 0;
+    sinkCount.set(from, k + 1);
+    const [x, y] = pos.get(from);
+    pos.set(id, [x + k * L3D.cell, y, L3D.gap / 2]);
+  }
+  const stepOf = n => (n.t === 'in' ? 0 : n.t === 'out' ? outStep : n.t === 'sink' ? stepOf(nodes[sinkFrom.get(n.id)]) : levelIdx.get(n.floor));
+  const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: pos.get(n.id), step: stepOf(n) }));
+  let loops = 0;
+  const belts = edges.map(e => {
+    const a = nodes[e.a], b = nodes[e.b], A = pos.get(e.a), B = pos.get(e.b);
+    let pts;
+    if (e.kind === 'loop') {
+      // Retorno por trás da montagem, cada um na sua faixa.
+      const z = -L3D.gap / 2 - loops++;
+      pts = [A, [A[0], A[1], z], [B[0], A[1], z], [B[0], B[1], z], B];
+    } else pts = [A, [B[0], A[1], A[2]], [B[0], B[1], B[2]]];
+    pts = pts.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - pts[i - 1][k]) > 1e-9));
+    if (pts.length < 2) pts.push(B);
+    const step = e.kind === 'out' ? outStep : e.kind === 'loop' || b.t === 'sink' ? stepOf(a) : stepOf(b);
+    return { a: e.a, b: e.b, inp: e.inp, kind: e.kind, pts, lift: piece(a) && piece(b) && Math.abs(A[1] - B[1]) > 1e-9, step };
+  });
+  const steps = [{ key: 'in' }];
+  levels.forEach((f, i) => {
+    const here = pieces.filter(p => p.step === i + 1 && (p.t === 's' || p.t === 'm'));
+    const sp = here.filter(p => p.t === 's');
+    steps.push({
+      key: 'level', level: i + 1, sp: sp.length, ways: sp.length ? sp[0].ways : 0, mg: here.length - sp.length,
+      up: belts.filter(b => b.lift && b.kind !== 'loop' && b.step === i + 1).length,
+      down: belts.filter(b => b.kind === 'loop' && b.step === i + 1).length,
+    });
+  });
+  steps.push({ key: 'out' });
+  const all = pieces.map(p => p.pos).concat(...belts.map(b => b.pts));
+  const bounds = { min: [0, 1, 2].map(k => Math.min(...all.map(q => q[k]))), max: [0, 1, 2].map(k => Math.max(...all.map(q => q[k]))) };
+  return { mode, pieces, belts, lifts: belts.filter(b => b.lift).length, steps, bounds };
+}
+
 function balancerCandidates(N, M, rates, cap, blueprints = []) {
   const list = DESIGN_KINDS.map(k => balancerDesign(k, N, M, rates, cap));
   for (const k of BF_KINDS) list.push(butterflyDesign(N, M, rates, cap, k));
@@ -2466,7 +2537,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, layout3d, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 

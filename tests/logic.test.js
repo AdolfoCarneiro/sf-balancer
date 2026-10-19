@@ -568,3 +568,40 @@ test('borboleta acima de 9: posições fixas, mas as saídas continuam iguais', 
     d.net.outLane.forEach(l => close(flow[l], k === 'butterfly-loop' ? S / M : S / d.net.K, `${N}→${M} ${k}`));
   }
 });
+
+// ---- Vista 3D ----
+test('3D: andares batem com designFloors', () => {
+  const d = L.butterflyDesign(4, 4, [480], 480);
+  const fl = L.designFloors(d), lay = L.layout3d(d, 'floors');
+  assert.equal(lay.lifts, fl.lifts);
+  assert.equal(lay.steps.length, fl.floors + 2, 'entradas + 4 andares + saídas');
+  assert.equal(lay.pieces.filter(p => p.t === 's').length, 8);
+  assert.equal(L.layout3d(L.blueprintDesign({ n: 3, m: 4 }, 3, 4, [240], 480), 'towers'), null);
+});
+
+test('3D: torres empilham cada camada numa coluna', () => {
+  const d = L.balancerDesign('matrix', 3, 4, [240], 480);
+  const lay = L.layout3d(d, 'towers');
+  const xsOfLevel = lv => new Set(lay.pieces.filter(p => p.step === lv + 1).map(p => p.pos[0]));
+  for (let lv = 0; lv < lay.steps.length - 2; lv++) assert.equal(xsOfLevel(lv).size, 1, `nível ${lv + 1} numa torre só`);
+  assert.ok(lay.belts.every(b => b.pts.length >= 2));
+});
+
+test('3D: todos os formatos de 2 a 9, nas duas montagens', () => {
+  for (let N = 2; N <= 9; N++) for (let M = 2; M <= 9; M++) {
+    for (const d of L.balancerCandidates(N, M, [100], 1e9).filter(x => !x.applies && x.kind !== 'blueprint')) {
+      for (const mode of ['floors', 'towers']) {
+        const lay = L.layout3d(d, mode), at = `${N}→${M} ${d.kind} ${mode}`;
+        const key = p => p.pos.map(v => v.toFixed(2)).join(',');
+        assert.equal(new Set(lay.pieces.map(key)).size, lay.pieces.length, `${at}: peças não se sobrepõem`);
+        assert.equal(lay.pieces.filter(p => p.t === 'in').length, N, at);
+        assert.equal(lay.pieces.filter(p => p.t === 'out').length, M, at);
+        assert.equal(lay.belts.filter(b => b.kind === 'loop').length, L.designFloors(d).edges.filter(e => e.kind === 'loop').length, at);
+        assert.ok(lay.pieces.concat(lay.belts).every(x => x.step >= 0 && x.step < lay.steps.length), at);
+        assert.equal(lay.lifts, lay.belts.filter(b => b.lift).length, at);
+        const [mn, mx] = [lay.bounds.min, lay.bounds.max];
+        assert.ok(lay.pieces.every(p => p.pos.every((v, i) => v >= mn[i] - 1e-9 && v <= mx[i] + 1e-9)), at);
+      }
+    }
+  }
+});
