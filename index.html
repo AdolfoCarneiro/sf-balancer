@@ -907,6 +907,7 @@ const I18N = {
     whyMore: (a, name, b) => `Entrega ${a}/min por saída; ${name} só chega a ${b}/min.`,
     whyNoSink: (name, s) => `Mesma vazão sem mandar nada pro sink; ${name} joga ${s}/min fora.`,
     whyFewer: (pa, name, pb) => `Mesma vazão com menos peças: ${pa} contra ${pb} (${name}).`,
+    whySimpler: (name, pb, pa) => `A ${name} gasta ${pb} peças contra ${pa}, mas mistura faixas distantes e é bem mais difícil de montar. Ela só vale quando economiza mais de 20% das peças.`,
     whyTie: name => `Empata com ${name}; qualquer um dos dois serve.`,
     whyNone: 'Nenhum design se aplica a esse formato.',
     bpTitle: 'Blueprints que eu tenho',
@@ -989,8 +990,8 @@ const I18N = {
     styleNone: 'A borboleta precisa de pelo menos 2 entradas e 2 saídas: com 1 entrada é a árvore de splitters, com 1 saída é só juntar com mergers. Use Normal ou 3D.',
     thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em ${n > 1 ? `cada uma das ${n} faixas com item` : 'a faixa com item'}.`,
-    stBfFan: (round, groups) => `Rodada ${round}: sem merger. Cada parte segue direto para uma faixa do bloco (faixas ${groups}), abrindo as faixas vazias.`,
-    stBfMerge: (round, groups, pass) => `Rodada ${round}: um merger por faixa junta uma parte de cada faixa do bloco (faixas ${groups}). As faixas de cada bloco saem iguais.` + (pass ? ` ${pass > 1 ? `${pass} faixas recebem` : '1 faixa recebe'} uma parte só e ${pass > 1 ? 'seguem' : 'segue'} direto, sem merger.` : ''),
+    stBfFan: (round, list) => `Rodada ${round}: sem merger. Cada saída de splitter segue direto para uma faixa, abrindo as faixas vazias (faixa ← splitter da faixa): ${list}.`,
+    stBfMerge: (round, joins, pass) => `Rodada ${round}: um merger em cada faixa, juntando uma saída de cada splitter indicado (faixa ← splitters das faixas): ${joins}. As faixas que se juntam saem iguais.` + (pass ? ` Sem merger, com uma parte só: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `As faixas ${lanes} sobram e voltam` : `A faixa ${lanes} sobra e volta`} para o começo dela mesma (loop). O que volta entra de novo na mistura, então as ${m} saídas ficam iguais.`,
     stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Andar'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + (up ? `; ${up > 1 ? `${up} esteiras chegam` : '1 esteira chega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} do loop saem daqui` : '') + '.',
     vertNote: 'Arraste para girar, role ou faça pinça para o zoom, botão direito ou dois dedos para mover. A escala é aproximada: a grade do piso é de fundações de 8 m, e o encaixe exato você ajusta no jogo.',
@@ -1212,6 +1213,7 @@ const I18N = {
     whyMore: (a, name, b) => `It delivers ${a}/min per output; the ${name} only reaches ${b}/min.`,
     whyNoSink: (name, s) => `Same rate without sinking anything; the ${name} throws away ${s}/min.`,
     whyFewer: (pa, name, pb) => `Same rate with fewer pieces: ${pa} against ${pb} for the ${name}.`,
+    whySimpler: (name, pb, pa) => `The ${name} takes ${pb} pieces against ${pa}, but it mixes lanes that are far apart and is much harder to build. It’s only worth it when it saves more than 20% of the pieces.`,
     whyTie: name => `Tied with the ${name}; either one works.`,
     whyNone: 'No design fits this shape.',
     bpTitle: 'Blueprints I have',
@@ -1294,8 +1296,8 @@ const I18N = {
     styleNone: 'The butterfly needs at least 2 inputs and 2 outputs: with 1 input it’s the splitter tree, with 1 output it’s just mergers. Use Normal or 3D.',
     thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on ${n > 1 ? `each of the ${n} lanes that carry items` : 'the lane that carries items'}.`,
-    stBfFan: (round, groups) => `Round ${round}: no mergers. Each part goes straight to one lane in the block (lanes ${groups}), filling the empty lanes.`,
-    stBfMerge: (round, groups, pass) => `Round ${round}: one merger per lane joins one part from each lane in the block (lanes ${groups}). The lanes in each block leave equal.` + (pass ? ` ${pass > 1 ? `${pass} lanes get` : '1 lane gets'} a single part and ${pass > 1 ? 'go' : 'goes'} straight on, with no merger.` : ''),
+    stBfFan: (round, list) => `Round ${round}: no mergers. Each splitter output goes straight to one lane, filling the empty lanes (lane ← splitter on lane): ${list}.`,
+    stBfMerge: (round, joins, pass) => `Round ${round}: a merger on each lane, joining one output from each listed splitter (lane ← splitters on lanes): ${joins}. Lanes joined together leave equal.` + (pass ? ` No merger, a single part: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Lanes ${lanes} are spare and go` : `Lane ${lanes} is spare and goes`} back to ${k > 1 ? 'their own start' : 'its own start'} (loop). What comes back is mixed again, so the ${m} outputs are equal.`,
     stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Tower' : 'Floor'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + (up ? `; ${up > 1 ? `${up} belts arrive` : '1 belt arrives'} by lift` : '') + (down ? `; ${down > 1 ? `${down} loop returns leave` : '1 loop return leaves'} from here` : '') + '.',
     vertNote: 'Drag to spin, scroll or pinch to zoom, right button or two fingers to move. The scale is approximate: the floor grid is 8 m foundations, and you adjust the exact fit in the game.',
@@ -1517,6 +1519,7 @@ const I18N = {
     whyMore: (a, name, b) => `Entrega ${a}/min por salida; ${name} solo llega a ${b}/min.`,
     whyNoSink: (name, s) => `Misma tasa sin mandar nada al sink; ${name} tira ${s}/min.`,
     whyFewer: (pa, name, pb) => `Misma tasa con menos piezas: ${pa} contra ${pb} (${name}).`,
+    whySimpler: (name, pb, pa) => `La ${name} gasta ${pb} piezas contra ${pa}, pero mezcla carriles lejanos y es mucho más difícil de montar. Solo vale la pena cuando ahorra más del 20% de las piezas.`,
     whyTie: name => `Empata con ${name}; cualquiera de los dos sirve.`,
     whyNone: 'Ningún diseño sirve para ese formato.',
     bpTitle: 'Blueprints que tengo',
@@ -1599,8 +1602,8 @@ const I18N = {
     styleNone: 'La mariposa necesita al menos 2 entradas y 2 salidas: con 1 entrada es el árbol de splitters, con 1 salida es solo juntar con mergers. Usa Normal o 3D.',
     thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en ${n > 1 ? `cada uno de los ${n} carriles con ítems` : 'el carril con ítems'}.`,
-    stBfFan: (round, groups) => `Ronda ${round}: sin mergers. Cada parte va directo a un carril del bloque (carriles ${groups}), llenando los carriles vacíos.`,
-    stBfMerge: (round, groups, pass) => `Ronda ${round}: un merger por carril junta una parte de cada carril del bloque (carriles ${groups}). Los carriles de cada bloque salen iguales.` + (pass ? ` ${pass > 1 ? `${pass} carriles reciben` : '1 carril recibe'} una sola parte y ${pass > 1 ? 'siguen' : 'sigue'} directo, sin merger.` : ''),
+    stBfFan: (round, list) => `Ronda ${round}: sin mergers. Cada salida de splitter va directo a un carril, llenando los carriles vacíos (carril ← splitter del carril): ${list}.`,
+    stBfMerge: (round, joins, pass) => `Ronda ${round}: un merger en cada carril, juntando una salida de cada splitter indicado (carril ← splitters de los carriles): ${joins}. Los carriles que se juntan salen iguales.` + (pass ? ` Sin merger, con una sola parte: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Los carriles ${lanes} sobran y vuelven` : `El carril ${lanes} sobra y vuelve`} a su propio inicio (loop). Lo que vuelve se mezcla de nuevo, así que las ${m} salidas quedan iguales.`,
     stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Piso'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + (up ? `; ${up > 1 ? `${up} cintas llegan` : '1 cinta llega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} del loop salen de aquí` : '') + '.',
     vertNote: 'Arrastra para girar, rueda o pellizca para el zoom, botón derecho o dos dedos para mover. La escala es aproximada: la cuadrícula del piso es de cimientos de 8 m, y el encaje exacto lo ajustas en el juego.',
@@ -2461,6 +2464,11 @@ function balancerCandidates(N, M, rates, cap, blueprints = []) {
 
 const designPieces = d => d.pieces.splitters + d.pieces.mergers + d.pieces.blueprints;
 const designOut = d => d.perOut * d.M;
+// A borboleta mistura faixas distantes uma da outra e é bem mais difícil de montar que uma matriz ou um funil:
+// ela só ganha quando economiza mais de 20% das peças (4→5: 21 contra 26 da matriz com loop não basta).
+const BF_EDGE = 0.8;
+const bfKind = d => d.kind.startsWith('butterfly');
+const buildCost = d => designPieces(d) / (bfKind(d) ? BF_EDGE : 1);
 // Os que se aplicam primeiro; depois mais vazão, blueprint seu, menos sink, menos peças.
 function rankDesigns(list) {
   return list.slice().sort((a, b) => {
@@ -2469,7 +2477,7 @@ function rankDesigns(list) {
     if (Math.abs(dOut) > 0.05) return dOut;
     if ((a.kind === 'blueprint') !== (b.kind === 'blueprint')) return a.kind === 'blueprint' ? -1 : 1;
     if (Math.abs(a.sinkRate - b.sinkRate) > 0.05) return a.sinkRate - b.sinkRate;
-    return designPieces(a) - designPieces(b);
+    return buildCost(a) - buildCost(b) || designPieces(a) - designPieces(b);
   });
 }
 // Por que o primeiro ganhou do segundo colocado: código + argumentos para o texto.
@@ -2480,6 +2488,7 @@ function designWhy(ranked) {
   if (!b) return { code: 'only', a };
   if (designOut(a) - designOut(b) > 0.05) return { code: 'more', a, b };
   if (b.sinkRate - a.sinkRate > 0.05) return { code: 'noSink', a, b };
+  if (!bfKind(a) && bfKind(b) && designPieces(b) <= designPieces(a)) return { code: 'simpler', a, b };
   if (designPieces(a) < designPieces(b)) return { code: 'fewer', a, b };
   return { code: 'tie', a, b };
 }
@@ -3062,7 +3071,9 @@ function designName(d) {
 
 // Blueprint conta como uma peça: é só colar.
 function rankPlans(evaluated) {
-  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints + a.pieces.junctions;
+  // Balancer borboleta conta como mais peças, pelo mesmo critério de rankDesigns.
+  const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints + a.pieces.junctions
+    + (a.bal && bfKind(a.bal.design) ? buildCost(a.bal.design) - designPieces(a.bal.design) : 0);
   return evaluated.slice().sort((a, b) =>
     (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
 }
@@ -4079,9 +4090,11 @@ function balancerBuild(d, labels) {
         g(under, ss, belt(`M${xAfter(s - 1, l)},${y(l)} L${colS(s) - 11},${y(l)}`, color(l), 3));
         g(over, ss, splitter(colS(s), y(l), rd.f));
       });
-      const blocks = [...new Set(Array.from({ length: K }, (_, l) => butterflyGroup(net.F, s, l).map(j => j + 1).join('+')))].join(', ');
-      const pass = rd.merges.filter(m => m.from.length === 1).length;
-      const sm = step(pass === rd.merges.length ? t('stBfFan', s + 1, blocks) : t('stBfMerge', s + 1, blocks, pass));
+      // Cada ligação por escrito: "1 ← 1 + 3 + 5" é o merger da faixa 1 recebendo dos splitters das faixas 1, 3 e 5.
+      const link = m => `${m.lane + 1} ← ${m.from.map(j => j + 1).join(' + ')}`;
+      const joins = rd.merges.filter(m => m.from.length > 1).map(link).join('; ');
+      const pass = rd.merges.filter(m => m.from.length === 1).map(link).join('; ');
+      const sm = step(joins ? t('stBfMerge', s + 1, joins, pass) : t('stBfFan', s + 1, pass));
       rd.merges.forEach(m => {
         merged[m.lane] = m.from.length > 1;
         for (const j of m.from) g(under, sm, belt(curve(colS(s) + 11, y(j), merged[m.lane] ? colM(s) - 7 : colM(s), y(m.lane)), color(j), 1.6));
@@ -4735,6 +4748,7 @@ function whyText(ranked) {
   if (w.code === 'more') return t('whyMore', fmt(w.a.perOut), designName(w.b), fmt(w.b.perOut));
   if (w.code === 'noSink') return t('whyNoSink', designName(w.b), fmt(w.b.sinkRate));
   if (w.code === 'fewer') return t('whyFewer', designPieces(w.a), designName(w.b), designPieces(w.b));
+  if (w.code === 'simpler') return t('whySimpler', designName(w.b), designPieces(w.b), designPieces(w.a));
   return t('whyTie', designName(w.b));
 }
 
@@ -4789,7 +4803,10 @@ function workbench(el, ctx) {
   }
   const d = cands.find(x => !x.applies && designKey(x) === ctx.view) || best;
   const pc = d.pieces;
-  const mode3d = ctx.mode3d === 'floors' ? 'floors' : 'towers';
+  // A borboleta abre em Andares (uma rodada por andar, como a borboleta vertical do jogo); em Torres as
+  // misturas entre faixas viram esteiras compridas por cima de tudo. A escolha de cada família fica guardada à parte.
+  const bfMode = isBf(d), pref = bfMode ? ctx.mode3dBf : ctx.mode3d;
+  const mode3d = pref === 'floors' || pref === 'towers' ? pref : bfMode ? 'floors' : 'towers';
   const fl = style === '3d' ? layout3d(d, mode3d) : null;
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
   el.innerHTML = `${styleBar}<div class="wb">
@@ -4819,7 +4836,7 @@ function workbench(el, ctx) {
   <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, fl ? mode3d : '2d', {
     lay: fl, per: ctx.per3d,
-    onMode: m => { ctx.mode3d = m; if (ctx.onMode3d) ctx.onMode3d(m); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
+    onMode: m => { ctx[bfMode ? 'mode3dBf' : 'mode3d'] = m; if (ctx.onMode3d) ctx.onMode3d(m, bfMode); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
     onPer: v => { ctx.per3d = v; if (ctx.onPer3d) ctx.onPer3d(v); workbench(el, ctx); el.querySelector(`[data-per="${v}"]`)?.focus(); },
   });
   bindStyle();
@@ -4838,7 +4855,8 @@ const BP_STORE = 'sf-balancer:bp';
 const LIB_STORE = 'sf-balancer:lib';
 let BPS = [{ n: 3, m: 4 }];
 try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
-const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers', per3d: 'level' };
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers', mode3dBf: 'floors', per3d: 'level' };
+const setMode3d = (m, bf) => { LIB[bf ? 'mode3dBf' : 'mode3d'] = m; saveLib(); };
 try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
 if (LIB.style === 'vertical') LIB.style = '3d';
 const saveBps = () => { try { localStorage.setItem(BP_STORE, JSON.stringify(BPS)); } catch (e) { /* sem storage */ } };
@@ -4880,7 +4898,7 @@ function renderLib() {
     N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
     style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
-    mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); },
+    mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d,
     per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); },
   });
 }
@@ -4920,7 +4938,7 @@ function openDesign(ctx) {
 function openFromPlan(key) {
   if (!lastRender) return;
   const { p, alt } = lastRender;
-  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); }, per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); } };
+  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d, per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); } };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
     openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind.startsWith('butterfly') ? 'butterfly' : 'normal' });

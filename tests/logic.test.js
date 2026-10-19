@@ -481,12 +481,24 @@ test('borboleta no plano: entradas desiguais saem iguais', () => {
   // Origem: 3 linhas de 480 e 1 de 300; destino: 4 linhas de 430.
   const p = L.computePlan({ ...base, srcGroups: [{ driver: 'total', total: 1440 }, { driver: 'total', total: 300 }], dstCount: 4, dstRate: 430, dstPer: 1 });
   const a = p.alternatives.find(x => x.kind === 'balancer');
-  assert.equal(a.bal.design.kind, 'butterfly');
+  assert.equal(a.bal.design.kind, 'matrix', 'a borboleta economiza só 4 de 20 peças: a matriz é mais fácil de montar');
   assert.ok(a.full);
   a.dests.forEach(d => close(d.got, 430));
-  assert.equal(a.pieces.splitters, 8);
-  assert.equal(a.pieces.mergers, 8);
-  conserves(p, a);
+  const bf = a.designAlts.find(x => x.bal.design.kind === 'butterfly');
+  assert.ok(bf.full);
+  bf.dests.forEach(d => close(d.got, 430));
+  assert.equal(bf.pieces.splitters, 8);
+  assert.equal(bf.pieces.mergers, 8);
+  conserves(p, bf);
+});
+
+test('borboleta só ganha quando economiza mais de 20% das peças', () => {
+  const r45 = best(4, 5, 125, 480, []);
+  assert.equal(r45[0].kind, 'matrix-loop', '4→5: borboleta com loop 21 contra 26, não basta');
+  assert.equal(L.designWhy(r45).code, 'simpler');
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => assert.ok(L.t('whySimpler', 'x', 21, 26).includes('20%'), l));
+  const r88 = best(8, 8, 480, 480, []);
+  assert.ok(r88[0].kind.startsWith('butterfly'), '8→8: 48 contra 88, a borboleta vale');
 });
 
 test('vertical: andares e lifts', () => {
