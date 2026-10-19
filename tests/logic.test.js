@@ -753,3 +753,23 @@ test('3D: montagem cheia continua rápida', () => {
     assert.ok(Date.now() - t0 < (mode === 'floors' ? 800 : 400), `${mode}: ${Date.now() - t0} ms`);
   }
 });
+
+test('3D: seguir caminho a partir de entrada, saída ou peça', () => {
+  const lay = lay3d(L.butterflyDesign(4, 4, [100], 1e9), 'towers');
+  const ins = lay.pieces.filter(p => p.t === 'in'), outs = lay.pieces.filter(p => p.t === 'out');
+  const fromIn = L.focus3d(lay, ins[0].id);
+  assert.ok(outs.every(o => fromIn.pieces.has(o.id)), 'a entrada chega em todas as saídas');
+  assert.ok(ins.slice(1).every(i => !fromIn.pieces.has(i.id)), 'não acende as outras entradas');
+  const fromOut = L.focus3d(lay, outs[0].id);
+  assert.ok(ins.every(i => fromOut.pieces.has(i.id)), 'a saída vem de todas as entradas');
+  const sp = lay.pieces.find(p => p.t === 's');
+  const own = L.focus3d(lay, sp.id);
+  assert.deepEqual([...own.belts].sort((a, b) => a - b), lay.belts.map((b, bi) => (b.a === sp.id || b.b === sp.id ? bi : -1)).filter(x => x >= 0));
+});
+
+test('idiomas: textos de seguir caminho no 3D', () => {
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    for (const k of ['follow3d', 'hint3dFocus', 'tip3dTop', 'lgPortOut', 'lgPortIn']) assert.ok(L.t(k).length > 2, `${l}: ${k}`);
+    assert.ok(L.t('followAria', 'E1').includes('E1'), l);
+  });
+});

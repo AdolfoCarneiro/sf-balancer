@@ -418,6 +418,13 @@
   .plegend i.sp3 { width: 11px; height: 11px; border-radius: 2px; background: #e8863a; }
   .plegend i.mg3 { width: 11px; height: 11px; border-radius: 2px; background: #3bb3a8; }
   .plegend i.pouti { width: 12px; height: 12px; background: var(--ink); clip-path: polygon(0 15%, 100% 50%, 0 85%); }
+  .follow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 16px 12px; }
+  .follow > span { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); margin-right: 2px; }
+  .follow .chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--display); color: var(--ink); background: var(--bench); border: 1px solid var(--line); padding: 3px 8px; cursor: pointer; }
+  .follow .chip i { width: 9px; height: 9px; border-radius: 50%; }
+  .follow .chip[aria-pressed="true"] { border-color: var(--holo); color: var(--holo); }
+  .follow .chip:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
+  .hint3d { position: absolute; left: 10px; bottom: 10px; z-index: 1; font-size: 12px; padding: 4px 8px; background: rgba(6, 16, 28, .78); color: var(--ink-dim); pointer-events: none; max-width: calc(100% - 20px); }
   .plegend i.pini { width: 12px; height: 12px; border: 3px solid var(--ink); border-radius: 50%; background: none; }
   .stage3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   .stage3d canvas:active { cursor: grabbing; }
@@ -925,6 +932,8 @@ const I18N = {
     mode3dTowers: 'Torres', mode3dFloors: 'Andares', mode3dLabel: 'Montagem em 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada camada de peças vira uma torre, com as peças empilhadas e as esteiras cruzando de uma torre para a outra. Andares: cada camada num andar, com as peças lado a lado.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'saída da peça', lgPortIn: 'entrada da peça',
+    follow3d: 'Seguir', followAria: tag => `Seguir o caminho de ${tag}`, hint3dFocus: 'passe o mouse ou toque numa peça para ver só as ligações dela; clique para fixar',
+    tip3dTop: 'No topo de cada splitter e merger há uma seta por porta usada, na cor da esteira: saindo do centro é saída, chegando no centro é entrada. Como no jogo, o splitter recebe por trás e solta pela frente e pelos lados, e o merger recebe por trás e pelos lados e solta pela frente. Uma esteira por face.',
     loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
     lbBfTitle: 'Borboleta e montagem vertical',
     lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
@@ -1189,6 +1198,8 @@ const I18N = {
     mode3dTowers: 'Towers', mode3dFloors: 'Floors', mode3dLabel: '3D layout', recenter3d: 'Recenter',
     tip3dMode: 'Towers: each layer of pieces becomes a tower, with the pieces stacked and belts crossing from one tower to the next. Floors: each layer on a floor, with the pieces side by side.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'piece output', lgPortIn: 'piece input',
+    follow3d: 'Follow', followAria: tag => `Follow the path of ${tag}`, hint3dFocus: 'hover or tap a piece to see only its connections; click to pin',
+    tip3dTop: 'On top of each splitter and merger there is one arrow per port in use, in the belt color: pointing out from the center is an output, pointing into the center is an input. As in the game, the splitter takes input at the back and outputs at the front and sides, and the merger takes input at the back and sides and outputs at the front. One belt per face.',
     loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
     lbBfTitle: 'Butterfly and vertical builds',
     lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
@@ -1453,6 +1464,8 @@ const I18N = {
     mode3dTowers: 'Torres', mode3dFloors: 'Pisos', mode3dLabel: 'Montaje en 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada capa de piezas es una torre, con las piezas apiladas y las cintas cruzando de una torre a la siguiente. Pisos: cada capa en un piso, con las piezas lado a lado.',
     lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'salida de la pieza', lgPortIn: 'entrada de la pieza',
+    follow3d: 'Seguir', followAria: tag => `Seguir el camino de ${tag}`, hint3dFocus: 'pasa el mouse o toca una pieza para ver solo sus conexiones; clic para fijar',
+    tip3dTop: 'Arriba de cada splitter y merger hay una flecha por puerto en uso, del color de la cinta: si sale del centro es salida, si llega al centro es entrada. Como en el juego, el splitter recibe por atrás y saca por el frente y los lados, y el merger recibe por atrás y los lados y saca por el frente. Una cinta por cara.',
     loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
     lbBfTitle: 'Mariposa y montaje vertical',
     lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
@@ -2160,6 +2173,23 @@ function layout3d(d, mode) {
   return { mode, pieces, belts, lifts: belts.filter(b => b.lift).length, steps, bounds };
 }
 
+// Caminho em foco: placa de entrada = tudo a jusante; de saída = tudo a montante; peça = ela e as esteiras ligadas.
+// Devolve os ids de peça e os índices de esteira acesos.
+function focus3d(lay, id) {
+  const t = lay.pieces.find(p => p.id === id)?.t;
+  const pieces = new Set([id]), belts = new Set();
+  const walk = (n, down) => lay.belts.forEach((b, bi) => {
+    if ((down ? b.a : b.b) !== n || belts.has(bi)) return;
+    belts.add(bi);
+    const nx = down ? b.b : b.a;
+    pieces.add(nx);
+    if (t === 'in' || t === 'out') walk(nx, down);
+  });
+  if (t !== 'out') walk(id, true);
+  if (t !== 'in') walk(id, false);
+  return { pieces, belts };
+}
+
 // Distância da câmera para a esfera que envolve os limites caber inteira, no menor dos dois ângulos de visão.
 function fitDistance(bounds, fovDeg, aspect) {
   const r = Math.hypot(...bounds.max.map((v, i) => v - bounds.min[i])) / 2;
@@ -2746,7 +2776,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, resolveGroup, buildLines, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, evaluatePlan, computePlan, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3756,23 +3786,6 @@ const load3d = () => (THREE_P ||= Promise.all([import('three'), import('three/ad
   .catch(e => { THREE_P = null; throw e; }));
 const SPLITTER_3D = '#e8863a', MERGER_3D = '#3bb3a8';
 
-// Caminho em foco: placa de entrada = tudo a jusante; de saída = tudo a montante; peça = ela e as esteiras ligadas.
-// Devolve os ids de peça e os índices de esteira acesos.
-function focus3d(lay, id) {
-  const t = lay.pieces.find(p => p.id === id)?.t;
-  const pieces = new Set([id]), belts = new Set();
-  const walk = (n, down) => lay.belts.forEach((b, bi) => {
-    if ((down ? b.a : b.b) !== n || belts.has(bi)) return;
-    belts.add(bi);
-    const nx = down ? b.b : b.a;
-    pieces.add(nx);
-    if (t === 'in' || t === 'out') walk(nx, down);
-  });
-  if (t !== 'out') walk(id, true);
-  if (t !== 'in') walk(id, false);
-  return { pieces, belts };
-}
-
 async function mount3d(stage, d, labels, lay, opts = {}) {
   let lib, renderer;
   try { lib = await load3d(); } catch (e) { return null; }
@@ -4020,7 +4033,36 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
     items.instanceMatrix.needsUpdate = true;
   };
   const setStep = (c, k) => { cur = c; K = k; apply(); draw(); };
-  const focus = id => { lit = id === null || id === undefined ? null : focus3d(lay, id); apply(); draw(); };
+  // Foco: o fixado (clique ou botão Seguir) vale até soltar; sem fixado, o mouse em cima acende na hora.
+  let pinned = null;
+  const show = f => { lit = f; apply(); draw(); };
+  const focus = id => { pinned = id ?? null; show(pinned === null ? null : focus3d(lay, pinned)); };
+  const ray = new T.Raycaster(), ptr = new T.Vector2();
+  const pickAt = e => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const meshes = objs.filter(o => o.root.visible).flatMap(o => o.meshes);
+    return ray.intersectObjects(meshes, false)[0]?.object.userData.obj || null;
+  };
+  const litOf = o => (o.kind === 'piece' ? focus3d(lay, o.id) : { pieces: new Set([lay.belts[o.id].a, lay.belts[o.id].b]), belts: new Set([o.id]) });
+  const el = renderer.domElement;
+  let down = null;
+  el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  el.addEventListener('pointermove', e => {
+    if (pinned !== null || e.buttons || e.pointerType === 'touch') return;
+    const o = pickAt(e);
+    el.style.cursor = o ? 'pointer' : '';
+    show(o ? litOf(o) : null);
+  });
+  el.addEventListener('pointerleave', () => { if (pinned === null) show(null); });
+  // Clique ou toque sem arrastar fixa a peça (ou solta, no vazio); arrastar continua girando a câmera.
+  el.addEventListener('pointerup', e => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+    const o = pickAt(e), id = o ? (o.kind === 'piece' ? o.id : lay.belts[o.id].a) : null;
+    focus(id === pinned ? null : id);
+    if (opts.onFocus) opts.onFocus(pinned);
+  });
 
   const size = () => {
     const w = stage.clientWidth || 600, h = stage.clientHeight || 400;
@@ -4084,7 +4126,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <div class="seg" role="radiogroup" aria-label="${esc(t('mode3dLabel'))}">${['towers', 'floors'].map(m => `<button type="button" role="radio" aria-checked="${m === view}" data-mode="${m}">${t('mode3d' + cap1(m))}</button>`).join('')}</div>${tip('tip3dMode')}
       <button type="button" class="pbtn" data-recenter>${t('recenter3d')}</button></div>` : '';
   root.innerHTML = `<div class="ponder" tabindex="-1">
-    <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p>` : svg}</div>
+    <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}</div>
     <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
@@ -4094,10 +4136,12 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <button type="button" class="pbtn prim" data-p="toggle"></button>
       <span class="pkeys">${t('ponderKeys')}</span>
     </div>
+    ${in3d ? `<div class="follow"><span>${t('follow3d')}</span>${[...lay.pieces.filter(p => p.t === 'in').map((p, i) => [p.id, labels.ins[i], inColor(p.inp ?? i)]), ...lay.pieces.filter(p => p.t === 'out').map((p, i) => [p.id, labels.outs[i], 'var(--ok)'])]
+      .map(([id, tag, c]) => `<button type="button" class="chip" data-follow="${id}" aria-pressed="false" aria-label="${esc(t('followAria', tag))}"><i style="background:${c}"></i>${esc(tag)}</button>`).join('')}</div>` : ''}
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
       <span><i class="holo"></i>${t('lgHolo')}</span>
-      ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="pouti"></i>${t('lgPortOut')}</span><span><i class="pini"></i>${t('lgPortIn')}</span>` : ''}
+      ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="pouti"></i>${t('lgPortOut')}</span><span><i class="pini"></i>${t('lgPortIn')}</span>${tip('tip3dTop')}` : ''}
       ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-sink') ? `<span><i style="background:var(--sink)"></i>${t('lgToSink')}</span>` : ''}
     </div>
@@ -4157,7 +4201,15 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       if (m && m.dataset.mode !== view && opts.onMode) opts.onMode(m.dataset.mode);
       if (e.target.closest('[data-recenter]') && scene) scene.recenter();
     });
-    mount3d(q('.stage3d'), d, labels, lay).then(sc => {
+    const chips = id => root.querySelectorAll('[data-follow]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.follow === id)));
+    q('.follow').addEventListener('click', e => {
+      const b = e.target.closest('[data-follow]');
+      if (!b || !scene) return;
+      const id = b.getAttribute('aria-pressed') === 'true' ? null : +b.dataset.follow;
+      scene.focus(id);
+      chips(id);
+    });
+    mount3d(q('.stage3d'), d, labels, lay, { onFocus: chips }).then(sc => {
       if (root._token !== token) { if (sc) sc.dispose(); return; }
       if (!sc) {
         mountPonder(root, d, labels, '2d');
