@@ -32,7 +32,7 @@ Dá para fazer essa conta na mão toda vez, ou digitar as máquinas e deixar o p
 - **Biblioteca de balancers.** Um gerador N→M que testa seis designs (matriz, funil, e cada um com loop ou sink para 5, 7, 10…), confere cada trecho interno contra o tier da esteira, explica por que escolheu um e mostra a montagem passo a passo, com a peça do passo destacada como o holograma da build gun. No plano, o balancer é um bloco que você clica para abrir essa montagem.
 - **Seus blueprints primeiro.** Liste os blueprints de balancer que você já tem (começa com 3→4) e o planejador prefere eles quando o formato bate.
 - **Conta as peças.** Mergers, splitters e Smart Splitters de cada trecho (coleta, meio, distribuição), na convenção k ou k−1 que você preferir.
-- **Mostra o fluxo.** Um diagrama animado em que a espessura da esteira e a velocidade dos itens seguem a taxa real.
+- **Mostra o fluxo.** Um diagrama animado em que os itens andam na velocidade do tier da esteira, como no jogo, e a espessura e o espaço entre os itens seguem a taxa real.
 - **Avisa.** Esteira acima da capacidade, demanda maior que a oferta, parte da doadora menor que o déficit, linhas incompletas.
 - **Se explica.** Todo campo e resultado tem um `?` com uma explicação curta, e no fim da página tem a seção "Como funciona".
 - **Três idiomas:** English, Português (Brasil) e Español.

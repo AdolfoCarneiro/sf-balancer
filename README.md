@@ -32,7 +32,7 @@ You can do that math by hand every time, or you can type the machine counts and 
 - **Balancer library.** An N→M generator that tries six designs (matrix, funnel, and each with a loop or sink for 5, 7, 10…), checks every internal segment against the belt tier, explains why it picked one, and shows the build step by step with the current piece highlighted like a build gun hologram. In the plan, the balancer is a block you click to open that build.
 - **Your blueprints first.** List the balancer blueprints you already have (it starts with 3→4) and the planner prefers them when the shape fits.
 - **Counts the pieces.** Mergers, splitters and Smart Splitters for each segment (collection, middle, distribution), with the k or k−1 convention you prefer.
-- **Shows the flow.** An animated diagram where belt thickness and item speed follow the real rate.
+- **Shows the flow.** An animated diagram where items move at the belt tier's speed, like in the game, and belt thickness and item spacing follow the real rate.
 - **Warns you.** Belt over capacity, demand above supply, a donor part too small to cover the deficit, incomplete lines.
 - **Explains itself.** Every field and result has a `?` with a short explanation, and there's a "How it works" section at the bottom.
 - **Three languages:** English, Português (Brasil) and Español.

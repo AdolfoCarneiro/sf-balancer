@@ -229,8 +229,8 @@
   svg .lbl { font-family: var(--display); font-weight: 600; font-size: 15px; }
   svg .sm { font-size: 11.5px; fill: var(--ink-dim); }
   svg .rate { font-family: var(--display); font-weight: 600; font-size: 13.5px; }
-  .items { stroke-dasharray: 2 10; stroke-linecap: round; animation: run var(--dur, 2s) linear infinite; }
-  @keyframes run { to { stroke-dashoffset: -24; } }
+  .items { stroke-linecap: round; animation: run var(--dur, 2s) linear infinite; }
+  @keyframes run { to { stroke-dashoffset: calc(var(--per, 12) * -1px); } }
   @media (prefers-reduced-motion: reduce) { .items { animation: none; } }
   .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-dim); margin-top: 12px; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -357,7 +357,8 @@
   /* Bancada: passo a passo à esquerda, escolha e conferência à direita */
   .wb { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
   .wb > * { min-width: 0; }
-  @media (min-width: 1101px) { .wb-stage { position: sticky; top: 12px; } }
+  .wb-checks { margin-top: 18px; }
+  .wb-checks h4 { font: 600 16px/1.2 var(--display); margin: 0 0 4px; color: var(--ink-dim); }
   @media (max-width: 1100px) { .wb { grid-template-columns: 1fr; } }
   .ponder {
     border: 1px solid var(--line);
@@ -678,7 +679,7 @@ const I18N = {
     supply: 'Oferta', demand: 'Demanda', surplus: 'Sobra', shortfall: 'Falta',
     noLines: 'Sem linhas de origem ou de destino para ligar.',
     alts: 'Alternativas', altsLead: 'Primeiro as que enchem todos os destinos, depois as com menos peças e menos sink.',
-    flowLead: 'A espessura e a velocidade dos itens seguem a taxa real, com os mergers alternando entre as entradas.',
+    flowLead: 'Os itens andam na velocidade da esteira escolhida, como no jogo; a espessura e o espaço entre os itens seguem a taxa real, com os mergers alternando entre as entradas.',
     lgMain: 'linha principal', lgDonor: 'doadora', lgExcess: 'excesso redistribuído', lgSink: 'pro sink', lgHeld: 'represado na origem', lgMerger: 'merger', lgSmart: 'smart splitter',
     tbItem: 'Item', tbBelt: 'Esteira', tbMid: 'Meio',
     balanceTitle: 'Balanço por linha', stepsTitle: 'Passo a passo',
@@ -914,7 +915,7 @@ const I18N = {
     supply: 'Supply', demand: 'Demand', surplus: 'Surplus', shortfall: 'Shortfall',
     noLines: 'No source or destination lines to connect.',
     alts: 'Alternatives', altsLead: 'First the ones that fill every destination, then the ones with fewer pieces and less sink.',
-    flowLead: 'Line thickness and item speed follow the real rate, with mergers alternating between inputs.',
+    flowLead: 'Items move at the speed of the chosen belt, like in the game; line thickness and item spacing follow the real rate, with mergers alternating between inputs.',
     lgMain: 'main line', lgDonor: 'donor', lgExcess: 'redistributed excess', lgSink: 'to sink', lgHeld: 'backed up at source', lgMerger: 'merger', lgSmart: 'smart splitter',
     tbItem: 'Item', tbBelt: 'Belt', tbMid: 'Middle',
     balanceTitle: 'Balance per line', stepsTitle: 'Step by step',
@@ -1150,7 +1151,7 @@ const I18N = {
     supply: 'Oferta', demand: 'Demanda', surplus: 'Sobrante', shortfall: 'Faltante',
     noLines: 'No hay líneas de origen o de destino para conectar.',
     alts: 'Alternativas', altsLead: 'Primero las que llenan todos los destinos, luego las de menos piezas y menos sink.',
-    flowLead: 'El grosor y la velocidad de los ítems siguen la tasa real, con los mergers alternando entre las entradas.',
+    flowLead: 'Los ítems avanzan a la velocidad de la cinta elegida, como en el juego; el grosor y la separación entre ítems siguen la tasa real, con los mergers alternando entre las entradas.',
     lgMain: 'línea principal', lgDonor: 'donante', lgExcess: 'exceso redistribuido', lgSink: 'al sink', lgHeld: 'retenido en el origen', lgMerger: 'merger', lgSmart: 'smart splitter',
     tbItem: 'Ítem', tbBelt: 'Cinta', tbMid: 'Medio',
     balanceTitle: 'Balance por línea', stepsTitle: 'Paso a paso',
@@ -2681,9 +2682,11 @@ function flowSvg(p, a) {
   const belt = (d, f, color, layer = front) => {
     if (f < 0.05) { layer.push(`<path d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 5"/>`); return; }
     const w = 2.5 + 7 * Math.min(1, f / cap);
-    const dur = (24 / (14 + 70 * Math.min(1, f / cap))).toFixed(2);
+    // Como no jogo: a esteira anda na velocidade do tier e a vazão só muda a distância entre os itens.
+    const speed = 60 * cap / 480;
+    const per = Math.min(120, 12 * cap / f);
     layer.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${w.toFixed(1)}" stroke-opacity=".35"/>
-      <path class="items" style="--dur:${dur}s" d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(2, w * 0.55).toFixed(1)}"/>`);
+      <path class="items" style="--per:${per.toFixed(1)};--dur:${(per / speed).toFixed(3)}s" stroke-dasharray="2 ${(per - 2).toFixed(1)}" d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(2, w * 0.55).toFixed(1)}"/>`);
   };
   const label = (x, y, text, color, anchor = 'start') =>
     front.push(`<text class="rate" x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${text}</text>`);
@@ -3163,7 +3166,7 @@ function workbench(el, ctx) {
   const pc = d.pieces;
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
   el.innerHTML = `<div class="wb">
-    <div class="wb-stage"></div>
+    <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}</div></div>
     <aside class="wb-side">
       <div class="wb-head"><span class="wb-shape num">${d.N}→${d.M}</span><span class="wb-name">${esc(cap1(designName(d)))}${tag(d)}</span></div>
       <dl class="pc-grid num">
@@ -3183,7 +3186,6 @@ function workbench(el, ctx) {
           </button>`).join('')}
         </div>
       </div>
-      <div><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}</div>
     </aside>
   </div>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels);

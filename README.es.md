@@ -32,7 +32,7 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 - **Biblioteca de balanceadores.** Un generador N→M que prueba seis diseños (matriz, embudo, y cada uno con loop o sink para 5, 7, 10…), revisa cada tramo interno contra el nivel de la cinta, explica por qué eligió uno y muestra el montaje paso a paso, con la pieza del paso resaltada como el holograma de la build gun. En el plan, el balanceador es un bloque que abres con un clic para ver ese montaje.
 - **Tus blueprints primero.** Anota los blueprints de balanceador que ya tienes (empieza con 3→4) y el planificador los prefiere cuando el formato coincide.
 - **Cuenta las piezas.** Mergers, splitters y Smart Splitters de cada tramo (recolección, medio, distribución), con la convención k o k−1 que prefieras.
-- **Muestra el flujo.** Un diagrama animado donde el grosor de la cinta y la velocidad de los ítems siguen la tasa real.
+- **Muestra el flujo.** Un diagrama animado donde los ítems avanzan a la velocidad del nivel de la cinta, como en el juego, y el grosor y la separación entre ítems siguen la tasa real.
 - **Avisa.** Cinta por encima de su capacidad, demanda mayor que la oferta, parte de la donante menor que el déficit, líneas incompletas.
 - **Se explica.** Cada campo y cada resultado tiene un `?` con una explicación corta, y al final de la página está la sección "Cómo funciona".
 - **Tres idiomas:** English, Português (Brasil) y Español.
