@@ -605,3 +605,11 @@ test('3D: todos os formatos de 2 a 9, nas duas montagens', () => {
     }
   }
 });
+
+test('idiomas: textos do 3D', () => {
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    assert.equal(L.t('style3d'), '3D');
+    assert.ok(L.t('stLevel3d', 'towers', 2, 4, 2, 0, 3, 0).length > 10);
+    assert.ok(L.t('stLevel3d', 'floors', 2, 4, 2, 0, 3, 0).length > 10);
+  });
+});

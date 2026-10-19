@@ -412,6 +412,12 @@
 
   /* Holograma da build gun: a peça do passo atual aparece tracejada e fica sólida no passo seguinte */
   .stage3d { position: relative; height: min(68vh, 580px); min-height: 360px; }
+  .stage.stage3d { padding: 0; overflow: hidden; max-height: none; }
+  .s3d-ctl { position: absolute; top: 10px; left: 10px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .s3d-ctl .seg { background: var(--bench); }
+  .load3d { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-dim); }
+  .plegend i.sp3 { width: 11px; height: 11px; background: var(--ficsit); }
+  .plegend i.mg3 { width: 11px; height: 11px; background: #4fd1c5; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
   .stage3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   .stage3d canvas:active { cursor: grabbing; }
   .bsvg [data-s] { transition: opacity .3s ease; }
@@ -905,17 +911,20 @@ const I18N = {
     segBfPart: s => `Rodada ${s}: cada parte`, segBfOut: s => `Rodada ${s}: cada esteira depois do merger`,
     segBfLoop: 'Retorno do loop (cada faixa)', segBfLoopIn: 'Começo da faixa (entrada + retorno)', bfEmpty: 'vazia', bfReturn: '↺ retorno',
     styleTitle: 'Montagem', styleBestTip: 'O melhor design para este formato está nesta aba',
-    styleBetter: (tab, name, pieces, rate) => `Para este formato, o melhor design está em ${tab}: ${name}, ${pieces} peças e ${rate}/min por saída.`, styleNormal: 'Normal', styleButterfly: 'Borboleta', styleVertical: 'Vertical',
-    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve para qualquer N→M a partir de 2→2, com faixas vazias ou faixas a mais com loop ou sink, e gasta menos peças em 4→4, 8→8. Vertical: o balancer escolhido em andares, um por camada de peças, ligados por lifts.',
-    styleNone: 'A borboleta precisa de pelo menos 2 entradas e 2 saídas: com 1 entrada é a árvore de splitters, com 1 saída é só juntar com mergers. Use Normal ou Vertical.',
-    thLifts: 'Lifts', floorTag: f => `Andar ${f}`, lgLift: 'lift',
+    styleBetter: (tab, name, pieces, rate) => `Para este formato, o melhor design está em ${tab}: ${name}, ${pieces} peças e ${rate}/min por saída.`, styleNormal: 'Normal', styleButterfly: 'Borboleta', style3d: '3D',
+    tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve para qualquer N→M a partir de 2→2, com faixas vazias ou faixas a mais com loop ou sink, e gasta menos peças em 4→4, 8→8. 3D: o balancer escolhido numa cena que você gira, em torres (as peças de cada camada empilhadas) ou em andares, com o passo a passo em holograma.',
+    styleNone: 'A borboleta precisa de pelo menos 2 entradas e 2 saídas: com 1 entrada é a árvore de splitters, com 1 saída é só juntar com mergers. Use Normal ou 3D.',
+    thLifts: 'Lifts', lgLift: 'lift',
     stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em ${n > 1 ? `cada uma das ${n} faixas com item` : 'a faixa com item'}.`,
     stBfFan: (round, groups) => `Rodada ${round}: sem merger. Cada parte segue direto para uma faixa do bloco (faixas ${groups}), abrindo as faixas vazias.`,
     stBfMerge: (round, groups, pass) => `Rodada ${round}: um merger por faixa junta uma parte de cada faixa do bloco (faixas ${groups}). As faixas de cada bloco saem iguais.` + (pass ? ` ${pass > 1 ? `${pass} faixas recebem` : '1 faixa recebe'} uma parte só e ${pass > 1 ? 'seguem' : 'segue'} direto, sem merger.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `As faixas ${lanes} sobram e voltam` : `A faixa ${lanes} sobra e volta`} para o começo dela mesma (loop). O que volta entra de novo na mistura, então as ${m} saídas ficam iguais.`,
-    stFloor: (f, sp, ways, mg, up, down) => `Andar ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + '.'
-      + (up ? ` ${up} lift${up > 1 ? 's sobem' : ' sobe'} do andar de baixo.` : '') + (down ? ` ${down} lift${down > 1 ? 's descem' : ' desce'} com o retorno do loop.` : ''),
-    vertNote: 'Um andar por camada de peças, ligados por lifts. A ferramenta mostra a ordem dos andares e conta os lifts; a altura de cada andar e o encaixe exato você ajusta no jogo.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Andar'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + (up ? `; ${up > 1 ? `${up} esteiras chegam` : '1 esteira chega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} do loop saem daqui` : '') + '.',
+    vertNote: 'Arraste para girar, role ou faça pinça para o zoom, botão direito ou dois dedos para mover. A escala é aproximada: a grade do piso é de fundações de 8 m, e o encaixe exato você ajusta no jogo.',
+    mode3dTowers: 'Torres', mode3dFloors: 'Andares', mode3dLabel: 'Montagem em 3D', recenter3d: 'Recentrar',
+    tip3dMode: 'Torres: cada camada de peças vira uma torre, com as peças empilhadas e as esteiras cruzando de uma torre para a outra. Andares: cada camada num andar, com as peças lado a lado.',
+    loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
+    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Borboleta e montagem vertical',
     lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
   },
@@ -1166,17 +1175,20 @@ const I18N = {
     segBfPart: s => `Round ${s}: each part`, segBfOut: s => `Round ${s}: each belt after the merger`,
     segBfLoop: 'Loop return (each lane)', segBfLoopIn: 'Lane start (input + return)', bfEmpty: 'empty', bfReturn: '↺ return',
     styleTitle: 'Build', styleBestTip: 'The best design for this shape is in this tab',
-    styleBetter: (tab, name, pieces, rate) => `For this shape, the best design is under ${tab}: ${name}, ${pieces} pieces and ${rate}/min per output.`, styleNormal: 'Normal', styleButterfly: 'Butterfly', styleVertical: 'Vertical',
-    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works for any N→M from 2→2 up, with empty lanes or spare lanes on a loop or sink, and uses fewer pieces for 4→4, 8→8. Vertical: the chosen balancer in floors, one per layer of pieces, joined by lifts.',
-    styleNone: 'The butterfly needs at least 2 inputs and 2 outputs: with 1 input it’s the splitter tree, with 1 output it’s just mergers. Use Normal or Vertical.',
-    thLifts: 'Lifts', floorTag: f => `Floor ${f}`, lgLift: 'lift',
+    styleBetter: (tab, name, pieces, rate) => `For this shape, the best design is under ${tab}: ${name}, ${pieces} pieces and ${rate}/min per output.`, styleNormal: 'Normal', styleButterfly: 'Butterfly', style3d: '3D',
+    tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works for any N→M from 2→2 up, with empty lanes or spare lanes on a loop or sink, and uses fewer pieces for 4→4, 8→8. 3D: the chosen balancer in a scene you can spin, as towers (each layer’s pieces stacked) or floors, with a hologram step by step.',
+    styleNone: 'The butterfly needs at least 2 inputs and 2 outputs: with 1 input it’s the splitter tree, with 1 output it’s just mergers. Use Normal or 3D.',
+    thLifts: 'Lifts', lgLift: 'lift',
     stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on ${n > 1 ? `each of the ${n} lanes that carry items` : 'the lane that carries items'}.`,
     stBfFan: (round, groups) => `Round ${round}: no mergers. Each part goes straight to one lane in the block (lanes ${groups}), filling the empty lanes.`,
     stBfMerge: (round, groups, pass) => `Round ${round}: one merger per lane joins one part from each lane in the block (lanes ${groups}). The lanes in each block leave equal.` + (pass ? ` ${pass > 1 ? `${pass} lanes get` : '1 lane gets'} a single part and ${pass > 1 ? 'go' : 'goes'} straight on, with no merger.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Lanes ${lanes} are spare and go` : `Lane ${lanes} is spare and goes`} back to ${k > 1 ? 'their own start' : 'its own start'} (loop). What comes back is mixed again, so the ${m} outputs are equal.`,
-    stFloor: (f, sp, ways, mg, up, down) => `Floor ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + '.'
-      + (up ? ` ${up} lift${up > 1 ? 's come' : ' comes'} up from the floor below.` : '') + (down ? ` ${down} lift${down > 1 ? 's go' : ' goes'} down with the loop return.` : ''),
-    vertNote: 'One floor per layer of pieces, joined by lifts. The tool shows the floor order and counts the lifts; you adjust each floor’s height and the exact fit in the game.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Tower' : 'Floor'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + (up ? `; ${up > 1 ? `${up} belts arrive` : '1 belt arrives'} by lift` : '') + (down ? `; ${down > 1 ? `${down} loop returns leave` : '1 loop return leaves'} from here` : '') + '.',
+    vertNote: 'Drag to spin, scroll or pinch to zoom, right button or two fingers to move. The scale is approximate: the floor grid is 8 m foundations, and you adjust the exact fit in the game.',
+    mode3dTowers: 'Towers', mode3dFloors: 'Floors', mode3dLabel: '3D layout', recenter3d: 'Recenter',
+    tip3dMode: 'Towers: each layer of pieces becomes a tower, with the pieces stacked and belts crossing from one tower to the next. Floors: each layer on a floor, with the pieces side by side.',
+    loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
+    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Butterfly and vertical builds',
     lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
   },
@@ -1427,17 +1439,20 @@ const I18N = {
     segBfPart: s => `Ronda ${s}: cada parte`, segBfOut: s => `Ronda ${s}: cada cinta tras el merger`,
     segBfLoop: 'Retorno del loop (cada carril)', segBfLoopIn: 'Inicio del carril (entrada + retorno)', bfEmpty: 'vacío', bfReturn: '↺ retorno',
     styleTitle: 'Montaje', styleBestTip: 'El mejor diseño para este formato está en esta pestaña',
-    styleBetter: (tab, name, pieces, rate) => `Para este formato, el mejor diseño está en ${tab}: ${name}, ${pieces} piezas y ${rate}/min por salida.`, styleNormal: 'Normal', styleButterfly: 'Mariposa', styleVertical: 'Vertical',
-    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve para cualquier N→M desde 2→2, con carriles vacíos o carriles de más con loop o sink, y gasta menos piezas en 4→4, 8→8. Vertical: el balanceador elegido en pisos, uno por capa de piezas, unidos con lifts.',
-    styleNone: 'La mariposa necesita al menos 2 entradas y 2 salidas: con 1 entrada es el árbol de splitters, con 1 salida es solo juntar con mergers. Usa Normal o Vertical.',
-    thLifts: 'Lifts', floorTag: f => `Piso ${f}`, lgLift: 'lift',
+    styleBetter: (tab, name, pieces, rate) => `Para este formato, el mejor diseño está en ${tab}: ${name}, ${pieces} piezas y ${rate}/min por salida.`, styleNormal: 'Normal', styleButterfly: 'Mariposa', style3d: '3D',
+    tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve para cualquier N→M desde 2→2, con carriles vacíos o carriles de más con loop o sink, y gasta menos piezas en 4→4, 8→8. 3D: el balanceador elegido en una escena que puedes girar, en torres (las piezas de cada capa apiladas) o en pisos, con el paso a paso en holograma.',
+    styleNone: 'La mariposa necesita al menos 2 entradas y 2 salidas: con 1 entrada es el árbol de splitters, con 1 salida es solo juntar con mergers. Usa Normal o 3D.',
+    thLifts: 'Lifts', lgLift: 'lift',
     stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en ${n > 1 ? `cada uno de los ${n} carriles con ítems` : 'el carril con ítems'}.`,
     stBfFan: (round, groups) => `Ronda ${round}: sin mergers. Cada parte va directo a un carril del bloque (carriles ${groups}), llenando los carriles vacíos.`,
     stBfMerge: (round, groups, pass) => `Ronda ${round}: un merger por carril junta una parte de cada carril del bloque (carriles ${groups}). Los carriles de cada bloque salen iguales.` + (pass ? ` ${pass > 1 ? `${pass} carriles reciben` : '1 carril recibe'} una sola parte y ${pass > 1 ? 'siguen' : 'sigue'} directo, sin merger.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Los carriles ${lanes} sobran y vuelven` : `El carril ${lanes} sobra y vuelve`} a su propio inicio (loop). Lo que vuelve se mezcla de nuevo, así que las ${m} salidas quedan iguales.`,
-    stFloor: (f, sp, ways, mg, up, down) => `Piso ${f}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + '.'
-      + (up ? ` ${up} lift${up > 1 ? 's suben' : ' sube'} del piso de abajo.` : '') + (down ? ` ${down} lift${down > 1 ? 's bajan' : ' baja'} con el retorno del loop.` : ''),
-    vertNote: 'Un piso por capa de piezas, unidos con lifts. La herramienta muestra el orden de los pisos y cuenta los lifts; la altura de cada piso y el encaje exacto los ajustas en el juego.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Piso'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + (up ? `; ${up > 1 ? `${up} cintas llegan` : '1 cinta llega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} del loop salen de aquí` : '') + '.',
+    vertNote: 'Arrastra para girar, rueda o pellizca para el zoom, botón derecho o dos dedos para mover. La escala es aproximada: la cuadrícula del piso es de cimientos de 8 m, y el encaje exacto lo ajustas en el juego.',
+    mode3dTowers: 'Torres', mode3dFloors: 'Pisos', mode3dLabel: 'Montaje en 3D', recenter3d: 'Recentrar',
+    tip3dMode: 'Torres: cada capa de piezas es una torre, con las piezas apiladas y las cintas cruzando de una torre a la siguiente. Pisos: cada capa en un piso, con las piezas lado a lado.',
+    loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
+    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Mariposa y montaje vertical',
     lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
   },
@@ -1922,10 +1937,10 @@ function layout3d(d, mode) {
     const perLevel = levels.map(f => nodes.filter(n => piece(n) && n.floor === f).length);
     const W = Math.max(...perLevel, d.N, d.M, d.net ? d.net.K : 0) * L3D.gap;
     nodes.filter(piece).forEach(n => pos.set(n.id, [n.x * W, n.floor * L3D.floor, 0]));
-    // Entradas na frente do primeiro andar e saídas na frente do último, para não ficarem embaixo das peças.
+    // Entradas na frente do primeiro andar e saídas atrás do último, para não ficarem embaixo das peças nem taparem a montagem.
     const lo = levels[0] * L3D.floor, hi = levels[levels.length - 1] * L3D.floor;
     fl.ins.forEach(id => pos.set(id, [nodes[id].x * W, lo, L3D.gap * 1.5]));
-    fl.outs.forEach(id => pos.set(id, [nodes[id].x * W, hi, L3D.gap * 1.5]));
+    fl.outs.forEach(id => pos.set(id, [nodes[id].x * W, hi, -L3D.gap * 1.5]));
   }
   // Sink: toco na frente da peça de onde sai, um ao lado do outro.
   const sinkCount = new Map();
@@ -1937,14 +1952,15 @@ function layout3d(d, mode) {
   }
   const stepOf = n => (n.t === 'in' ? 0 : n.t === 'out' ? outStep : n.t === 'sink' ? stepOf(nodes[sinkFrom.get(n.id)]) : levelIdx.get(n.floor));
   const pieces = nodes.map(n => ({ id: n.id, t: n.t, ways: n.ways, inp: n.inp, pos: pos.get(n.id), step: stepOf(n) }));
+  // Retorno do loop passa por cima de tudo, cada um numa altura, para aparecer de qualquer ângulo.
+  const topY = Math.max(...[...pos.values()].map(q => q[1])) + L3D.floor;
   let loops = 0;
   const belts = edges.map(e => {
     const a = nodes[e.a], b = nodes[e.b], A = pos.get(e.a), B = pos.get(e.b);
     let pts;
     if (e.kind === 'loop') {
-      // Retorno por trás da montagem, cada um na sua faixa.
-      const z = -L3D.gap / 2 - loops++;
-      pts = [A, [A[0], A[1], z], [B[0], A[1], z], [B[0], B[1], z], B];
+      const y = topY + loops++ * 1.5, z = -L3D.cell;
+      pts = [A, [A[0], A[1], z], [A[0], y, z], [B[0], y, z], [B[0], B[1], z], B];
     } else pts = [A, [B[0], A[1], A[2]], [B[0], B[1], B[2]]];
     pts = pts.filter((q, i) => i === 0 || q.some((v, k) => Math.abs(v - pts[i - 1][k]) > 1e-9));
     if (pts.length < 2) pts.push(B);
@@ -3546,77 +3562,6 @@ function balancerBuild(d, labels) {
   return { svg, steps };
 }
 
-// Corte vertical: andares de baixo para cima, entradas embaixo e saídas em cima, lifts entre andares.
-function verticalBuild(d, labels) {
-  const fl = designFloors(d);
-  if (!fl) return balancerBuild(d, labels);
-  const steps = [], under = [], over = [];
-  const step = text => steps.push(text) - 1;
-  const g = (layer, s, svg) => layer.push(`<g data-s="${s}">${svg}</g>`);
-  const { nodes, edges, floors } = fl;
-  const piece = n => n.t === 's' || n.t === 'm';
-  const perFloor = f => nodes.filter(n => piece(n) && n.floor === f).length;
-  const widest = Math.max(d.N, d.M, d.net ? d.net.K : 0, ...Array.from({ length: floors }, (_, k) => perFloor(k + 1)));
-  const padL = 74, innerW = Math.max(520, widest * 46), floorH = 74, boxH = 30, top = 12;
-  const slot = innerW / (d.net ? d.net.K : Math.max(d.N, d.M)), bw = Math.min(92, slot - 8), full = bw >= 78;
-  const hasSink = nodes.some(n => n.t === 'sink');
-  const W = padL + innerW + (hasSink ? 56 : 16);
-  const yOutRow = top + boxH / 2;
-  const yFloor = f => top + boxH + 26 + (floors - f) * floorH + floorH / 2;
-  const yInRow = yFloor(1) + floorH / 2 + 22 + boxH / 2;
-  const H = yInRow + boxH / 2 + top;
-  const X = n => padL + n.x * innerW;
-  const Y = n => (n.t === 'in' ? yInRow : n.t === 'out' ? yOutRow : yFloor(n.floor));
-  const color = e => (e.inp >= 0 ? inColor(e.inp) : 'var(--ink)');
-  const term = (n, tag, rate, stroke) => `<rect x="${X(n) - bw / 2}" y="${Y(n) - boxH / 2}" width="${bw}" height="${boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`
-    + (full ? `<text class="lbl" x="${X(n) - bw / 2 + 7}" y="${Y(n) + 5}">${esc(tag)}</text><text class="rate" x="${X(n) + bw / 2 - 7}" y="${Y(n) + 5}" text-anchor="end">${rate}</text>`
-      : `<text class="lbl" x="${X(n)}" y="${Y(n) + 5}" text-anchor="middle">${esc(tag)}</text>`);
-  const pieceSvg = n => (n.t === 's'
-    ? `<rect x="${X(n) - 11}" y="${Y(n) - 9}" width="22" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text class="sm" x="${X(n)}" y="${Y(n) + 4}" text-anchor="middle" style="fill:var(--ficsit)">${n.ways}</text>`
-    : `<rect x="${X(n) - 6.5}" y="${Y(n) - 6.5}" width="13" height="13" transform="rotate(45 ${X(n)} ${Y(n)})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/>`);
-  // Ligação: sai da peça, sobe (ou desce) pelo lift ao lado dela e anda no andar de destino.
-  const outIdx = new Map(), inIdx = new Map();
-  const route = e => {
-    const a = nodes[e.a], b = nodes[e.b];
-    const k = outIdx.get(e.a) || 0;
-    outIdx.set(e.a, k + 1);
-    const c = color(e), xa = X(a), ya = Y(a), xb = X(b), yb = Y(b);
-    if (b.t === 'sink') return `<path d="M${xa + 11},${ya} h22" stroke="var(--sink)" stroke-width="2" fill="none"/><text class="sm" x="${xa + 36}" y="${ya + 4}" style="fill:var(--sink)">sink</text>`;
-    if (a.t === 'in' || b.t === 'out' || a.floor === b.floor) return `<path d="${a.floor === b.floor && piece(a) && piece(b) ? `M${xa},${ya} L${xb},${yb}` : `M${xa},${ya} V${(ya + yb) / 2} H${xb} V${yb}`}" stroke="${c}" stroke-width="2" fill="none"/>`;
-    // A esteira anda no andar de origem até embaixo da peça de destino e sobe (ou desce) pelo lift.
-    const j = inIdx.get(e.b) || 0;
-    inIdx.set(e.b, j + 1);
-    const dir = yb < ya ? -1 : 1;
-    const yr = ya + dir * (13 + k * 7), lx = xb - 9 + j * 6;
-    return `<path d="M${lx},${yr} V${yb - dir * 10}" stroke="var(--line)" stroke-width="6" fill="none"/>`
-      + `<path d="M${xa},${ya + dir * 9} V${yr} H${lx} V${yb - dir * 10} H${xb}" stroke="${c}" stroke-width="1.6" fill="none"${e.kind === 'loop' ? ' stroke-dasharray="5 3"' : ''}/>`;
-  };
-  for (let f = 1; f <= floors; f++) {
-    const yb = yFloor(f) + floorH / 2 - 4;
-    under.push(`<path d="M${padL - 6},${yb} H${W - 8}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text class="sm" x="0" y="${yFloor(f) + 4}">${esc(t('floorTag', f))}</text>`);
-  }
-  const s0 = step(t('stIn', d.N, labels.ins.join(', '), rateList(d.rates)));
-  fl.ins.forEach((id, i) => g(over, s0, term(nodes[id], labels.ins[i], fmt(d.rates[i]), inColor(i))));
-  const stepOf = [];
-  for (let f = 1; f <= floors; f++) {
-    const here = nodes.filter(n => piece(n) && n.floor === f);
-    const sp = here.filter(n => n.t === 's');
-    const up = edges.filter(e => piece(nodes[e.a]) && nodes[e.b].floor === f && nodes[e.a].floor < f).length;
-    const down = edges.filter(e => e.kind === 'loop' && nodes[e.a].floor === f).length;
-    stepOf[f] = step(t('stFloor', f, sp.length, sp.length ? sp[0].ways : 0, here.length - sp.length, up, down));
-    here.forEach(n => g(over, stepOf[f], pieceSvg(n)));
-  }
-  const so = step(t('stOut', d.M, fmt(d.perOut)));
-  fl.outs.forEach((id, j) => g(over, so, term(nodes[id], labels.outs[j], fmt(d.perOut), 'var(--ok)')));
-  for (const e of edges) {
-    const a = nodes[e.a], b = nodes[e.b];
-    const s = e.kind === 'out' ? so : e.kind === 'loop' || b.t === 'sink' ? stepOf[a.floor] : stepOf[b.floor];
-    g(under, s, route(e));
-  }
-  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
-  return { svg, steps };
-}
-
 // ---- Cena 3D (Three.js sob demanda) ----
 // Peças próprias: splitter laranja com "1→3", merger sextavado verde-água com "3→1", lift como tubo,
 // esteira com chevrons na cor da faixa andando no sentido do fluxo. Passo atual em holograma.
@@ -3785,7 +3730,8 @@ async function mount3d(stage, d, labels, lay) {
   controls.enableDamping = !reduce;
   controls.maxPolarAngle = Math.PI * 0.495;
   const recenter = () => {
-    const dist = extent * 0.95 + 14;
+    // Tela em pé (celular) enxerga menos na horizontal: afasta na mesma proporção.
+    const dist = (extent * 0.95 + 14) * Math.max(1, 1.2 / camera.aspect);
     camera.position.copy(center).add(new T.Vector3(0.75, 0.75, 1.1).normalize().multiplyScalar(dist));
     controls.target.copy(center);
     controls.update();
@@ -3857,14 +3803,23 @@ async function mount3d(stage, d, labels, lay) {
 }
 
 // Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
-function mountPonder(root, d, labels, vertical = false) {
+// view: '2d' (SVG) ou a montagem 3D ('towers' | 'floors'); opts.onMode troca a montagem 3D.
+function mountPonder(root, d, labels, view = '2d', opts = {}) {
   if (root._stop) root._stop();
-  const { svg, steps } = vertical ? verticalBuild(d, labels) : balancerBuild(d, labels);
+  const in3d = view !== '2d';
+  const lay = in3d ? layout3d(d, view) : null;
+  const { svg, steps } = in3d
+    ? { svg: '', steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
+      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
+    : balancerBuild(d, labels);
   const K = steps.length;
-  let cur = K, timer = null;
+  let cur = K, timer = null, scene = null;
   const matrix = !d.kind.startsWith('funnel');
+  const ctl3d = in3d ? `<div class="s3d-ctl">
+      <div class="seg" role="radiogroup" aria-label="${esc(t('mode3dLabel'))}">${['towers', 'floors'].map(m => `<button type="button" role="radio" aria-checked="${m === view}" data-mode="${m}">${t('mode3d' + cap1(m))}</button>`).join('')}</div>${tip('tip3dMode')}
+      <button type="button" class="pbtn" data-recenter>${t('recenter3d')}</button></div>` : '';
   root.innerHTML = `<div class="ponder" tabindex="-1">
-    <div class="stage">${svg}</div>
+    <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p>` : svg}</div>
     <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
@@ -3877,18 +3832,19 @@ function mountPonder(root, d, labels, vertical = false) {
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
       <span><i class="holo"></i>${t('lgHolo')}</span>
-      ${vertical ? `<span><i class="lifti"></i>${t('lgLift')}</span>` : ''}
+      ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="lifti"></i>${t('lgLift')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-sink') ? `<span><i style="background:var(--sink)"></i>${t('lgToSink')}</span>` : ''}
     </div>
   </div>`;
   const q = s => root.querySelector(s);
   const stop = () => { clearInterval(timer); timer = null; };
-  root._stop = stop;
+  root._stop = () => { stop(); if (scene) scene.dispose(); scene = null; root._token = null; };
   const update = () => {
     const st = q('.bsvg');
-    st.classList.toggle('stepping', cur < K);
-    st.querySelectorAll('[data-s]').forEach(el => {
+    if (scene) scene.setStep(cur, K);
+    if (st) st.classList.toggle('stepping', cur < K);
+    if (st) st.querySelectorAll('[data-s]').forEach(el => {
       const s = +el.dataset.s;
       el.classList.toggle('fut', cur < K && s > cur);
       el.classList.toggle('now', cur < K && s === cur);
@@ -3928,6 +3884,26 @@ function mountPonder(root, d, labels, vertical = false) {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(cur - 1); }
   });
   update();
+  if (in3d) {
+    const token = {};
+    root._token = token;
+    q('.s3d-ctl').addEventListener('click', e => {
+      const m = e.target.closest('[data-mode]');
+      if (m && m.dataset.mode !== view && opts.onMode) opts.onMode(m.dataset.mode);
+      if (e.target.closest('[data-recenter]') && scene) scene.recenter();
+    });
+    mount3d(q('.stage3d'), d, labels, lay).then(sc => {
+      if (root._token !== token) { if (sc) sc.dispose(); return; }
+      if (!sc) {
+        mountPonder(root, d, labels, '2d');
+        root.querySelector('.stage').insertAdjacentHTML('afterbegin', `<p class="hint">${t('no3d')}</p>`);
+        return;
+      }
+      scene = sc;
+      q('.load3d')?.remove();
+      scene.setStep(cur, K);
+    });
+  }
 }
 
 function whyText(ranked) {
@@ -3958,18 +3934,19 @@ function checksTable(d, belt) {
 // Bancada: passo a passo do design escolhido, a lista de designs testados e a vazão de cada trecho.
 // ctx: { N, M, rates, cap, belt, blueprints, labels: { ins, outs }, style, view, inUse, onView, onStyle }
 // Montagem: normal (designs planos), borboleta, ou vertical (qualquer design em andares, com lifts).
-const STYLES = ['normal', 'butterfly', 'vertical'];
+const STYLES = ['normal', 'butterfly', '3d'];
 const isBf = d => d.kind.startsWith('butterfly');
-const STYLE_FILTER = { normal: d => !isBf(d), butterfly: isBf, vertical: d => d.kind !== 'blueprint' };
+const STYLE_FILTER = { normal: d => !isBf(d), butterfly: isBf, '3d': d => d.kind !== 'blueprint' };
 function workbench(el, ctx) {
-  const style = STYLES.includes(ctx.style) ? ctx.style : 'normal';
+  // Quem tinha a antiga aba Vertical salva abre no 3D.
+  const style = ctx.style === 'vertical' ? '3d' : STYLES.includes(ctx.style) ? ctx.style : 'normal';
   const all = rankDesigns(balancerCandidates(ctx.N, ctx.M, ctx.rates, ctx.cap, ctx.blueprints));
   const cands = all.filter(STYLE_FILTER[style]);
   const best = cands[0];
   // Aba (normal ou borboleta) onde está o melhor design de todos: marca a aba e avisa quando é outra.
   const top = all.find(d => !d.applies);
   const topStyle = top ? (isBf(top) ? 'butterfly' : 'normal') : null;
-  const better = top && style !== 'vertical' && topStyle !== style
+  const better = top && style !== '3d' && topStyle !== style
     ? `<p class="wb-better">${t('styleBetter', `<button type="button" data-style="${topStyle}">${t('style' + cap1(topStyle))}</button>`, esc(designName(top)), designPieces(top), fmt(top.perOut))}</p>` : '';
   const styleBar = `<div class="wb-style"><span class="wb-style-l">${t('styleTitle')}${tip('tipStyle')}</span>
     <div class="seg" role="radiogroup" aria-label="${esc(t('styleTitle'))}">${STYLES.map(k => `<button type="button" role="radio" aria-checked="${k === style}" data-style="${k}"${k === topStyle ? ` data-best title="${esc(t('styleBestTip'))}"` : ''}>${t('style' + cap1(k))}</button>`).join('')}</div>${better}</div>`;
@@ -3988,8 +3965,8 @@ function workbench(el, ctx) {
   }
   const d = cands.find(x => !x.applies && designKey(x) === ctx.view) || best;
   const pc = d.pieces;
-  const vertical = style === 'vertical';
-  const fl = vertical ? designFloors(d) : null;
+  const mode3d = ctx.mode3d === 'floors' ? 'floors' : 'towers';
+  const fl = style === '3d' ? layout3d(d, mode3d) : null;
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
   el.innerHTML = `${styleBar}<div class="wb">
     <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}${fl ? `<p class="hint">${t('vertNote')}</p>` : ''}</div></div>
@@ -4016,7 +3993,9 @@ function workbench(el, ctx) {
     </aside>
   </div>
   <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
-  mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, vertical);
+  mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, fl ? mode3d : '2d', {
+    onMode: m => { ctx.mode3d = m; if (ctx.onMode3d) ctx.onMode3d(m); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
+  });
   bindStyle();
   el.querySelector('.cands').addEventListener('click', e => {
     const b = e.target.closest('.cand');
@@ -4033,8 +4012,9 @@ const BP_STORE = 'sf-balancer:bp';
 const LIB_STORE = 'sf-balancer:lib';
 let BPS = [{ n: 3, m: 4 }];
 try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
-const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal' };
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers' };
 try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
+if (LIB.style === 'vertical') LIB.style = '3d';
 const saveBps = () => { try { localStorage.setItem(BP_STORE, JSON.stringify(BPS)); } catch (e) { /* sem storage */ } };
 const saveLib = () => { try { localStorage.setItem(LIB_STORE, JSON.stringify(LIB)); } catch (e) { /* sem storage */ } };
 
@@ -4073,6 +4053,7 @@ function renderLib() {
     N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
     style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
+    mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); },
   });
 }
 
@@ -4111,7 +4092,7 @@ function openDesign(ctx) {
 function openFromPlan(key) {
   if (!lastRender) return;
   const { p, alt } = lastRender;
-  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS };
+  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, onMode3d: m => { LIB.mode3d = m; saveLib(); } };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
     openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind.startsWith('butterfly') ? 'butterfly' : 'normal' });
