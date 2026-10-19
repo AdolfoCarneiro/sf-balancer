@@ -373,7 +373,6 @@
   .wb-better button { background: none; border: 0; padding: 0; color: var(--ok); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
   .wb-better button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
   .seg button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
-  .plegend i.lifti { width: 6px; height: 14px; background: var(--line); box-shadow: inset 2px 0 0 var(--ink-dim); }
   .wb-checks h4 { font: 600 16px/1.2 var(--display); margin: 0 0 4px; color: var(--ink-dim); }
   @media (max-width: 1100px) { .wb { grid-template-columns: 1fr; } }
   .ponder {
@@ -416,8 +415,10 @@
   .s3d-ctl { position: absolute; top: 10px; left: 10px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .s3d-ctl .seg { background: var(--bench); }
   .load3d { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-dim); }
-  .plegend i.sp3 { width: 11px; height: 11px; background: var(--ficsit); }
-  .plegend i.mg3 { width: 11px; height: 11px; background: #4fd1c5; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+  .plegend i.sp3 { width: 11px; height: 11px; border-radius: 2px; background: #e8863a; }
+  .plegend i.mg3 { width: 11px; height: 11px; border-radius: 2px; background: #3bb3a8; }
+  .plegend i.pouti { width: 12px; height: 12px; background: var(--ink); clip-path: polygon(0 15%, 100% 50%, 0 85%); }
+  .plegend i.pini { width: 12px; height: 12px; border: 3px solid var(--ink); border-radius: 50%; background: none; }
   .stage3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   .stage3d canvas:active { cursor: grabbing; }
   .bsvg [data-s] { transition: opacity .3s ease; }
@@ -914,7 +915,7 @@ const I18N = {
     styleBetter: (tab, name, pieces, rate) => `Para este formato, o melhor design está em ${tab}: ${name}, ${pieces} peças e ${rate}/min por saída.`, styleNormal: 'Normal', styleButterfly: 'Borboleta', style3d: '3D',
     tipStyle: 'Normal: designs planos (matriz, funil, com loop ou sink). Borboleta: mistura as esteiras aos pares em rodadas; serve para qualquer N→M a partir de 2→2, com faixas vazias ou faixas a mais com loop ou sink, e gasta menos peças em 4→4, 8→8. 3D: o balancer escolhido numa cena que você gira, em torres (as peças de cada camada empilhadas) ou em andares, com o passo a passo em holograma.',
     styleNone: 'A borboleta precisa de pelo menos 2 entradas e 2 saídas: com 1 entrada é a árvore de splitters, com 1 saída é só juntar com mergers. Use Normal ou 3D.',
-    thLifts: 'Lifts', lgLift: 'lift',
+    thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Rodada ${round}: um splitter em ${r} em ${n > 1 ? `cada uma das ${n} faixas com item` : 'a faixa com item'}.`,
     stBfFan: (round, groups) => `Rodada ${round}: sem merger. Cada parte segue direto para uma faixa do bloco (faixas ${groups}), abrindo as faixas vazias.`,
     stBfMerge: (round, groups, pass) => `Rodada ${round}: um merger por faixa junta uma parte de cada faixa do bloco (faixas ${groups}). As faixas de cada bloco saem iguais.` + (pass ? ` ${pass > 1 ? `${pass} faixas recebem` : '1 faixa recebe'} uma parte só e ${pass > 1 ? 'seguem' : 'segue'} direto, sem merger.` : ''),
@@ -923,8 +924,8 @@ const I18N = {
     vertNote: 'Arraste para girar, role ou faça pinça para o zoom, botão direito ou dois dedos para mover. A escala é aproximada: a grade do piso é de fundações de 8 m, e o encaixe exato você ajusta no jogo.',
     mode3dTowers: 'Torres', mode3dFloors: 'Andares', mode3dLabel: 'Montagem em 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada camada de peças vira uma torre, com as peças empilhadas e as esteiras cruzando de uma torre para a outra. Andares: cada camada num andar, com as peças lado a lado.',
+    lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'saída da peça', lgPortIn: 'entrada da peça',
     loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
-    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Borboleta e montagem vertical',
     lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
   },
@@ -1178,7 +1179,7 @@ const I18N = {
     styleBetter: (tab, name, pieces, rate) => `For this shape, the best design is under ${tab}: ${name}, ${pieces} pieces and ${rate}/min per output.`, styleNormal: 'Normal', styleButterfly: 'Butterfly', style3d: '3D',
     tipStyle: 'Normal: flat designs (matrix, funnel, with a loop or sink). Butterfly: mixes belts in pairs over rounds; works for any N→M from 2→2 up, with empty lanes or spare lanes on a loop or sink, and uses fewer pieces for 4→4, 8→8. 3D: the chosen balancer in a scene you can spin, as towers (each layer’s pieces stacked) or floors, with a hologram step by step.',
     styleNone: 'The butterfly needs at least 2 inputs and 2 outputs: with 1 input it’s the splitter tree, with 1 output it’s just mergers. Use Normal or 3D.',
-    thLifts: 'Lifts', lgLift: 'lift',
+    thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Round ${round}: a splitter into ${r} on ${n > 1 ? `each of the ${n} lanes that carry items` : 'the lane that carries items'}.`,
     stBfFan: (round, groups) => `Round ${round}: no mergers. Each part goes straight to one lane in the block (lanes ${groups}), filling the empty lanes.`,
     stBfMerge: (round, groups, pass) => `Round ${round}: one merger per lane joins one part from each lane in the block (lanes ${groups}). The lanes in each block leave equal.` + (pass ? ` ${pass > 1 ? `${pass} lanes get` : '1 lane gets'} a single part and ${pass > 1 ? 'go' : 'goes'} straight on, with no merger.` : ''),
@@ -1187,8 +1188,8 @@ const I18N = {
     vertNote: 'Drag to spin, scroll or pinch to zoom, right button or two fingers to move. The scale is approximate: the floor grid is 8 m foundations, and you adjust the exact fit in the game.',
     mode3dTowers: 'Towers', mode3dFloors: 'Floors', mode3dLabel: '3D layout', recenter3d: 'Recenter',
     tip3dMode: 'Towers: each layer of pieces becomes a tower, with the pieces stacked and belts crossing from one tower to the next. Floors: each layer on a floor, with the pieces side by side.',
+    lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'piece output', lgPortIn: 'piece input',
     loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
-    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Butterfly and vertical builds',
     lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
   },
@@ -1442,7 +1443,7 @@ const I18N = {
     styleBetter: (tab, name, pieces, rate) => `Para este formato, el mejor diseño está en ${tab}: ${name}, ${pieces} piezas y ${rate}/min por salida.`, styleNormal: 'Normal', styleButterfly: 'Mariposa', style3d: '3D',
     tipStyle: 'Normal: diseños planos (matriz, embudo, con loop o sink). Mariposa: mezcla las cintas de a pares en rondas; sirve para cualquier N→M desde 2→2, con carriles vacíos o carriles de más con loop o sink, y gasta menos piezas en 4→4, 8→8. 3D: el balanceador elegido en una escena que puedes girar, en torres (las piezas de cada capa apiladas) o en pisos, con el paso a paso en holograma.',
     styleNone: 'La mariposa necesita al menos 2 entradas y 2 salidas: con 1 entrada es el árbol de splitters, con 1 salida es solo juntar con mergers. Usa Normal o 3D.',
-    thLifts: 'Lifts', lgLift: 'lift',
+    thLifts: 'Lifts',
     stBfSplit: (round, n, r) => `Ronda ${round}: un splitter en ${r} en ${n > 1 ? `cada uno de los ${n} carriles con ítems` : 'el carril con ítems'}.`,
     stBfFan: (round, groups) => `Ronda ${round}: sin mergers. Cada parte va directo a un carril del bloque (carriles ${groups}), llenando los carriles vacíos.`,
     stBfMerge: (round, groups, pass) => `Ronda ${round}: un merger por carril junta una parte de cada carril del bloque (carriles ${groups}). Los carriles de cada bloque salen iguales.` + (pass ? ` ${pass > 1 ? `${pass} carriles reciben` : '1 carril recibe'} una sola parte y ${pass > 1 ? 'siguen' : 'sigue'} directo, sin merger.` : ''),
@@ -1451,8 +1452,8 @@ const I18N = {
     vertNote: 'Arrastra para girar, rueda o pellizca para el zoom, botón derecho o dos dedos para mover. La escala es aproximada: la cuadrícula del piso es de cimientos de 8 m, y el encaje exacto lo ajustas en el juego.',
     mode3dTowers: 'Torres', mode3dFloors: 'Pisos', mode3dLabel: 'Montaje en 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada capa de piezas es una torre, con las piezas apiladas y las cintas cruzando de una torre a la siguiente. Pisos: cada capa en un piso, con las piezas lado a lado.',
+    lgSplitter: 'splitter', lgMerger: 'merger', lgPortOut: 'salida de la pieza', lgPortIn: 'entrada de la pieza',
     loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
-    lgSplitter: 'splitter', lgMerger: 'merger',
     lbBfTitle: 'Mariposa y montaje vertical',
     lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
   },
@@ -3746,167 +3747,230 @@ function balancerBuild(d, labels) {
 }
 
 // ---- Cena 3D (Three.js sob demanda) ----
-// Peças próprias: splitter laranja com "1→3", merger sextavado verde-água com "3→1", lift como tubo,
-// esteira com chevrons na cor da faixa andando no sentido do fluxo. Passo atual em holograma.
+// Piso de blueprint, peças chapadas (splitter laranja, merger verde-água), setas no topo com as portas usadas,
+// esteira em tubo neon na cor da faixa com contorno escuro, gola + seta (saída) ou anel (entrada) em cada porta,
+// pontos de luz andando no sentido do fluxo. Passo atual em holograma pulsando; passar o mouse isola o caminho.
 let THREE_P = null;
-const load3d = () => (THREE_P ||= Promise.all([import('three'), import('three/addons/controls/OrbitControls.js')])
-  .then(([T, O]) => ({ T, OrbitControls: O.OrbitControls }))
+const load3d = () => (THREE_P ||= Promise.all([import('three'), import('three/addons/controls/OrbitControls.js'), import('three/addons/geometries/RoundedBoxGeometry.js')])
+  .then(([T, O, R]) => ({ T, OrbitControls: O.OrbitControls, RoundedBoxGeometry: R.RoundedBoxGeometry }))
   .catch(e => { THREE_P = null; throw e; }));
-const MERGER_3D = '#4fd1c5';
+const SPLITTER_3D = '#e8863a', MERGER_3D = '#3bb3a8';
 
-async function mount3d(stage, d, labels, lay) {
+// Caminho em foco: placa de entrada = tudo a jusante; de saída = tudo a montante; peça = ela e as esteiras ligadas.
+// Devolve os ids de peça e os índices de esteira acesos.
+function focus3d(lay, id) {
+  const t = lay.pieces.find(p => p.id === id)?.t;
+  const pieces = new Set([id]), belts = new Set();
+  const walk = (n, down) => lay.belts.forEach((b, bi) => {
+    if ((down ? b.a : b.b) !== n || belts.has(bi)) return;
+    belts.add(bi);
+    const nx = down ? b.b : b.a;
+    pieces.add(nx);
+    if (t === 'in' || t === 'out') walk(nx, down);
+  });
+  if (t !== 'out') walk(id, true);
+  if (t !== 'in') walk(id, false);
+  return { pieces, belts };
+}
+
+async function mount3d(stage, d, labels, lay, opts = {}) {
   let lib, renderer;
   try { lib = await load3d(); } catch (e) { return null; }
-  const { T, OrbitControls } = lib;
+  const { T, OrbitControls, RoundedBoxGeometry } = lib;
   try { renderer = new T.WebGLRenderer({ antialias: true }); } catch (e) { return null; }
   if (!renderer.getContext()) return null;
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const hex = c => (c.startsWith('var(') ? css(c.slice(4, -1)) : c);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const disposables = [];
-  const keep = x => (disposables.push(x), x);
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = T.SRGBColorSpace;
   stage.append(renderer.domElement);
   const scene = new T.Scene();
   scene.background = new T.Color(hex('var(--bench)'));
-  scene.add(new T.HemisphereLight(0xd6ecff, 0x0a1b2d, 1.6));
-  const sun = new T.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(40, 80, 50);
-  scene.add(sun);
+  scene.add(new T.HemisphereLight(0xffffff, 0x123050, 1.4));
+  const key = new T.DirectionalLight(0xffffff, 1.7);
+  key.position.set(30, 70, 45);
+  const fill = new T.DirectionalLight(0x9fc2ff, 0.5);
+  fill.position.set(-40, 15, -20);
+  scene.add(key, fill);
 
   const { min, max } = lay.bounds;
   const center = new T.Vector3((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
-  const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2], 16);
-  // Piso de blueprint: placa azul com a grade das fundações (8 m) e a meia grade (4 m).
-  const span = Math.ceil((Math.max(max[0] - min[0], max[2] - min[2]) + 24) / 8) * 8;
-  const floorY = min[1] - 1.4;
-  const base = new T.Mesh(keep(new T.PlaneGeometry(span, span)), keep(new T.MeshBasicMaterial({ color: 0x0f3150, transparent: true, opacity: 0.85 })));
-  base.rotation.x = -Math.PI / 2;
-  base.position.set(center.x, floorY - 0.02, center.z);
-  scene.add(base);
-  const fine = new T.GridHelper(span, span / 4, hex('var(--grid)'), hex('var(--grid)'));
-  const coarse = new T.GridHelper(span, span / 8, hex('var(--line)'), hex('var(--line)'));
-  fine.position.set(center.x, floorY - 0.01, center.z);
-  coarse.position.set(center.x, floorY, center.z);
-  scene.add(fine, coarse);
-  disposables.push(fine.geometry, fine.material, coarse.geometry, coarse.material);
-
-  // Textura com texto (marca da peça, rótulo de entrada/saída).
-  const textTex = (text, fg, bg, w = 256, h = 256, size = 110) => {
+  const canvasTex = (w, h, draw) => {
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
-    const g = c.getContext('2d');
-    g.fillStyle = bg; g.fillRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10);
-    g.fillStyle = fg; g.font = `700 ${size}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(text, w / 2, h / 2 + 4);
-    const tx = keep(new T.CanvasTexture(c));
+    draw(c.getContext('2d'), w, h);
+    const tx = new T.CanvasTexture(c);
     tx.colorSpace = T.SRGBColorSpace;
     tx.anisotropy = 4;
     return tx;
   };
-  // Chevrons apontando para +u: a esteira anda no sentido do fluxo.
-  const chevCache = new Map();
-  const chevron = color => {
-    if (!chevCache.has(color)) {
-      const c = document.createElement('canvas');
-      c.width = 64; c.height = 64;
-      const g = c.getContext('2d');
-      g.fillStyle = '#1b2e42'; g.fillRect(0, 0, 64, 64);
-      g.strokeStyle = color; g.lineWidth = 9; g.lineJoin = 'miter';
-      g.beginPath(); g.moveTo(18, 10); g.lineTo(44, 32); g.lineTo(18, 54); g.stroke();
-      chevCache.set(color, c);
+
+  // Piso de blueprint: grade das fundações (8 m) e meia grade (4 m), sumindo nas bordas.
+  const span = Math.ceil((Math.max(max[0] - min[0], max[2] - min[2]) + 40) / 8) * 8;
+  const floorTex = canvasTex(1024, 1024, (g, w, h) => {
+    const n = span / 4, cell = w / n;
+    g.fillStyle = '#0f3150'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i <= n; i++) {
+      const x = i * cell, major = i % 2 === 0;
+      g.strokeStyle = major ? 'rgba(111,200,255,.38)' : 'rgba(111,200,255,.13)';
+      g.lineWidth = major ? 3 : 1.2;
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.moveTo(0, x); g.lineTo(w, x); g.stroke();
     }
-    const tx = keep(new T.CanvasTexture(chevCache.get(color)));
-    tx.colorSpace = T.SRGBColorSpace;
-    tx.wrapS = tx.wrapT = T.RepeatWrapping;
-    return tx;
-  };
+    g.globalCompositeOperation = 'destination-in';
+    const rg = g.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w / 2);
+    rg.addColorStop(0, '#000'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, w, h);
+  });
+  const floor = new T.Mesh(new T.PlaneGeometry(span, span), new T.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(center.x, min[1] - 1.6, center.z);
+  scene.add(floor);
+
+  const pill = (text, dot) => canvasTex(256, 96, (g, w, h) => {
+    g.fillStyle = 'rgba(8,20,34,.9)'; g.strokeStyle = dot; g.lineWidth = 4;
+    g.beginPath(); g.roundRect(6, 14, w - 12, h - 28, 30); g.fill(); g.stroke();
+    g.fillStyle = dot; g.beginPath(); g.arc(46, h / 2, 13, 0, 7); g.fill();
+    g.fillStyle = '#e4eef8'; g.font = '700 46px "Chakra Petch", sans-serif'; g.textBaseline = 'middle';
+    g.fillText(text, 74, h / 2 + 2);
+  });
+  const glyph = text => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#ffffff'; g.font = '700 104px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 + 6);
+  });
+  // Direção de cada face no mundo (o layout fala no referencial do fluxo; Andares é girado).
+  const faceDir = side => { const n = NRM3[side]; return lay.mode === 'floors' ? new T.Vector3(n[2], n[1], -n[0]) : new T.Vector3(...n); };
+  const beltColor = b => (b.kind === 'loop' ? hex('var(--ink-dim)') : b.inp >= 0 ? inColor(b.inp) : hex('var(--ink)'));
 
   const objs = [];
-  const mat = (opts) => keep(new T.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15, ...opts }));
-  const add = (mesh, step, kind, extra = {}) => {
-    scene.add(mesh);
-    const mats = [];
-    mesh.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.push(m)); });
-    objs.push({ mesh, step, kind, mats, ...extra });
+  const track = (root, step, kind, id) => {
+    const mats = [], meshes = [];
+    root.traverse(o => {
+      if (o.isMesh && !o.userData.noPick) meshes.push(o);
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+        if (!m.userData.base) m.userData.base = { color: m.color?.clone(), emissive: m.emissive?.clone(), ei: m.emissiveIntensity, op: m.opacity, tr: m.transparent, dw: m.depthWrite };
+        if (!mats.includes(m)) mats.push(m);
+      });
+    });
+    const obj = { root, step, kind, id, mats, meshes };
+    root.traverse(o => { o.userData.obj = obj; });
+    scene.add(root);
+    objs.push(obj);
+    return obj;
   };
-  const sprite = (text, color, y) => {
-    const sm = keep(new T.SpriteMaterial({ map: textTex(text, color, 'rgba(10,27,45,.85)', 256, 96, 64), depthTest: false }));
-    const sp = new T.Sprite(sm);
-    sp.scale.set(4.2, 1.6, 1);
-    sp.position.y = y;
-    sp.renderOrder = 2;
-    return sp;
-  };
-  const C = L3D.cell;
-  const boxG = keep(new T.BoxGeometry(C * 0.9, 2.4, C * 0.9));
-  const hexG = keep(new T.CylinderGeometry(C * 0.5, C * 0.5, 2.4, 6));
-  const plateG = keep(new T.BoxGeometry(C * 1.1, 0.8, C * 0.9));
+
+  // Peças.
+  const H = L3D.half;
+  const bodyG = new RoundedBoxGeometry(H.s[0] * 2, H.s[1] * 2, H.s[2] * 2, 3, 0.06);
+  const plateG = new RoundedBoxGeometry(H.in[0] * 2, H.in[1] * 2, H.in[2] * 2, 2, 0.06);
+  const ins = lay.pieces.filter(p => p.t === 'in'), outs = lay.pieces.filter(p => p.t === 'out');
+  // Topo: uma seta por porta usada, na cor da esteira; saída do centro para fora, entrada de fora para o centro.
+  // Canvas: direita = +x do mundo, baixo = +z do mundo (o plano é deitado com -π/2 em x).
+  const topIcon = (p, base) => canvasTex(256, 256, (g, w) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, w);
+    g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, w - 6);
+    const c = w / 2;
+    const arrow = (side, out, color) => {
+      const dir = faceDir(side), from = out ? 26 : 108, to = out ? 108 : 26;
+      const x0 = c + dir.x * from, y0 = c + dir.z * from, x1 = c + dir.x * to, y1 = c + dir.z * to, a = Math.atan2(y1 - y0, x1 - x0);
+      const stroke = (col, wd) => {
+        g.strokeStyle = col; g.lineWidth = wd; g.lineCap = 'round'; g.lineJoin = 'round';
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 - Math.cos(a) * 10, y1 - Math.sin(a) * 10); g.stroke();
+        g.beginPath(); g.moveTo(x1 - Math.cos(a - 0.55) * 34, y1 - Math.sin(a - 0.55) * 34); g.lineTo(x1, y1); g.lineTo(x1 - Math.cos(a + 0.55) * 34, y1 - Math.sin(a + 0.55) * 34); g.stroke();
+      };
+      stroke('#04101c', 30); stroke(color, 16);
+    };
+    lay.belts.forEach(b => { if (b.a === p.id) arrow(b.fromSide, true, beltColor(b)); if (b.b === p.id) arrow(b.toSide, false, beltColor(b)); });
+    g.fillStyle = '#04101c'; g.beginPath(); g.arc(c, c, 16, 0, 7); g.fill();
+  });
+  const Z = new T.Vector3(0, 0, 1);
   for (const p of lay.pieces) {
     const g = new T.Group();
     g.position.set(...p.pos);
-    if (p.t === 's') {
-      const face = mat({ color: hex('var(--ficsit)'), map: textTex(`1→${p.ways}`, '#1a1205', hex('var(--ficsit)')) });
-      const plain = mat({ color: hex('var(--ficsit)') });
-      g.add(new T.Mesh(boxG, [face, face, face, plain, face, face]));
-    } else if (p.t === 'm') {
-      const top = mat({ color: MERGER_3D, map: textTex('3→1', '#04201d', MERGER_3D) });
-      const side = mat({ color: MERGER_3D });
-      g.add(new T.Mesh(hexG, [side, top, side]));
-    } else if (p.t === 'sink') {
-      g.add(new T.Mesh(boxG, mat({ color: hex('var(--sink)'), map: textTex('sink', '#2a0509', hex('var(--sink)'), 256, 256, 80) })));
-    } else {
-      const isIn = p.t === 'in', i = isIn ? lay.pieces.filter(q => q.t === 'in').indexOf(p) : lay.pieces.filter(q => q.t === 'out').indexOf(p);
-      const color = isIn ? inColor(p.inp ?? i) : hex('var(--ok)');
-      g.add(new T.Mesh(plateG, mat({ color: hex('var(--plate)'), emissive: new T.Color(color), emissiveIntensity: 0.18 })));
-      g.add(sprite(isIn ? labels.ins[i] : labels.outs[i], color, 2.2));
-    }
-    add(g, p.step, 'piece');
-  }
-
-  // Esteiras: segmento horizontal = faixa achatada; vertical = lift (tubo) com a faixa subindo dentro.
-  const liftG = keep(new T.CylinderGeometry(0.95, 0.95, 1, 12, 1, true));
-  for (const [bi, b] of lay.belts.entries()) {
-    const color = b.kind === 'loop' ? hex('var(--ink-dim)') : b.inp >= 0 ? inColor(b.inp) : hex('var(--ink)');
-    const g = new T.Group();
-    const texs = [];
-    const lift = mat({ color: hex('var(--line)'), transparent: true, opacity: 0.55, side: T.DoubleSide });
-    for (let k = 1; k < b.pts.length; k++) {
-      const a = new T.Vector3(...b.pts[k - 1]), c = new T.Vector3(...b.pts[k]);
-      const dir = c.clone().sub(a), len = dir.length();
-      if (len < 1e-6) continue;
-      const mid = a.clone().add(c).multiplyScalar(0.5);
-      const tx = chevron(color);
-      texs.push(tx);
-      if (Math.abs(dir.y) > 1e-6) {
-        const tube = new T.Mesh(liftG, lift);
-        tube.scale.y = len;
-        tube.position.copy(mid);
-        g.add(tube);
-        tx.repeat.set(len / 2, 1);
-        tx.center.set(0.5, 0.5);
-        tx.rotation = dir.y > 0 ? Math.PI / 2 : -Math.PI / 2;
-        const strip = new T.Mesh(keep(new T.PlaneGeometry(0.9, len)), mat({ color: 0xffffff, map: tx, side: T.DoubleSide }));
-        strip.position.copy(mid);
-        g.add(strip);
-        const strip2 = strip.clone();
-        strip2.rotation.y = Math.PI / 2;
-        g.add(strip2);
-      } else {
-        // Leve desnível por esteira para duas faixas no mesmo trecho não piscarem uma sobre a outra.
-        const geo = keep(new T.BoxGeometry(len, 0.22, 1.1));
-        tx.repeat.set(len / 2, 1);
-        const top = mat({ color: 0xffffff, map: tx }), side = mat({ color: '#1b2e42' });
-        const m = new T.Mesh(geo, [side, side, top, side, side, side]);
-        m.position.copy(mid);
-        m.position.y += -1.0 + (bi % 5) * 0.035;
-        m.rotation.y = -Math.atan2(dir.z, dir.x);
+    if (p.t === 's' || p.t === 'm') {
+      const isS = p.t === 's', base = isS ? SPLITTER_3D : MERGER_3D;
+      g.add(new T.Mesh(bodyG, new T.MeshLambertMaterial({ color: base })));
+      const top = new T.Mesh(new T.PlaneGeometry(H.s[0] * 2, H.s[2] * 2), new T.MeshBasicMaterial({ map: topIcon(p, isS ? '#ffb877' : '#7ee5d9') }));
+      top.rotation.x = -Math.PI / 2;
+      top.position.y = H.s[1] + 0.005;
+      g.add(top);
+      const n = isS ? p.ways : lay.belts.filter(b => b.b === p.id).length;
+      for (const side of ['front', 'right']) {
+        const dir = faceDir(side), m = new T.Mesh(new T.PlaneGeometry(2.4, 1.6), new T.MeshBasicMaterial({ map: glyph(isS ? `1→${n}` : `${n}→1`), transparent: true, depthWrite: false }));
+        m.quaternion.setFromUnitVectors(Z, dir);
+        m.position.copy(dir.clone().multiplyScalar(H.s[0] + 0.005));
+        m.userData.noPick = true;
         g.add(m);
       }
+    } else if (p.t === 'sink') {
+      g.add(new T.Mesh(bodyG, new T.MeshLambertMaterial({ color: hex('var(--sink)') })));
+    } else {
+      const isIn = p.t === 'in', i = isIn ? ins.indexOf(p) : outs.indexOf(p);
+      const color = isIn ? inColor(p.inp ?? i) : hex('var(--ok)');
+      g.add(new T.Mesh(plateG, new T.MeshLambertMaterial({ color })));
+      const sp = new T.Sprite(new T.SpriteMaterial({ map: pill(isIn ? labels.ins[i] : labels.outs[i], color), depthTest: false, transparent: true }));
+      sp.scale.set(4.4, 1.65, 1);
+      sp.position.y = 1.6;
+      sp.renderOrder = 5;
+      g.add(sp);
     }
-    add(g, b.step, 'belt', { texs });
+    track(g, p.step, 'piece', p.id);
   }
+
+  // Esteiras: tubo + contorno (lado de dentro de um tubo maior) + gola, seta e anel nas portas.
+  const polyline = pts => {
+    const segs = [];
+    let tot = 0;
+    for (let k = 1; k < pts.length; k++) {
+      const a = new T.Vector3(...pts[k - 1]), b = new T.Vector3(...pts[k]), len = a.distanceTo(b);
+      if (len < 1e-6) continue;
+      segs.push({ a, len, s0: tot, dir: b.clone().sub(a).normalize() });
+      tot += len;
+    }
+    const at = (s, out) => { const g = segs.find(x => s <= x.s0 + x.len) || segs[segs.length - 1]; return out.copy(g.a).addScaledVector(g.dir, s - g.s0); };
+    return { tot, at };
+  };
+  const roundedPath = (pts, r) => {
+    const P = pts.map(p => new T.Vector3(...p)).filter((p, i, a) => i === 0 || p.distanceTo(a[i - 1]) > 1e-6);
+    const path = new T.CurvePath();
+    let from = P[0];
+    for (let i = 1; i < P.length - 1; i++) {
+      const a = P[i - 1], b = P[i], c = P[i + 1], rr = Math.min(r, a.distanceTo(b) / 2, b.distanceTo(c) / 2);
+      const p1 = b.clone().addScaledVector(a.clone().sub(b).normalize(), rr), p2 = b.clone().addScaledVector(c.clone().sub(b).normalize(), rr);
+      if (from.distanceTo(p1) > 1e-6) path.add(new T.LineCurve3(from.clone(), p1));
+      path.add(new T.QuadraticBezierCurve3(p1, b.clone(), p2));
+      from = p2;
+    }
+    path.add(new T.LineCurve3(from.clone(), P[P.length - 1]));
+    return path;
+  };
+  const coneG = new T.ConeGeometry(0.5, 1.0, 14), ringG = new T.TorusGeometry(0.46, 0.12, 8, 20), collarG = new T.BoxGeometry(1.0, 1.0, 0.16);
+  const flows = [];
+  lay.belts.forEach((b, bi) => {
+    const color = beltColor(b), g = new T.Group();
+    const line = polyline(b.pts), path = roundedPath(b.pts, 0.6), segs = Math.max(8, Math.round(line.tot * 2.5));
+    g.add(new T.Mesh(new T.TubeGeometry(path, segs, 0.2, 8, false), new T.MeshBasicMaterial({ color })));
+    g.add(new T.Mesh(new T.TubeGeometry(path, segs, 0.36, 8, false), new T.MeshBasicMaterial({ color: 0x03080f, side: T.BackSide })));
+    const port = (q, side) => { const dir = faceDir(side), col = new T.Mesh(collarG, new T.MeshBasicMaterial({ color: 0x03080f })); col.position.set(...q); col.quaternion.setFromUnitVectors(Z, dir); col.userData.noPick = true; g.add(col); return dir; };
+    const out = port(b.pts[0], b.fromSide), inn = port(b.pts[b.pts.length - 1], b.toSide);
+    const cone = new T.Mesh(coneG, new T.MeshBasicMaterial({ color }));
+    cone.position.set(...b.pts[0]).addScaledVector(out, 0.75);
+    cone.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), out);
+    const ring = new T.Mesh(ringG, new T.MeshBasicMaterial({ color }));
+    ring.position.set(...b.pts[b.pts.length - 1]).addScaledVector(inn, 0.5);
+    ring.quaternion.setFromUnitVectors(Z, inn);
+    g.add(cone, ring);
+    const ob = track(g, b.step, 'belt', bi);
+    flows.push({ line, color: new T.Color(color), bi, ob, off: (bi * 0.37) % 2.2 });
+  });
+
+  // Pontos de luz nas esteiras: uma InstancedMesh para todas.
+  let total = 0;
+  for (const f of flows) { f.n = Math.max(1, Math.floor(f.line.tot / 2.2)); f.first = total; total += f.n; }
+  const items = new T.InstancedMesh(new T.SphereGeometry(0.24, 10, 8), new T.MeshBasicMaterial({ color: 0xffffff }), total);
+  const white = new T.Color(0xffffff);
+  for (const f of flows) for (let k = 0; k < f.n; k++) items.setColorAt(f.first + k, f.color.clone().lerp(white, 0.6));
+  scene.add(items);
 
   const camera = new T.PerspectiveCamera(45, 1, 0.5, 2000);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -3920,27 +3984,43 @@ async function mount3d(stage, d, labels, lay) {
     draw();
   };
 
-  // Holograma: ciano translúcido nas peças; esteira do passo translúcida e andando. Futuro escondido.
+  const M4 = new T.Matrix4(), V = new T.Vector3(), Q = new T.Quaternion(), ONE = new T.Vector3(1, 1, 1), ZERO = new T.Vector3();
+  // Estado de cada objeto: passo atual (holograma pulsando), apagado (fora do foco) ou normal.
   const HOLO = new T.Color(hex('var(--holo)'));
-  let cur = 0, K = 0;
-  const setStep = (c, k) => {
-    cur = c; K = k;
+  let cur = 0, K = 0, lit = null, clock = 0;
+  const apply = () => {
+    const done = cur >= K, k = reduce ? 0.5 : 0.5 - 0.5 * Math.cos(clock * Math.PI * 2 / 1.15);
     for (const o of objs) {
-      const done = cur >= K, holo = !done && o.step === cur;
-      o.mesh.visible = done || o.step <= cur;
-      o.moving = !reduce && (holo || (done && o.kind === 'belt'));
+      o.root.visible = done || o.step <= cur;
+      const now = !done && o.step === cur;
+      const dim = lit && !(o.kind === 'piece' ? lit.pieces.has(o.id) : lit.belts.has(o.id));
+      const state = now ? 'now' : dim ? 'dim' : 'base';
+      if (state === 'base' && o.st === 'base') continue;
       for (const m of o.mats) {
-        if (!m.userData.base) m.userData.base = { opacity: m.opacity, transparent: m.transparent, emissive: m.emissive ? m.emissive.clone() : null, ei: m.emissiveIntensity };
-        const bs = m.userData.base;
-        m.transparent = holo || bs.transparent;
-        m.opacity = holo ? (o.kind === 'belt' ? 0.6 : 0.35) : bs.opacity;
-        m.depthWrite = !holo;
-        if (m.emissive) { m.emissive.copy(holo && o.kind === 'piece' ? HOLO : bs.emissive); m.emissiveIntensity = holo && o.kind === 'piece' ? 0.7 : bs.ei; }
-        m.needsUpdate = true;
+        const b = m.userData.base;
+        if (state === 'now') {
+          m.transparent = true; m.opacity = b.op * (dim ? 0.1 : 0.3 + 0.45 * k); m.depthWrite = false;
+          if (m.emissive) { m.emissive.copy(HOLO); m.emissiveIntensity = 0.3 + k * 0.9; } else if (b.color) m.color.copy(b.color).lerp(HOLO, 0.35 + k * 0.5);
+        } else {
+          m.transparent = dim || b.tr; m.opacity = dim ? b.op * 0.1 : b.op; m.depthWrite = dim ? false : b.dw;
+          if (m.emissive) { m.emissive.copy(b.emissive); m.emissiveIntensity = b.ei; } else if (b.color) m.color.copy(b.color);
+        }
+        if (o.st !== state) m.needsUpdate = true;
+      }
+      o.st = state;
+    }
+    for (const f of flows) {
+      const on = f.ob.root.visible && !(lit && !lit.belts.has(f.bi));
+      for (let i = 0; i < f.n; i++) {
+        if (!on) M4.compose(V.set(0, -1e4, 0), Q, ZERO);
+        else { f.line.at(((f.off + (reduce ? 0 : clock * 3.4) + i * f.line.tot / f.n) % f.line.tot), V); M4.compose(V, Q, ONE); }
+        items.setMatrixAt(f.first + i, M4);
       }
     }
-    draw();
+    items.instanceMatrix.needsUpdate = true;
   };
+  const setStep = (c, k) => { cur = c; K = k; apply(); draw(); };
+  const focus = id => { lit = id === null || id === undefined ? null : focus3d(lay, id); apply(); draw(); };
 
   const size = () => {
     const w = stage.clientWidth || 600, h = stage.clientHeight || 400;
@@ -3956,8 +4036,8 @@ async function mount3d(stage, d, labels, lay) {
     const dt = Math.min(0.1, (now - last) / 1000 || 0);
     last = now;
     if (!visible) return;
-    const speed = cur >= K ? 0.6 : 1.6;
-    for (const o of objs) if (o.moving && o.texs) o.texs.forEach(tx => { tx.offset.x -= dt * speed; });
+    clock += dt;
+    apply();
     controls.update();
     draw();
   };
@@ -3976,12 +4056,15 @@ async function mount3d(stage, d, labels, lay) {
     ro.disconnect();
     io.disconnect();
     controls.dispose();
-    disposables.forEach(x => x.dispose && x.dispose());
+    scene.traverse(o => {
+      o.geometry?.dispose();
+      (Array.isArray(o.material) ? o.material : o.material ? [o.material] : []).forEach(m => { m.map?.dispose(); m.dispose(); });
+    });
     renderer.dispose();
     renderer.forceContextLoss();
     renderer.domElement.remove();
   };
-  return { setStep, recenter, dispose };
+  return { setStep, recenter, dispose, focus };
 }
 
 // Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
@@ -4014,7 +4097,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
       <span><i class="holo"></i>${t('lgHolo')}</span>
-      ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="lifti"></i>${t('lgLift')}</span>` : ''}
+      ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="pouti"></i>${t('lgPortOut')}</span><span><i class="pini"></i>${t('lgPortIn')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
       ${d.extra && d.kind.endsWith('-sink') ? `<span><i style="background:var(--sink)"></i>${t('lgToSink')}</span>` : ''}
     </div>
