@@ -35,11 +35,11 @@ test('caso 1: 42 × 65 → 60 × 40, Mk4', () => {
   const g = sink.groups[0];
   assert.equal(g.p, 5);
   assert.equal(g.n, 6);
-  assert.equal(g.tree.splitters, 4);
-  assert.deepEqual(g.tree.factors, [3, 2]);
+  assert.equal(g.tree.splitters, 3, '1 splitter em 2 + 2 splitters em 3');
+  assert.deepEqual(g.tree.factors, [2, 3]);
   assert.ok(sink.full);
   assert.equal(sink.pieces.mergers, 5);
-  assert.equal(sink.pieces.splitters, 4);
+  assert.equal(sink.pieces.splitters, 3);
   close(sink.sinkRate, 455 / 6, 'sink recebe 1/6 da doadora');
   sink.dests.forEach(d => close(d.got, 480));
   conserves(p, sink);
@@ -178,7 +178,9 @@ test('simulação: merger round-robin e splitter igual', () => {
 });
 
 test('splitTree e divisões diretas', () => {
-  assert.equal(L.splitTree(6).splitters, 4);
+  assert.equal(L.splitTree(6).splitters, 3, '2 × 3: 1 + 2');
+  assert.equal(L.splitTree(12).splitters, 7, '2 × 2 × 3: 1 + 2 + 4 (3 × 2 × 2 seriam 10)');
+  assert.equal(L.splitTree(18).splitters, 9);
   assert.equal(L.splitTree(9).splitters, 4);
   assert.equal(L.splitTree(4).splitters, 3);
   assert.equal(L.isDirect(5), false);
@@ -255,7 +257,7 @@ test('idiomas: caso 1 em inglês e espanhol', () => {
   });
   assert.equal(en.title, 'Top-up with 1 donor, extra parts to the sink');
   assert.equal(en.caseLabel, 'case B');
-  assert.equal(en.tree, '1 splitter into 3, then 3 splitters into 2 (one on each output) = 6 parts');
+  assert.equal(en.tree, '1 splitter into 2, then 2 splitters into 3 (one on each output) = 6 parts');
   assert.equal(en.total, '2,730');
   const es = inLang('es', () => L.computePlan(input).alternatives[0]);
   assert.equal(es.title, 'Complemento con 1 donante, partes de más al sink');
@@ -309,7 +311,7 @@ test('balancer: 2→5 a 240 na Mk4 escolhe matriz com loop porque o funil engarg
   const r = best(2, 5, 240, 480, []).filter(d => !d.kind.startsWith('butterfly'));
   assert.equal(r[0].kind, 'matrix-loop');
   close(r[0].perOut, 96);
-  assert.equal(r[0].pieces.splitters, 8);
+  assert.equal(r[0].pieces.splitters, 6);
   assert.equal(r[0].pieces.mergers, 7, '2 de loop + 5 saídas');
   const f = kind(r, 'funnel-loop');
   close(f.perOut, 80, 'esteira do loop do funil (576) limita a 480');
@@ -320,7 +322,7 @@ test('balancer: 2→5 a 240 na Mk4 escolhe matriz com loop porque o funil engarg
 test('balancer: em baixa vazão o funil com loop ganha por ter menos peças', () => {
   const r = best(2, 5, 60, 480, []);
   assert.equal(r[0].kind, 'funnel-loop');
-  assert.equal(L.designPieces(r[0]), 6);
+  assert.equal(L.designPieces(r[0]), 5);
   assert.equal(L.designWhy(r).code, 'fewer');
 });
 
@@ -346,7 +348,7 @@ test('balancer no plano: caso 1 tem a alternativa 6→5 e a recomendada não mud
   const a = bal[0];
   assert.equal(a.bal.design.kind, 'matrix-loop');
   assert.ok(a.full, 'loop limita cada entrada a 400, e 6 × 400 ainda cobre 2.400');
-  assert.equal(a.pieces.splitters, 24);
+  assert.equal(a.pieces.splitters, 18);
   assert.equal(a.pieces.mergers, 21);
   a.sources.forEach(s => close(s.out, 400));
   conserves(p, a);
@@ -395,7 +397,7 @@ test('borboleta generalizada: peças dos casos que motivaram', () => {
   const pc = (n, m, k = 'butterfly') => L.designPieces(L.butterflyDesign(n, m, [100], 480, k));
   assert.equal(pc(3, 4), 13, '3 splitters + 2 mergers na 1ª rodada, 4 + 4 na 2ª');
   assert.equal(pc(5, 5, 'butterfly-loop'), 24, 'borboleta de 6, a 6ª faixa volta pra ela mesma');
-  assert.equal(L.designPieces(L.balancerDesign('matrix-loop', 5, 5, [100], 480)), 35);
+  assert.equal(L.designPieces(L.balancerDesign('matrix-loop', 5, 5, [100], 480)), 30);
   assert.equal(pc(7, 7, 'butterfly-loop'), 48);
   assert.equal(pc(2, 5, 'butterfly-loop'), 9, '2 entradas + retorno num 3→3, cada um em 2');
   const r = best(2, 5, 240, 480, []);

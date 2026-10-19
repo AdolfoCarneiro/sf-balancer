@@ -58,7 +58,7 @@ Por trecho e no total:
   - Deixar explícita a convenção usada (ex.: "a primeira máquina inicia a esteira, então k máquinas = k−1 mergers") e permitir alternar se eu preferir contar k.
 - Oferta total, demanda total, sobra e para onde ela vai.
 - **Classificação do caso** do meio e o **plano de conexão** em texto claro, passo a passo.
-- **Montagem do load balancer** quando precisar: a fração de cada divisão, a sequência de splitters (ex.: "1 splitter em 3, depois cada saída num splitter em 2 = 6 partes"), se precisa de loop, e a alternativa "dividir em N alcançável + partes extras pro sink". Diagrama simples ajuda muito aqui.
+- **Montagem do load balancer** quando precisar: a fração de cada divisão, a sequência de splitters (ex.: "1 splitter em 2, depois cada saída num splitter em 3 = 6 partes"; os 2 vêm primeiro porque cada nível custa o produto dos anteriores: 2 × 3 são 3 splitters, 3 × 2 seriam 4), se precisa de loop, e a alternativa "dividir em N alcançável + partes extras pro sink". Diagrama simples ajuda muito aqui.
 - **Avisos:** linha acima da capacidade da esteira, demanda maior que oferta, parte de complemento menor que o déficit, grupo incompleto.
 
 ## Casos
@@ -73,7 +73,7 @@ Por trecho e no total:
 1. **42 refinarias × 65/min → 60 fundições × 40/min, Mk4.**
    - Coleta: 7 por linha → 6 linhas de 455 (oferta 2.730). Mergers: 6 linhas × 6 = 36 (convenção k−1).
    - Distribuição: 12 por linha → 5 linhas de 480 (demanda 2.400). Splitters: 5 linhas × 11 = 55 (convenção k−1).
-   - Meio: caso B. 5 linhas principais + 1 doadora dividida em 5 partes (91 cada, déficit de 25 por linha, ok). 1/5 não sai direto, então mostrar as opções: balancer com loop OU dividir em 6 (1 splitter em 3 + 3 splitters em 2 = 4 splitters; 75,8 por parte, ainda ≥ 25), 5 partes vão para mergers nas linhas principais (5 mergers) e 1 parte pro sink.
+   - Meio: caso B. 5 linhas principais + 1 doadora dividida em 5 partes (91 cada, déficit de 25 por linha, ok). 1/5 não sai direto, então mostrar as opções: balancer com loop OU dividir em 6 (1 splitter em 2 + 2 splitters em 3 = 3 splitters; 75,8 por parte, ainda ≥ 25), 5 partes vão para mergers nas linhas principais (5 mergers) e 1 parte pro sink.
    - Sobra: 330 (parte represa na origem, parte vai pro sink, dependendo da política).
 2. **42 refinarias × 65/min → destino com linhas de 440, Mk4** (ex.: 4 linhas). Esperado: caso A, liga 4 linhas direto, excesso represa, 2 linhas sobram (sink ou outro uso).
 3. **Agrupamento editado:** caso 1, mas eu forço 6 refinarias por linha. Esperado: 7 linhas de 390, tudo recalcula, e o meio muda de configuração.
