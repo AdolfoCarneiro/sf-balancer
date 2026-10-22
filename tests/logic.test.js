@@ -237,6 +237,37 @@ test('carvão: excesso de 3 linhas cobre a falta da quarta via overflow', () => 
 // ---- Cenários do jogo ----
 // Cada cenário real que aparecer entra aqui: entradas como vêm do planner e o que a ferramenta tem que entregar.
 
+test('cenário: concreto 15 × 80 → 13,06 × 20 + 30,6 × 20, excesso pro sink sem represa', () => {
+  const input = { ...base, policy: 'sink',
+    srcGroups: [{ driver: 'machines', count: 15, nominal: 80 }],
+    dstGroups: [{ driver: 'machines', count: 13.06, nominal: 20 }, { driver: 'machines', count: 30.6, nominal: 20 }] };
+  // Represando (padrão), a recomendada continua a redistribuição com represa.
+  const held = L.computePlan(input);
+  assert.equal(held.alternatives[0].key, 'redistribuir');
+  assert.ok(held.alternatives[0].midHeld > 300);
+  const d = alt(held, 'redistribuir-sem-represa');
+  assert.ok(d.full);
+  close(d.held, 0);
+  close(d.sinkRate, 1200 - 873.2);
+  assert.equal(d.pieces.smart, held.alternatives[0].pieces.smart + 3);
+  d.dests.forEach(x => close(x.got, x.line.rate));
+  conserves(held, d);
+  // Com o excesso pro sink, ela vira a recomendada.
+  const p = L.computePlan({ ...input, excess: 'sink' });
+  assert.equal(p.alternatives[0].key, 'redistribuir-sem-represa');
+  assert.equal(p.excess, 'sink');
+  // Fluido não tem sink: a preferência não vale.
+  const f = L.computePlan({ ...input, medium: 'fluid', cap: 600, excess: 'sink' });
+  assert.equal(f.excess, 'represar');
+  assert.ok(!f.alternatives.some(a => a.drain));
+});
+
+test('link do cenário guarda o excesso', () => {
+  const st = { item: 'x', src: [{ count: '1' }], dst: [{ count: '1' }], excess: 'sink' };
+  assert.equal(L.decodeShare(L.encodeShare(st)).excess, 'sink');
+  assert.equal(L.decodeShare(L.encodeShare({ ...st, excess: 'nada' })).excess, 'represar');
+});
+
 test('cenário: 44 × 60 → 59 × 30 + 14 × 60, destino em linhas iguais por grupo', () => {
   const p = L.computePlan({ ...base,
     srcGroups: [{ driver: 'machines', count: 44, nominal: 60 }],
@@ -1070,7 +1101,7 @@ test('fluido: textos nos três idiomas', () => {
 
 // ---- Link do cenário e issue ----
 test('link: ida e volta do cenário, com acento', () => {
-  const st = { item: 'Óleo pesado', src: [{ driver: 'machines', count: '42', clock: '', nominal: '65', total: '', per: '' }], dst: [{ driver: 'clock', count: '10', clock: '250', nominal: '40', total: '', per: '6' }], medium: 'fluid', belt: 'Mk4', pipe: 'Mk1', policy: 'extra', conv: 'k', selectedKey: 'coletor', lang: 'pt' };
+  const st = { item: 'Óleo pesado', src: [{ driver: 'machines', count: '42', clock: '', nominal: '65', total: '', per: '' }], dst: [{ driver: 'clock', count: '10', clock: '250', nominal: '40', total: '', per: '6' }], medium: 'fluid', belt: 'Mk4', pipe: 'Mk1', policy: 'extra', excess: 'sink', conv: 'k', selectedKey: 'coletor', lang: 'pt' };
   const enc = L.encodeShare(st);
   assert.match(enc, /^[A-Za-z0-9_-]+$/, 'seguro para URL');
   assert.deepEqual(L.decodeShare(enc), st);

@@ -186,6 +186,8 @@
   .rm:focus-visible, .linkbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--ficsit); cursor: pointer; font: 500 14px var(--body); margin-top: 8px; }
   .linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .dst-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+  .dst-actions .tip { margin-left: 6px; }
   .hint { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
   .ext a { color: var(--ficsit); text-underline-offset: 3px; }
   .choice { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 3px 0; cursor: pointer; }
@@ -547,7 +549,10 @@
       <section class="plate">
         <h2><span data-i18n="sideDst">Destination</span><button type="button" class="tip" data-tip="tipDst" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h2>
         <div id="dstGroups"></div>
-        <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Add machine group</button>
+        <div class="dst-actions">
+          <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Add machine group</button>
+          <span><button class="linkbtn" id="dstToSrc" data-i18n="dstToSrc" type="button">Use destination as the next source →</button><button type="button" class="tip" data-tip="tipDstToSrc" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
+        </div>
       </section>
     </div>
     <section class="plate rules">
@@ -572,6 +577,13 @@
           <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Stay idle</span></label>
           <label class="choice" id="policySinkChoice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
           <label class="choice"><input type="radio" name="policy" value="extra"> <span data-i18n="policyExtra">Leave on an extra line</span></label>
+        </div>
+      </div>
+      <div class="rule" id="excessRule">
+        <h3><span data-i18n="excessTitle">Excess on the lines</span><button type="button" class="tip" data-tip="tipExcess" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
+        <div class="inline">
+          <label class="choice"><input type="radio" name="excess" value="represar" checked> <span data-i18n="excessHold">Backs up at the source</span></label>
+          <label class="choice" id="excessSinkChoice"><input type="radio" name="excess" value="sink"> <span data-i18n="excessSink">Goes to the Awesome Sink</span></label>
         </div>
       </div>
       <div class="rule">
@@ -715,9 +727,17 @@ const I18N = {
     kicker: 'Balancer de esteiras do Satisfactory · logística entre etapas', itemAria: 'Nome do item',
     sideSrc: 'Origem', sideDst: 'Destino',
     addGroup: '+ Adicionar grupo de máquinas',
+    dstToSrc: 'Usar destino como próxima origem →', tipDstToSrc: 'Para planejar a etapa seguinte: as máquinas do destino viram a origem (mesma quantidade e clock), e o destino fica vazio. Falta só dizer quanto cada uma produz do item novo e quem consome.',
     belt: 'Esteira', beltAria: 'Tier da esteira',
     policyTitle: 'Linhas de origem sem destino',
     policyHold: 'Ficam paradas', policySink: 'Vão pro Awesome Sink', policyExtra: 'Saem numa linha extra',
+    excessTitle: 'Excesso nas linhas', excessHold: 'Represa na origem', excessSink: 'Vai pro Awesome Sink',
+    tipExcess: 'O que fazer com o que uma linha entrega a mais do que o destino puxa. Represa: a esteira enche e as máquinas de origem desaceleram, sem peça extra. Sink: a recomendada passa a ser uma que enche todos os destinos sem represar nada, com um Smart Splitter na saída de cada linha que sobraria e o overflow pro Awesome Sink. Bom quando você quer as máquinas rodando a 100%.',
+    planDrain: base => `${base}, sobra pro sink`,
+    planDrainSub: 'Mesma ligação, sem represa: cada linha que sobraria passa por um Smart Splitter logo na saída, e o overflow vai pro Awesome Sink. As máquinas de origem rodam a 100%.',
+    destDrain: f => `sobra ${f} pro sink`,
+    stepDrain: (names, n, tot) => `Sem represa: ${names} ${n > 1 ? 'passam' : 'passa'} por um Smart Splitter logo na saída da coleta. A saída Any segue o plano acima e a Overflow vai pro Awesome Sink (${tot}/min no total).`,
+    lbDrainItem: (o, f) => `${o}: Smart Splitter logo na saída, com a saída do meio (<b>Any</b>) seguindo o plano e a lateral (<b>Overflow</b>) pro Awesome Sink (${f}/min).`,
     convTitle: 'Peças por manifold', convK1: 'k máquinas, k−1 peças', convK: 'k máquinas, k peças',
     reset: 'Voltar ao exemplo das refinarias',
     medTitle: 'O que passa', medItem: 'Itens (esteira)', medFluid: 'Fluido (cano)',
@@ -1024,9 +1044,17 @@ const I18N = {
     kicker: 'Satisfactory belt balancer · logistics between stages', itemAria: 'Item name',
     sideSrc: 'Source', sideDst: 'Destination',
     addGroup: '+ Add machine group',
+    dstToSrc: 'Use destination as the next source →', tipDstToSrc: 'To plan the next stage: the destination machines become the source (same count and clock), and the destination is cleared. You only need to enter how much of the new item each one produces and who consumes it.',
     belt: 'Belt', beltAria: 'Belt tier',
     policyTitle: 'Source lines with no destination',
     policyHold: 'Stay idle', policySink: 'Go to the Awesome Sink', policyExtra: 'Leave on an extra line',
+    excessTitle: 'Excess on the lines', excessHold: 'Backs up at the source', excessSink: 'Goes to the Awesome Sink',
+    tipExcess: 'What to do with what a line delivers beyond what the destination pulls. Back up: the belt fills and the source machines slow down, no extra pieces. Sink: the recommended option becomes one that fills every destination without backing anything up, with a Smart Splitter at the exit of each line that would have surplus and the overflow to the Awesome Sink. Good when you want the machines running at 100%.',
+    planDrain: base => `${base}, surplus to the sink`,
+    planDrainSub: 'Same connection, no backing up: each line with surplus goes through a Smart Splitter right at its exit, and the overflow goes to the Awesome Sink. The source machines run at 100%.',
+    destDrain: f => `surplus ${f} to the sink`,
+    stepDrain: (names, n, tot) => `No backing up: ${names} ${n > 1 ? 'go' : 'goes'} through a Smart Splitter right at the end of the collection. The Any output follows the plan above and the Overflow output goes to the Awesome Sink (${tot}/min in total).`,
+    lbDrainItem: (o, f) => `${o}: Smart Splitter right at the exit, with the middle output (<b>Any</b>) following the plan and the side output (<b>Overflow</b>) to the Awesome Sink (${f}/min).`,
     convTitle: 'Pieces per manifold', convK1: 'k machines, k−1 pieces', convK: 'k machines, k pieces',
     reset: 'Back to the refinery example',
     medTitle: 'Carries', medItem: 'Items (belt)', medFluid: 'Fluid (pipe)',
@@ -1333,9 +1361,17 @@ const I18N = {
     kicker: 'Balanceador de cintas de Satisfactory · logística entre etapas', itemAria: 'Nombre del ítem',
     sideSrc: 'Origen', sideDst: 'Destino',
     addGroup: '+ Añadir grupo de máquinas',
+    dstToSrc: 'Usar el destino como próximo origen →', tipDstToSrc: 'Para planear la etapa siguiente: las máquinas del destino pasan a ser el origen (misma cantidad y clock), y el destino queda vacío. Solo falta indicar cuánto produce cada una del ítem nuevo y quién lo consume.',
     belt: 'Cinta', beltAria: 'Nivel de la cinta',
     policyTitle: 'Líneas de origen sin destino',
     policyHold: 'Quedan paradas', policySink: 'Van al Awesome Sink', policyExtra: 'Salen por una línea extra',
+    excessTitle: 'Exceso en las líneas', excessHold: 'Se retiene en el origen', excessSink: 'Va al Awesome Sink',
+    tipExcess: 'Qué hacer con lo que una línea entrega de más respecto a lo que el destino toma. Retener: la cinta se llena y las máquinas de origen se frenan, sin piezas extra. Sink: la recomendada pasa a ser una que llena todos los destinos sin retener nada, con un Smart Splitter a la salida de cada línea que sobraría y el overflow al Awesome Sink. Útil cuando quieres las máquinas al 100%.',
+    planDrain: base => `${base}, sobrante al sink`,
+    planDrainSub: 'La misma conexión, sin retener: cada línea que sobraría pasa por un Smart Splitter justo a la salida, y el overflow va al Awesome Sink. Las máquinas de origen trabajan al 100%.',
+    destDrain: f => `sobran ${f} al sink`,
+    stepDrain: (names, n, tot) => `Sin retener: ${names} ${n > 1 ? 'pasan' : 'pasa'} por un Smart Splitter justo al final de la recolección. La salida Any sigue el plan de arriba y la Overflow va al Awesome Sink (${tot}/min en total).`,
+    lbDrainItem: (o, f) => `${o}: Smart Splitter justo a la salida, con la salida del medio (<b>Any</b>) siguiendo el plan y la lateral (<b>Overflow</b>) al Awesome Sink (${f}/min).`,
     convTitle: 'Piezas por manifold', convK1: 'k máquinas, k−1 piezas', convK: 'k máquinas, k piezas',
     reset: 'Volver al ejemplo de las refinerías',
     medTitle: 'Qué pasa', medItem: 'Ítems (cinta)', medFluid: 'Fluido (tubería)',
@@ -2752,7 +2788,17 @@ function buildBalancer(g, d, inputs, outputs, sink) {
 function buildGraph(plan, cap) {
   const g = makeGraph(cap);
   const srcNode = new Map();
-  const addSrc = l => { if (!srcNode.has(l.id)) srcNode.set(l.id, addNode(g, 'source', { rate: l.rate, line: l })); };
+  // Linha em `drain` passa por um Smart Splitter logo na saída: o que o meio não puxa vai pro sink em vez de represar.
+  const drain = new Set(plan.drain || []), drainNode = new Map();
+  const addSrc = l => {
+    if (srcNode.has(l.id)) return;
+    const n = addNode(g, 'source', { rate: l.rate, line: l });
+    if (!drain.has(l.id)) { srcNode.set(l.id, n); return; }
+    const ov = addNode(g, 'overflow');
+    addEdge(g, n, ov);
+    srcNode.set(l.id, ov);
+    drainNode.set(l.id, { line: l, node: ov });
+  };
   plan.feeds.forEach(f => f.mains.forEach(addSrc));
   plan.groups.forEach(gr => addSrc(gr.donor));
   if (plan.bal) plan.bal.inputs.forEach(addSrc);
@@ -2762,7 +2808,7 @@ function buildGraph(plan, cap) {
   [...plan.feeds.map(f => f.dst), ...plan.unfed].forEach(d => consumer.set(d.id, addNode(g, 'consumer', { demand: d.rate, line: d })));
   const sink = addNode(g, 'sink');
   const extra = addNode(g, 'extra');
-  const view = { feeds: [], groups: [], leftovers: [], sink, extra, srcNode, consumer };
+  const view = { feeds: [], groups: [], leftovers: [], drains: [], sink, extra, srcNode, consumer };
 
   const slotByDst = new Map();
   plan.groups.forEach((gr, gi) => {
@@ -2879,6 +2925,8 @@ function buildGraph(plan, cap) {
     const to = plan.policy === 'sink' ? sink : plan.policy === 'extra' ? extra : null;
     view.leftovers.push({ line: l, node: n, edge: to === null ? null : addEdge(g, n, to) });
   });
+  // Por último, para a saída principal do Smart Splitter ser a primeira do nó.
+  drainNode.forEach(d => view.drains.push({ ...d, sinkEdge: addEdge(g, d.node, sink) }));
   return { g, view };
 }
 
@@ -2898,15 +2946,16 @@ function evaluatePlan(plan, cap) {
   }
   const sinkRate = sumE(g.nodes[view.sink].ins);
   const extraRate = sumE(g.nodes[view.extra].ins);
-  let held = 0, served = 0, demand = 0;
-  sources.forEach(s => { held += s.held; });
+  let held = 0, served = 0, demand = 0, midHeld = 0;
+  const left = new Set(plan.leftovers.map(l => l.id));
+  sources.forEach(s => { held += s.held; if (!left.has(s.line.id)) midHeld += s.held; });
   dests.forEach(d => { served += d.got; demand += d.line.rate; });
   const full = [...dests.values()].every(d => d.short < 0.05);
   const bal = view.bal || { mergers: 0, splitters: 0, blueprints: 0 };
   const pieces = {
     mergers: view.feeds.reduce((a, f) => a + f.mergers, 0) + view.groups.reduce((a, v) => a + v.extraMergers, 0) + bal.mergers,
     splitters: view.groups.reduce((a, v) => a + v.splitters, 0) + bal.splitters,
-    smart: view.feeds.filter(f => f.overflowNode !== null).length,
+    smart: view.feeds.filter(f => f.overflowNode !== null).length + view.drains.length,
     blueprints: bal.blueprints,
     junctions: (view.headers || []).reduce((a, h) => a + h.junctions, 0) + (view.splits || []).reduce((a, x) => a + x.junctions, 0),
     sinkBelts: g.nodes[view.sink].ins.length,
@@ -2925,7 +2974,7 @@ function evaluatePlan(plan, cap) {
   else if (plan.kind === 'header') caseLabel = t('caseHeader');
   else if (plan.kind === 'balancer') caseLabel = t('caseBal', plan.bal.inputs.length, plan.feeds.length);
   else caseLabel = plan.multi ? t('caseCB') : t('caseB');
-  return { ...plan, g, view, sim, sources, dests, sinkRate, extraRate, held, served, demand, full, pieces, warnings, caseLabel };
+  return { ...plan, g, view, sim, sources, dests, sinkRate, extraRate, held, midHeld, served, demand, full, pieces, warnings, caseLabel };
 }
 
 // Gera as alternativas para ligar as linhas de origem nas de destino.
@@ -3103,12 +3152,26 @@ function designName(d) {
 }
 
 // Blueprint conta como uma peça: é só colar.
-function rankPlans(evaluated) {
+// excess 'sink': entre as que enchem tudo, primeiro as que não represam nada no meio.
+function rankPlans(evaluated, excess = 'represar') {
   // Balancer borboleta conta como mais peças, pelo mesmo critério de rankDesigns.
   const cost = a => a.pieces.mergers + a.pieces.splitters + a.pieces.smart + a.pieces.blueprints + a.pieces.junctions
     + (a.bal && bfKind(a.bal.design) ? buildCost(a.bal.design) - designPieces(a.bal.design) : 0);
+  const holds = a => (excess === 'sink' && a.full && a.midHeld > 0.05 ? 1 : 0);
   return evaluated.slice().sort((a, b) =>
-    (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
+    (b.full - a.full) || (b.served - a.served) * (a.full ? 0 : 1) || holds(a) - holds(b) || cost(a) - cost(b) || a.sinkRate - b.sinkRate);
+}
+
+// A melhor alternativa que enche tudo mas represa no meio ganha uma versão sem represa:
+// Smart Splitter na saída de cada linha represada, overflow pro sink.
+function drainPlan(evaluated, cap) {
+  const base = rankPlans(evaluated).find(a => a.full && a.midHeld > 0.05 && a.kind !== 'direct');
+  if (!base) return null;
+  const left = new Set(base.leftovers.map(l => l.id));
+  const ids = [...base.sources.values()].filter(s => s.held > 0.05 && !left.has(s.line.id)).map(s => s.line.id);
+  const { g, view, sim, sources, dests, sinkRate, extraRate, held, midHeld, served, demand, full, pieces, warnings, caseLabel, designAlts, ...plan } = base;
+  const a = evaluatePlan({ ...plan, key: `${base.key}-sem-represa`, title: t('planDrain', base.title), sub: t('planDrainSub'), drain: ids }, cap);
+  return a.full ? a : null;
 }
 
 // Plano completo a partir das entradas.
@@ -3123,10 +3186,15 @@ function computePlan(input) {
   const dstGroups = input.dstGroups || [{ driver: 'machines', count: input.dstCount, nominal: input.dstRate, per: input.dstPer }];
   const src = buildLines(srcGroups, cap, t('sideSrc'), fluid);
   const dst = buildLines(dstGroups, cap, t('sideDst'), fluid, { balance: true, mix: false });
-  const ranked = rankPlans(generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || [], fluid).map(p => evaluatePlan(p, cap)));
+  // O Awesome Sink não aceita fluido: no cano o excesso sempre represa.
+  const excess = fluid ? 'represar' : input.excess === 'sink' ? 'sink' : 'represar';
+  const evaluated = generatePlans(src.lines, dst.lines, cap, policy, input.blueprints || [], fluid).map(p => evaluatePlan(p, cap));
+  const drained = fluid ? null : drainPlan(evaluated, cap);
+  if (drained) evaluated.push(drained);
+  const ranked = rankPlans(evaluated, excess);
   // Dos designs de balancer, só o melhor vira alternativa; os outros ficam para a comparação.
-  const balAlts = ranked.filter(a => a.kind === 'balancer');
-  const alternatives = ranked.filter(a => a.kind !== 'balancer' || a === balAlts[0]);
+  const balAlts = ranked.filter(a => a.kind === 'balancer' && !a.drain);
+  const alternatives = ranked.filter(a => a.kind !== 'balancer' || a === balAlts[0] || a.drain);
   if (balAlts.length) balAlts[0].designAlts = balAlts;
   const supply = src.total, demand = dst.total;
 
@@ -3143,7 +3211,7 @@ function computePlan(input) {
   if (dstMixed.length) warnings.push({ level: 'warn', text: t('warnDistMixed', dstMixed.length, mixedList(dstMixed)) });
 
   return {
-    input, cap, conv, policy, fluid, src, dst, supply, demand, alternatives, warnings,
+    input, cap, conv, policy, excess, fluid, src, dst, supply, demand, alternatives, warnings,
     collectMergers: manifoldPieces(src.lines, conv),
     distSplitters: manifoldPieces(dst.lines, conv),
   };
@@ -3177,6 +3245,7 @@ function decodeShare(str) {
     belt: pick(raw.belt, BELTS.map(b => b.id), 'Mk4'),
     pipe: pick(raw.pipe, PIPES.map(b => b.id), 'Mk2'),
     policy: pick(raw.policy, ['represar', 'sink', 'extra'], 'represar'),
+    excess: pick(raw.excess, ['represar', 'sink'], 'represar'),
     conv: pick(raw.conv, ['k-1', 'k'], 'k-1'),
     selectedKey: typeof raw.selectedKey === 'string' ? raw.selectedKey.slice(0, 80) : null,
     lang: pick(raw.lang, LANGS, 'en'),
@@ -3217,7 +3286,7 @@ const DEFAULTS = {
   get item() { return t('defaultItem'); },
   src: [{ driver: 'machines', count: '42', clock: '', nominal: '65', total: '', per: '' }],
   dst: [{ driver: 'machines', count: '60', clock: '', nominal: '40', total: '', per: '' }],
-  medium: 'item', belt: 'Mk4', pipe: 'Mk2', policy: 'represar', conv: 'k-1',
+  medium: 'item', belt: 'Mk4', pipe: 'Mk2', policy: 'represar', excess: 'represar', conv: 'k-1',
 };
 const STORE = 'sf-balancer:v3';
 const LANG_STORE = 'sf-balancer:lang';
@@ -3431,6 +3500,7 @@ function readInput() {
       srcGroups, dstGroups,
       medium, belt: belt.id, cap: belt.cap,
       policy: document.querySelector('input[name=policy]:checked').value,
+      excess: document.querySelector('input[name=excess]:checked').value,
       conv: document.querySelector('input[name=conv]:checked').value,
       blueprints: BPS,
     },
@@ -3445,6 +3515,7 @@ function currentState() {
     medium: document.querySelector('input[name=medium]:checked').value,
     belt: $('belt').value, pipe: $('pipe').value,
     policy: document.querySelector('input[name=policy]:checked').value,
+    excess: document.querySelector('input[name=excess]:checked').value,
     conv: document.querySelector('input[name=conv]:checked').value,
     selectedKey,
     lang: LANG,
@@ -3465,6 +3536,8 @@ function loadState(state) {
   med.checked = true;
   const pol = document.querySelector(`input[name=policy][value="${state.policy}"]`);
   if (pol) pol.checked = true;
+  const exc = document.querySelector(`input[name=excess][value="${state.excess === 'sink' ? 'sink' : 'represar'}"]`);
+  exc.checked = true;
   const conv = document.querySelector(`input[name=conv][value="${state.conv}"]`);
   if (conv) conv.checked = true;
   selectedKey = state.selectedKey || null;
@@ -3503,6 +3576,10 @@ function syncMedium() {
   sink.disabled = fluid;
   $('policySinkChoice').classList.toggle('off', fluid);
   if (fluid && sink.checked) document.querySelector('input[name=policy][value=represar]').checked = true;
+  const exSink = document.querySelector('input[name=excess][value=sink]');
+  exSink.disabled = fluid;
+  $('excessSinkChoice').classList.toggle('off', fluid);
+  if (fluid && exSink.checked) document.querySelector('input[name=excess][value=represar]').checked = true;
 }
 
 // ---- Render ----
@@ -3618,8 +3695,12 @@ function balanceTable(a) {
     if (gv) return t('donatesTo', gv.gr.members.map(dstTag).join(', '));
     return t({ represar: 'leftHold', sink: 'leftSink', extra: 'leftExtra' }[a.policy]);
   };
+  const drained = id => {
+    const dv = a.view.drains.find(d => d.line.id === id);
+    return dv ? ` · ${t('destDrain', fmt(a.sim.flow[dv.sinkEdge]))}` : '';
+  };
   const srcRows = [...a.sources.values()].sort((x, y) => x.line.id - y.line.id).map(s => `<tr>
-    <td>${O(s.line)} <span class="sm">${esc(lineComp(s.line))}</span></td><td class="l">${dest(s.line.id)}</td><td>${fmt(s.line.rate)}</td><td>${fmt(s.out)}</td>
+    <td>${O(s.line)} <span class="sm">${esc(lineComp(s.line))}</span></td><td class="l">${dest(s.line.id)}${drained(s.line.id)}</td><td>${fmt(s.line.rate)}</td><td>${fmt(s.out)}</td>
     <td class="${s.held > 0.05 ? '' : 'dim'}">${fmt(s.held)}</td></tr>`).join('');
   const dstRows = [...a.dests.values()].sort((x, y) => x.line.id - y.line.id).map(d => `<tr>
     <td>${Dn(d.line)} <span class="sm">${esc(lineComp(d.line))}</span></td><td>${fmt(d.line.rate)}</td><td>${fmt(d.got)}</td>
@@ -3695,6 +3776,10 @@ function planSteps(p, a) {
     s += ds.short > 0.05 ? t('stepShort', fmt(ds.short)) : t('stepFull');
     steps.push(s);
   }
+  if (a.view.drains.length) {
+    const tot = a.view.drains.reduce((acc, d) => acc + fl(d.sinkEdge), 0);
+    steps.push(t('stepDrain', a.view.drains.map(d => O(d.line)).join(', '), a.view.drains.length, fmt(tot)));
+  }
   for (const d of a.unfed) steps.push(t('stepUnfed', Dn(d)));
   if (a.view.leftovers.length) {
     const names = a.view.leftovers.map(l => O(l.line)).join(', ');
@@ -3734,9 +3819,10 @@ function balancerSection(p, a) {
   }
   const groups = a.view.groups.filter(v => v.gr.p > 1);
   const smart = a.view.feeds.filter(f => f.overflowNode !== null);
-  if (!groups.length && !smart.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
+  const drains = a.view.drains;
+  if (!groups.length && !smart.length && !drains.length) return `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2><p class="dim" style="margin:0">${t('lbNone')}</p></section>`;
   let html = `<section class="plate"><h2 class="section-title">${t('lbTitle')}${tip('tipLb')}</h2>`;
-  if (smart.length) {
+  if (smart.length || drains.length) {
     const fl = e => a.sim.flow[e];
     html += `<h3 class="donor-title">${t('lbSmartTitle')}</h3><div class="opt on"><ul>
       ${smart.map(fv => {
@@ -3744,6 +3830,7 @@ function balancerSection(p, a) {
         const over = fl(fv.overflowTo === null ? fv.sinkEdge : fv.overflowEdge);
         return `<li>${t('lbSmartItem', fv.f.mains.map(O).join(' + '), Dn(fv.f.dst), toD, fmt(over))}</li>`;
       }).join('')}
+      ${drains.map(d => `<li>${t('lbDrainItem', O(d.line), fmt(fl(d.sinkEdge)))}</li>`).join('')}
       </ul>
       <p class="hint">${t('lbSmartHint')}</p></div>`;
   }
@@ -3956,6 +4043,14 @@ function flowSvg(p, a) {
       belt(`M${xMerge},${y} L${xDst},${y}`, fl(fv.outEdge), 'var(--flow)');
       merger(xMerge, y);
     }
+  });
+
+  // Smart Splitter logo na saída da linha: o que o meio não puxa vai pro sink.
+  v.drains.forEach(d => {
+    const y0 = ySrc.get(d.line.id), x = xSrc + boxW + 34, f = fl(d.sinkEdge);
+    belt(curve(x, y0, xDst, ySink), f, 'var(--sink)', back);
+    if (f > 0.05) label(x + 14, y0 + 24, t('svgToSink', fmt(f)), 'var(--sink)');
+    smart(x, y0);
   });
 
   v.leftovers.forEach(l => {
@@ -5061,6 +5156,22 @@ for (const ev of ['input', 'change']) {
 $('form').addEventListener('click', e => {
   const side = e.target.dataset && e.target.dataset.add;
   if (side) { addGroup(side).count.focus(); render(); }
+});
+// Etapa seguinte: as máquinas do destino viram a origem; a taxa do item novo e o destino ficam para preencher.
+$('dstToSrc').addEventListener('click', () => {
+  const next = rows.dst.map(r => {
+    const v = { driver: r.driver === 'clock' ? 'clock' : 'machines', count: r.count.value, clock: r.driver === 'clock' ? r.clock.value : '', nominal: '', total: '', per: '' };
+    if (r.driver === 'total') {
+      const total = parseNum(r.total.value), nom = parseNum(r.nominal.value);
+      v.count = total > 0 && nom > 0 ? fmt(total / nom, 4) : '';
+    }
+    return v;
+  });
+  loadState({ ...currentState(), item: '', src: next, dst: [], selectedKey: null });
+  rows.dst.splice(0).forEach(r => r.el.remove());
+  addGroup('dst');
+  render();
+  rows.src[0].nominal.focus();
 });
 $('out').addEventListener('click', e => {
   const open = e.target.closest('[data-open-bal]');
