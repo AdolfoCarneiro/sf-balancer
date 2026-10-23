@@ -1027,6 +1027,20 @@ test('idiomas: texto do passo peça por peça', () => {
   });
 });
 
+test('2D peça por peça: texto com número, de onde vem e para onde vai', () => {
+  const labels = { ins: ['E1', 'E2'], outs: ['S1', 'S2'] };
+  const st = { num: 3, t: 's', ways: 3, nin: 1, where: 'x', ins: [{ t: 'in', idx: 1 }], outs: [{ t: 'm', num: 5, pending: true }, { t: 'sink' }, { t: 'sink' }, { t: 'm', num: 1, loop: true }] };
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    const txt = L.pieceText2d(st, labels);
+    assert.match(txt, /^#3 · Splitter 1→3/, `${l}: ${txt}`);
+    assert.match(txt, /E2/, `${l}: diz de qual entrada vem`);
+    assert.match(txt, /merger #5/, `${l}: aponta a peça pelo número`);
+    assert.match(txt, /sink \(2×\)/, `${l}: junta as iguais`);
+    for (const k of ['perLabel', 'tipPer2d']) assert.ok(L.t(k).length > 2, `${l}: ${k}`);
+  });
+  inLang('pt', () => assert.match(L.pieceText2d(st, labels), /ainda não montado/));
+});
+
 // ---- Fluido ----
 const fluid = { ...base, medium: 'fluid', belt: 'Mk2', cap: 600 };
 

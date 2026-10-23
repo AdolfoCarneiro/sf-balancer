@@ -422,6 +422,9 @@
   .plegend span { display: inline-flex; align-items: center; gap: 6px; }
   .plegend i { display: inline-block; width: 16px; height: 4px; }
   .plegend i.holo { height: 10px; width: 14px; border: 1.5px dashed var(--holo); background: rgba(111, 227, 255, .14); }
+  .picon { flex: none; width: 26px; height: 20px; }
+  .cap-i:empty { display: none; }
+  .cap-i .picon { display: block; width: 32px; height: 24px; }
   .plegend i.loopi { background: repeating-linear-gradient(90deg, var(--ink-dim) 0 5px, transparent 5px 8px); }
 
   /* Holograma da build gun: a peça do passo atual aparece tracejada e fica sólida no passo seguinte */
@@ -429,6 +432,9 @@
   .stage.stage3d { padding: 0; overflow: hidden; max-height: none; }
   .s3d-ctl { position: absolute; top: 10px; left: 10px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .s3d-ctl .seg { background: var(--bench); }
+  .pmode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px 0; font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); }
+  .pmode .seg { background: var(--bench); letter-spacing: normal; text-transform: none; }
+  .bsvg .pnum { font: 700 10px var(--display); fill: var(--ink-dim); paint-order: stroke; stroke: var(--bench); stroke-width: 3px; }
   .load3d { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-dim); }
   .plegend i.sp3 { width: 11px; height: 11px; border-radius: 2px; background: #e8863a; }
   .plegend i.mg3 { width: 11px; height: 11px; border-radius: 2px; background: #3bb3a8; }
@@ -985,6 +991,8 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Junte as ${n} entradas numa esteira só com ${c} merger${c > 1 ? 's em cascata' : ''}: ${total}/min.`,
     stOut: (m, rate) => `Ligue as ${m} saídas nas linhas de destino: cada uma leva ${rate}/min.`,
     stBpBox: (n, m, spare) => `Cole o seu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas ficam vazias` : 'Uma entrada fica vazia'}, sem problema.` : ''),
+    lgSplitWays: 'splitter (o número é em quantas saídas ele divide)', lgMergerJoin: 'merger (junta até 3 esteiras numa)',
+    lgLeaf: 'parte que sai da árvore', lgLeafLoop: 'parte que volta pelo loop', lgPieceNum: 'ordem de montagem',
     lgHolo: 'peça deste passo', lgLoopBack: 'retorno do loop', lgToSink: 'pro sink',
     blkHint: 'clique para montar', blkAria: (n, m) => `Ver montagem do balancer ${n}→${m}`,
     lbBalTitle: (n, m) => `Balancer ${n}→${m}`,
@@ -1029,6 +1037,14 @@ const I18N = {
     side3dBack: 'por trás', side3dFront: 'pela frente', side3dLeft: 'pela esquerda', side3dRight: 'pela direita',
     other3dPiece: (k, where) => `o ${k} ${where}`, other3dPieceFrom: (k, where) => `do ${k} ${where}`, other3dSink: 'o sink',
     lift3dUp: ', subindo por lift', lift3dDown: ', descendo por lift', loop3d: ', pelo retorno do loop', pending3d: ' (ainda não montado)',
+    perLabel: 'Passo a passo',
+    tipPer2d: 'Por nível: um passo por coluna de peças. Por peça: um passo por splitter ou merger, numerados no desenho (#1, #2…), dizendo de onde cada um recebe e para onde manda, para montar devagar.',
+    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. Entra: ${ins}. Sai: ${outs}.`,
+    other2d: (k, n) => `${k} #${n}`,
+    where2dLane: (l, r) => `faixa ${l}, rodada ${r}`, where2dLaneLoop: l => `começo da faixa ${l}, recebe o retorno do loop`,
+    where2dTree: (tag, lv, k) => `árvore de ${tag}, nível ${lv}, ${k}º de cima`, where2dLoop: tag => `começo de ${tag}, recebe o retorno do loop`,
+    where2dHalves: tag => `divide ${tag} em metades`, where2dFunnel: k => `funil, ${k}º da esquerda`, where2dFunnelLoop: 'depois do funil, recebe o retorno do loop',
+    where2dLevel: (lv, k) => `nível ${lv}, ${k}º de cima`, where2dOut: (tag, k) => `saída ${tag}, ${k}º da esquerda`,
     follow3d: 'Seguir', followAria: tag => `Seguir o caminho de ${tag}`, hint3dFocus: 'passe o mouse ou toque numa peça para ver só as ligações dela; clique para fixar',
     tip3dTop: 'No topo de cada splitter e merger há uma seta por porta usada, na cor da esteira: saindo do centro é saída, chegando no centro é entrada. Como no jogo, o splitter recebe por trás e solta pela frente e pelos lados, e o merger recebe por trás e pelos lados e solta pela frente. Uma esteira por face.',
     loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
@@ -1302,6 +1318,8 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Join the ${n} inputs onto one belt with ${c} ${c > 1 ? 'chained mergers' : 'merger'}: ${total}/min.`,
     stOut: (m, rate) => `Connect the ${m} outputs to the destination lines: each carries ${rate}/min.`,
     stBpBox: (n, m, spare) => `Paste your ${n}→${m} blueprint.` + (spare ? ` ${spare > 1 ? `${spare} inputs stay` : 'One input stays'} empty, no harm.` : ''),
+    lgSplitWays: 'splitter (the number is how many outputs it splits into)', lgMergerJoin: 'merger (joins up to 3 belts into one)',
+    lgLeaf: 'part leaving the tree', lgLeafLoop: 'part that goes back through the loop', lgPieceNum: 'build order',
     lgHolo: 'piece in this step', lgLoopBack: 'loop return', lgToSink: 'to sink',
     blkHint: 'click to build', blkAria: (n, m) => `See how to build the ${n}→${m} balancer`,
     lbBalTitle: (n, m) => `${n}→${m} balancer`,
@@ -1346,6 +1364,14 @@ const I18N = {
     side3dBack: 'at the back', side3dFront: 'at the front', side3dLeft: 'on the left', side3dRight: 'on the right',
     other3dPiece: (k, where) => `the ${k} ${where}`, other3dPieceFrom: (k, where) => `the ${k} ${where}`, other3dSink: 'the sink',
     lift3dUp: ', going up a lift', lift3dDown: ', going down a lift', loop3d: ', through the loop return', pending3d: ' (not built yet)',
+    perLabel: 'Step by step',
+    tipPer2d: 'By level: one step per column of pieces. By piece: one step per splitter or merger, numbered on the drawing (#1, #2…), saying where each one takes from and where it sends to, to build slowly.',
+    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. In: ${ins}. Out: ${outs}.`,
+    other2d: (k, n) => `${k} #${n}`,
+    where2dLane: (l, r) => `lane ${l}, round ${r}`, where2dLaneLoop: l => `start of lane ${l}, takes the loop return`,
+    where2dTree: (tag, lv, k) => `${tag} tree, level ${lv}, no. ${k} from the top`, where2dLoop: tag => `start of ${tag}, takes the loop return`,
+    where2dHalves: tag => `splits ${tag} in halves`, where2dFunnel: k => `funnel, no. ${k} from the left`, where2dFunnelLoop: 'after the funnel, takes the loop return',
+    where2dLevel: (lv, k) => `level ${lv}, no. ${k} from the top`, where2dOut: (tag, k) => `output ${tag}, no. ${k} from the left`,
     follow3d: 'Follow', followAria: tag => `Follow the path of ${tag}`, hint3dFocus: 'hover or tap a piece to see only its connections; click to pin',
     tip3dTop: 'On top of each splitter and merger there is one arrow per port in use, in the belt color: pointing out from the center is an output, pointing into the center is an input. As in the game, the splitter takes input at the back and outputs at the front and sides, and the merger takes input at the back and sides and outputs at the front. One belt per face.',
     loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
@@ -1619,6 +1645,8 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Junta las ${n} entradas en una sola cinta con ${c} merger${c > 1 ? 's en cascada' : ''}: ${total}/min.`,
     stOut: (m, rate) => `Conecta las ${m} salidas a las líneas de destino: cada una lleva ${rate}/min.`,
     stBpBox: (n, m, spare) => `Pega tu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas quedan vacías` : 'Una entrada queda vacía'}, sin problema.` : ''),
+    lgSplitWays: 'splitter (el número es en cuántas salidas divide)', lgMergerJoin: 'merger (junta hasta 3 cintas en una)',
+    lgLeaf: 'parte que sale del árbol', lgLeafLoop: 'parte que vuelve por el loop', lgPieceNum: 'orden de montaje',
     lgHolo: 'pieza de este paso', lgLoopBack: 'retorno del loop', lgToSink: 'al sink',
     blkHint: 'clic para montar', blkAria: (n, m) => `Ver montaje del balanceador ${n}→${m}`,
     lbBalTitle: (n, m) => `Balanceador ${n}→${m}`,
@@ -1663,6 +1691,14 @@ const I18N = {
     side3dBack: 'por atrás', side3dFront: 'por el frente', side3dLeft: 'por la izquierda', side3dRight: 'por la derecha',
     other3dPiece: (k, where) => `el ${k} ${where}`, other3dPieceFrom: (k, where) => `el ${k} ${where}`, other3dSink: 'el sink',
     lift3dUp: ', subiendo por un lift', lift3dDown: ', bajando por un lift', loop3d: ', por el retorno del loop', pending3d: ' (todavía no montado)',
+    perLabel: 'Paso a paso',
+    tipPer2d: 'Por nivel: un paso por columna de piezas. Por pieza: un paso por splitter o merger, numerados en el dibujo (#1, #2…), diciendo de dónde recibe cada uno y a dónde manda, para montar despacio.',
+    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. Entra: ${ins}. Sale: ${outs}.`,
+    other2d: (k, n) => `${k} #${n}`,
+    where2dLane: (l, r) => `carril ${l}, ronda ${r}`, where2dLaneLoop: l => `inicio del carril ${l}, recibe el retorno del loop`,
+    where2dTree: (tag, lv, k) => `árbol de ${tag}, nivel ${lv}, ${k}º desde arriba`, where2dLoop: tag => `inicio de ${tag}, recibe el retorno del loop`,
+    where2dHalves: tag => `divide ${tag} en mitades`, where2dFunnel: k => `embudo, ${k}º desde la izquierda`, where2dFunnelLoop: 'después del embudo, recibe el retorno del loop',
+    where2dLevel: (lv, k) => `nivel ${lv}, ${k}º desde arriba`, where2dOut: (tag, k) => `salida ${tag}, ${k}º desde la izquierda`,
     follow3d: 'Seguir', followAria: tag => `Seguir el camino de ${tag}`, hint3dFocus: 'pasa el mouse o toca una pieza para ver solo sus conexiones; clic para fijar',
     tip3dTop: 'Arriba de cada splitter y merger hay una flecha por puerto en uso, del color de la cinta: si sale del centro es salida, si llega al centro es entrada. Como en el juego, el splitter recibe por atrás y saca por el frente y los lados, y el merger recibe por atrás y los lados y saca por el frente. Una cinta por cara.',
     loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
@@ -2497,6 +2533,21 @@ function pieceText3d(st, labels, mode) {
   return t('stPiece3d', name(st.t, st.ways, st.nin), where(st.level, st.at), conns.join(' '));
 }
 
+// Texto de um passo peça por peça no desenho 2D: as peças levam número no desenho (#1, #2…).
+// st.ins/st.outs: { t: 'in' | 'out', idx } | { t: 'sink' } | { t: 's' | 'm', num, pending }, mais loop.
+function pieceText2d(st, labels) {
+  const name = st.t === 's' ? `Splitter 1→${st.ways}` : `Merger ${st.nin}→1`;
+  const one = r => (r.t === 'in' ? labels.ins[r.idx] : r.t === 'out' ? labels.outs[r.idx] : r.t === 'sink' ? 'sink' : t('other2d', r.t === 's' ? 'splitter' : 'merger', r.num))
+    + (r.loop ? t('loop3d') : '') + (r.pending ? t('pending3d') : '');
+  // Iguais juntos: um splitter que manda duas partes pro sink diz "sink (2×)".
+  const list = rs => {
+    const n = new Map();
+    rs.forEach(r => { const k = one(r); n.set(k, (n.get(k) || 0) + 1); });
+    return [...n].map(([k, c]) => (c > 1 ? `${k} (${c}×)` : k)).join('; ');
+  };
+  return t('stPiece2d', st.num, name, st.where, list(st.ins), list(st.outs));
+}
+
 // Toque ou clique na cena: só conta com um ponteiro durante todo o gesto e sem andar mais de 5 px.
 // Uma pinça (dois dedos) nunca vira toque, nem quando o último dedo sai parado.
 function tapGesture() {
@@ -3276,7 +3327,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, pieceText2d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3624,8 +3675,8 @@ function render() {
             <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
             <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
             <span><i class="held"></i>${t('lgHeld')}</span>
-            <span><i class="piece"></i>${t('lgMerger')}</span>
-            <span><i class="smart"></i>${t('lgSmart')}</span>`;
+            <span>${PIECE_ICON.merger}${t('lgMerger')}</span>
+            <span>${PIECE_ICON.smart}${t('lgSmart')}</span>`;
 
   out.innerHTML = `
     <div class="work">
@@ -4149,11 +4200,29 @@ const segName = sg => t('seg' + cap1(sg.key), sg.arg);
 const rateList = rs => (rs.every(r => Math.abs(r - rs[0]) < EPS) ? fmt(rs[0]) : rs.map(r => fmt(r)).join(' / '));
 const tags = (prefix, n) => Array.from({ length: n }, (_, i) => prefix + (i + 1));
 
+// Ícones das peças, iguais aos do desenho, para a legenda e para o passo atual.
+const PIECE_ICON = {
+  splitter: ways => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="2" y="2" width="22" height="16" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text x="13" y="14.5" text-anchor="middle" style="fill:var(--ficsit);font:700 11px var(--display)">${ways}</text></svg>`,
+  merger: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="8" y="5" width="10" height="10" transform="rotate(45 13 10)" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/></svg>',
+  smart: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M9,6 l4,4 l-4,4 M13,6 l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></svg>',
+  leaf: hollow => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><circle cx="13" cy="10" r="4" fill="${hollow ? 'var(--paper)' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="1.5"/></svg>`,
+  num: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><text x="13" y="14" text-anchor="middle" style="fill:var(--ink-dim);font:700 11px var(--display)">#1</text></svg>',
+};
+const pieceIcon = k => (k.t === 's' ? PIECE_ICON.splitter(k.ways) : PIECE_ICON.merger);
+
 // Desenha o design e devolve o texto de cada passo. Cada peça leva data-s = passo em que aparece.
-function balancerBuild(d, labels) {
-  const steps = [], under = [], over = [];
+// per 'piece': cada splitter ou merger vira um passo (numerado no desenho), com a esteira que chega nele.
+function balancerBuild(d, labels, per = 'level') {
+  const steps = [], under = [], over = [], parts = [], links = [];
   const step = text => steps.push(text) - 1;
-  const g = (layer, s, svg) => layer.push(`<g data-s="${s}">${svg}</g>`);
+  // p: a peça dona do desenho no modo por peça (pode ser marcada depois, quando a peça de destino existir).
+  const g = (layer, s, svg, p = null) => { const o = { s, p, svg }; layer.push(o); return o; };
+  const part = (s, k, x, y, where, ways) => parts.push({ s, t: k, x, y, where, ways }) - 1;
+  // Ligação para o texto do passo: ponta é o índice da peça ou { t: 'in' | 'out', idx } ou { t: 'sink' }.
+  const link = (a, b, loop = false) => links.push({ a, b, loop });
+  const IN = idx => ({ t: 'in', idx }), OUT = idx => ({ t: 'out', idx }), SINK = { t: 'sink' };
+  // Splitter de árvore: e = { o: esteira que chega nele (desenhada no nível de cima), from: de onde ela vem }.
+  const treeNode = (s, x, y, where, ways, e) => { const p = part(s, 's', x, y, where, ways); e.o.p = p; link(e.from, p); return p; };
   const ins = labels.ins, outs = labels.outs;
   const N = d.N, M = d.M, n = d.n, top = 14, boxH = 34, inW = 92, outW = 100;
   const loop = d.kind.endsWith('-loop'), sink = d.kind.endsWith('-sink');
@@ -4165,9 +4234,10 @@ function balancerBuild(d, labels) {
   const curve = (x1, y1, x2, y2) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`;
   const belt = (path, color, w = 2, dash = '') => `<path d="${path}" fill="none" stroke="${color}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
   const leaf = (x, y, color, hollow) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${hollow ? 'var(--paper)' : color}" stroke="${color}" stroke-width="1.5"/>`;
-  const sinkStub = (s, x, y) => {
+  const sinkStub = (s, x, y, from) => {
     g(under, s, belt(`M${x},${y} h22`, 'var(--sink)', 2));
     g(over, s, `<text class="sm" x="${x + 26}" y="${y + 4}" style="fill:var(--sink)">sink</text>`);
+    link(from, SINK);
   };
   const inStep = () => step(t('stIn', N, ins.join(', '), rateList(d.rates)));
   let W, H;
@@ -4207,6 +4277,8 @@ function balancerBuild(d, labels) {
     const xEnd = colM(R - 1) + 7, xOut = xEnd + 50;
     W = xOut + outW + 2;
     const color = l => (laneIn[l] >= 0 ? inColor(laneIn[l]) : 'var(--ink-dim)');
+    // De onde vem o item de cada faixa agora (peça ou entrada) e a primeira peça da faixa (destino do loop).
+    const cur = laneIn.map(i => (i >= 0 ? IN(i) : null)), first = Array(K).fill(null);
     const s0 = inStep();
     for (let l = 0; l < K; l++) {
       g(over, s0, `<text class="sm" x="${numW - 6}" y="${y(l) + 4}" text-anchor="end" style="fill:var(--ink-dim)">${l + 1}</text>`);
@@ -4217,26 +4289,39 @@ function balancerBuild(d, labels) {
     if (hasLM) {
       const s = step(t('stLoopM', net.loopMergers.length));
       net.loopMergers.forEach(l => {
-        g(under, s, belt(`M${x0},${y(l)} L${xLM - 7},${y(l)}`, color(l), 3));
-        g(over, s, merger(xLM, y(l)));
+        const p = part(s, 'm', xLM, y(l), t('where2dLaneLoop', l + 1));
+        g(under, s, belt(`M${x0},${y(l)} L${xLM - 7},${y(l)}`, color(l), 3), p);
+        g(over, s, merger(xLM, y(l)), p);
+        link(cur[l], p);
+        cur[l] = first[l] = p;
       });
     }
     net.rounds.forEach((rd, s) => {
-      const ss = step(t('stBfSplit', s + 1, rd.splits.length, rd.f));
+      const ss = step(t('stBfSplit', s + 1, rd.splits.length, rd.f)), sp = Array(K).fill(null);
       rd.splits.forEach(l => {
-        g(under, ss, belt(`M${xAfter(s - 1, l)},${y(l)} L${colS(s) - 11},${y(l)}`, color(l), 3));
-        g(over, ss, splitter(colS(s), y(l), rd.f));
+        const p = sp[l] = part(ss, 's', colS(s), y(l), t('where2dLane', l + 1, s + 1), rd.f);
+        g(under, ss, belt(`M${xAfter(s - 1, l)},${y(l)} L${colS(s) - 11},${y(l)}`, color(l), 3), p);
+        g(over, ss, splitter(colS(s), y(l), rd.f), p);
+        if (cur[l] !== null) link(cur[l], p);
+        if (first[l] === null) first[l] = p;
       });
       // Cada ligação por escrito: "1 ← 1 + 3 + 5" é o merger da faixa 1 recebendo dos splitters das faixas 1, 3 e 5.
-      const link = m => `${m.lane + 1} ← ${m.from.map(j => j + 1).join(' + ')}`;
-      const joins = rd.merges.filter(m => m.from.length > 1).map(link).join('; ');
-      const pass = rd.merges.filter(m => m.from.length === 1).map(link).join('; ');
+      const linkTxt = m => `${m.lane + 1} ← ${m.from.map(j => j + 1).join(' + ')}`;
+      const joins = rd.merges.filter(m => m.from.length > 1).map(linkTxt).join('; ');
+      const pass = rd.merges.filter(m => m.from.length === 1).map(linkTxt).join('; ');
       const sm = step(joins ? t('stBfMerge', s + 1, joins, pass) : t('stBfFan', s + 1, pass));
+      // Faixa que recebe uma parte só segue direto do splitter: no modo por peça essa esteira vai junto dele.
+      const next = Array(K).fill(null);
       rd.merges.forEach(m => {
         merged[m.lane] = m.from.length > 1;
-        for (const j of m.from) g(under, sm, belt(curve(colS(s) + 11, y(j), merged[m.lane] ? colM(s) - 7 : colM(s), y(m.lane)), color(j), 1.6));
-        if (merged[m.lane]) g(over, sm, merger(colM(s), y(m.lane)));
+        const p = next[m.lane] = merged[m.lane] ? part(sm, 'm', colM(s), y(m.lane), t('where2dLane', m.lane + 1, s + 1)) : sp[m.from[0]];
+        for (const j of m.from) {
+          g(under, sm, belt(curve(colS(s) + 11, y(j), merged[m.lane] ? colM(s) - 7 : colM(s), y(m.lane)), color(j), 1.6), p);
+          if (merged[m.lane]) link(sp[j], p);
+        }
+        if (merged[m.lane]) g(over, sm, merger(colM(s), y(m.lane)), p);
       });
+      next.forEach((p, l) => { cur[l] = p; });
     });
     const xLast = l => xAfter(R - 1, l);
     if (net.extra.length && loop) {
@@ -4245,14 +4330,16 @@ function balancerBuild(d, labels) {
         const yb = top + cH + 8 + k * 6, xr = xEnd + 12 + k * 6;
         const end = laneIn[l] >= 0 ? `H${xLM} V${y(l) + 7}` : `H${x0 + 8} V${y(l)} H${x0 + 16}`;
         g(under, s, belt(`M${xLast(l)},${y(l)} H${xr} V${yb} ${end}`, color(l), 1.6, '5 3'));
+        link(cur[l], first[l], true);
       });
     }
     if (net.extra.length && sink) {
       const s = step(t('stSinkOut', net.extra.length));
-      net.extra.forEach(l => sinkStub(s, xLast(l), y(l)));
+      net.extra.forEach(l => sinkStub(s, xLast(l), y(l), cur[l]));
     }
     const so = step(t('stOut', M, fmt(d.perOut)));
     net.outLane.forEach((l, j) => {
+      link(cur[l], OUT(j));
       g(under, so, belt(`M${xLast(l)},${y(l)} L${xOut},${y(l)}`, 'var(--ink)', 3));
       g(over, so, box(xOut, y(l), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     });
@@ -4273,44 +4360,60 @@ function balancerBuild(d, labels) {
     const s0 = inStep();
     for (let i = 0; i < N; i++) g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
     const sm = step(t('stFunnelMerge', N, C, fmt(d.total)));
-    for (let i = 0; i < N; i++) g(under, sm, belt(curve(inW, yIn(i), xCh(chainSlot(i)) - 7, yMid), inColor(i), 2.2));
+    const mp = [];
     for (let c = 0; c < C; c++) {
-      if (c) g(under, sm, belt(`M${xCh(c - 1) + 7},${yMid} L${xCh(c) - 7},${yMid}`, 'var(--ink)', 3));
-      g(over, sm, merger(xCh(c), yMid));
+      mp[c] = part(sm, 'm', xCh(c), yMid, t('where2dFunnel', c + 1));
+      if (c) { g(under, sm, belt(`M${xCh(c - 1) + 7},${yMid} L${xCh(c) - 7},${yMid}`, 'var(--ink)', 3), mp[c]); link(mp[c - 1], mp[c]); }
+      g(over, sm, merger(xCh(c), yMid), mp[c]);
     }
-    g(under, sm, belt(`M${xCh(C - 1) + 7},${yMid} L${loop ? xLM - 7 : xRoot - 11},${yMid}`, 'var(--ink)', 3.4));
+    for (let i = 0; i < N; i++) {
+      g(under, sm, belt(curve(inW, yIn(i), xCh(chainSlot(i)) - 7, yMid), inColor(i), 2.2), mp[chainSlot(i)]);
+      link(IN(i), mp[chainSlot(i)]);
+    }
+    let into = { o: g(under, sm, belt(`M${xCh(C - 1) + 7},${yMid} L${loop ? xLM - 7 : xRoot - 11},${yMid}`, 'var(--ink)', 3.4)), from: mp[C - 1] }, lm = null;
     if (loop) {
       const s = step(t('stLoopM', 1));
-      g(over, s, merger(xLM, yMid));
-      g(under, s, belt(`M${xLM + 7},${yMid} L${xRoot - 11},${yMid}`, 'var(--ink)', 3.4));
+      lm = part(s, 'm', xLM, yMid, t('where2dFunnelLoop'));
+      into.o.p = lm;
+      link(into.from, lm);
+      g(over, s, merger(xLM, yMid), lm);
+      into = { o: g(under, s, belt(`M${xLM + 7},${yMid} L${xRoot - 11},${yMid}`, 'var(--ink)', 3.4)), from: lm };
     }
-    let prod = 1;
+    let prod = 1, pend = [into];
+    const leafP = [];
     for (let k = 0; k < L; k++) {
       prod *= F[k];
       const s = step(k === 0 ? t('stLevelFunnel', F[0], fmt(treeIn / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn / prod)));
+      const next = [];
       for (let q = 0; q < d.tree.levels[k].count; q++) {
-        const x = xNode(k), y = nodeY(k, q);
+        const x = xNode(k), y = nodeY(k, q), p = treeNode(s, x, y, t('where2dLevel', k + 1, q + 1), F[k], pend[q]);
         for (let c = 0; c < F[k]; c++) {
           const child = q * F[k] + c;
-          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(k + 1, child)), 'var(--ink)', 2));
+          if (k < L - 1) next[child] = { o: g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(k + 1, child)), 'var(--ink)', 2)), from: p };
           else {
-            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(child)), 'var(--ink)', 1.8));
-            g(over, s, leaf(xLeaf, leafY(child), child >= M && sink ? 'var(--sink)' : 'var(--ink)', child >= M && loop));
+            leafP[child] = p;
+            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(child)), 'var(--ink)', 1.8), p);
+            g(over, s, leaf(xLeaf, leafY(child), child >= M && sink ? 'var(--sink)' : 'var(--ink)', child >= M && loop), p);
           }
         }
-        g(over, s, splitter(x, y, F[k]));
+        g(over, s, splitter(x, y, F[k]), p);
       }
+      pend = next;
     }
     if (d.extra && loop) {
       const s = step(t('stLoopBack', d.extra, M));
-      for (let j = M; j < n; j++) g(under, s, belt(`M${xLeaf + 4},${leafY(j)} h10 V${top + cH + 6 + (j - M) * 4} H${xLM} V${yMid + 7}`, 'var(--ink-dim)', 1.6, '5 3'));
+      for (let j = M; j < n; j++) {
+        g(under, s, belt(`M${xLeaf + 4},${leafY(j)} h10 V${top + cH + 6 + (j - M) * 4} H${xLM} V${yMid + 7}`, 'var(--ink-dim)', 1.6, '5 3'));
+        link(leafP[j], lm, true);
+      }
     }
     if (d.extra && sink) {
       const s = step(t('stSinkOut', d.extra));
-      for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(j));
+      for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(j), leafP[j]);
     }
     const so = step(t('stOut', M, fmt(d.perOut)));
     for (let j = 0; j < M; j++) {
+      link(leafP[j], OUT(j));
       g(under, so, belt(`M${xLeaf + 4},${leafY(j)} L${xOut},${leafY(j)}`, 'var(--ink)', 3));
       g(over, so, box(xOut, leafY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     }
@@ -4337,44 +4440,55 @@ function balancerBuild(d, labels) {
     const outY = j => top + (j + 0.5) * cH / M;
     const bandRate = i => (halves ? d.rates[own(i)] / 2 : d.rates[i]);
     const treeIn = i => (loop ? bandRate(i) * n / M : bandRate(i));
+    // head[i]: a esteira que chega no começo da faixa i e de onde ela vem; leafP[i][j]: o splitter da folha j.
+    const head = [], lm = [], leafP = Array.from({ length: V }, () => []), lastM = [];
     const s0 = inStep();
     if (halves) {
       const yIn = i => (yc(2 * i) + yc(2 * i + 1)) / 2;
+      const into = [];
       for (let i = 0; i < N; i++) {
         g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-        g(under, s0, belt(`M${inW},${yIn(i)} L${xHalf - 11},${yIn(i)}`, inColor(i), 3));
+        into[i] = g(under, s0, belt(`M${inW},${yIn(i)} L${xHalf - 11},${yIn(i)}`, inColor(i), 3));
       }
       const sh = step(t('stHalves', N, fmt(Math.max(...d.rates) / 2)));
       for (let i = 0; i < N; i++) {
-        for (const b of [2 * i, 2 * i + 1]) g(under, sh, belt(curve(xHalf + 11, yIn(i), xLM - 7, yc(b)), inColor(i), 2.4));
-        g(over, sh, splitter(xHalf, yIn(i), 2));
+        const hp = treeNode(sh, xHalf, yIn(i), t('where2dHalves', ins[i]), 2, { o: into[i], from: IN(i) });
+        for (const b of [2 * i, 2 * i + 1]) head[b] = { o: g(under, sh, belt(curve(xHalf + 11, yIn(i), xLM - 7, yc(b)), inColor(i), 2.4)), from: hp };
+        g(over, sh, splitter(xHalf, yIn(i), 2), hp);
       }
     } else {
       for (let i = 0; i < N; i++) {
         g(over, s0, box(0, yc(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-        g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3));
+        head[i] = { o: g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3)), from: IN(i) };
       }
     }
     if (loop) {
       const s = step(t('stLoopM', V));
       for (let i = 0; i < V; i++) {
-        g(over, s, merger(xLM, yc(i)));
-        g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(own(i)), 3));
+        lm[i] = part(s, 'm', xLM, yc(i), t('where2dLoop', bandTag(i)));
+        head[i].o.p = lm[i];
+        link(head[i].from, lm[i]);
+        g(over, s, merger(xLM, yc(i)), lm[i]);
+        head[i] = { o: g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(own(i)), 3)), from: lm[i] };
       }
     }
+    const pend = head.map(e => [e]);
     const drawLevel = (i, k, s) => {
+      const next = [];
       for (let q = 0; q < d.tree.levels[k].count; q++) {
-        const x = xNode(k), y = nodeY(i, k, q);
+        const x = xNode(k), y = nodeY(i, k, q), p = treeNode(s, x, y, t('where2dTree', bandTag(i), k + 1, q + 1), F[k], pend[i][q]);
         for (let c = 0; c < F[k]; c++) {
           const child = q * F[k] + c;
-          if (k < L - 1) g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(own(i)), 1.8));
+          if (k < L - 1) next[child] = { o: g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(own(i)), 1.8)), from: p };
           else {
-            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(own(i)), 1.6));
-            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(own(i)), child >= M && loop));
+            leafP[i][child] = p;
+            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(own(i)), 1.6), p);
+            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(own(i)), child >= M && loop), p);
           }
         }
-        g(over, s, splitter(x, y, F[k]));
+        g(over, s, splitter(x, y, F[k]), p);
       }
+      pend[i] = next;
     };
     let prod = 1;
     for (let k = 0; k < L; k++) {
@@ -4391,18 +4505,25 @@ function balancerBuild(d, labels) {
       for (let i = 0; i < V; i++) for (let j = M; j < n; j++) {
         const yb = bandY(i) + bandH + 8 + (j - M) * 4;
         g(under, s, belt(`M${xLeaf + 4},${leafY(i, j)} h10 V${yb} H${xLM} V${yc(i) + 7}`, inColor(own(i)), 1.6, '5 3'));
+        link(leafP[i][j], lm[i], true);
       }
     }
     if (d.extra && sink) {
       const s = step(t('stSinkOut', d.extra));
-      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j));
+      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j), leafP[i][j]);
     }
     const mergeOut = (j, s) => {
-      for (let i = 0; i < V; i++) g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(own(i)), 1.4));
-      for (let c = 0; c < C; c++) {
-        if (c) g(under, s, belt(`M${xMerg(c - 1) + 7},${outY(j)} L${xMerg(c) - 7},${outY(j)}`, 'var(--ink)', 2.4));
-        g(over, s, merger(xMerg(c), outY(j)));
+      const mp = [];
+      for (let c = 0; c < C; c++) mp[c] = part(s, 'm', xMerg(c), outY(j), t('where2dOut', outs[j], c + 1));
+      for (let i = 0; i < V; i++) {
+        g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(own(i)), 1.4), mp[chainSlot(i)]);
+        link(leafP[i][j], mp[chainSlot(i)]);
       }
+      for (let c = 0; c < C; c++) {
+        if (c) { g(under, s, belt(`M${xMerg(c - 1) + 7},${outY(j)} L${xMerg(c) - 7},${outY(j)}`, 'var(--ink)', 2.4), mp[c]); link(mp[c - 1], mp[c]); }
+        g(over, s, merger(xMerg(c), outY(j)), mp[c]);
+      }
+      lastM[j] = mp[C - 1];
     };
     if (V > 1) {
       mergeOut(0, step(t('stMerge1', outs[0], V, C)));
@@ -4413,12 +4534,39 @@ function balancerBuild(d, labels) {
     }
     const so = step(t('stOut', M, fmt(d.perOut)));
     for (let j = 0; j < M; j++) {
+      link(V > 1 ? lastM[j] : leafP[0][j], OUT(j));
       g(under, so, V > 1 ? belt(`M${xMerg(C - 1) + 7},${outY(j)} L${xOut},${outY(j)}`, 'var(--ink)', 3) : belt(curve(xLeaf + 4, leafY(0, j), xOut, outY(j)), inColor(0), 2));
       g(over, so, box(xOut, outY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
     }
   }
-  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
-  return { svg, steps };
+  // Ordem final: por peça, o nível que tem peças vira um passo por peça, na ordem em que foram desenhadas;
+  // o que não é de peça nenhuma (entradas, retorno do loop, sink, saídas) fica no passo do nível.
+  const byPiece = per === 'piece' && parts.length > 0;
+  const seq = [];
+  steps.forEach((_, s) => {
+    const mine = byPiece ? parts.map((_, p) => p).filter(p => parts[p].s === s) : [];
+    if (mine.length) mine.forEach(p => seq.push({ s, p })); else seq.push({ s, p: null });
+  });
+  const levelAt = [], pieceAt = [], numOf = [];
+  let num = 0;
+  seq.forEach((x, k) => {
+    if (levelAt[x.s] === undefined) levelAt[x.s] = k;
+    if (x.p !== null) { pieceAt[x.p] = k; numOf[x.p] = ++num; }
+  });
+  if (byPiece) parts.forEach((pt, p) => g(over, pt.s, `<text class="pnum" x="${pt.x}" y="${pt.y - 13}" text-anchor="middle">#${numOf[p]}</text>`, p));
+  const at = o => (byPiece && o.p !== null ? pieceAt[o.p] : levelAt[o.s]);
+  const ref = (r, k) => (typeof r === 'number' ? { t: parts[r].t, num: numOf[r], pending: pieceAt[r] > k } : r);
+  const texts = seq.map((x, k) => {
+    if (x.p === null) return steps[x.s];
+    const pt = parts[x.p];
+    const ins = links.filter(l => l.b === x.p).map(l => ({ ...ref(l.a, k), loop: l.loop }));
+    const outs = links.filter(l => l.a === x.p).map(l => ({ ...ref(l.b, k), loop: l.loop }));
+    return pieceText2d({ num: numOf[x.p], t: pt.t, ways: pt.ways, nin: ins.length, where: pt.where, ins, outs }, labels);
+  });
+  const draw = layer => layer.map(o => `<g data-s="${at(o)}">${o.svg}</g>`).join('');
+  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${draw(under)}${draw(over)}</svg>`;
+  const kinds = seq.map(x => (x.p === null ? null : { t: parts[x.p].t, ways: parts[x.p].ways }));
+  return { svg, steps: texts, kinds };
 }
 
 // ---- Cena 3D (Three.js sob demanda) ----
@@ -4762,14 +4910,14 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
   if (root._stop) root._stop();
   const in3d = view !== '2d';
   // Por peça: um passo por splitter ou merger (byPiece3d); por nível: um por torre ou andar.
-  const per = in3d && opts.per === 'piece' ? 'piece' : 'level';
+  const per = opts.per === 'piece' ? 'piece' : 'level';
   const lay0 = in3d ? opts.lay || layout3d(d, view) : null;
   const lay = in3d && per === 'piece' ? byPiece3d(lay0) : lay0;
-  const { svg, steps } = in3d
-    ? { svg: '', steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
+  const { svg, steps, kinds = [] } = in3d
+    ? { svg: '', kinds: lay.steps.map(st => (st.key === 'piece' ? { t: st.t, ways: st.ways } : null)), steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
       : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, view)
       : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
-    : balancerBuild(d, labels);
+    : balancerBuild(d, labels, per);
   const K = steps.length;
   let cur = K, timer = null, scene = null;
   const matrix = !d.kind.startsWith('funnel');
@@ -4777,9 +4925,12 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <div class="seg" role="radiogroup" aria-label="${esc(t('mode3dLabel'))}">${['towers', 'floors'].map(m => `<button type="button" role="radio" aria-checked="${m === view}" data-mode="${m}">${t('mode3d' + cap1(m))}</button>`).join('')}</div>${tip('tip3dMode')}
       <div class="seg" role="radiogroup" aria-label="${esc(t('per3dLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tip3dPer')}
       <button type="button" class="pbtn" data-recenter>${t('recenter3d')}</button></div>` : '';
-  root.innerHTML = `<div class="ponder" tabindex="-1">
+  // No 2D o mesmo Por nível / Por peça fica acima do desenho (o blueprint é uma peça só).
+  const ctl2d = !in3d && d.kind !== 'blueprint' ? `<div class="pmode"><span>${t('perLabel')}</span>
+      <div class="seg" role="radiogroup" aria-label="${esc(t('perLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tipPer2d')}</div>` : '';
+  root.innerHTML = `<div class="ponder" tabindex="-1">${ctl2d}
     <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}</div>
-    <div class="cap" aria-live="polite"><span class="cap-n"></span><p class="cap-t"></p></div>
+    <div class="cap" aria-live="polite"><span class="cap-n"></span><span class="cap-i"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
       <div class="ticks${steps.length > 24 ? ' many' : ''}">${steps.map((_, i) => `<button type="button" class="tick" data-p="${i}" aria-label="${esc(t('stepGoto', i + 1))}"></button>`).join('')}</div>
@@ -4792,6 +4943,13 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       .map(([id, tag, c]) => `<button type="button" class="chip" data-follow="${id}" aria-pressed="false" aria-label="${esc(t('followAria', tag))}"><i style="background:${c}"></i>${esc(tag)}</button>`).join('')}</div>` : ''}
     <div class="plegend">
       ${matrix ? labels.ins.map((tag, i) => `<span><i style="background:${inColor(i)}"></i>${esc(tag)}</span>`).join('') : ''}
+      ${in3d || d.kind === 'blueprint' ? '' : [
+        d.pieces.splitters ? `<span>${PIECE_ICON.splitter(d.net ? d.net.rounds[0].f : d.tree.factors[0])}${t('lgSplitWays')}</span>` : '',
+        d.pieces.mergers ? `<span>${PIECE_ICON.merger}${t('lgMergerJoin')}</span>` : '',
+        d.net ? '' : `<span>${PIECE_ICON.leaf(false)}${t('lgLeaf')}</span>`,
+        !d.net && d.kind.endsWith('-loop') ? `<span>${PIECE_ICON.leaf(true)}${t('lgLeafLoop')}</span>` : '',
+        per === 'piece' ? `<span>${PIECE_ICON.num}${t('lgPieceNum')}</span>` : '',
+      ].join('')}
       <span><i class="holo"></i>${t('lgHolo')}</span>
       ${in3d ? `<span><i class="sp3"></i>${t('lgSplitter')}</span><span><i class="mg3"></i>${t('lgMerger')}</span><span><i class="pouti"></i>${t('lgPortOut')}</span><span><i class="pini"></i>${t('lgPortIn')}</span>${tip('tip3dTop')}` : ''}
       ${d.extra && d.kind.endsWith('-loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
@@ -4814,6 +4972,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
     const done = cur >= K;
     q('.cap').classList.toggle('done', done);
     q('.cap-n').textContent = done ? '✓' : t('stepOf', cur + 1, K);
+    q('.cap-i').innerHTML = !done && kinds[cur] ? pieceIcon(kinds[cur]) : '';
     q('.cap-t').textContent = done ? t('stepDone', designPieces(d), d.M, fmt(d.perOut)) : steps[cur];
     root.querySelectorAll('.tick').forEach((b, i) => {
       b.classList.toggle('done', done || i < cur);
@@ -4845,6 +5004,10 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(cur - 1); }
   });
   update();
+  q('.pmode')?.addEventListener('click', e => {
+    const pv = e.target.closest('[data-per]');
+    if (pv && pv.dataset.per !== per && opts.onPer) opts.onPer(pv.dataset.per);
+  });
   if (in3d) {
     const token = {};
     root._token = token;
