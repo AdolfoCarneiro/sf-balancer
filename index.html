@@ -397,7 +397,7 @@
   .ponder:focus { outline: none; }
   .ponder:focus-visible { outline: 1px solid var(--holo); }
   .stage { padding: 18px; overflow: auto; max-height: 68vh; }
-  .stage svg { width: 100%; min-width: min(var(--w), 620px); max-width: var(--w); height: auto; margin: 0 auto; }
+  .stage svg { display: block; width: 100%; max-width: var(--w); height: auto; max-height: 64vh; margin: 0 auto; }
   .cap {
     display: flex; gap: 12px; align-items: flex-start;
     min-height: 64px; padding: 12px 16px; background: var(--plate); border-top: 1px solid var(--line);
@@ -424,6 +424,11 @@
   .plegend i.holo { height: 10px; width: 14px; border: 1.5px dashed var(--holo); background: rgba(111, 227, 255, .14); }
   .picon { flex: none; width: 26px; height: 20px; }
   .cap-i:empty { display: none; }
+  .bsvg.plan { --grid-line: rgba(120, 160, 200, .14); }
+  .bsvg.flat [data-id] { cursor: pointer; }
+  .bsvg.focusing [data-b]:not(.lit):not(.fut), .bsvg.focusing [data-id]:not(.lit):not(.fut) { opacity: .12; }
+  .bsvg.focusing .lit path { stroke-width: 4.5; }
+  .plegend { --grid-line: rgba(120, 160, 200, .5); }
   .cap-i .picon { display: block; width: 32px; height: 24px; }
   .plegend i.loopi { background: repeating-linear-gradient(90deg, var(--ink-dim) 0 5px, transparent 5px 8px); }
 
@@ -470,6 +475,9 @@
   .pc-grid dt { font-size: 12px; color: var(--ink-dim); }
   .pc-grid dd { margin: 0; font: 600 26px/1.1 var(--display); }
   .pc-grid dd small { font: 500 13px var(--body); color: var(--ink-dim); margin-left: 2px; }
+  .pc-grid .pc-space { flex-basis: 100%; }
+  .pc-grid .pc-space dd { font-size: 20px; }
+  .pc-grid .pc-space dd + dd { font: 500 13.5px var(--body); }
   .cands { display: flex; flex-direction: column; }
   .cand-h, .cand { display: grid; grid-template-columns: minmax(0, 1fr) 70px 46px; gap: 1px 10px; }
   .cand-h { font-size: 12px; color: var(--ink-dim); padding: 0 0 4px 12px; }
@@ -991,8 +999,6 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Junte as ${n} entradas numa esteira só com ${c} merger${c > 1 ? 's em cascata' : ''}: ${total}/min.`,
     stOut: (m, rate) => `Ligue as ${m} saídas nas linhas de destino: cada uma leva ${rate}/min.`,
     stBpBox: (n, m, spare) => `Cole o seu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas ficam vazias` : 'Uma entrada fica vazia'}, sem problema.` : ''),
-    lgSplitWays: 'splitter (o número é em quantas saídas ele divide)', lgMergerJoin: 'merger (junta até 3 esteiras numa)',
-    lgLeaf: 'parte que sai da árvore', lgLeafLoop: 'parte que volta pelo loop', lgPieceNum: 'ordem de montagem',
     lgHolo: 'peça deste passo', lgLoopBack: 'retorno do loop', lgToSink: 'pro sink',
     blkHint: 'clique para montar', blkAria: (n, m) => `Ver montagem do balancer ${n}→${m}`,
     lbBalTitle: (n, m) => `Balancer ${n}→${m}`,
@@ -1024,7 +1030,7 @@ const I18N = {
     stBfFan: (round, list) => `Rodada ${round}: sem merger. Cada saída de splitter segue direto para uma faixa, abrindo as faixas vazias (faixa ← splitter da faixa): ${list}.`,
     stBfMerge: (round, joins, pass) => `Rodada ${round}: um merger em cada faixa, juntando uma saída de cada splitter indicado (faixa ← splitters das faixas): ${joins}. As faixas que se juntam saem iguais.` + (pass ? ` Sem merger, com uma parte só: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `As faixas ${lanes} sobram e voltam` : `A faixa ${lanes} sobra e volta`} para o começo dela mesma (loop). O que volta entra de novo na mistura, então as ${m} saídas ficam iguais.`,
-    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Andar'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + (up ? `; ${up > 1 ? `${up} esteiras chegam` : '1 esteira chega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} do loop saem daqui` : '') + '.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${{ towers: 'Torre', floors: 'Andar', flat: 'Coluna' }[mode]} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} em ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ') + (up ? `; ${up > 1 ? `${up} esteiras chegam` : '1 esteira chega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} do loop saem daqui` : '') + '.',
     vertNote: 'Arraste para girar, role ou faça pinça para o zoom, botão direito ou dois dedos para mover. A escala é aproximada: a grade do piso é de fundações de 8 m, e o encaixe exato você ajusta no jogo.',
     mode3dTowers: 'Torres', mode3dFloors: 'Andares', mode3dLabel: 'Montagem em 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada camada de peças vira uma torre, com as peças empilhadas e as esteiras cruzando de uma torre para a outra. Andares: cada camada num andar, com as peças lado a lado.',
@@ -1033,18 +1039,23 @@ const I18N = {
     tip3dPer: 'Por nível: um passo por torre ou andar inteiro. Por peça: um passo por splitter ou merger, com cada ligação explicada (por qual lado, de onde vem e para onde vai), para montar devagar.',
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `na torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `no andar ${lv}, ${at}ª a partir da esquerda`,
+    where3dFlat: (lv, at) => `na coluna ${lv}, ${at}ª de cima`,
+    view2dLabel: 'Desenho', view2dScheme: 'Esquema', view2dPlan: 'Planta',
+    tipView2d: 'Nos dois, cada esteira sai e entra pelo lado certo da peça, como no jogo: o splitter recebe por trás e solta pela frente e pelos lados, o merger o contrário, e nunca duas no mesmo lado. Esquema: compacto, cabe na tela. Planta: o mesmo desenho em escala, com a grade de fundações, o espaço que ocupa e se cabe num Blueprint Designer. Passe o mouse ou toque numa peça, entrada ou saída para ver só o caminho dela.',
+    lgMixed: 'esteira misturada: cor da saída para onde vai',
+    lgGrid: 'fundação (8 m)', lgPieceNum: 'ordem de montagem', lgSplitWays: 'splitter (o número é em quantas saídas ele divide)', lgMergerJoin: 'merger (junta até 3 esteiras numa)',
+    thSpace: 'Espaço', spaceVal: (fw, fd) => `${fw}×${fd} fundações`, spaceM: (w, d) => `${w}×${d} m`,
+    bpFits: mk => `cabe no Blueprint Designer Mk${mk}`, bpNone: 'maior que o Blueprint Designer Mk3 (6×6): monte direto no chão ou em partes',
+    tipSpace: 'Medido na planta: só os splitters, mergers e as esteiras entre eles; as esteiras de entrada e saída chegam pela borda. Blueprint Designer Mk1 tem 4×4 fundações (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). A planta é uma montagem possível com folga; no jogo dá para apertar.',
+    planNote: 'Vista de cima, em escala: a grade é de fundações de 8 m, cada peça ocupa ¼ de fundação (4×4 m) e entre duas peças ligadas sempre vai um pedaço de esteira. A seta na peça mostra a saída da frente.',
+    fpLabel: (fw, fd, mk) => `${fw}×${fd} fundações${mk ? ` · Mk${mk}` : ''}`,
     conn3dIn: (side, other, extra) => `Entra ${side}, vindo ${/^do /.test(other) ? '' : 'de '}${other}${extra}.`, conn3dOut: (side, other, extra) => `Sai ${side} para ${other}${extra}.`,
     side3dBack: 'por trás', side3dFront: 'pela frente', side3dLeft: 'pela esquerda', side3dRight: 'pela direita',
     other3dPiece: (k, where) => `o ${k} ${where}`, other3dPieceFrom: (k, where) => `do ${k} ${where}`, other3dSink: 'o sink',
     lift3dUp: ', subindo por lift', lift3dDown: ', descendo por lift', loop3d: ', pelo retorno do loop', pending3d: ' (ainda não montado)',
     perLabel: 'Passo a passo',
-    tipPer2d: 'Por nível: um passo por coluna de peças. Por peça: um passo por splitter ou merger, numerados no desenho (#1, #2…), dizendo de onde cada um recebe e para onde manda, para montar devagar.',
-    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. Entra: ${ins}. Sai: ${outs}.`,
+    tipPer2d: 'Por nível: um passo por coluna de peças. Por peça: um passo por splitter ou merger, numerados no desenho (#1, #2…), dizendo de onde cada um recebe e para onde manda. Na Planta, também por qual lado: esquerda e direita são olhando no sentido do fluxo (no desenho, esquerda é para cima).',
     other2d: (k, n) => `${k} #${n}`,
-    where2dLane: (l, r) => `faixa ${l}, rodada ${r}`, where2dLaneLoop: l => `começo da faixa ${l}, recebe o retorno do loop`,
-    where2dTree: (tag, lv, k) => `árvore de ${tag}, nível ${lv}, ${k}º de cima`, where2dLoop: tag => `começo de ${tag}, recebe o retorno do loop`,
-    where2dHalves: tag => `divide ${tag} em metades`, where2dFunnel: k => `funil, ${k}º da esquerda`, where2dFunnelLoop: 'depois do funil, recebe o retorno do loop',
-    where2dLevel: (lv, k) => `nível ${lv}, ${k}º de cima`, where2dOut: (tag, k) => `saída ${tag}, ${k}º da esquerda`,
     follow3d: 'Seguir', followAria: tag => `Seguir o caminho de ${tag}`, hint3dFocus: 'passe o mouse ou toque numa peça para ver só as ligações dela; clique para fixar',
     tip3dTop: 'No topo de cada splitter e merger há uma seta por porta usada, na cor da esteira: saindo do centro é saída, chegando no centro é entrada. Como no jogo, o splitter recebe por trás e solta pela frente e pelos lados, e o merger recebe por trás e pelos lados e solta pela frente. Uma esteira por face.',
     loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
@@ -1318,8 +1329,6 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Join the ${n} inputs onto one belt with ${c} ${c > 1 ? 'chained mergers' : 'merger'}: ${total}/min.`,
     stOut: (m, rate) => `Connect the ${m} outputs to the destination lines: each carries ${rate}/min.`,
     stBpBox: (n, m, spare) => `Paste your ${n}→${m} blueprint.` + (spare ? ` ${spare > 1 ? `${spare} inputs stay` : 'One input stays'} empty, no harm.` : ''),
-    lgSplitWays: 'splitter (the number is how many outputs it splits into)', lgMergerJoin: 'merger (joins up to 3 belts into one)',
-    lgLeaf: 'part leaving the tree', lgLeafLoop: 'part that goes back through the loop', lgPieceNum: 'build order',
     lgHolo: 'piece in this step', lgLoopBack: 'loop return', lgToSink: 'to sink',
     blkHint: 'click to build', blkAria: (n, m) => `See how to build the ${n}→${m} balancer`,
     lbBalTitle: (n, m) => `${n}→${m} balancer`,
@@ -1351,7 +1360,7 @@ const I18N = {
     stBfFan: (round, list) => `Round ${round}: no mergers. Each splitter output goes straight to one lane, filling the empty lanes (lane ← splitter on lane): ${list}.`,
     stBfMerge: (round, joins, pass) => `Round ${round}: a merger on each lane, joining one output from each listed splitter (lane ← splitters on lanes): ${joins}. Lanes joined together leave equal.` + (pass ? ` No merger, a single part: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Lanes ${lanes} are spare and go` : `Lane ${lanes} is spare and goes`} back to ${k > 1 ? 'their own start' : 'its own start'} (loop). What comes back is mixed again, so the ${m} outputs are equal.`,
-    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Tower' : 'Floor'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + (up ? `; ${up > 1 ? `${up} belts arrive` : '1 belt arrives'} by lift` : '') + (down ? `; ${down > 1 ? `${down} loop returns leave` : '1 loop return leaves'} from here` : '') + '.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${{ towers: 'Tower', floors: 'Floor', flat: 'Column' }[mode]} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} into ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ') + (up ? `; ${up > 1 ? `${up} belts arrive` : '1 belt arrives'} by lift` : '') + (down ? `; ${down > 1 ? `${down} loop returns leave` : '1 loop return leaves'} from here` : '') + '.',
     vertNote: 'Drag to spin, scroll or pinch to zoom, right button or two fingers to move. The scale is approximate: the floor grid is 8 m foundations, and you adjust the exact fit in the game.',
     mode3dTowers: 'Towers', mode3dFloors: 'Floors', mode3dLabel: '3D layout', recenter3d: 'Recenter',
     tip3dMode: 'Towers: each layer of pieces becomes a tower, with the pieces stacked and belts crossing from one tower to the next. Floors: each layer on a floor, with the pieces side by side.',
@@ -1360,18 +1369,23 @@ const I18N = {
     tip3dPer: 'By level: one step per whole tower or floor. By piece: one step per splitter or merger, with every connection spelled out (which side, where it comes from and where it goes), to build slowly.',
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `in tower ${lv}, height ${at}`, where3dFloors: (lv, at) => `on floor ${lv}, position ${at} from the left`,
+    where3dFlat: (lv, at) => `in column ${lv}, no. ${at} from the top`,
+    view2dLabel: 'Drawing', view2dScheme: 'Diagram', view2dPlan: 'Plan',
+    tipView2d: 'In both, every belt goes in and out through the right side of the piece, like in the game: a splitter takes input at the back and outputs at the front and sides, a merger the other way around, and never two on the same side. Diagram: compact, fits the screen. Plan: the same drawing to scale, with the foundation grid, the space it takes and whether it fits a Blueprint Designer. Hover or tap a piece, input or output to see only its path.',
+    lgMixed: 'mixed belt: color of the output it goes to',
+    lgGrid: 'foundation (8 m)', lgPieceNum: 'build order', lgSplitWays: 'splitter (the number is how many outputs it splits into)', lgMergerJoin: 'merger (joins up to 3 belts into one)',
+    thSpace: 'Space', spaceVal: (fw, fd) => `${fw}×${fd} foundations`, spaceM: (w, d) => `${w}×${d} m`,
+    bpFits: mk => `fits the Blueprint Designer Mk${mk}`, bpNone: 'bigger than the Blueprint Designer Mk3 (6×6): build it straight on the ground or in parts',
+    tipSpace: 'Measured on the plan: only the splitters, mergers and the belts between them; the input and output belts come in from the edge. Blueprint Designer Mk1 is 4×4 foundations (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). The plan is one roomy way to build it; in the game you can squeeze it.',
+    planNote: 'Top view, to scale: the grid is 8 m foundations, each piece takes ¼ of a foundation (4×4 m) and two connected pieces always have a piece of belt between them. The arrow on a piece shows its front output.',
+    fpLabel: (fw, fd, mk) => `${fw}×${fd} foundations${mk ? ` · Mk${mk}` : ''}`,
     conn3dIn: (side, other, extra) => `Input ${side} from ${other}${extra}.`, conn3dOut: (side, other, extra) => `Output ${side} to ${other}${extra}.`,
     side3dBack: 'at the back', side3dFront: 'at the front', side3dLeft: 'on the left', side3dRight: 'on the right',
     other3dPiece: (k, where) => `the ${k} ${where}`, other3dPieceFrom: (k, where) => `the ${k} ${where}`, other3dSink: 'the sink',
     lift3dUp: ', going up a lift', lift3dDown: ', going down a lift', loop3d: ', through the loop return', pending3d: ' (not built yet)',
     perLabel: 'Step by step',
-    tipPer2d: 'By level: one step per column of pieces. By piece: one step per splitter or merger, numbered on the drawing (#1, #2…), saying where each one takes from and where it sends to, to build slowly.',
-    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. In: ${ins}. Out: ${outs}.`,
+    tipPer2d: 'By level: one step per column of pieces. By piece: one step per splitter or merger, numbered on the drawing (#1, #2…), saying where each one takes from and where it sends to. On the Plan, also which side: left and right are looking along the flow (on the drawing, left is up).',
     other2d: (k, n) => `${k} #${n}`,
-    where2dLane: (l, r) => `lane ${l}, round ${r}`, where2dLaneLoop: l => `start of lane ${l}, takes the loop return`,
-    where2dTree: (tag, lv, k) => `${tag} tree, level ${lv}, no. ${k} from the top`, where2dLoop: tag => `start of ${tag}, takes the loop return`,
-    where2dHalves: tag => `splits ${tag} in halves`, where2dFunnel: k => `funnel, no. ${k} from the left`, where2dFunnelLoop: 'after the funnel, takes the loop return',
-    where2dLevel: (lv, k) => `level ${lv}, no. ${k} from the top`, where2dOut: (tag, k) => `output ${tag}, no. ${k} from the left`,
     follow3d: 'Follow', followAria: tag => `Follow the path of ${tag}`, hint3dFocus: 'hover or tap a piece to see only its connections; click to pin',
     tip3dTop: 'On top of each splitter and merger there is one arrow per port in use, in the belt color: pointing out from the center is an output, pointing into the center is an input. As in the game, the splitter takes input at the back and outputs at the front and sides, and the merger takes input at the back and sides and outputs at the front. One belt per face.',
     loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
@@ -1645,8 +1659,6 @@ const I18N = {
     stFunnelMerge: (n, c, total) => `Junta las ${n} entradas en una sola cinta con ${c} merger${c > 1 ? 's en cascada' : ''}: ${total}/min.`,
     stOut: (m, rate) => `Conecta las ${m} salidas a las líneas de destino: cada una lleva ${rate}/min.`,
     stBpBox: (n, m, spare) => `Pega tu blueprint ${n}→${m}.` + (spare ? ` ${spare > 1 ? `${spare} entradas quedan vacías` : 'Una entrada queda vacía'}, sin problema.` : ''),
-    lgSplitWays: 'splitter (el número es en cuántas salidas divide)', lgMergerJoin: 'merger (junta hasta 3 cintas en una)',
-    lgLeaf: 'parte que sale del árbol', lgLeafLoop: 'parte que vuelve por el loop', lgPieceNum: 'orden de montaje',
     lgHolo: 'pieza de este paso', lgLoopBack: 'retorno del loop', lgToSink: 'al sink',
     blkHint: 'clic para montar', blkAria: (n, m) => `Ver montaje del balanceador ${n}→${m}`,
     lbBalTitle: (n, m) => `Balanceador ${n}→${m}`,
@@ -1678,7 +1690,7 @@ const I18N = {
     stBfFan: (round, list) => `Ronda ${round}: sin mergers. Cada salida de splitter va directo a un carril, llenando los carriles vacíos (carril ← splitter del carril): ${list}.`,
     stBfMerge: (round, joins, pass) => `Ronda ${round}: un merger en cada carril, juntando una salida de cada splitter indicado (carril ← splitters de los carriles): ${joins}. Los carriles que se juntan salen iguales.` + (pass ? ` Sin merger, con una sola parte: ${pass}.` : ''),
     stBfLoopBack: (k, lanes, m) => `${k > 1 ? `Los carriles ${lanes} sobran y vuelven` : `El carril ${lanes} sobra y vuelve`} a su propio inicio (loop). Lo que vuelve se mezcla de nuevo, así que las ${m} salidas quedan iguales.`,
-    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${mode === 'towers' ? 'Torre' : 'Piso'} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + (up ? `; ${up > 1 ? `${up} cintas llegan` : '1 cinta llega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} del loop salen de aquí` : '') + '.',
+    stLevel3d: (mode, lv, sp, ways, mg, up, down) => `${{ towers: 'Torre', floors: 'Piso', flat: 'Columna' }[mode]} ${lv}: ` + [sp ? `${sp} splitter${sp > 1 ? 's' : ''} en ${ways}` : '', mg ? `${mg} merger${mg > 1 ? 's' : ''}` : ''].filter(Boolean).join(' y ') + (up ? `; ${up > 1 ? `${up} cintas llegan` : '1 cinta llega'} por lift` : '') + (down ? `; ${down > 1 ? `${down} retornos` : '1 retorno'} del loop salen de aquí` : '') + '.',
     vertNote: 'Arrastra para girar, rueda o pellizca para el zoom, botón derecho o dos dedos para mover. La escala es aproximada: la cuadrícula del piso es de cimientos de 8 m, y el encaje exacto lo ajustas en el juego.',
     mode3dTowers: 'Torres', mode3dFloors: 'Pisos', mode3dLabel: 'Montaje en 3D', recenter3d: 'Recentrar',
     tip3dMode: 'Torres: cada capa de piezas es una torre, con las piezas apiladas y las cintas cruzando de una torre a la siguiente. Pisos: cada capa en un piso, con las piezas lado a lado.',
@@ -1687,18 +1699,23 @@ const I18N = {
     tip3dPer: 'Por nivel: un paso por torre o piso entero. Por pieza: un paso por splitter o merger, con cada conexión explicada (por qué lado, de dónde viene y a dónde va), para montar despacio.',
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `en la torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `en el piso ${lv}, posición ${at} desde la izquierda`,
+    where3dFlat: (lv, at) => `en la columna ${lv}, ${at}º desde arriba`,
+    view2dLabel: 'Dibujo', view2dScheme: 'Esquema', view2dPlan: 'Planta',
+    tipView2d: 'En los dos, cada cinta entra y sale por el lado correcto de la pieza, como en el juego: el splitter recibe por atrás y saca por el frente y los lados, el merger al revés, y nunca dos por el mismo lado. Esquema: compacto, cabe en la pantalla. Planta: el mismo dibujo a escala, con la cuadrícula de cimientos, el espacio que ocupa y si cabe en un Blueprint Designer. Pasa el mouse o toca una pieza, entrada o salida para ver solo su camino.',
+    lgMixed: 'cinta mezclada: color de la salida a la que va',
+    lgGrid: 'cimiento (8 m)', lgPieceNum: 'orden de montaje', lgSplitWays: 'splitter (el número es en cuántas salidas divide)', lgMergerJoin: 'merger (junta hasta 3 cintas en una)',
+    thSpace: 'Espacio', spaceVal: (fw, fd) => `${fw}×${fd} cimientos`, spaceM: (w, d) => `${w}×${d} m`,
+    bpFits: mk => `cabe en el Blueprint Designer Mk${mk}`, bpNone: 'más grande que el Blueprint Designer Mk3 (6×6): móntalo directo en el suelo o por partes',
+    tipSpace: 'Medido en la planta: solo los splitters, mergers y las cintas entre ellos; las cintas de entrada y salida llegan por el borde. Blueprint Designer Mk1 tiene 4×4 cimientos (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). La planta es un montaje posible con holgura; en el juego se puede apretar.',
+    planNote: 'Vista de arriba, a escala: la cuadrícula es de cimientos de 8 m, cada pieza ocupa ¼ de cimiento (4×4 m) y entre dos piezas conectadas siempre va un trozo de cinta. La flecha en la pieza muestra la salida del frente.',
+    fpLabel: (fw, fd, mk) => `${fw}×${fd} cimientos${mk ? ` · Mk${mk}` : ''}`,
     conn3dIn: (side, other, extra) => `Entra ${side}, desde ${other}${extra}.`, conn3dOut: (side, other, extra) => `Sale ${side} hacia ${other}${extra}.`,
     side3dBack: 'por atrás', side3dFront: 'por el frente', side3dLeft: 'por la izquierda', side3dRight: 'por la derecha',
     other3dPiece: (k, where) => `el ${k} ${where}`, other3dPieceFrom: (k, where) => `el ${k} ${where}`, other3dSink: 'el sink',
     lift3dUp: ', subiendo por un lift', lift3dDown: ', bajando por un lift', loop3d: ', por el retorno del loop', pending3d: ' (todavía no montado)',
     perLabel: 'Paso a paso',
-    tipPer2d: 'Por nivel: un paso por columna de piezas. Por pieza: un paso por splitter o merger, numerados en el dibujo (#1, #2…), diciendo de dónde recibe cada uno y a dónde manda, para montar despacio.',
-    stPiece2d: (num, name, where, ins, outs) => `#${num} · ${name}, ${where}. Entra: ${ins}. Sale: ${outs}.`,
+    tipPer2d: 'Por nivel: un paso por columna de piezas. Por pieza: un paso por splitter o merger, numerados en el dibujo (#1, #2…), diciendo de dónde recibe cada uno y a dónde manda. En la Planta, también por qué lado: izquierda y derecha son mirando en el sentido del flujo (en el dibujo, izquierda es hacia arriba).',
     other2d: (k, n) => `${k} #${n}`,
-    where2dLane: (l, r) => `carril ${l}, ronda ${r}`, where2dLaneLoop: l => `inicio del carril ${l}, recibe el retorno del loop`,
-    where2dTree: (tag, lv, k) => `árbol de ${tag}, nivel ${lv}, ${k}º desde arriba`, where2dLoop: tag => `inicio de ${tag}, recibe el retorno del loop`,
-    where2dHalves: tag => `divide ${tag} en mitades`, where2dFunnel: k => `embudo, ${k}º desde la izquierda`, where2dFunnelLoop: 'después del embudo, recibe el retorno del loop',
-    where2dLevel: (lv, k) => `nivel ${lv}, ${k}º desde arriba`, where2dOut: (tag, k) => `salida ${tag}, ${k}º desde la izquierda`,
     follow3d: 'Seguir', followAria: tag => `Seguir el camino de ${tag}`, hint3dFocus: 'pasa el mouse o toca una pieza para ver solo sus conexiones; clic para fijar',
     tip3dTop: 'Arriba de cada splitter y merger hay una flecha por puerto en uso, del color de la cinta: si sale del centro es salida, si llega al centro es entrada. Como en el juego, el splitter recibe por atrás y saca por el frente y los lados, y el merger recibe por atrás y los lados y saca por el frente. Una cinta por cara.',
     loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
@@ -2217,7 +2234,15 @@ function layout3d(d, mode, spread = 1) {
   const outStep = levels.length + 1;
   const pos = new Map();
   const sinkFrom = new Map(edges.filter(e => nodes[e.b].t === 'sink').map(e => [e.b, e.a]));
-  if (mode === 'towers') {
+  if (mode === 'flat') {
+    // Planta (tudo no chão, vista de cima): cada nível é uma coluna ao longo do fluxo e as peças ficam na
+    // posição da fachada (as faixas da borboleta seguem retas), como Andares deitado.
+    const perLevel = levels.map(f => nodes.filter(n => piece(n) && n.floor === f).length);
+    const gap = L3D.gap * spread, W = Math.max(...perLevel, d.N, d.M, d.net ? d.net.K : 0) * gap;
+    nodes.filter(piece).forEach(n => pos.set(n.id, [levelIdx.get(n.floor) * gap, 0, n.x * W]));
+    fl.ins.forEach(id => pos.set(id, [0, 0, nodes[id].x * W]));
+    fl.outs.forEach(id => pos.set(id, [(levels.length + 1) * gap, 0, nodes[id].x * W]));
+  } else if (mode === 'towers') {
     for (const f of levels) {
       nodes.filter(n => piece(n) && n.floor === f).sort((a, b) => a.x - b.x)
         .forEach((n, k) => pos.set(n.id, [levelIdx.get(f) * L3D.gap * spread, k * L3D.floor, 0]));
@@ -2251,7 +2276,10 @@ function layout3d(d, mode, spread = 1) {
   const fromSide = [], toSide = [];
   // Lados: quem sobe sai pela esquerda e quem desce pela direita (empate de altura: pela posição na fileira);
   // o merger recebe do mesmo lado de onde a esteira saiu, para não precisar contornar a peça.
-  const dy = (id, o) => F.get(o)[1] - F.get(id)[1], dz = (id, o) => F.get(o)[2] - F.get(id)[2];
+  // Na planta tudo tem a mesma altura: quem decide o lado é a posição na fileira (z), no lugar da altura.
+  const dz = (id, o) => F.get(o)[2] - F.get(id)[2];
+  // Para cima no desenho (z menor) faz o papel de "sobe": sai pela esquerda.
+  const dy = mode === 'flat' ? (id, o) => -dz(id, o) : (id, o) => F.get(o)[1] - F.get(id)[1];
   nodes.forEach(n => {
     const outs = outsOf.get(n.id) || [], ins = insOf.get(n.id) || [];
     if (n.t === 'm') return; // depois dos splitters, abaixo
@@ -2274,6 +2302,18 @@ function layout3d(d, mode, spread = 1) {
     const left = (insOf.get(n.id) || []).slice(), free = new Set(PORT3D.m.in);
     const take = (ei, sd) => { toSide[ei] = sd; free.delete(sd); left.splice(left.indexOf(ei), 1); };
     const src = ei => edges[ei].a;
+    // Na planta o lado é o da geometria: o que vem reto entra por trás, o que vem de cima (z menor) pela
+    // esquerda e o de baixo pela direita; se o lado já está ocupado, o que sobrar.
+    if (mode === 'flat') {
+      const ahead = left.filter(ei => edges[ei].kind !== 'loop' && Math.abs(dz(n.id, src(ei))) < 1e-9);
+      const straight = ahead.find(ei => fromSide[ei] === 'front') ?? ahead[0];
+      if (straight !== undefined) take(straight, 'back');
+      left.slice().sort((u, v) => Math.abs(dz(n.id, src(v))) - Math.abs(dz(n.id, src(u)))).forEach(ei => {
+        const want = dz(n.id, src(ei)) < 0 ? 'left' : 'right';
+        take(ei, free.has(want) ? want : PORT3D.m.in.find(x => free.has(x)));
+      });
+      return;
+    }
     left.slice().sort((u, v) => Math.abs(dy(n.id, src(u))) - Math.abs(dy(n.id, src(v))))
       .forEach(ei => { const sd = fromSide[ei]; if ((sd === 'left' || sd === 'right') && free.has(sd)) take(ei, sd); });
     const straight = left.find(ei => fromSide[ei] === 'front') ?? left.find(ei => Math.abs(dy(n.id, src(ei))) < 1e-9);
@@ -2349,7 +2389,8 @@ function layout3d(d, mode, spread = 1) {
     let total = 0, loops = 0;
     // Uma esteira: primeiro só faixas e colunas perto das pontas; se não sair limpa, abre as de fora.
     const routeOne = (ei, ly, wide) => {
-      const e = edges[ei], A = portOf(e.a, fromSide[ei]), B = portOf(e.b, toSide[ei]), s = A.s, t = B.s, loop = e.kind === 'loop';
+      // Na planta o retorno do loop anda no chão, contornando as peças, como as outras esteiras.
+      const e = edges[ei], A = portOf(e.a, fromSide[ei]), B = portOf(e.b, toSide[ei]), s = A.s, t = B.s, loop = e.kind === 'loop' && mode !== 'flat';
       const reach = 8, lanes = 5;
       const zlo = Math.min(s[2], t[2]) - reach, zhi = Math.max(s[2], t[2]) + reach;
       // Faixas: as das pontas, as que se afastam delas e as dos vãos entre colunas de peças.
@@ -2422,7 +2463,10 @@ function layout3d(d, mode, spread = 1) {
     const d = ei => { const a = F.get(edges[ei].a), b = F.get(edges[ei].b); return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) + (edges[ei].kind === 'loop' ? 1e6 : 0); };
     return d(u) - d(v);
   });
-  let run = routeAll(order);
+  // Na planta as esteiras são desenhadas em curva entre as portas: basta o lado de cada uma, sem roteamento.
+  let run = mode === 'flat'
+    ? { out: new Map(edges.map((e, ei) => { const A = portOf(e.a, fromSide[ei]), B = portOf(e.b, toSide[ei]); return [ei, { pts: [A.q, A.s, B.s, B.q], bad: 0 }]; })), total: 0 }
+    : routeAll(order);
   for (let pass = 0; pass < 1 && run.total; pass++) {
     const bad = order.filter(ei => run.out.get(ei).bad);
     order = [...bad, ...order.filter(ei => !run.out.get(ei).bad)];
@@ -2500,11 +2544,13 @@ function byPiece3d(lay) {
   parts.forEach((p, i) => stepOf.set(p.id, i + 1));
   lay.pieces.forEach(p => { if (p.t === 'in') stepOf.set(p.id, 0); if (p.t === 'out') stepOf.set(p.id, last); });
   lay.pieces.filter(p => p.t === 'sink').forEach(p => stepOf.set(p.id, stepOf.get(lay.belts.find(b => b.b === p.id).a)));
-  // Onde fica a peça: em Torres, a torre (o nível) e a altura nela; em Andares, o andar e a posição da esquerda.
-  const rank = p => lay.pieces.filter(q => isPart(q) && q.step === p.step && (lay.mode === 'towers' ? q.pos[1] < p.pos[1] - 1e-9 : q.pos[0] < p.pos[0] - 1e-9)).length + 1;
+  // Onde fica a peça: em Torres, a torre (o nível) e a altura nela; em Andares, o andar e a posição da esquerda;
+  // na Planta, a coluna e a posição de cima para baixo.
+  const ax = { towers: 1, floors: 0, flat: 2 }[lay.mode];
+  const rank = p => lay.pieces.filter(q => isPart(q) && q.step === p.step && q.pos[ax] < p.pos[ax] - 1e-9).length + 1;
   const where = p => ({ level: p.step, at: rank(p) });
   const ins = lay.pieces.filter(p => p.t === 'in'), outs = lay.pieces.filter(p => p.t === 'out');
-  const other = q => (q.t === 'in' ? { t: 'in', idx: ins.indexOf(q) } : q.t === 'out' ? { t: 'out', idx: outs.indexOf(q) } : q.t === 'sink' ? { t: 'sink' } : { t: q.t, ...where(q) });
+  const other = q => (q.t === 'in' ? { t: 'in', idx: ins.indexOf(q) } : q.t === 'out' ? { t: 'out', idx: outs.indexOf(q) } : q.t === 'sink' ? { t: 'sink' } : { t: q.t, n: stepOf.get(q.id), ...where(q) });
   const SIDE = ['back', 'left', 'right', 'front'];
   const steps = [{ key: 'in' }, ...parts.map(p => {
     const conns = lay.belts.map((b, bi) => ({ b, bi })).filter(({ b }) => b.a === p.id || b.b === p.id).map(({ b, bi }) => {
@@ -2512,7 +2558,7 @@ function byPiece3d(lay) {
       return { belt: bi, dir: out ? 'out' : 'in', side: out ? b.fromSide : b.toSide, other: other(q), loop: b.kind === 'loop',
         lift: Math.abs(dy) < 1e-9 ? null : (out ? dy > 0 : dy < 0) ? 'up' : 'down', pending: stepOf.get(q.id) > stepOf.get(p.id) };
     }).sort((u, v) => (u.dir === v.dir ? 0 : u.dir === 'in' ? -1 : 1) || SIDE.indexOf(u.side) - SIDE.indexOf(v.side));
-    return { key: 'piece', id: p.id, t: p.t, ways: p.ways, nin: lay.belts.filter(b => b.b === p.id).length, ...where(p), conns };
+    return { key: 'piece', id: p.id, n: stepOf.get(p.id), t: p.t, ways: p.ways, nin: lay.belts.filter(b => b.b === p.id).length, ...where(p), conns };
   }), { key: 'out' }];
   return {
     ...lay,
@@ -2523,29 +2569,31 @@ function byPiece3d(lay) {
 }
 
 // Texto de um passo peça por peça: o que montar, onde, e cada ligação (lado, de onde vem ou para onde vai).
+// Na Planta as peças levam número no desenho (#1, #2…): o passo começa por ele e chama as outras pelo número.
 function pieceText3d(st, labels, mode) {
   const name = (k, ways, nin) => (k === 's' ? `Splitter 1→${ways}` : `Merger ${nin}→1`);
-  const where = (lv, at) => t(mode === 'towers' ? 'where3dTowers' : 'where3dFloors', lv, at);
+  const where = (lv, at) => t({ towers: 'where3dTowers', floors: 'where3dFloors', flat: 'where3dFlat' }[mode], lv, at);
+  const flat = mode === 'flat';
   const otherText = (o, from) => (o.t === 'in' ? labels.ins[o.idx] : o.t === 'out' ? labels.outs[o.idx] : o.t === 'sink' ? t('other3dSink')
+    : flat ? t('other2d', o.t === 's' ? 'splitter' : 'merger', o.n)
     : t(from ? 'other3dPieceFrom' : 'other3dPiece', o.t === 's' ? 'splitter' : 'merger', where(o.level, o.at)));
   const conns = st.conns.map(c => t(c.dir === 'in' ? 'conn3dIn' : 'conn3dOut', t('side3d' + c.side[0].toUpperCase() + c.side.slice(1)), otherText(c.other, c.dir === 'in'),
     (c.loop ? t('loop3d') : c.lift ? t(c.lift === 'up' ? 'lift3dUp' : 'lift3dDown') : '') + (c.pending ? t('pending3d') : '')));
-  return t('stPiece3d', name(st.t, st.ways, st.nin), where(st.level, st.at), conns.join(' '));
+  return (flat ? `#${st.n} · ` : '') + t('stPiece3d', name(st.t, st.ways, st.nin), where(st.level, st.at), conns.join(' '));
 }
 
-// Texto de um passo peça por peça no desenho 2D: as peças levam número no desenho (#1, #2…).
-// st.ins/st.outs: { t: 'in' | 'out', idx } | { t: 'sink' } | { t: 's' | 'm', num, pending }, mais loop.
-function pieceText2d(st, labels) {
-  const name = st.t === 's' ? `Splitter 1→${st.ways}` : `Merger ${st.nin}→1`;
-  const one = r => (r.t === 'in' ? labels.ins[r.idx] : r.t === 'out' ? labels.outs[r.idx] : r.t === 'sink' ? 'sink' : t('other2d', r.t === 's' ? 'splitter' : 'merger', r.num))
-    + (r.loop ? t('loop3d') : '') + (r.pending ? t('pending3d') : '');
-  // Iguais juntos: um splitter que manda duas partes pro sink diz "sink (2×)".
-  const list = rs => {
-    const n = new Map();
-    rs.forEach(r => { const k = one(r); n.set(k, (n.get(k) || 0) + 1); });
-    return [...n].map(([k, c]) => (c > 1 ? `${k} (${c}×)` : k)).join('; ');
-  };
-  return t('stPiece2d', st.num, name, st.where, list(st.ins), list(st.outs));
+// Espaço da planta: só splitters, mergers e as esteiras entre eles (entradas e saídas chegam pela borda).
+// Em fundações de 8 m, e o menor Blueprint Designer que comporta (Mk1 4×4, Mk2 5×5, Mk3 6×6; 0 = nenhum).
+const BP_DESIGNERS = [[1, 4], [2, 5], [3, 6]];
+function planFootprint(lay) {
+  const part = new Set(lay.pieces.filter(p => p.t === 's' || p.t === 'm').map(p => p.id));
+  const pts = lay.pieces.filter(p => part.has(p.id)).flatMap(p => [[p.pos[0] - 2, p.pos[2] - 2], [p.pos[0] + 2, p.pos[2] + 2]])
+    .concat(...lay.belts.filter(b => part.has(b.a) && part.has(b.b)).map(b => b.pts.map(q => [q[0], q[2]])));
+  const min = [0, 1].map(k => Math.min(...pts.map(q => q[k]))), max = [0, 1].map(k => Math.max(...pts.map(q => q[k])));
+  const w = Math.ceil(max[0] - min[0] - 1e-6), d = Math.ceil(max[1] - min[1] - 1e-6);
+  const fw = Math.ceil(w / 8 - 1e-9), fd = Math.ceil(d / 8 - 1e-9);
+  const mk = (BP_DESIGNERS.find(([, f]) => Math.max(fw, fd) <= f) || [0])[0];
+  return { min, max, w, d, fw, fd, mk };
 }
 
 // Toque ou clique na cena: só conta com um ponteiro durante todo o gesto e sem andar mais de 5 px.
@@ -3327,7 +3375,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, pieceText2d, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3675,7 +3723,7 @@ function render() {
             <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
             <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
             <span><i class="held"></i>${t('lgHeld')}</span>
-            <span>${PIECE_ICON.merger}${t('lgMerger')}</span>
+            <span>${PIECE_ICON.planMerger}${t('lgMerger')}</span>
             <span>${PIECE_ICON.smart}${t('lgSmart')}</span>`;
 
   out.innerHTML = `
@@ -4201,372 +4249,141 @@ const rateList = rs => (rs.every(r => Math.abs(r - rs[0]) < EPS) ? fmt(rs[0]) : 
 const tags = (prefix, n) => Array.from({ length: n }, (_, i) => prefix + (i + 1));
 
 // Ícones das peças, iguais aos do desenho, para a legenda e para o passo atual.
+// Na planta as peças são quadradas como no jogo: splitter laranja (com em quantas divide), merger verde-água.
+const SP_COLOR = '#e8863a', MG_COLOR = '#3bb3a8';
 const PIECE_ICON = {
-  splitter: ways => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="2" y="2" width="22" height="16" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text x="13" y="14.5" text-anchor="middle" style="fill:var(--ficsit);font:700 11px var(--display)">${ways}</text></svg>`,
-  merger: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="8" y="5" width="10" height="10" transform="rotate(45 13 10)" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/></svg>',
+  splitter: ways => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" rx="2" fill="rgba(232,134,58,.22)" stroke="${SP_COLOR}" stroke-width="1.6"/><text x="13" y="14" text-anchor="middle" style="fill:${SP_COLOR};font:700 11px var(--display)">${ways}</text></svg>`,
+  merger: `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" rx="2" fill="rgba(59,179,168,.22)" stroke="${MG_COLOR}" stroke-width="1.6"/><path d="M9,6 L13,10 L9,14 M13,10 H18" stroke="${MG_COLOR}" stroke-width="1.6" fill="none"/></svg>`,
+  // Losango e quadrado com » do diagrama do plano (merger e Smart Splitter de lá).
+  planMerger: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="8" y="5" width="10" height="10" transform="rotate(45 13 10)" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/></svg>',
   smart: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M9,6 l4,4 l-4,4 M13,6 l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></svg>',
-  leaf: hollow => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><circle cx="13" cy="10" r="4" fill="${hollow ? 'var(--paper)' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="1.5"/></svg>`,
+  grid: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="none" stroke="var(--grid-line)" stroke-width="1.4"/></svg>',
+  mixed: `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><path d="M1,6 H10 L16,10 H25 M1,14 H10 L16,10" stroke="${'#ffd166'}" stroke-width="2" fill="none"/><path d="M16,10 H25" stroke="#c6a6ff" stroke-width="2.6"/></svg>`,
   num: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><text x="13" y="14" text-anchor="middle" style="fill:var(--ink-dim);font:700 11px var(--display)">#1</text></svg>',
 };
 const pieceIcon = k => (k.t === 's' ? PIECE_ICON.splitter(k.ways) : PIECE_ICON.merger);
 
-// Desenha o design e devolve o texto de cada passo. Cada peça leva data-s = passo em que aparece.
-// per 'piece': cada splitter ou merger vira um passo (numerado no desenho), com a esteira que chega nele.
-function balancerBuild(d, labels, per = 'level') {
-  const steps = [], under = [], over = [], parts = [], links = [];
+// Desenho 2D a partir da montagem 'flat' (vista de cima): cada esteira sai e entra pelo lado de verdade da peça
+// (splitter entra por trás e sai pela frente e pelos lados; merger o contrário), nunca duas no mesmo lado, e anda em
+// curva até a outra porta. Esquema: peças em tamanho fixo, colunas mais largas que as linhas, para caber na tela.
+// Planta: o mesmo desenho em escala (1 m = PLAN_PX px), com a grade de fundações e o espaço que ocupa.
+// Na tela o fluxo vai para a direita: a esquerda da peça fica para cima e a direita para baixo.
+// Cada peça e esteira leva data-s = passo em que aparece; data-id e data-b servem para acender um caminho.
+const PORT_N = { front: [1, 0], back: [-1, 0], left: [0, -1], right: [0, 1] };
+const PLAN_PX = 10;
+function flatSvg(d, lay, labels, per, plan) {
+  const isPart = q => q.t === 's' || q.t === 'm';
+  const sx = plan ? PLAN_PX : 15, sz = plan ? PLAN_PX : 6.5, h = plan ? 1.8 * PLAN_PX : 10;
+  const inW = 92, outW = 100, boxH = 30, f = v => v.toFixed(1);
+  const byId = new Map(lay.pieces.map(q => [q.id, q]));
+  const ins = lay.pieces.filter(q => q.t === 'in'), outs = lay.pieces.filter(q => q.t === 'out');
+  const placed = lay.pieces.filter(q => q.t !== 'sink');
+  const xs = placed.map(q => q.pos[0]), zs = placed.map(q => q.pos[2]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  // Retorno do loop: contorna tudo por cima (entra pelo lado esquerdo do merger) ou por baixo.
+  const loops = lay.belts.filter(b => b.kind === 'loop');
+  const up = loops.filter(b => b.toSide === 'left'), down = loops.filter(b => b.toSide !== 'left');
+  const fp = plan ? planFootprint(lay) : null;
+  const padL = inW + 16, padR = outW + 16;
+  const padT = boxH / 2 + 18 + up.length * 7 + (plan ? 30 : 0), padB = boxH / 2 + 18 + down.length * 7;
+  const X = x => padL + (x - minX) * sx, Y = z => padT + (z - minZ) * sz;
+  const W = Math.ceil(X(maxX) + padR), H = Math.ceil(Y(maxZ) + padB);
+  const out = [];
+  const g = (step, svg, attr = '') => out.push(`<g data-s="${step}"${attr}>${svg}</g>`);
+  if (plan) {
+    // Grade: as peças ficam no meio de uma fundação (colunas a cada 8 m ao longo do fluxo).
+    const grid = [];
+    for (let x = Math.floor((minX - padL / sx) / 8) * 8 + 4; X(x) <= W; x += 8) if (X(x) >= 0) grid.push(`M${f(X(x))},0 V${H}`);
+    for (let z = Math.floor((minZ - padT / sz) / 8) * 8; Y(z) <= H; z += 8) if (Y(z) >= 0) grid.push(`M0,${f(Y(z))} H${W}`);
+    out.push(`<path d="${grid.join(' ')}" stroke="var(--grid-line)" stroke-width="1" fill="none"/>`);
+    const fx = X(fp.min[0]), fz = Y(fp.min[1]);
+    out.push(`<rect x="${f(fx)}" y="${f(fz)}" width="${fp.fw * 8 * sx}" height="${fp.fd * 8 * sz}" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text class="sm" x="${f(fx)}" y="${f(fz - 8)}" style="fill:var(--ok)">${esc(t('fpLabel', fp.fw, fp.fd, fp.mk))}</text>`);
+  }
+  const P = q => [X(q.pos[0]), Y(q.pos[2])];
+  const port = (id, side) => { const q = byId.get(id), [cx, cy] = P(q), n = PORT_N[side], r = isPart(q) ? h : 0; return { x: cx + n[0] * r, y: cy + n[1] * r, n }; };
+  // Cor: a esteira de uma entrada só leva a cor dela; na borboleta, a da faixa de onde sai (como no esquema
+  // antigo); a misturada que sobra leva a cor da saída para onde vai.
+  const laneIn = new Map(ins.map(q => [q.pos[2].toFixed(3), q.inp]));
+  const color = b => {
+    if (byId.get(b.b).t === 'sink') return 'var(--sink)';
+    if (b.kind === 'loop') return 'var(--ink-dim)';
+    if (b.inp >= 0) return inColor(b.inp);
+    const lane = d.net ? laneIn.get(byId.get(b.a).pos[2].toFixed(3)) : undefined;
+    return lane !== undefined ? inColor(lane) : b.out >= 0 ? inColor(b.out) : 'var(--ink-dim)';
+  };
+  const yUp = k => Y(minZ) - boxH / 2 - 10 - k * 7, yDown = k => Y(maxZ) + boxH / 2 + 10 + k * 7;
+  lay.belts.forEach((b, bi) => {
+    const a = port(b.a, b.fromSide), tgt = byId.get(b.b), c = color(b);
+    let path, extra = '';
+    if (tgt.t === 'sink') {
+      const e = { x: a.x + a.n[0] * 20, y: a.y + a.n[1] * 20 };
+      path = `M${f(a.x)},${f(a.y)} L${f(e.x)},${f(e.y)}`;
+      extra = `<text class="sm" x="${f(e.x + (a.n[0] ? 4 : 0))}" y="${f(e.y + (a.n[1] > 0 ? 11 : a.n[1] < 0 ? -3 : 4))}" text-anchor="${a.n[0] ? 'start' : 'middle'}" style="fill:var(--sink)">sink</text>`;
+    } else {
+      const z = port(b.b, b.toSide);
+      if (b.kind === 'loop') {
+        const top = b.toSide === 'left', yL = top ? yUp(up.indexOf(b)) : yDown(down.indexOf(b));
+        const a1 = { x: a.x + a.n[0] * 10, y: a.y + a.n[1] * 10 }, zx = z.n[0] ? z.x + z.n[0] * 12 : z.x;
+        path = `M${f(a.x)},${f(a.y)} L${f(a1.x)},${f(a1.y)} L${f(a1.x)},${f(yL)} L${f(zx)},${f(yL)} L${f(zx)},${f(z.y)} L${f(z.x)},${f(z.y)}`;
+      } else {
+        const k = Math.max(16, Math.min(70, Math.hypot(z.x - a.x, z.y - a.y) * 0.45));
+        path = `M${f(a.x)},${f(a.y)} C${f(a.x + a.n[0] * k)},${f(a.y + a.n[1] * k)} ${f(z.x + z.n[0] * k)},${f(z.y + z.n[1] * k)} ${f(z.x)},${f(z.y)}`;
+      }
+    }
+    g(b.step, `<path d="${path}" fill="none" stroke="${c}" stroke-width="${plan ? 3.2 : 2.4}" stroke-linejoin="round"${b.kind === 'loop' ? ' stroke-dasharray="6 4"' : ''}/>${extra}`, ` data-b="${bi}"`);
+  });
+  const plate = (x, y, w, stroke) => `<polygon points="${f(x)},${f(y)} ${f(x + w - 9)},${f(y)} ${f(x + w)},${f(y + 9)} ${f(x + w)},${f(y + boxH)} ${f(x)},${f(y + boxH)}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
+  lay.pieces.forEach(q => {
+    if (q.t === 'sink') return;
+    const [cx, cy] = P(q);
+    if (isPart(q)) {
+      const sp = q.t === 's', c = sp ? SP_COLOR : MG_COLOR, m = h / 10;
+      const mark = sp ? `<text x="${f(cx)}" y="${f(cy + 4 * m)}" text-anchor="middle" style="fill:${c};font:700 ${Math.round(11 * m)}px var(--display)">${q.ways}</text>`
+        : `<path d="M${f(cx - 3 * m)},${f(cy - 4 * m)} L${f(cx + m)},${f(cy)} L${f(cx - 3 * m)},${f(cy + 4 * m)}" stroke="${c}" stroke-width="${f(1.4 * Math.sqrt(m))}" fill="none"/>`;
+      g(q.step, `<rect x="${f(cx - h)}" y="${f(cy - h)}" width="${f(2 * h)}" height="${f(2 * h)}" rx="2.5" fill="${sp ? '#2a2018' : '#13282a'}" stroke="${c}" stroke-width="1.8"/>${mark}`
+        + (per === 'piece' ? `<text class="pnum" x="${f(cx)}" y="${f(cy - h - 4)}" text-anchor="middle">#${q.step}</text>` : ''), ` data-id="${q.id}"`);
+    } else {
+      const isIn = q.t === 'in', k = isIn ? ins.indexOf(q) : outs.indexOf(q), c = inColor(isIn ? q.inp ?? k : k);
+      const tag = isIn ? labels.ins[k] : labels.outs[k], rate = fmt(isIn ? d.rates[k % d.rates.length] : d.perOut);
+      const x = isIn ? cx - inW : cx, w = isIn ? inW : outW;
+      g(q.step, plate(x, cy - boxH / 2, w, c) + `<text class="lbl" x="${f(x + 9)}" y="${f(cy + 5)}">${esc(tag)}</text><text class="rate" x="${f(x + w - 9)}" y="${f(cy + 5)}" text-anchor="end">${rate}</text>`, ` data-id="${q.id}"`);
+    }
+  });
+  return `<svg class="bsvg flat${plan ? ' plan' : ''}" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${out.join('')}</svg>`;
+}
+
+// Blueprint seu: o desenho é a caixa do blueprint entre as entradas e as saídas, em três passos.
+function balancerBuild(d, labels) {
+  const steps = [], under = [], over = [];
   const step = text => steps.push(text) - 1;
-  // p: a peça dona do desenho no modo por peça (pode ser marcada depois, quando a peça de destino existir).
-  const g = (layer, s, svg, p = null) => { const o = { s, p, svg }; layer.push(o); return o; };
-  const part = (s, k, x, y, where, ways) => parts.push({ s, t: k, x, y, where, ways }) - 1;
-  // Ligação para o texto do passo: ponta é o índice da peça ou { t: 'in' | 'out', idx } ou { t: 'sink' }.
-  const link = (a, b, loop = false) => links.push({ a, b, loop });
-  const IN = idx => ({ t: 'in', idx }), OUT = idx => ({ t: 'out', idx }), SINK = { t: 'sink' };
-  // Splitter de árvore: e = { o: esteira que chega nele (desenhada no nível de cima), from: de onde ela vem }.
-  const treeNode = (s, x, y, where, ways, e) => { const p = part(s, 's', x, y, where, ways); e.o.p = p; link(e.from, p); return p; };
+  const g = (layer, s, svg) => layer.push(`<g data-s="${s}">${svg}</g>`);
   const ins = labels.ins, outs = labels.outs;
-  const N = d.N, M = d.M, n = d.n, top = 14, boxH = 34, inW = 92, outW = 100;
-  const loop = d.kind.endsWith('-loop'), sink = d.kind.endsWith('-sink');
+  const N = d.N, M = d.M, top = 14, boxH = 34, inW = 92, outW = 100;
   const plate = (x, y, w, stroke) => `<polygon points="${x},${y} ${x + w - 9},${y} ${x + w},${y + 9} ${x + w},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
   const box = (x, yc, w, tag, rate, stroke) => plate(x, yc - boxH / 2, w, stroke)
     + `<text class="lbl" x="${x + 9}" y="${yc + 5}">${esc(tag)}</text><text class="rate" x="${x + w - 9}" y="${yc + 5}" text-anchor="end">${rate}</text>`;
-  const splitter = (x, y, ways) => `<rect x="${x - 11}" y="${y - 9}" width="22" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.5"/><text class="sm" x="${x}" y="${y + 4}" text-anchor="middle" style="fill:var(--ficsit)">${ways}</text>`;
-  const merger = (x, y) => `<rect x="${x - 6.5}" y="${y - 6.5}" width="13" height="13" transform="rotate(45 ${x} ${y})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/>`;
   const curve = (x1, y1, x2, y2) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`;
-  const belt = (path, color, w = 2, dash = '') => `<path d="${path}" fill="none" stroke="${color}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
-  const leaf = (x, y, color, hollow) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${hollow ? 'var(--paper)' : color}" stroke="${color}" stroke-width="1.5"/>`;
-  const sinkStub = (s, x, y, from) => {
-    g(under, s, belt(`M${x},${y} h22`, 'var(--sink)', 2));
-    g(over, s, `<text class="sm" x="${x + 26}" y="${y + 4}" style="fill:var(--sink)">sink</text>`);
-    link(from, SINK);
-  };
+  const belt = (path, color, w = 2) => `<path d="${path}" fill="none" stroke="${color}" stroke-width="${w}"/>`;
   const inStep = () => step(t('stIn', N, ins.join(', '), rateList(d.rates)));
-  let W, H;
-
-  if (d.kind === 'blueprint') {
-    const gap = 46, rows = Math.max(N, M), cH = rows * gap - (gap - boxH);
-    const yAt = (i, k) => top + (cH - (k * gap - (gap - boxH))) / 2 + i * gap + boxH / 2;
-    const bx = inW + 80, bw = 150, xOut = bx + bw + 80;
-    W = xOut + outW + 2;
-    H = top * 2 + cH;
-    const s0 = inStep();
-    for (let i = 0; i < N; i++) g(over, s0, box(0, yAt(i, N), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-    const s1 = step(t('stBpBox', d.bp.n, d.bp.m, d.bp.n - N));
-    for (let i = 0; i < N; i++) g(under, s1, belt(curve(inW, yAt(i, N), bx, yAt(i, N)), inColor(i), 3));
-    g(over, s1, `<polygon points="${bx},${top} ${bx + bw - 12},${top} ${bx + bw},${top + 12} ${bx + bw},${top + cH} ${bx},${top + cH}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
-      <text class="lbl" x="${bx + bw / 2}" y="${top + cH / 2 + 2}" text-anchor="middle" style="fill:var(--ficsit);font-size:22px">${d.bp.n}→${d.bp.m}</text>
-      <text class="sm" x="${bx + bw / 2}" y="${top + cH / 2 + 20}" text-anchor="middle">blueprint</text>`);
-    const s2 = step(t('stOut', M, fmt(d.perOut)));
-    for (let j = 0; j < M; j++) {
-      g(under, s2, belt(curve(bx + bw, yAt(j, M), xOut, yAt(j, M)), 'var(--ink)', 3));
-      g(over, s2, box(xOut, yAt(j, M), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
-    }
-  } else if (d.net) {
-    // Uma linha por faixa (numerada à esquerda); cada rodada é uma coluna de splitters e outra de mergers.
-    // Faixa vazia não tem splitter; faixa que recebe uma parte só segue direto, sem merger.
-    const net = d.net, K = net.K, R = net.rounds.length, gap = 46, numW = 20;
-    const laneIn = Array(K).fill(-1);
-    net.inLane.forEach((l, i) => { laneIn[l] = i; });
-    const hasLM = net.loopMergers.length > 0;
-    const cH = K * gap - (gap - boxH);
-    H = top * 2 + cH + (loop ? 12 + net.extra.length * 6 : 0);
-    const y = l => top + l * gap + boxH / 2;
-    const x0 = numW + inW, xLM = x0 + 30, xStart = hasLM ? xLM + 20 : x0;
-    const colS = s => xStart + 50 + s * 160, colM = s => colS(s) + 90;
-    const merged = Array(K).fill(false);
-    const xAfter = (s, l) => (s < 0 ? (laneIn[l] >= 0 && net.loopMergers.includes(l) ? xLM + 7 : laneIn[l] >= 0 ? x0 : x0 + 16) : merged[l] ? colM(s) + 7 : colM(s));
-    const xEnd = colM(R - 1) + 7, xOut = xEnd + 50;
-    W = xOut + outW + 2;
-    const color = l => (laneIn[l] >= 0 ? inColor(laneIn[l]) : 'var(--ink-dim)');
-    // De onde vem o item de cada faixa agora (peça ou entrada) e a primeira peça da faixa (destino do loop).
-    const cur = laneIn.map(i => (i >= 0 ? IN(i) : null)), first = Array(K).fill(null);
-    const s0 = inStep();
-    for (let l = 0; l < K; l++) {
-      g(over, s0, `<text class="sm" x="${numW - 6}" y="${y(l) + 4}" text-anchor="end" style="fill:var(--ink-dim)">${l + 1}</text>`);
-      const i = laneIn[l];
-      if (i >= 0) g(over, s0, box(numW, y(l), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-      else g(over, s0, `<rect x="${numW}" y="${y(l) - boxH / 2}" width="${inW}" height="${boxH}" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/><text class="sm" x="${numW + inW / 2}" y="${y(l) + 4}" text-anchor="middle" style="fill:var(--ink-dim)">${esc(t(loop && net.extra.includes(l) ? 'bfReturn' : 'bfEmpty'))}</text>`);
-    }
-    if (hasLM) {
-      const s = step(t('stLoopM', net.loopMergers.length));
-      net.loopMergers.forEach(l => {
-        const p = part(s, 'm', xLM, y(l), t('where2dLaneLoop', l + 1));
-        g(under, s, belt(`M${x0},${y(l)} L${xLM - 7},${y(l)}`, color(l), 3), p);
-        g(over, s, merger(xLM, y(l)), p);
-        link(cur[l], p);
-        cur[l] = first[l] = p;
-      });
-    }
-    net.rounds.forEach((rd, s) => {
-      const ss = step(t('stBfSplit', s + 1, rd.splits.length, rd.f)), sp = Array(K).fill(null);
-      rd.splits.forEach(l => {
-        const p = sp[l] = part(ss, 's', colS(s), y(l), t('where2dLane', l + 1, s + 1), rd.f);
-        g(under, ss, belt(`M${xAfter(s - 1, l)},${y(l)} L${colS(s) - 11},${y(l)}`, color(l), 3), p);
-        g(over, ss, splitter(colS(s), y(l), rd.f), p);
-        if (cur[l] !== null) link(cur[l], p);
-        if (first[l] === null) first[l] = p;
-      });
-      // Cada ligação por escrito: "1 ← 1 + 3 + 5" é o merger da faixa 1 recebendo dos splitters das faixas 1, 3 e 5.
-      const linkTxt = m => `${m.lane + 1} ← ${m.from.map(j => j + 1).join(' + ')}`;
-      const joins = rd.merges.filter(m => m.from.length > 1).map(linkTxt).join('; ');
-      const pass = rd.merges.filter(m => m.from.length === 1).map(linkTxt).join('; ');
-      const sm = step(joins ? t('stBfMerge', s + 1, joins, pass) : t('stBfFan', s + 1, pass));
-      // Faixa que recebe uma parte só segue direto do splitter: no modo por peça essa esteira vai junto dele.
-      const next = Array(K).fill(null);
-      rd.merges.forEach(m => {
-        merged[m.lane] = m.from.length > 1;
-        const p = next[m.lane] = merged[m.lane] ? part(sm, 'm', colM(s), y(m.lane), t('where2dLane', m.lane + 1, s + 1)) : sp[m.from[0]];
-        for (const j of m.from) {
-          g(under, sm, belt(curve(colS(s) + 11, y(j), merged[m.lane] ? colM(s) - 7 : colM(s), y(m.lane)), color(j), 1.6), p);
-          if (merged[m.lane]) link(sp[j], p);
-        }
-        if (merged[m.lane]) g(over, sm, merger(colM(s), y(m.lane)), p);
-      });
-      next.forEach((p, l) => { cur[l] = p; });
-    });
-    const xLast = l => xAfter(R - 1, l);
-    if (net.extra.length && loop) {
-      const s = step(t('stBfLoopBack', net.extra.length, net.extra.map(l => l + 1).join(', '), M));
-      net.extra.forEach((l, k) => {
-        const yb = top + cH + 8 + k * 6, xr = xEnd + 12 + k * 6;
-        const end = laneIn[l] >= 0 ? `H${xLM} V${y(l) + 7}` : `H${x0 + 8} V${y(l)} H${x0 + 16}`;
-        g(under, s, belt(`M${xLast(l)},${y(l)} H${xr} V${yb} ${end}`, color(l), 1.6, '5 3'));
-        link(cur[l], first[l], true);
-      });
-    }
-    if (net.extra.length && sink) {
-      const s = step(t('stSinkOut', net.extra.length));
-      net.extra.forEach(l => sinkStub(s, xLast(l), y(l), cur[l]));
-    }
-    const so = step(t('stOut', M, fmt(d.perOut)));
-    net.outLane.forEach((l, j) => {
-      link(cur[l], OUT(j));
-      g(under, so, belt(`M${xLast(l)},${y(l)} L${xOut},${y(l)}`, 'var(--ink)', 3));
-      g(over, so, box(xOut, y(l), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
-    });
-  } else if (d.kind.startsWith('funnel')) {
-    const F = d.tree.factors, L = F.length, C = d.chain.length;
-    const inGap = 44, cH = Math.max(N * inGap - (inGap - boxH), n * 42);
-    H = top * 2 + cH + (loop ? 16 : 0);
-    const yIn = i => top + (cH - (N * inGap - (inGap - boxH))) / 2 + i * inGap + boxH / 2;
-    const yMid = top + cH / 2;
-    const xCh = c => inW + 54 + c * 34;
-    const xLM = xCh(C - 1) + 46;
-    const xRoot = loop ? xLM + 42 : xCh(C - 1) + 52;
-    const xNode = k => xRoot + k * 58, xLeaf = xNode(L - 1) + 40, xOut = xLeaf + 56;
-    W = xOut + outW + 2;
-    const leafY = j => top + (j + 0.5) * cH / n;
-    const nodeY = (k, q) => { const span = n / d.tree.levels[k].count; return top + (q * span + span / 2) * cH / n; };
-    const treeIn = loop ? d.total * n / M : d.total;
-    const s0 = inStep();
-    for (let i = 0; i < N; i++) g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-    const sm = step(t('stFunnelMerge', N, C, fmt(d.total)));
-    const mp = [];
-    for (let c = 0; c < C; c++) {
-      mp[c] = part(sm, 'm', xCh(c), yMid, t('where2dFunnel', c + 1));
-      if (c) { g(under, sm, belt(`M${xCh(c - 1) + 7},${yMid} L${xCh(c) - 7},${yMid}`, 'var(--ink)', 3), mp[c]); link(mp[c - 1], mp[c]); }
-      g(over, sm, merger(xCh(c), yMid), mp[c]);
-    }
-    for (let i = 0; i < N; i++) {
-      g(under, sm, belt(curve(inW, yIn(i), xCh(chainSlot(i)) - 7, yMid), inColor(i), 2.2), mp[chainSlot(i)]);
-      link(IN(i), mp[chainSlot(i)]);
-    }
-    let into = { o: g(under, sm, belt(`M${xCh(C - 1) + 7},${yMid} L${loop ? xLM - 7 : xRoot - 11},${yMid}`, 'var(--ink)', 3.4)), from: mp[C - 1] }, lm = null;
-    if (loop) {
-      const s = step(t('stLoopM', 1));
-      lm = part(s, 'm', xLM, yMid, t('where2dFunnelLoop'));
-      into.o.p = lm;
-      link(into.from, lm);
-      g(over, s, merger(xLM, yMid), lm);
-      into = { o: g(under, s, belt(`M${xLM + 7},${yMid} L${xRoot - 11},${yMid}`, 'var(--ink)', 3.4)), from: lm };
-    }
-    let prod = 1, pend = [into];
-    const leafP = [];
-    for (let k = 0; k < L; k++) {
-      prod *= F[k];
-      const s = step(k === 0 ? t('stLevelFunnel', F[0], fmt(treeIn / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn / prod)));
-      const next = [];
-      for (let q = 0; q < d.tree.levels[k].count; q++) {
-        const x = xNode(k), y = nodeY(k, q), p = treeNode(s, x, y, t('where2dLevel', k + 1, q + 1), F[k], pend[q]);
-        for (let c = 0; c < F[k]; c++) {
-          const child = q * F[k] + c;
-          if (k < L - 1) next[child] = { o: g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(k + 1, child)), 'var(--ink)', 2)), from: p };
-          else {
-            leafP[child] = p;
-            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(child)), 'var(--ink)', 1.8), p);
-            g(over, s, leaf(xLeaf, leafY(child), child >= M && sink ? 'var(--sink)' : 'var(--ink)', child >= M && loop), p);
-          }
-        }
-        g(over, s, splitter(x, y, F[k]), p);
-      }
-      pend = next;
-    }
-    if (d.extra && loop) {
-      const s = step(t('stLoopBack', d.extra, M));
-      for (let j = M; j < n; j++) {
-        g(under, s, belt(`M${xLeaf + 4},${leafY(j)} h10 V${top + cH + 6 + (j - M) * 4} H${xLM} V${yMid + 7}`, 'var(--ink-dim)', 1.6, '5 3'));
-        link(leafP[j], lm, true);
-      }
-    }
-    if (d.extra && sink) {
-      const s = step(t('stSinkOut', d.extra));
-      for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(j), leafP[j]);
-    }
-    const so = step(t('stOut', M, fmt(d.perOut)));
-    for (let j = 0; j < M; j++) {
-      link(leafP[j], OUT(j));
-      g(under, so, belt(`M${xLeaf + 4},${leafY(j)} L${xOut},${leafY(j)}`, 'var(--ink)', 3));
-      g(over, so, box(xOut, leafY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
-    }
-  } else {
-    // Matriz: uma faixa por entrada com a sua árvore; as saídas se espalham pela altura toda à direita.
-    // Com metades, cada entrada passa por um splitter em 2 e ocupa duas faixas (V = 2N), uma por metade.
-    const halves = d.kind === 'matrix-split-loop', V = halves ? 2 * N : N, own = i => (halves ? i >> 1 : i);
-    const bandTag = i => (halves ? `${ins[own(i)]}/${(i & 1) + 1}` : ins[i]);
-    const F = d.tree.factors, L = F.length, C = d.chain.length;
-    // A faixa cresce se as saídas (uma caixa a cada 42px) não couberem na altura das entradas.
-    const BG = loop ? 30 : 16, bandH = Math.max(n * 18, boxH + 6, (M * 42 + BG) / V - BG);
-    const cH = V * (bandH + BG) - BG;
-    H = top * 2 + cH + (loop ? 8 : 0);
-    const xHalf = inW + 26, shift = halves ? 52 : 0;
-    const xLM = inW + 28 + shift, xRoot = inW + (loop ? 64 : 36) + shift;
-    const xNode = k => xRoot + k * 58, xLeaf = xNode(L - 1) + 36;
-    const xMerg = c => xLeaf + 120 + c * 32;
-    const xOut = (C ? xMerg(C - 1) : xLeaf + 90) + 36;
-    W = xOut + outW + 2;
-    const bandY = i => top + i * (bandH + BG);
-    const yc = i => bandY(i) + bandH / 2;
-    const leafY = (i, j) => bandY(i) + (j + 0.5) * bandH / n;
-    const nodeY = (i, k, q) => { const span = n / d.tree.levels[k].count; return bandY(i) + (q * span + span / 2) * bandH / n; };
-    const outY = j => top + (j + 0.5) * cH / M;
-    const bandRate = i => (halves ? d.rates[own(i)] / 2 : d.rates[i]);
-    const treeIn = i => (loop ? bandRate(i) * n / M : bandRate(i));
-    // head[i]: a esteira que chega no começo da faixa i e de onde ela vem; leafP[i][j]: o splitter da folha j.
-    const head = [], lm = [], leafP = Array.from({ length: V }, () => []), lastM = [];
-    const s0 = inStep();
-    if (halves) {
-      const yIn = i => (yc(2 * i) + yc(2 * i + 1)) / 2;
-      const into = [];
-      for (let i = 0; i < N; i++) {
-        g(over, s0, box(0, yIn(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-        into[i] = g(under, s0, belt(`M${inW},${yIn(i)} L${xHalf - 11},${yIn(i)}`, inColor(i), 3));
-      }
-      const sh = step(t('stHalves', N, fmt(Math.max(...d.rates) / 2)));
-      for (let i = 0; i < N; i++) {
-        const hp = treeNode(sh, xHalf, yIn(i), t('where2dHalves', ins[i]), 2, { o: into[i], from: IN(i) });
-        for (const b of [2 * i, 2 * i + 1]) head[b] = { o: g(under, sh, belt(curve(xHalf + 11, yIn(i), xLM - 7, yc(b)), inColor(i), 2.4)), from: hp };
-        g(over, sh, splitter(xHalf, yIn(i), 2), hp);
-      }
-    } else {
-      for (let i = 0; i < N; i++) {
-        g(over, s0, box(0, yc(i), inW, ins[i], fmt(d.rates[i]), inColor(i)));
-        head[i] = { o: g(under, s0, belt(`M${inW},${yc(i)} L${loop ? xLM - 7 : xRoot - 11},${yc(i)}`, inColor(i), 3)), from: IN(i) };
-      }
-    }
-    if (loop) {
-      const s = step(t('stLoopM', V));
-      for (let i = 0; i < V; i++) {
-        lm[i] = part(s, 'm', xLM, yc(i), t('where2dLoop', bandTag(i)));
-        head[i].o.p = lm[i];
-        link(head[i].from, lm[i]);
-        g(over, s, merger(xLM, yc(i)), lm[i]);
-        head[i] = { o: g(under, s, belt(`M${xLM + 7},${yc(i)} L${xRoot - 11},${yc(i)}`, inColor(own(i)), 3)), from: lm[i] };
-      }
-    }
-    const pend = head.map(e => [e]);
-    const drawLevel = (i, k, s) => {
-      const next = [];
-      for (let q = 0; q < d.tree.levels[k].count; q++) {
-        const x = xNode(k), y = nodeY(i, k, q), p = treeNode(s, x, y, t('where2dTree', bandTag(i), k + 1, q + 1), F[k], pend[i][q]);
-        for (let c = 0; c < F[k]; c++) {
-          const child = q * F[k] + c;
-          if (k < L - 1) next[child] = { o: g(under, s, belt(curve(x + 11, y, xNode(k + 1) - 11, nodeY(i, k + 1, child)), inColor(own(i)), 1.8)), from: p };
-          else {
-            leafP[i][child] = p;
-            g(under, s, belt(curve(x + 11, y, xLeaf, leafY(i, child)), inColor(own(i)), 1.6), p);
-            g(over, s, leaf(xLeaf, leafY(i, child), child >= M && sink ? 'var(--sink)' : inColor(own(i)), child >= M && loop), p);
-          }
-        }
-        g(over, s, splitter(x, y, F[k]), p);
-      }
-      pend[i] = next;
-    };
-    let prod = 1;
-    for (let k = 0; k < L; k++) {
-      prod *= F[k];
-      const s = step(k === 0 ? t('stLevelFirst', bandTag(0), F[0], fmt(treeIn(0) / prod)) : t('stLevelNext', d.tree.levels[k].count, F[k], prod, fmt(treeIn(0) / prod)));
-      drawLevel(0, k, s);
-    }
-    if (V > 1) {
-      const s = step(t('stRepeat', Array.from({ length: V - 1 }, (_, i) => bandTag(i + 1)).join(', '), d.tree.splitters));
-      for (let i = 1; i < V; i++) for (let k = 0; k < L; k++) drawLevel(i, k, s);
-    }
-    if (d.extra && loop) {
-      const s = step(t('stLoopBack', d.extra, M));
-      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) {
-        const yb = bandY(i) + bandH + 8 + (j - M) * 4;
-        g(under, s, belt(`M${xLeaf + 4},${leafY(i, j)} h10 V${yb} H${xLM} V${yc(i) + 7}`, inColor(own(i)), 1.6, '5 3'));
-        link(leafP[i][j], lm[i], true);
-      }
-    }
-    if (d.extra && sink) {
-      const s = step(t('stSinkOut', d.extra));
-      for (let i = 0; i < V; i++) for (let j = M; j < n; j++) sinkStub(s, xLeaf + 4, leafY(i, j), leafP[i][j]);
-    }
-    const mergeOut = (j, s) => {
-      const mp = [];
-      for (let c = 0; c < C; c++) mp[c] = part(s, 'm', xMerg(c), outY(j), t('where2dOut', outs[j], c + 1));
-      for (let i = 0; i < V; i++) {
-        g(under, s, belt(curve(xLeaf + 4, leafY(i, j), xMerg(chainSlot(i)) - 7, outY(j)), inColor(own(i)), 1.4), mp[chainSlot(i)]);
-        link(leafP[i][j], mp[chainSlot(i)]);
-      }
-      for (let c = 0; c < C; c++) {
-        if (c) { g(under, s, belt(`M${xMerg(c - 1) + 7},${outY(j)} L${xMerg(c) - 7},${outY(j)}`, 'var(--ink)', 2.4), mp[c]); link(mp[c - 1], mp[c]); }
-        g(over, s, merger(xMerg(c), outY(j)), mp[c]);
-      }
-      lastM[j] = mp[C - 1];
-    };
-    if (V > 1) {
-      mergeOut(0, step(t('stMerge1', outs[0], V, C)));
-      if (M > 1) {
-        const s = step(t('stMergeRest', outs.slice(1).join(', ')));
-        for (let j = 1; j < M; j++) mergeOut(j, s);
-      }
-    }
-    const so = step(t('stOut', M, fmt(d.perOut)));
-    for (let j = 0; j < M; j++) {
-      link(V > 1 ? lastM[j] : leafP[0][j], OUT(j));
-      g(under, so, V > 1 ? belt(`M${xMerg(C - 1) + 7},${outY(j)} L${xOut},${outY(j)}`, 'var(--ink)', 3) : belt(curve(xLeaf + 4, leafY(0, j), xOut, outY(j)), inColor(0), 2));
-      g(over, so, box(xOut, outY(j), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
-    }
+  const gap = 46, rows = Math.max(N, M), cH = rows * gap - (gap - boxH);
+  const yAt = (i, k) => top + (cH - (k * gap - (gap - boxH))) / 2 + i * gap + boxH / 2;
+  const bx = inW + 80, bw = 150, xOut = bx + bw + 80;
+  const W = xOut + outW + 2, H = top * 2 + cH;
+  const s0 = inStep();
+  for (let i = 0; i < N; i++) g(over, s0, box(0, yAt(i, N), inW, ins[i], fmt(d.rates[i]), inColor(i)));
+  const s1 = step(t('stBpBox', d.bp.n, d.bp.m, d.bp.n - N));
+  for (let i = 0; i < N; i++) g(under, s1, belt(curve(inW, yAt(i, N), bx, yAt(i, N)), inColor(i), 3));
+  g(over, s1, `<polygon points="${bx},${top} ${bx + bw - 12},${top} ${bx + bw},${top + 12} ${bx + bw},${top + cH} ${bx},${top + cH}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+    <text class="lbl" x="${bx + bw / 2}" y="${top + cH / 2 + 2}" text-anchor="middle" style="fill:var(--ficsit);font-size:22px">${d.bp.n}→${d.bp.m}</text>
+    <text class="sm" x="${bx + bw / 2}" y="${top + cH / 2 + 20}" text-anchor="middle">blueprint</text>`);
+  const s2 = step(t('stOut', M, fmt(d.perOut)));
+  for (let j = 0; j < M; j++) {
+    g(under, s2, belt(curve(bx + bw, yAt(j, M), xOut, yAt(j, M)), 'var(--ink)', 3));
+    g(over, s2, box(xOut, yAt(j, M), outW, outs[j], fmt(d.perOut), 'var(--ok)'));
   }
-  // Ordem final: por peça, o nível que tem peças vira um passo por peça, na ordem em que foram desenhadas;
-  // o que não é de peça nenhuma (entradas, retorno do loop, sink, saídas) fica no passo do nível.
-  const byPiece = per === 'piece' && parts.length > 0;
-  const seq = [];
-  steps.forEach((_, s) => {
-    const mine = byPiece ? parts.map((_, p) => p).filter(p => parts[p].s === s) : [];
-    if (mine.length) mine.forEach(p => seq.push({ s, p })); else seq.push({ s, p: null });
-  });
-  const levelAt = [], pieceAt = [], numOf = [];
-  let num = 0;
-  seq.forEach((x, k) => {
-    if (levelAt[x.s] === undefined) levelAt[x.s] = k;
-    if (x.p !== null) { pieceAt[x.p] = k; numOf[x.p] = ++num; }
-  });
-  if (byPiece) parts.forEach((pt, p) => g(over, pt.s, `<text class="pnum" x="${pt.x}" y="${pt.y - 13}" text-anchor="middle">#${numOf[p]}</text>`, p));
-  const at = o => (byPiece && o.p !== null ? pieceAt[o.p] : levelAt[o.s]);
-  const ref = (r, k) => (typeof r === 'number' ? { t: parts[r].t, num: numOf[r], pending: pieceAt[r] > k } : r);
-  const texts = seq.map((x, k) => {
-    if (x.p === null) return steps[x.s];
-    const pt = parts[x.p];
-    const ins = links.filter(l => l.b === x.p).map(l => ({ ...ref(l.a, k), loop: l.loop }));
-    const outs = links.filter(l => l.a === x.p).map(l => ({ ...ref(l.b, k), loop: l.loop }));
-    return pieceText2d({ num: numOf[x.p], t: pt.t, ways: pt.ways, nin: ins.length, where: pt.where, ins, outs }, labels);
-  });
-  const draw = layer => layer.map(o => `<g data-s="${at(o)}">${o.svg}</g>`).join('');
-  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${draw(under)}${draw(over)}</svg>`;
-  const kinds = seq.map(x => (x.p === null ? null : { t: parts[x.p].t, ways: parts[x.p].ways }));
-  return { svg, steps: texts, kinds };
+  const svg = `<svg class="bsvg" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${under.join('')}${over.join('')}</svg>`;
+  return { svg, steps };
 }
 
 // ---- Cena 3D (Three.js sob demanda) ----
@@ -4904,20 +4721,31 @@ async function mount3d(stage, d, labels, lay, opts = {}) {
   return { setStep, recenter, dispose, focus };
 }
 
+// Montagem da planta, guardada por formato: o roteamento das esteiras pode levar segundos nos balancers grandes.
+const FLAT_CACHE = new Map();
+const flatLayout = d => {
+  const k = `${designKey(d)}|${d.N}|${d.M}`;
+  if (!FLAT_CACHE.has(k)) FLAT_CACHE.set(k, layout3d(d, 'flat'));
+  return FLAT_CACHE.get(k);
+};
+
 // Passo a passo (como o Ponder do Create): a peça nova aparece como holograma, as anteriores ficam sólidas.
 // view: '2d' (SVG) ou a montagem 3D ('towers' | 'floors'); opts.onMode troca a montagem 3D.
 function mountPonder(root, d, labels, view = '2d', opts = {}) {
   if (root._stop) root._stop();
   const in3d = view !== '2d';
-  // Por peça: um passo por splitter ou merger (byPiece3d); por nível: um por torre ou andar.
+  // No 2D, o desenho vem da montagem 'flat' (vista de cima): compacto no esquema, em escala na planta.
+  // O blueprint seu é uma caixa só.
+  const flat2d = !in3d && d.kind !== 'blueprint', plan = flat2d && opts.view2d === 'plan', mode = in3d ? view : 'flat';
+  // Por peça: um passo por splitter ou merger (byPiece3d); por nível: um por torre, andar ou coluna.
   const per = opts.per === 'piece' ? 'piece' : 'level';
-  const lay0 = in3d ? opts.lay || layout3d(d, view) : null;
-  const lay = in3d && per === 'piece' ? byPiece3d(lay0) : lay0;
-  const { svg, steps, kinds = [] } = in3d
-    ? { svg: '', kinds: lay.steps.map(st => (st.key === 'piece' ? { t: st.t, ways: st.ways } : null)), steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
-      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, view)
-      : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
-    : balancerBuild(d, labels, per);
+  const lay0 = in3d || flat2d ? opts.lay || (flat2d ? flatLayout(d) : layout3d(d, view)) : null;
+  const lay = lay0 && per === 'piece' ? byPiece3d(lay0) : lay0;
+  const { svg, steps, kinds = [] } = lay
+    ? { svg: flat2d ? flatSvg(d, lay, labels, per, plan) : '', kinds: lay.steps.map(st => (st.key === 'piece' ? { t: st.t, ways: st.ways } : null)), steps: lay.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
+      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, mode)
+      : t('stLevel3d', mode, st.level, st.sp, st.ways, st.mg, st.up, st.down))) }
+    : balancerBuild(d, labels);
   const K = steps.length;
   let cur = K, timer = null, scene = null;
   const matrix = !d.kind.startsWith('funnel');
@@ -4926,7 +4754,9 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <div class="seg" role="radiogroup" aria-label="${esc(t('per3dLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tip3dPer')}
       <button type="button" class="pbtn" data-recenter>${t('recenter3d')}</button></div>` : '';
   // No 2D o mesmo Por nível / Por peça fica acima do desenho (o blueprint é uma peça só).
-  const ctl2d = !in3d && d.kind !== 'blueprint' ? `<div class="pmode"><span>${t('perLabel')}</span>
+  const ctl2d = !in3d && d.kind !== 'blueprint' ? `<div class="pmode"><span>${t('view2dLabel')}</span>
+      <div class="seg" role="radiogroup" aria-label="${esc(t('view2dLabel'))}">${['scheme', 'plan'].map(v => `<button type="button" role="radio" aria-checked="${v === (plan ? 'plan' : 'scheme')}" data-v2d="${v}">${t('view2d' + cap1(v))}</button>`).join('')}</div>${tip('tipView2d')}
+      <span>${t('perLabel')}</span>
       <div class="seg" role="radiogroup" aria-label="${esc(t('perLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tipPer2d')}</div>` : '';
   root.innerHTML = `<div class="ponder" tabindex="-1">${ctl2d}
     <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}</div>
@@ -4946,8 +4776,8 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       ${in3d || d.kind === 'blueprint' ? '' : [
         d.pieces.splitters ? `<span>${PIECE_ICON.splitter(d.net ? d.net.rounds[0].f : d.tree.factors[0])}${t('lgSplitWays')}</span>` : '',
         d.pieces.mergers ? `<span>${PIECE_ICON.merger}${t('lgMergerJoin')}</span>` : '',
-        d.net ? '' : `<span>${PIECE_ICON.leaf(false)}${t('lgLeaf')}</span>`,
-        !d.net && d.kind.endsWith('-loop') ? `<span>${PIECE_ICON.leaf(true)}${t('lgLeafLoop')}</span>` : '',
+        `<span>${PIECE_ICON.mixed}${t('lgMixed')}</span>`,
+        plan ? `<span>${PIECE_ICON.grid}${t('lgGrid')}</span>` : '',
         per === 'piece' ? `<span>${PIECE_ICON.num}${t('lgPieceNum')}</span>` : '',
       ].join('')}
       <span><i class="holo"></i>${t('lgHolo')}</span>
@@ -5007,7 +4837,27 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
   q('.pmode')?.addEventListener('click', e => {
     const pv = e.target.closest('[data-per]');
     if (pv && pv.dataset.per !== per && opts.onPer) opts.onPer(pv.dataset.per);
+    const v2 = e.target.closest('[data-v2d]');
+    if (v2 && v2.dataset.v2d !== (plan ? 'plan' : 'scheme') && opts.onView2d) opts.onView2d(v2.dataset.v2d);
   });
+  // Planta: passar o mouse ou tocar numa peça, entrada ou saída deixa aceso só o caminho dela (como no 3D).
+  if (flat2d) {
+    const st = q('.bsvg');
+    const light = id => {
+      const f = id === null ? null : focus3d(lay, id);
+      st.classList.toggle('focusing', !!f);
+      st.querySelectorAll('[data-id]').forEach(el => el.classList.toggle('lit', !!f && f.pieces.has(+el.dataset.id)));
+      st.querySelectorAll('[data-b]').forEach(el => el.classList.toggle('lit', !!f && f.belts.has(+el.dataset.b)));
+    };
+    let pinned = null;
+    st.addEventListener('pointerover', e => { if (pinned === null) { const el = e.target.closest('[data-id]'); light(el ? +el.dataset.id : null); } });
+    st.addEventListener('pointerleave', () => { if (pinned === null) light(null); });
+    st.addEventListener('click', e => {
+      const el = e.target.closest('[data-id]'), id = el ? +el.dataset.id : null;
+      pinned = id === pinned ? null : id;
+      light(pinned);
+    });
+  }
   if (in3d) {
     const token = {};
     root._token = token;
@@ -5108,14 +4958,17 @@ function workbench(el, ctx) {
   const bfMode = isBf(d), pref = bfMode ? ctx.mode3dBf : ctx.mode3d;
   const mode3d = pref === 'floors' || pref === 'towers' ? pref : bfMode ? 'floors' : 'towers';
   const fl = style === '3d' ? layout3d(d, mode3d) : null;
+  // Normal e borboleta mostram a planta: o espaço que ocupa e o Blueprint Designer que comporta.
+  const pl = style !== '3d' && d.kind !== 'blueprint' ? flatLayout(d) : null, fp = pl && ctx.view2d === 'plan' ? planFootprint(pl) : null;
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
   el.innerHTML = `${styleBar}<div class="wb">
-    <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}${fl ? `<p class="hint">${t('vertNote')}</p>` : ''}</div></div>
+    <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}${fl ? `<p class="hint">${t('vertNote')}</p>` : ''}${fp ? `<p class="hint">${t('planNote')}</p>` : ''}</div></div>
     <aside class="wb-side">
       <div class="wb-head"><span class="wb-shape num">${d.N}→${d.M}</span><span class="wb-name">${esc(cap1(designName(d)))}${tag(d)}</span></div>
       <dl class="pc-grid num">
         ${pc.blueprints ? `<div><dt>Blueprint</dt><dd>${pc.blueprints}</dd></div>` : `<div><dt>${t('thSplitters')}</dt><dd>${pc.splitters}</dd></div><div><dt>${t('thMergers')}</dt><dd>${pc.mergers}</dd></div>`}
         ${fl ? `<div><dt>${t('thLifts')}</dt><dd>${fl.lifts}</dd></div>` : ''}
+        ${fp ? `<div class="pc-space"><dt>${t('thSpace')}${tip('tipSpace')}</dt><dd>${t('spaceVal', fp.fw, fp.fd)}<small>${t('spaceM', fp.w, fp.d)}</small></dd><dd class="${fp.mk ? 'ok' : 'bad'}">${fp.mk ? t('bpFits', fp.mk) : t('bpNone')}</dd></div>` : ''}
         <div><dt>${t('thPerOut')}</dt><dd>${fmt(d.perOut)}<small>/min</small></dd></div>
       </dl>
       <div>${d === best ? `<h4>${t('whyTitle')}</h4><p>${esc(whyText(cands))}</p>` : `<h4>${t('whyNotTitle')}</h4><p>${esc(`${cap1(designName(best))}: ${whyText([best, d])}`)}</p>`}</div>
@@ -5135,7 +4988,8 @@ function workbench(el, ctx) {
   </div>
   <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, fl ? mode3d : '2d', {
-    lay: fl, per: ctx.per3d,
+    lay: fl || pl, per: ctx.per3d, view2d: ctx.view2d,
+    onView2d: v => { ctx.view2d = v; if (ctx.onView2d) ctx.onView2d(v); workbench(el, ctx); el.querySelector(`[data-v2d="${v}"]`)?.focus(); },
     onMode: m => { ctx[bfMode ? 'mode3dBf' : 'mode3d'] = m; if (ctx.onMode3d) ctx.onMode3d(m, bfMode); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
     onPer: v => { ctx.per3d = v; if (ctx.onPer3d) ctx.onPer3d(v); workbench(el, ctx); el.querySelector(`[data-per="${v}"]`)?.focus(); },
   });
@@ -5155,7 +5009,7 @@ const BP_STORE = 'sf-balancer:bp';
 const LIB_STORE = 'sf-balancer:lib';
 let BPS = [{ n: 3, m: 4 }];
 try { const s = JSON.parse(localStorage.getItem(BP_STORE) || 'null'); if (Array.isArray(s)) BPS = s.filter(b => b.n >= 1 && b.m >= 2); } catch (e) { /* sem storage */ }
-const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers', mode3dBf: 'floors', per3d: 'level' };
+const LIB = { n: '2', m: '5', rate: '240', belt: 'Mk4', view: null, style: 'normal', mode3d: 'towers', mode3dBf: 'floors', per3d: 'level', view2d: 'scheme' };
 const setMode3d = (m, bf) => { LIB[bf ? 'mode3dBf' : 'mode3d'] = m; saveLib(); };
 try { Object.assign(LIB, JSON.parse(localStorage.getItem(LIB_STORE) || '{}')); } catch (e) { /* sem storage */ }
 if (LIB.style === 'vertical') LIB.style = '3d';
@@ -5199,7 +5053,7 @@ function renderLib() {
     labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
     style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
     mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d,
-    per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); },
+    per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); }, view2d: LIB.view2d, onView2d: v => { LIB.view2d = v; saveLib(); },
   });
 }
 
@@ -5238,7 +5092,7 @@ function openDesign(ctx) {
 function openFromPlan(key) {
   if (!lastRender) return;
   const { p, alt } = lastRender;
-  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d, per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); } };
+  const base = { cap: p.cap, belt: p.input.belt, blueprints: BPS, mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d, per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); }, view2d: LIB.view2d, onView2d: v => { LIB.view2d = v; saveLib(); } };
   if (key === 'plan' && alt.view.bal) {
     const d = alt.view.bal.design;
     openDesign({ ...base, N: d.N, M: d.M, rates: d.rates, labels: { ins: alt.bal.inputs.map(O), outs: alt.feeds.map(f => Dn(f.dst)) }, inUse: designKey(d), view: designKey(d), style: d.kind.startsWith('butterfly') ? 'butterfly' : 'normal' });

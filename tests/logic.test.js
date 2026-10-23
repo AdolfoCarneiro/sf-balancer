@@ -1027,18 +1027,55 @@ test('idiomas: texto do passo peça por peça', () => {
   });
 });
 
-test('2D peça por peça: texto com número, de onde vem e para onde vai', () => {
-  const labels = { ins: ['E1', 'E2'], outs: ['S1', 'S2'] };
-  const st = { num: 3, t: 's', ways: 3, nin: 1, where: 'x', ins: [{ t: 'in', idx: 1 }], outs: [{ t: 'm', num: 5, pending: true }, { t: 'sink' }, { t: 'sink' }, { t: 'm', num: 1, loop: true }] };
+// ---- Planta (2D vista de cima) ----
+test('planta: tudo no chão, peças sem encostar, lados de acordo com a geometria', () => {
+  for (const d of [L.balancerDesign('matrix-loop', 2, 5, [100], 1e9), L.balancerDesign('funnel-sink', 3, 5, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.butterflyDesign(5, 5, [100], 1e9, 'butterfly-loop')]) {
+    const lay = lay3d(d, 'flat'), at = d.kind;
+    assert.equal(lay.bad, 0, `${at}: sem esteira encostada`);
+    assert.ok(lay.pieces.every(p => p.pos[1] === 0) && lay.belts.every(b => b.pts.every(q => q[1] === 0)), `${at}: tudo no chão`);
+    assert.equal(lay.lifts, 0, `${at}: sem lift`);
+    const parts = lay.pieces.filter(p => p.t === 's' || p.t === 'm');
+    for (let i = 0; i < parts.length; i++) for (let k = i + 1; k < parts.length; k++) {
+      const a = parts[i].pos, b = parts[k].pos;
+      assert.ok(Math.max(Math.abs(a[0] - b[0]), Math.abs(a[2] - b[2])) >= 4, `${at}: peças de 4 m sem sobrepor`);
+    }
+    // Lados na ordem da geometria: a saída da esquerda vai para um destino acima do da direita
+    // (esquerda = z menor, para cima no desenho); com três saídas todas para um lado, a ordem se mantém.
+    const byId = new Map(lay.pieces.map(p => [p.id, p]));
+    parts.filter(p => p.t === 's').forEach(p => {
+      const dz = side => { const b = lay.belts.find(x => x.a === p.id && x.fromSide === side); return b ? byId.get(b.b).pos[2] - p.pos[2] : null; };
+      const [l, f, r] = ['left', 'front', 'right'].map(dz);
+      if (l !== null && r !== null) assert.ok(l < r, `${at}: esquerda acima da direita`);
+      if (l !== null && f !== null) assert.ok(l <= f, `${at}: esquerda acima da frente`);
+      if (f !== null && r !== null) assert.ok(f <= r, `${at}: frente acima da direita`);
+    });
+  }
+});
+
+test('planta: espaço em fundações e qual Blueprint Designer comporta', () => {
+  const lay = lay3d(L.balancerDesign('matrix-loop', 1, 5, [100], 1e9), 'flat'), fp = L.planFootprint(lay);
+  assert.ok(fp.w > 0 && fp.d > 0);
+  assert.equal(fp.fw, Math.ceil(fp.w / 8));
+  assert.equal(fp.fd, Math.ceil(fp.d / 8));
+  assert.equal(fp.mk, Math.max(fp.fw, fp.fd) <= 4 ? 1 : Math.max(fp.fw, fp.fd) <= 5 ? 2 : Math.max(fp.fw, fp.fd) <= 6 ? 3 : 0);
+  const at = (w, d) => L.planFootprint({ pieces: [{ id: 0, t: 's', pos: [0, 0, 0] }, { id: 1, t: 'm', pos: [w - 4, 0, d - 4] }], belts: [] });
+  assert.equal(at(32, 32).mk, 1, '4×4 fundações: Mk1');
+  assert.equal(at(33, 8).mk, 2, '5 fundações: Mk2');
+  assert.equal(at(48, 40).mk, 3, '6×5: Mk3');
+  assert.equal(at(49, 8).mk, 0, 'mais de 6: nenhum');
+});
+
+test('planta: passo por peça numerado, chamando as outras pelo número', () => {
+  const lay = L.byPiece3d(lay3d(L.butterflyDesign(4, 4, [100], 1e9), 'flat'));
+  const labels = { ins: ['E1', 'E2', 'E3', 'E4'], outs: ['S1', 'S2', 'S3', 'S4'] };
   for (const l of ['pt', 'en', 'es']) inLang(l, () => {
-    const txt = L.pieceText2d(st, labels);
-    assert.match(txt, /^#3 · Splitter 1→3/, `${l}: ${txt}`);
-    assert.match(txt, /E2/, `${l}: diz de qual entrada vem`);
-    assert.match(txt, /merger #5/, `${l}: aponta a peça pelo número`);
-    assert.match(txt, /sink \(2×\)/, `${l}: junta as iguais`);
-    for (const k of ['perLabel', 'tipPer2d']) assert.ok(L.t(k).length > 2, `${l}: ${k}`);
+    const txt = L.pieceText3d(lay.steps[1], labels, 'flat');
+    assert.match(txt, /^#1 · Splitter 1→2/, `${l}: ${txt}`);
+    assert.match(txt, /E\d/, `${l}: diz de qual entrada vem`);
+    assert.match(txt, /merger #\d/, `${l}: aponta a peça pelo número`);
+    assert.match(L.t('stLevel3d', 'flat', 1, 2, 2, 0, 0, 0), /\d/);
+    for (const k of ['perLabel', 'tipPer2d', 'tipSpace', 'planNote', 'lgGrid']) assert.ok(L.t(k).length > 2, `${l}: ${k}`);
   });
-  inLang('pt', () => assert.match(L.pieceText2d(st, labels), /ainda não montado/));
 });
 
 // ---- Fluido ----
