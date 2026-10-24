@@ -5,13 +5,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as I from '../src/i18n/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
 const src = html.slice(html.indexOf('// LOGIC-START'), html.indexOf('// LOGIC-END'));
 const mod = { exports: {} };
-new Function('module', src)(mod);
-const L = mod.exports;
+// O recorte não pode ter import: os textos e o idioma entram como parâmetros.
+const I18N_NAMES = ['I18N', 'LANGS', 'getLang', 'setLang', 't', 'srcTag', 'dstTag', 'fmt', 'parseNum'];
+new Function('module', ...I18N_NAMES, src)(mod, ...I18N_NAMES.map(n => I[n]));
+const L = { ...mod.exports, ...Object.fromEntries(I18N_NAMES.map(n => [n, I[n]])) };
 
 const base = { cap: 480, belt: 'Mk4', policy: 'represar', conv: 'k-1', srcPer: 0, dstPer: 0 };
 const close = (a, b, msg) => assert.ok(Math.abs(a - b) < 0.05, `${msg || ''} ${a} ≈ ${b}`);
