@@ -16,15 +16,20 @@ const bad = msg => { fail++; console.log('FALHA ' + msg); };
 const pngs = d => fs.readdirSync(d).filter(f => f.endsWith('.png')).sort();
 const fa = pngs(a), fb = pngs(b);
 const all = new Set([...fa, ...fb]);
-// Só compara o que existe nos dois lados; cenários que só um lado tem (ex.: --routes) viram aviso.
+// PNG que só um lado tem é falha, exceto os cenários extras de --routes (aviso).
 let same = 0, skipped = 0;
+const routeNames = new Set(routeScenarios.map(s => s.name));
 for (const f of [...all].sort()) {
   const name = f.replace(/-(pt|en|es)\.png$/, '');
-  if (!fa.includes(f) || !fb.includes(f)) { console.log(`aviso: ${f} só existe de um lado`); continue; }
+  if (!fa.includes(f) || !fb.includes(f)) {
+    if (routeNames.has(name)) { console.log(`aviso: ${f} (rota extra) só existe de um lado`); continue; }
+    bad(`${f} só existe de um lado`); continue;
+  }
   if (fuzzy.has(name)) { skipped++; continue; }
   if (Buffer.compare(fs.readFileSync(path.join(a, f)), fs.readFileSync(path.join(b, f))) === 0) same++;
   else bad(`${f} difere`);
 }
+if (same + skipped === 0) bad('nenhum PNG comparado (pastas vazias?)');
 for (const [label, c] of [['a', ca], ['b', cb]]) {
   if (!c) { bad(`console.json ausente em ${label}`); continue; }
   for (const [k, v] of Object.entries(c)) if (v.length) bad(`console de ${label} em ${k}: ${v.join(' | ')}`);
