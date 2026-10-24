@@ -47,6 +47,34 @@ async function openPage(browser, viewport, url) {
 // O console só diz "Failed to load resource" sem URL; as respostas ruins de verdade entram pelo handler 'response' (com URL).
 const real = errs => errs.filter(e => !e.startsWith('Failed to load resource'));
 
+if (flags.has('--fixtures-check')) {
+  // Abre o #s= e o localStorage antigos (fixtures.json) e confere que o cenário aparece. Uso: capture.js <url> <pasta> --fixtures-check
+  const fx = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));
+  const b = await chromium.launch({ executablePath: chromePath() });
+  let fail = 0;
+  const check = (name, ok, info) => { console.log(`${ok ? 'ok   ' : 'FALHA'} ${name} ${info}`); if (!ok) fail++; };
+  const { ctx, pg, errs } = await openPage(b, { width: 1400, height: 1000 }, `${base}/${fx.shareHash}`);
+  await pg.waitForTimeout(500);
+  const v = await pg.evaluate(() => [...document.querySelectorAll('input')].map(i => i.value));
+  check('#s= abre', v.includes('42') && v.includes('60') && v.includes('65') && v.includes('40'), JSON.stringify(v.slice(0, 8)));
+  check('#s= sem erros', real(errs).length === 0, JSON.stringify(real(errs)));
+  await ctx.close();
+  const c2 = await b.newContext({ viewport: { width: 1400, height: 1000 }, locale: 'en-US' });
+  await c2.addInitScript(ls => { if (!sessionStorage.getItem('fx')) { sessionStorage.setItem('fx', '1'); for (const [k, x] of Object.entries(ls)) localStorage.setItem(k, x); } }, fx.localStorage);
+  const p2 = await c2.newPage();
+  const e2 = [];
+  p2.on('pageerror', e => e2.push(e.message));
+  await p2.goto(`${base}/`, { waitUntil: 'load' });
+  await p2.waitForTimeout(500);
+  const v2 = await p2.evaluate(() => [...document.querySelectorAll('input')].map(i => i.value));
+  const lang = await p2.evaluate(() => document.documentElement.lang);
+  const scen = await p2.evaluate(() => localStorage.getItem('sf-balancer:scenarios'));
+  check('localStorage restaura estado', v2.includes('42') && v2.includes('60'), JSON.stringify(v2.slice(0, 8)) + ' lang=' + lang);
+  check('cenários salvos preservados', !!scen && scen.length > 2, String(scen).slice(0, 60));
+  check('localStorage sem erros', e2.length === 0, JSON.stringify(e2));
+  await c2.close(); await b.close();
+  process.exit(fail ? 1 : 0);
+}
 const browser = await chromium.launch({ executablePath: chromePath(), args: ['--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none'] });
 const consoleLog = {};
 const only = [...flags].find(f => f.startsWith('--only='))?.slice(7);

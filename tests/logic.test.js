@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
 const src = html.slice(html.indexOf('// LOGIC-START'), html.indexOf('// LOGIC-END'));
 const mod = { exports: {} };
 new Function('module', src)(mod);
