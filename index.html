@@ -67,6 +67,11 @@
     --ok: #8fe3a4;
     --holo: #6fe3ff;
     --bench: #0a1b2d;
+    /* Piso do Blueprint Designer na planta: chapa mais clara que o fundo, grade clara, borda quase branca */
+    --bp-floor: #1b3550;
+    --bp-line: rgba(226, 240, 252, .42);
+    --bp-sub: rgba(226, 240, 252, .11);
+    --bp-edge: #eaf3fb;
     --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
     --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --cut: 14px;
@@ -431,6 +436,20 @@
   .bsvg.flat { touch-action: none; user-select: none; }
   .bsvg.flat.zoomed { cursor: grab; }
   .bsvg.flat.zoomed:active { cursor: grabbing; }
+  .bsvg .bpmarks { pointer-events: none; }
+  .bsvg .bpmarks .bprm { pointer-events: all; cursor: pointer; }
+  .bsvg .bpmarks .bprm:hover rect { fill: var(--sink); }
+  .bsvg .bptag { font: 700 12px var(--display); fill: var(--bench); }
+  .bsvg.flat.markhover, .bsvg.flat.moving, .bsvg.flat.moving:active { cursor: move; }
+  .bpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .bpbar-t { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); }
+  .bpbar .pbtn[aria-pressed="true"] { border-color: var(--bp-edge); color: var(--bench); background: var(--bp-edge); }
+  .bplist { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
+  .bpchip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--bp-edge); padding: 1px 1px 1px 8px; font: 600 13px var(--display); color: var(--ink); background: var(--bp-floor); }
+  .bpchip button { background: none; border: 0; color: var(--ink-dim); cursor: pointer; font: 600 15px/1 var(--body); padding: 2px 6px; }
+  .bpchip button:hover { color: var(--sink); }
+  .bpchip button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
+  .bpnone { font-size: 12.5px; color: var(--ink-dim); }
   .stage { position: relative; }
   .stage.stage2d { padding: 0; overflow: hidden; max-height: none; min-height: 340px; }
   .stage.stage2d svg { width: 100%; height: 100%; max-width: none; max-height: none; }
@@ -1057,14 +1076,19 @@ const I18N = {
     where3dFlat: (lv, at) => `na coluna ${lv}, ${at}ª de cima`,
     zoomIn: 'Aproximar', zoomOut: 'Afastar', zoomFit: 'Ver tudo', hint2dZoom: 'Roda do mouse ou pinça para o zoom, arraste para mover. Passe o mouse ou toque numa peça para ver só o caminho dela.',
     view2dLabel: 'Desenho', view2dScheme: 'Esquema', view2dPlan: 'Planta',
-    tipView2d: 'Nos dois, cada esteira sai e entra pelo lado certo da peça, como no jogo: o splitter recebe por trás e solta pela frente e pelos lados, o merger o contrário, e nunca duas no mesmo lado. Esquema: compacto, cabe na tela. Planta: o mesmo desenho em escala, com a grade de fundações, o espaço que ocupa e se cabe num Blueprint Designer. Passe o mouse ou toque numa peça, entrada ou saída para ver só o caminho dela.',
+    tipView2d: 'Nos dois, cada esteira sai e entra pelo lado certo da peça, como no jogo: o splitter recebe por trás e solta pela frente e pelos lados, o merger o contrário, e nunca duas no mesmo lado. Esquema: compacto, cabe na tela. Planta: o mesmo desenho em escala, com a grade de fundações, o espaço que ocupa e marcações do tamanho do Blueprint Designer. Passe o mouse ou toque numa peça, entrada ou saída para ver só o caminho dela.',
     lgMixed: 'esteira misturada: cor da saída para onde vai',
     lgGrid: 'fundação (8 m)', lgPieceNum: 'ordem de montagem', lgSplitWays: 'splitter (o número é em quantas saídas ele divide)', lgMergerJoin: 'merger (junta até 3 esteiras numa)',
     thSpace: 'Espaço', spaceVal: (fw, fd) => `${fw}×${fd} fundações`, spaceM: (w, d) => `${w}×${d} m`,
     bpFits: mk => `cabe no Blueprint Designer Mk${mk}`, bpNone: 'maior que o Blueprint Designer Mk3 (6×6): monte direto no chão ou em partes',
     tipSpace: 'Medido na planta: só os splitters, mergers e as esteiras entre eles; as esteiras de entrada e saída chegam pela borda. Blueprint Designer Mk1 tem 4×4 fundações (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). A planta é uma montagem possível com folga; no jogo dá para apertar.',
     planNote: 'Vista de cima, em escala: a grade é de fundações de 8 m, cada peça ocupa ¼ de fundação (4×4 m) e entre duas peças ligadas sempre vai um pedaço de esteira. A seta na peça mostra a saída da frente.',
-    fpLabel: (fw, fd, mk) => `${fw}×${fd} fundações${mk ? ` · Mk${mk}` : ''}`,
+    hint2dMarks: 'Ctrl + arrastar move uma marcação do Blueprint Designer.',
+    bpMarksAria: 'Marcações do Blueprint Designer', bpMarkAdd: mk => `+ Mk${mk}`,
+    bpMarkAddAria: (mk, f) => `Adicionar marcação do Blueprint Designer Mk${mk} (${f}×${f} fundações)`,
+    bpMove: 'Mover marcação', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Remover marcação ${name}`,
+    bpMarksNone: 'nenhuma marcação', lgDesigner: 'Blueprint Designer (marcação)',
+    tipBpMarks: 'Adicione marcações do tamanho dos Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 fundações) para planejar em quantos blueprints montar o balancer. Ctrl + arrastar (Cmd no Mac) sobre uma marcação move só ela, encaixando na grade de fundações; arrastar sem Ctrl move a vista. No celular, ligue Mover marcação e arraste. Se o balancer cabe num designer, o menor que comporta já aparece cobrindo ele. A marcação não confere as peças, é só para você fatiar. Vale para esta montagem: mudar N→M, taxa, tier ou montagem volta ao padrão.',
     conn3dIn: (side, other, extra) => `Entra ${side}, vindo ${/^do /.test(other) ? '' : 'de '}${other}${extra}.`, conn3dOut: (side, other, extra) => `Sai ${side} para ${other}${extra}.`,
     side3dBack: 'por trás', side3dFront: 'pela frente', side3dLeft: 'pela esquerda', side3dRight: 'pela direita',
     other3dPiece: (k, where) => `o ${k} ${where}`, other3dPieceFrom: (k, where) => `do ${k} ${where}`, other3dSink: 'o sink',
@@ -1390,14 +1414,19 @@ const I18N = {
     where3dFlat: (lv, at) => `in column ${lv}, no. ${at} from the top`,
     zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomFit: 'Show all', hint2dZoom: 'Mouse wheel or pinch to zoom, drag to move. Hover or tap a piece to see only its path.',
     view2dLabel: 'Drawing', view2dScheme: 'Diagram', view2dPlan: 'Plan',
-    tipView2d: 'In both, every belt goes in and out through the right side of the piece, like in the game: a splitter takes input at the back and outputs at the front and sides, a merger the other way around, and never two on the same side. Diagram: compact, fits the screen. Plan: the same drawing to scale, with the foundation grid, the space it takes and whether it fits a Blueprint Designer. Hover or tap a piece, input or output to see only its path.',
+    tipView2d: 'In both, every belt goes in and out through the right side of the piece, like in the game: a splitter takes input at the back and outputs at the front and sides, a merger the other way around, and never two on the same side. Diagram: compact, fits the screen. Plan: the same drawing to scale, with the foundation grid, the space it takes and markers the size of a Blueprint Designer. Hover or tap a piece, input or output to see only its path.',
     lgMixed: 'mixed belt: color of the output it goes to',
     lgGrid: 'foundation (8 m)', lgPieceNum: 'build order', lgSplitWays: 'splitter (the number is how many outputs it splits into)', lgMergerJoin: 'merger (joins up to 3 belts into one)',
     thSpace: 'Space', spaceVal: (fw, fd) => `${fw}×${fd} foundations`, spaceM: (w, d) => `${w}×${d} m`,
     bpFits: mk => `fits the Blueprint Designer Mk${mk}`, bpNone: 'bigger than the Blueprint Designer Mk3 (6×6): build it straight on the ground or in parts',
     tipSpace: 'Measured on the plan: only the splitters, mergers and the belts between them; the input and output belts come in from the edge. Blueprint Designer Mk1 is 4×4 foundations (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). The plan is one roomy way to build it; in the game you can squeeze it.',
     planNote: 'Top view, to scale: the grid is 8 m foundations, each piece takes ¼ of a foundation (4×4 m) and two connected pieces always have a piece of belt between them. The arrow on a piece shows its front output.',
-    fpLabel: (fw, fd, mk) => `${fw}×${fd} foundations${mk ? ` · Mk${mk}` : ''}`,
+    hint2dMarks: 'Ctrl + drag moves a Blueprint Designer marker.',
+    bpMarksAria: 'Blueprint Designer markers', bpMarkAdd: mk => `+ Mk${mk}`,
+    bpMarkAddAria: (mk, f) => `Add a Blueprint Designer Mk${mk} marker (${f}×${f} foundations)`,
+    bpMove: 'Move marker', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Remove marker ${name}`,
+    bpMarksNone: 'no markers', lgDesigner: 'Blueprint Designer (marker)',
+    tipBpMarks: 'Add markers the size of the Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 foundations) to plan how many blueprints to build the balancer in. Ctrl + drag (Cmd on Mac) on a marker moves only that marker, snapping to the foundation grid; dragging without Ctrl moves the view. On a phone, turn on Move marker and drag. If the balancer fits a designer, the smallest one that fits already shows covering it. Markers don’t check the pieces, they are only for you to slice it up. They belong to this build: changing N→M, rate, tier or build style resets them.',
     conn3dIn: (side, other, extra) => `Input ${side} from ${other}${extra}.`, conn3dOut: (side, other, extra) => `Output ${side} to ${other}${extra}.`,
     side3dBack: 'at the back', side3dFront: 'at the front', side3dLeft: 'on the left', side3dRight: 'on the right',
     other3dPiece: (k, where) => `the ${k} ${where}`, other3dPieceFrom: (k, where) => `the ${k} ${where}`, other3dSink: 'the sink',
@@ -1723,14 +1752,19 @@ const I18N = {
     where3dFlat: (lv, at) => `en la columna ${lv}, ${at}º desde arriba`,
     zoomIn: 'Acercar', zoomOut: 'Alejar', zoomFit: 'Ver todo', hint2dZoom: 'Rueda del mouse o pellizco para el zoom, arrastra para mover. Pasa el mouse o toca una pieza para ver solo su camino.',
     view2dLabel: 'Dibujo', view2dScheme: 'Esquema', view2dPlan: 'Planta',
-    tipView2d: 'En los dos, cada cinta entra y sale por el lado correcto de la pieza, como en el juego: el splitter recibe por atrás y saca por el frente y los lados, el merger al revés, y nunca dos por el mismo lado. Esquema: compacto, cabe en la pantalla. Planta: el mismo dibujo a escala, con la cuadrícula de cimientos, el espacio que ocupa y si cabe en un Blueprint Designer. Pasa el mouse o toca una pieza, entrada o salida para ver solo su camino.',
+    tipView2d: 'En los dos, cada cinta entra y sale por el lado correcto de la pieza, como en el juego: el splitter recibe por atrás y saca por el frente y los lados, el merger al revés, y nunca dos por el mismo lado. Esquema: compacto, cabe en la pantalla. Planta: el mismo dibujo a escala, con la cuadrícula de cimientos, el espacio que ocupa y marcadores del tamaño del Blueprint Designer. Pasa el mouse o toca una pieza, entrada o salida para ver solo su camino.',
     lgMixed: 'cinta mezclada: color de la salida a la que va',
     lgGrid: 'cimiento (8 m)', lgPieceNum: 'orden de montaje', lgSplitWays: 'splitter (el número es en cuántas salidas divide)', lgMergerJoin: 'merger (junta hasta 3 cintas en una)',
     thSpace: 'Espacio', spaceVal: (fw, fd) => `${fw}×${fd} cimientos`, spaceM: (w, d) => `${w}×${d} m`,
     bpFits: mk => `cabe en el Blueprint Designer Mk${mk}`, bpNone: 'más grande que el Blueprint Designer Mk3 (6×6): móntalo directo en el suelo o por partes',
     tipSpace: 'Medido en la planta: solo los splitters, mergers y las cintas entre ellos; las cintas de entrada y salida llegan por el borde. Blueprint Designer Mk1 tiene 4×4 cimientos (32 m), Mk2 5×5 (40 m), Mk3 6×6 (48 m). La planta es un montaje posible con holgura; en el juego se puede apretar.',
     planNote: 'Vista de arriba, a escala: la cuadrícula es de cimientos de 8 m, cada pieza ocupa ¼ de cimiento (4×4 m) y entre dos piezas conectadas siempre va un trozo de cinta. La flecha en la pieza muestra la salida del frente.',
-    fpLabel: (fw, fd, mk) => `${fw}×${fd} cimientos${mk ? ` · Mk${mk}` : ''}`,
+    hint2dMarks: 'Ctrl + arrastrar mueve un marcador del Blueprint Designer.',
+    bpMarksAria: 'Marcadores del Blueprint Designer', bpMarkAdd: mk => `+ Mk${mk}`,
+    bpMarkAddAria: (mk, f) => `Añadir marcador del Blueprint Designer Mk${mk} (${f}×${f} cimientos)`,
+    bpMove: 'Mover marcador', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Quitar marcador ${name}`,
+    bpMarksNone: 'ningún marcador', lgDesigner: 'Blueprint Designer (marcador)',
+    tipBpMarks: 'Añade marcadores del tamaño de los Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 cimientos) para planear en cuántos blueprints montar el balanceador. Ctrl + arrastrar (Cmd en Mac) sobre un marcador mueve solo ese marcador, encajando en la cuadrícula de cimientos; arrastrar sin Ctrl mueve la vista. En el celular, activa Mover marcador y arrastra. Si el balanceador cabe en un designer, el más pequeño en el que cabe ya aparece cubriéndolo. Los marcadores no revisan las piezas, son solo para que lo dividas. Valen para este montaje: cambiar N→M, tasa, nivel o estilo de montaje los reinicia.',
     conn3dIn: (side, other, extra) => `Entra ${side}, desde ${other}${extra}.`, conn3dOut: (side, other, extra) => `Sale ${side} hacia ${other}${extra}.`,
     side3dBack: 'por atrás', side3dFront: 'por el frente', side3dLeft: 'por la izquierda', side3dRight: 'por la derecha',
     other3dPiece: (k, where) => `el ${k} ${where}`, other3dPieceFrom: (k, where) => `el ${k} ${where}`, other3dSink: 'el sink',
@@ -2627,6 +2661,43 @@ function planFootprint(lay) {
   return { min, max, w, d, fw, fd, mk };
 }
 
+// Marcações do Blueprint Designer na planta: quadrados de 4×4, 5×5 ou 6×6 fundações, presos na grade da planta
+// (linhas em x = 4 + 8k e z = 8k metros, com cada peça no meio de uma fundação). Posição = canto de menor x e z.
+const PLAN_GRID = [4, 0];
+const designerSize = mk => (BP_DESIGNERS.find(([m]) => m === mk) || [0, 0])[1] * 8;
+const snapGrid = (v, axis) => Math.round((v - PLAN_GRID[axis]) / 8) * 8 + PLAN_GRID[axis];
+// Faixa da grade (em fundações inteiras) que o espaço da planta toca, por eixo: [início, fim] em metros.
+function planCells(fp) {
+  return [0, 1].map(k => {
+    const o = PLAN_GRID[k];
+    return [Math.floor((fp.min[k] - o) / 8 + 1e-9) * 8 + o, Math.ceil((fp.max[k] - o) / 8 - 1e-9) * 8 + o];
+  });
+}
+// Prende na grade e perto do balancer: a marcação sempre encosta na faixa que ele ocupa.
+function placeMark(fp, mk, x, z) {
+  const s = designerSize(mk), cells = planCells(fp);
+  const [px, pz] = [x, z].map((v, k) => Math.max(cells[k][0] - s, Math.min(cells[k][1], snapGrid(v, k))));
+  return { mk, x: px, z: pz };
+}
+// Padrão: centrada no balancer e, quando ele cabe na grade dela, cobrindo tudo.
+function defaultMark(fp, mk) {
+  const s = designerSize(mk), cells = planCells(fp);
+  const [x, z] = [0, 1].map(k => {
+    const c = snapGrid((fp.min[k] + fp.max[k]) / 2 - s / 2, k), lo = cells[k][1] - s, hi = cells[k][0];
+    return lo <= hi ? Math.max(lo, Math.min(hi, c)) : c;
+  });
+  return { mk, x, z };
+}
+// De início: o menor designer que comporta (#1); se não cabe em nenhum, nenhuma.
+const defaultMarks = fp => (fp.mk ? [{ id: 1, ...defaultMark(fp, fp.mk) }] : []);
+// Nova marcação centrada em at = [x, z] (o meio da vista), sem cair exatamente em cima de outra.
+function addMark(fp, marks, mk, at) {
+  const s = designerSize(mk);
+  let m = placeMark(fp, mk, at[0] - s / 2, at[1] - s / 2);
+  for (let i = 0; i < 12 && marks.some(o => o.x === m.x && o.z === m.z); i++) m = placeMark(fp, mk, m.x + 8, m.z + 8);
+  return [...marks, { id: Math.max(0, ...marks.map(o => o.id)) + 1, ...m }];
+}
+
 // Toque ou clique na cena: só conta com um ponteiro durante todo o gesto e sem andar mais de 5 px.
 // Uma pinça (dois dedos) nunca vira toque, nem quando o último dedo sai parado.
 function tapGesture() {
@@ -3437,7 +3508,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, panView, zoomView, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, historyNew, historyPush, historyUndo, historyRedo, historyReplace, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, PLAN_GRID, designerSize, snapGrid, planCells, placeMark, defaultMark, defaultMarks, addMark, panView, zoomView, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, historyNew, historyPush, historyUndo, historyRedo, historyReplace, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -4326,6 +4397,7 @@ const PIECE_ICON = {
   planMerger: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="8" y="5" width="10" height="10" transform="rotate(45 13 10)" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/></svg>',
   smart: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M9,6 l4,4 l-4,4 M13,6 l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></svg>',
   grid: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="none" stroke="var(--grid-line)" stroke-width="1.4"/></svg>',
+  designer: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--bp-floor)" stroke="var(--bp-edge)" stroke-width="1.6"/><path d="M13,1 V19 M4,10 H22" stroke="var(--bp-line)" stroke-width="1"/></svg>',
   mixed: `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><path d="M1,6 H10 L16,10 H25 M1,14 H10 L16,10" stroke="${'#ffd166'}" stroke-width="2" fill="none"/><path d="M16,10 H25" stroke="#c6a6ff" stroke-width="2.6"/></svg>`,
   num: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><text x="13" y="14" text-anchor="middle" style="fill:var(--ink-dim);font:700 11px var(--display)">#1</text></svg>',
 };
@@ -4334,7 +4406,8 @@ const pieceIcon = k => (k.t === 's' ? PIECE_ICON.splitter(k.ways) : PIECE_ICON.m
 // Desenho 2D a partir da montagem 'flat' (vista de cima): cada esteira sai e entra pelo lado de verdade da peça
 // (splitter entra por trás e sai pela frente e pelos lados; merger o contrário), nunca duas no mesmo lado, e anda em
 // curva até a outra porta. Esquema: peças em tamanho fixo, colunas mais largas que as linhas, para caber na tela.
-// Planta: o mesmo desenho em escala (1 m = PLAN_PX px), com a grade de fundações e o espaço que ocupa.
+// Planta: o mesmo desenho em escala (1 m = PLAN_PX px), com a grade de fundações e duas camadas vazias para as
+// marcações do Blueprint Designer (o piso embaixo das esteiras, borda e rótulo por cima), preenchidas por planMarksSvg.
 // Na tela o fluxo vai para a direita: a esquerda da peça fica para cima e a direita para baixo.
 // Cada peça e esteira leva data-s = passo em que aparece; data-id e data-b servem para acender um caminho.
 const PORT_N = { front: [1, 0], back: [-1, 0], left: [0, -1], right: [0, 1] };
@@ -4351,14 +4424,10 @@ function flatSvg(d, lay, labels, per, plan) {
   // Retorno do loop: contorna tudo por cima (entra pelo lado esquerdo do merger) ou por baixo.
   const loops = lay.belts.filter(b => b.kind === 'loop');
   const up = loops.filter(b => b.toSide === 'left'), down = loops.filter(b => b.toSide !== 'left');
-  const fp = plan ? planFootprint(lay) : null;
   const padL = inW + 16, padR = outW + 16;
   const padT = boxH / 2 + 18 + up.length * 7 + (plan ? 6 : 0), padB = boxH / 2 + 18 + down.length * 7;
   const X = x => padL + (x - minX) * sx, Y = z => padT + (z - minZ) * sz;
-  // O retângulo do espaço (em fundações inteiras) pode passar das peças: o desenho cresce para ele caber,
-  // com o texto embaixo dele.
-  const fr = fp && { x: X(fp.min[0]), y: Y(fp.min[1]), w: fp.fw * 8 * sx, h: fp.fd * 8 * sz };
-  const W = Math.ceil(Math.max(X(maxX) + padR, fr ? fr.x + fr.w + 8 : 0)), H = Math.ceil(Math.max(Y(maxZ) + padB, fr ? fr.y + fr.h + 24 : 0));
+  const W = Math.ceil(X(maxX) + padR), H = Math.ceil(Y(maxZ) + padB);
   const out = [];
   const g = (step, svg, attr = '') => out.push(`<g data-s="${step}"${attr}>${svg}</g>`);
   if (plan) {
@@ -4366,9 +4435,7 @@ function flatSvg(d, lay, labels, per, plan) {
     const grid = [];
     for (let x = Math.floor((minX - padL / sx) / 8) * 8 + 4; X(x) <= W; x += 8) if (X(x) >= 0) grid.push(`M${f(X(x))},0 V${H}`);
     for (let z = Math.floor((minZ - padT / sz) / 8) * 8; Y(z) <= H; z += 8) if (Y(z) >= 0) grid.push(`M0,${f(Y(z))} H${W}`);
-    out.push(`<path d="${grid.join(' ')}" stroke="var(--grid-line)" stroke-width="1" fill="none"/>`);
-    out.push(`<rect x="${f(fr.x)}" y="${f(fr.y)}" width="${fr.w}" height="${fr.h}" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
-      <text class="sm" x="${f(fr.x)}" y="${f(fr.y + fr.h + 16)}" style="fill:var(--ok)">${esc(t('fpLabel', fp.fw, fp.fd, fp.mk))}</text>`);
+    out.push(`<path d="${grid.join(' ')}" stroke="var(--grid-line)" stroke-width="1" fill="none"/><g class="bpfloor"></g>`);
   }
   const P = q => [X(q.pos[0]), Y(q.pos[2])];
   const port = (id, side) => { const q = byId.get(id), [cx, cy] = P(q), n = PORT_N[side], r = isPart(q) ? h : 0; return { x: cx + n[0] * r, y: cy + n[1] * r, n }; };
@@ -4423,7 +4490,33 @@ function flatSvg(d, lay, labels, per, plan) {
       g(q.step, plate(x, cy - boxH / 2, w, c) + `<text class="lbl" x="${f(x + 9)}" y="${f(cy + 5)}">${esc(tag)}</text><text class="rate" x="${f(x + w - 9)}" y="${f(cy + 5)}" text-anchor="end">${rate}</text>`, ` data-id="${q.id}"`);
     }
   });
-  return `<svg class="bsvg flat${plan ? ' plan' : ''}" viewBox="0 0 ${W} ${H}" style="--w:${W}px" role="img" aria-label="${esc(t('ponderAria'))}">${out.join('')}</svg>`;
+  // Na planta, data-ox/data-oz dizem onde fica o metro 0 no desenho (X(x) = ox + x · PLAN_PX).
+  const org = plan ? ` data-ox="${X(0)}" data-oz="${Y(0)}"` : '';
+  return `<svg class="bsvg flat${plan ? ' plan' : ''}" viewBox="0 0 ${W} ${H}" style="--w:${W}px"${org} role="img" aria-label="${esc(t('ponderAria'))}">${out.join('')}${plan ? '<g class="bpmarks"></g>' : ''}</svg>`;
+}
+
+// Marcações do Blueprint Designer na planta. Embaixo das esteiras, o piso do designer: chapa clara com a grade de
+// fundações bem marcada e subdivisões de 2 m discretas. Por cima, a borda forte com cantos reforçados, a aba com
+// "#1 · Mk2 5×5" e o × para remover. Só para planejar como fatiar em blueprints: não marca peça dentro ou fora.
+const MARK_TAB = 20;
+function planMarksSvg(marks, ox, oz) {
+  const f = v => v.toFixed(1), P = PLAN_PX, floor = [], top = [];
+  for (const m of marks) {
+    const s = designerSize(m.mk), n = s / 8, x0 = ox + m.x * P, y0 = oz + m.z * P, w = s * P, x1 = x0 + w, y1 = y0 + w;
+    const sub = [], maj = [];
+    for (let i = 1; i < n * 4; i++) (i % 4 ? sub : maj).push(`M${f(x0 + i * 2 * P)},${f(y0)} V${f(y1)} M${f(x0)},${f(y0 + i * 2 * P)} H${f(x1)}`);
+    floor.push(`<g data-mark="${m.id}"><rect x="${f(x0)}" y="${f(y0)}" width="${w}" height="${w}" fill="var(--bp-floor)"/>`
+      + `<path d="${sub.join(' ')}" stroke="var(--bp-sub)" stroke-width="1" fill="none"/><path d="${maj.join(' ')}" stroke="var(--bp-line)" stroke-width="1.5" fill="none"/></g>`);
+    const c = 18, name = t('bpMarkName', m.id, m.mk, n), tw = name.length * 7 + 16;
+    const corners = `M${f(x0)},${f(y0 + c)} V${f(y0)} H${f(x0 + c)} M${f(x1 - c)},${f(y0)} H${f(x1)} V${f(y0 + c)} M${f(x1)},${f(y1 - c)} V${f(y1)} H${f(x1 - c)} M${f(x0 + c)},${f(y1)} H${f(x0)} V${f(y1 - c)}`;
+    top.push(`<g data-mark="${m.id}"><rect x="${f(x0)}" y="${f(y0)}" width="${w}" height="${w}" fill="none" stroke="var(--bp-edge)" stroke-width="2"/>`
+      + `<path d="${corners}" stroke="var(--bp-edge)" stroke-width="5" fill="none"/>`
+      + `<rect x="${f(x0)}" y="${f(y0 - MARK_TAB)}" width="${tw}" height="${MARK_TAB}" fill="var(--bp-edge)"/>`
+      + `<text class="bptag" x="${f(x0 + 8)}" y="${f(y0 - 6)}">${esc(name)}</text>`
+      + `<g class="bprm" data-rm="${m.id}"><title>${esc(t('bpMarkRemove', name))}</title><rect x="${f(x1 - MARK_TAB - 4)}" y="${f(y0 - MARK_TAB)}" width="${MARK_TAB + 4}" height="${MARK_TAB}" fill="var(--bp-edge)"/>`
+      + `<path d="M${f(x1 - MARK_TAB + 3)},${f(y0 - MARK_TAB + 5)} l10,10 m0,-10 l-10,10" stroke="var(--bench)" stroke-width="2.2"/></g></g>`);
+  }
+  return { floor: floor.join(''), top: top.join('') };
 }
 
 // Blueprint seu: o desenho é a caixa do blueprint entre as entradas e as saídas, em três passos.
@@ -4835,7 +4928,11 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
   root.innerHTML = `<div class="ponder" tabindex="-1">${flat2d ? '' : ctl2d}
     <div class="stage${in3d ? ' stage3d' : flat2d ? ' stage2d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}${flat2d ? `${ctl2d}<div class="zctl">
       <button type="button" class="pbtn" data-z="in" aria-label="${esc(t('zoomIn'))}">+</button><button type="button" class="pbtn" data-z="out" aria-label="${esc(t('zoomOut'))}">−</button><button type="button" class="pbtn" data-z="fit">${t('zoomFit')}</button></div>
-      <span class="hint3d hint2d">${t('hint2dZoom')}</span>` : ''}</div>
+      <span class="hint3d hint2d">${t('hint2dZoom')}${plan ? ` ${t('hint2dMarks')}` : ''}</span>` : ''}</div>
+    ${plan ? `<div class="bpbar" role="group" aria-label="${esc(t('bpMarksAria'))}"><span class="bpbar-t">Blueprint Designer</span>${tip('tipBpMarks')}
+      ${[1, 2, 3].map(mk => `<button type="button" class="pbtn" data-bpadd="${mk}" aria-label="${esc(t('bpMarkAddAria', mk, designerSize(mk) / 8))}">${t('bpMarkAdd', mk)}</button>`).join('')}
+      <button type="button" class="pbtn" data-bpmove aria-pressed="false">${t('bpMove')}</button>
+      <span class="bplist"></span></div>` : ''}
     <div class="cap" aria-live="polite"><span class="cap-n"></span><span class="cap-i"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
@@ -4853,7 +4950,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
         d.pieces.splitters ? `<span>${PIECE_ICON.splitter(d.net ? d.net.rounds[0].f : d.tree.factors[0])}${t('lgSplitWays')}</span>` : '',
         d.pieces.mergers ? `<span>${PIECE_ICON.merger}${t('lgMergerJoin')}</span>` : '',
         `<span>${PIECE_ICON.mixed}${t('lgMixed')}</span>`,
-        plan ? `<span>${PIECE_ICON.grid}${t('lgGrid')}</span>` : '',
+        plan ? `<span>${PIECE_ICON.grid}${t('lgGrid')}</span><span>${PIECE_ICON.designer}${t('lgDesigner')}</span>` : '',
         per === 'piece' ? `<span>${PIECE_ICON.num}${t('lgPieceNum')}</span>` : '',
       ].join('')}
       <span><i class="holo"></i>${t('lgHolo')}</span>
@@ -4936,17 +5033,37 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
     const W0 = st.viewBox.baseVal.width, H0 = st.viewBox.baseVal.height, stage = q('.stage2d');
     let full = { x: 0, y: 0, w: W0, h: H0 }, vb = { ...full }, pinch = null, fitW = -1;
     const apply = () => { st.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); st.classList.toggle('zoomed', vb.w < full.w - 1e-6); };
-    const fit = () => {
+    // Marcações do Blueprint Designer (só na planta): valem para esta montagem; quem guarda é opts.marks, que o
+    // workbench zera quando muda N→M, taxa, tier ou montagem.
+    const ms = plan ? opts.marks || {} : null, fp = plan ? planFootprint(lay0) : null;
+    const ox = +st.dataset.ox || 0, oz = +st.dataset.oz || 0;
+    if (ms && !ms.list) ms.list = defaultMarks(fp);
+    // O que "Ver tudo" enquadra: o desenho e as marcações (com a aba do rótulo).
+    const content = () => {
+      let x0 = 0, y0 = 0, x1 = W0, y1 = H0;
+      for (const m of ms ? ms.list : []) {
+        const s = designerSize(m.mk) * PLAN_PX, x = ox + m.x * PLAN_PX, y = oz + m.z * PLAN_PX;
+        x0 = Math.min(x0, x - 8); y0 = Math.min(y0, y - MARK_TAB - 8); x1 = Math.max(x1, x + s + 8); y1 = Math.max(y1, y + s + 8);
+      }
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    };
+    const frame = resize => {
       const cw = stage.clientWidth;
-      if (!cw) return;
-      fitW = cw;
-      const top = stage.querySelector('.pmode').offsetHeight + 16, bot = stage.querySelector('.hint2d').offsetHeight + 16;
-      stage.style.height = `${Math.round(Math.max(340, Math.min(innerHeight * 0.68, cw * H0 / W0 + top + bot)))}px`;
-      const ch = stage.clientHeight, s = Math.max(W0 / cw, H0 / Math.max(80, ch - top - bot));
-      full = { x: (W0 - cw * s) / 2, y: -top * s - ((ch - top - bot) * s - H0) / 2, w: cw * s, h: ch * s };
+      if (!cw) return false;
+      const b = content(), top = stage.querySelector('.pmode').offsetHeight + 16, bot = stage.querySelector('.hint2d').offsetHeight + 16;
+      if (resize) stage.style.height = `${Math.round(Math.max(340, Math.min(innerHeight * 0.68, cw * b.h / b.w + top + bot)))}px`;
+      const ch = stage.clientHeight, s = Math.max(b.w / cw, b.h / Math.max(80, ch - top - bot));
+      full = { x: b.x + (b.w - cw * s) / 2, y: b.y - top * s - ((ch - top - bot) * s - b.h) / 2, w: cw * s, h: ch * s };
+      return true;
+    };
+    const fit = () => {
+      if (!frame(true)) return;
+      fitW = stage.clientWidth;
       vb = { ...full };
       apply();
     };
+    // Depois de pôr, mover ou tirar marcação: o quadro de "Ver tudo" acompanha, sem mexer no zoom atual.
+    const reframe = () => { if (frame(false)) { vb = zoomView(vb, full, 1, vb.x + vb.w / 2, vb.y + vb.h / 2); apply(); } };
     fit();
     // Só refaz quando a largura muda (a altura quem muda é o próprio fit).
     const ro = new ResizeObserver(() => requestAnimationFrame(() => { if (stage.isConnected && stage.clientWidth !== fitW) fit(); }));
@@ -4960,9 +5077,85 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       if (!b) return;
       if (b.dataset.z === 'fit') fit(); else zoom(b.dataset.z === 'in' ? 1.5 : 1 / 1.5);
     });
+    // Ctrl (ou Cmd) + arrastar sobre uma marcação move só ela, presa na grade; no toque, o botão Mover marcação
+    // faz o arrastar de um dedo pegar a marcação. Fora de uma marcação, arrastar continua movendo a vista.
+    const toWorld = (x, y) => { const [a, b] = toSvg(x, y); return [(a - ox) / PLAN_PX, (b - oz) / PLAN_PX]; };
+    const hitMark = ([x, z]) => [...(ms ? ms.list : [])].reverse().find(m => {
+      const s = designerSize(m.mk);
+      return x >= m.x && x <= m.x + s && z >= m.z - MARK_TAB / PLAN_PX && z <= m.z + s;
+    });
+    const wantsMark = e => !!ms && (e.ctrlKey || e.metaKey || !!ms.move);
+    let markDrag = null;
+    const bar = q('.bpbar');
+    const drawMarks = () => {
+      if (!ms) return;
+      const { floor, top } = planMarksSvg(ms.list, ox, oz);
+      st.querySelector('.bpfloor').innerHTML = floor;
+      st.querySelector('.bpmarks').innerHTML = top;
+      bar.querySelector('.bplist').innerHTML = ms.list.length ? ms.list.map(m => {
+        const name = t('bpMarkName', m.id, m.mk, designerSize(m.mk) / 8);
+        return `<span class="bpchip">${esc(name)}<button type="button" data-bprm="${m.id}" aria-label="${esc(t('bpMarkRemove', name))}">×</button></span>`;
+      }).join('') : `<span class="bpnone">${t('bpMarksNone')}</span>`;
+      const mv = bar.querySelector('[data-bpmove]');
+      mv.disabled = !ms.list.length;
+      mv.setAttribute('aria-pressed', String(!!ms.move));
+      st.classList.toggle('movemode', !!ms.move);
+    };
+    const removeMark = (id, viaKeys) => {
+      const i = ms.list.findIndex(m => m.id === id);
+      if (i < 0) return;
+      ms.list = ms.list.filter(m => m.id !== id);
+      if (!ms.list.length) ms.move = false;
+      drawMarks();
+      reframe();
+      if (viaKeys) (bar.querySelectorAll('[data-bprm]')[Math.min(i, ms.list.length - 1)] || bar.querySelector('[data-bpadd]')).focus();
+    };
+    if (ms) {
+      drawMarks();
+      bar.addEventListener('click', e => {
+        const add = e.target.closest('[data-bpadd]'), rm = e.target.closest('[data-bprm]');
+        if (add) {
+          // A nova aparece no meio do que está na tela.
+          const r = st.getBoundingClientRect();
+          ms.list = addMark(fp, ms.list, +add.dataset.bpadd, toWorld(r.left + r.width / 2, r.top + r.height / 2));
+          drawMarks();
+          reframe();
+        } else if (rm) removeMark(+rm.dataset.bprm, e.detail === 0);
+        else if (e.target.closest('[data-bpmove]')) { ms.move = !ms.move; drawMarks(); }
+      });
+      st.addEventListener('click', e => { const rm = e.target.closest('[data-rm]'); if (rm) removeMark(+rm.dataset.rm, false); });
+    }
     st.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(-e.deltaY * 0.0015), toSvg(e.clientX, e.clientY)); }, { passive: false });
-    st.addEventListener('pointerdown', e => { st.setPointerCapture(e.pointerId); drag.set(e.pointerId, [e.clientX, e.clientY]); tap.down(e.pointerId, e.clientX, e.clientY); pinch = null; });
+    st.addEventListener('pointerdown', e => {
+      if (markDrag || e.target.closest('[data-rm]')) return;
+      const m = wantsMark(e) && !drag.size ? hitMark(toWorld(e.clientX, e.clientY)) : null;
+      st.setPointerCapture(e.pointerId);
+      if (m) {
+        e.preventDefault();
+        markDrag = { pid: e.pointerId, id: m.id, at: toWorld(e.clientX, e.clientY), x: m.x, z: m.z };
+        st.classList.add('moving');
+        return;
+      }
+      drag.set(e.pointerId, [e.clientX, e.clientY]); tap.down(e.pointerId, e.clientX, e.clientY); pinch = null;
+    });
+    // No Mac, Ctrl + clique abre o menu de contexto: sobre uma marcação, não.
+    st.addEventListener('contextmenu', e => { if (markDrag || (wantsMark(e) && hitMark(toWorld(e.clientX, e.clientY)))) e.preventDefault(); });
+    const endMark = e => {
+      if (!markDrag || e.pointerId !== markDrag.pid) return false;
+      markDrag = null;
+      st.classList.remove('moving');
+      reframe();
+      return true;
+    };
     st.addEventListener('pointermove', e => {
+      if (markDrag) {
+        if (e.pointerId !== markDrag.pid) return;
+        const [x, z] = toWorld(e.clientX, e.clientY), m = ms.list.find(o => o.id === markDrag.id);
+        const p = placeMark(fp, m.mk, markDrag.x + x - markDrag.at[0], markDrag.z + z - markDrag.at[1]);
+        if (p.x !== m.x || p.z !== m.z) { ms.list = ms.list.map(o => (o.id === m.id ? { ...o, x: p.x, z: p.z } : o)); drawMarks(); }
+        return;
+      }
+      if (ms && !drag.size) st.classList.toggle('markhover', wantsMark(e) && !!hitMark(toWorld(e.clientX, e.clientY)));
       const prev = drag.get(e.pointerId);
       if (!prev) return;
       drag.set(e.pointerId, [e.clientX, e.clientY]);
@@ -4977,7 +5170,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       }
     });
     st.addEventListener('pointerup', e => {
-      if (!drag.delete(e.pointerId)) return;
+      if (endMark(e) || !drag.delete(e.pointerId)) return;
       pinch = null;
       if (!tap.up(e.pointerId, e.clientX, e.clientY)) return;
       // Com o ponteiro capturado o alvo é o próprio svg: a peça tocada vem da posição.
@@ -4985,7 +5178,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       pinned = id === pinned ? null : id;
       light(pinned);
     });
-    st.addEventListener('pointercancel', e => { drag.delete(e.pointerId); tap.cancel(e.pointerId); pinch = null; });
+    st.addEventListener('pointercancel', e => { endMark(e); drag.delete(e.pointerId); tap.cancel(e.pointerId); pinch = null; });
   }
   if (in3d) {
     const token = {};
@@ -5089,6 +5282,12 @@ function workbench(el, ctx) {
   const fl = style === '3d' ? layout3d(d, mode3d) : null;
   // Normal e borboleta mostram a planta: o espaço que ocupa e o Blueprint Designer que comporta.
   const pl = style !== '3d' && d.kind !== 'blueprint' ? flatLayout(d) : null, fp = pl && ctx.view2d === 'plan' ? planFootprint(pl) : null;
+  // Marcações do Blueprint Designer da planta: ficam enquanto a montagem é a mesma (trocar Por nível/Por peça ou
+  // Esquema/Planta mantém); mudou N→M, taxa, tier ou montagem, voltam ao padrão. Não vão para o link.
+  const markKey = [style, designKey(d), ctx.N, ctx.M, ctx.rates.join(','), ctx.cap, ctx.belt].join('|');
+  // ctx.marksBox guarda entre um desenho e outro do mesmo lugar (a biblioteca refaz o ctx a cada tecla).
+  const mb = ctx.marksBox || ctx;
+  if (!mb.planMarks || mb.planMarks.key !== markKey) mb.planMarks = { key: markKey, list: null, move: false };
   const tag = c => (c === best ? ` <span class="ctag">${t('bestTag')}</span>` : '') + (ctx.inUse === designKey(c) ? ` <span class="ctag use">${t('inUseTag')}</span>` : '');
   el.innerHTML = `${styleBar}<div class="wb">
     <div><div class="wb-stage"></div><div class="wb-checks"><h4>${t('checksTitle')}</h4>${checksTable(d, ctx.belt)}${fl ? `<p class="hint">${t('vertNote')}</p>` : ''}${fp ? `<p class="hint">${t('planNote')}</p>` : ''}</div></div>
@@ -5117,7 +5316,7 @@ function workbench(el, ctx) {
   </div>
   <p class="hint ext">${t('extHint', extLink(EXT_MOD, 'Modular Load Balancers'), extLink(extBpUrl(), 'Satisfactory Calculator'))}</p>`;
   mountPonder(el.querySelector('.wb-stage'), d, ctx.labels, fl ? mode3d : '2d', {
-    lay: fl || pl, per: ctx.per3d, view2d: ctx.view2d,
+    lay: fl || pl, per: ctx.per3d, view2d: ctx.view2d, marks: mb.planMarks,
     onView2d: v => { ctx.view2d = v; if (ctx.onView2d) ctx.onView2d(v); workbench(el, ctx); el.querySelector(`[data-v2d="${v}"]`)?.focus(); },
     onMode: m => { ctx[bfMode ? 'mode3dBf' : 'mode3d'] = m; if (ctx.onMode3d) ctx.onMode3d(m, bfMode); workbench(el, ctx); el.querySelector(`[data-mode="${m}"]`)?.focus(); },
     onPer: v => { ctx.per3d = v; if (ctx.onPer3d) ctx.onPer3d(v); workbench(el, ctx); el.querySelector(`[data-per="${v}"]`)?.focus(); },
@@ -5166,6 +5365,7 @@ function renderBps() {
 
 function libLabels(N, M) { return { ins: tags(t('inTag'), N), outs: tags(t('outTag'), M) }; }
 
+const LIB_MARKS = {};
 function renderLib() {
   const int = (el, lo, hi) => { const v = parseNum(el.value); const ok = Number.isInteger(v) && v >= lo && v <= hi; el.classList.toggle('invalid', !ok); return ok ? v : null; };
   const N = int($('libN'), 1, 12), M = int($('libM'), 2, 12);
@@ -5179,7 +5379,7 @@ function renderLib() {
   if (!N || !M || !rateOk) { stopStage($('libOut')); $('libOut').innerHTML = `<p class="lead">${t('invalid')}</p>`; return; }
   workbench($('libOut'), {
     N, M, rates: [rv > 0 ? rv : belt.cap], cap: belt.cap, belt: belt.id, blueprints: BPS,
-    labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); },
+    labels: libLabels(N, M), view: LIB.view, onView: v => { LIB.view = v; saveLib(); }, marksBox: LIB_MARKS,
     style: LIB.style, onStyle: st => { LIB.style = st; LIB.view = null; saveLib(); },
     mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d,
     per3d: LIB.per3d, onPer3d: v => { LIB.per3d = v; saveLib(); }, view2d: LIB.view2d, onView2d: v => { LIB.view2d = v; saveLib(); },

@@ -13,17 +13,9 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 
 - A "planta vista de cima": cada linha vira uma fileira de máquinas no tamanho real, com o comprimento do manifold, as fundações ocupadas e onde ficam o meio e o balancer. Sem receitas, partindo das linhas e grupos que a ferramenta já calcula. Não é editor livre da fábrica nem ligação de etapas em cadeia.
 
-### 3. Marcação do Blueprint Designer no desenho "Planta" da biblioteca
-
-- Mostrar no desenho Planta a borda do tamanho do Blueprint Designer Mk1, Mk2 ou Mk3 (escolhível).
-- **Ctrl + arrastar** move só essa marcação (e não a vista), para fatiar um balancer grande em pedaços.
-- Motivo: o balancer não cabe nem no Mk3, ou o jogador só tem o Mk2. Aí ele posiciona a marcação em 2 ou 4 partes, salva um blueprint de cada e monta o balancer maior juntando os pedaços.
-
 ## Futuro (depois da planta)
 
-- Chão no estilo do Blueprint Designer: grade de fundações bem parecida com a do jogo, mais fácil de ler.
-- Os marcadores dos designers (Mk1, Mk2, Mk3) nessa grade, com Ctrl + arrastar encaixando na grade.
-- Daí para frente, evoluir nessa linha.
+- Daí para frente, evoluir na linha do chão e das marcações do Blueprint Designer (já feitos na planta da biblioteca).
 
 ## Sugeridas e não priorizadas
 

@@ -1117,6 +1117,60 @@ test('planta: espaço em fundações e qual Blueprint Designer comporta', () => 
   assert.equal(at(49, 8).mk, 0, 'mais de 6: nenhum');
 });
 
+test('planta: marcações do Blueprint Designer presas na grade de fundações', () => {
+  assert.deepEqual([1, 2, 3].map(L.designerSize), [32, 40, 48], 'Mk1 4×4, Mk2 5×5, Mk3 6×6 fundações de 8 m');
+  // Grade da planta: linhas em x = 4 + 8k e z = 8k (cada peça fica no meio de uma fundação).
+  assert.equal(L.snapGrid(5, 0), 4);
+  assert.equal(L.snapGrid(9, 0), 12);
+  assert.equal(L.snapGrid(-3.9, 0), -4);
+  assert.equal(L.snapGrid(5, 1), 8);
+  assert.equal(L.snapGrid(3.9, 1), 0);
+  const inside = (m, fp) => [0, 1].every(k => m[k ? 'z' : 'x'] <= fp.min[k] && m[k ? 'z' : 'x'] + L.designerSize(m.mk) >= fp.max[k]);
+  const onGrid = m => (m.x - 4) % 8 === 0 && m.z % 8 === 0;
+  // 6 → 6 borboleta: cabe no Mk3, e a marcação padrão (#1, Mk3) cobre o balancer inteiro.
+  const fp6 = L.planFootprint(lay3d(L.butterflyDesign(6, 6, [240], 480), 'flat'));
+  assert.equal(fp6.mk, 3);
+  const [m6, ...rest] = L.defaultMarks(fp6);
+  assert.equal(rest.length, 0);
+  assert.equal(m6.id, 1);
+  assert.equal(m6.mk, 3);
+  assert.ok(onGrid(m6), JSON.stringify(m6));
+  assert.ok(inside(m6, fp6), `cobre ${JSON.stringify(m6)} ${JSON.stringify(fp6)}`);
+  // Não cabe em nenhum: nenhuma marcação de início.
+  const fp9 = L.planFootprint(lay3d(L.butterflyDesign(9, 9, [240], 480), 'flat'));
+  assert.equal(fp9.mk, 0);
+  assert.deepEqual(L.defaultMarks(fp9), []);
+  // Todo designer que cabe, na posição padrão, fica na grade e cobre o balancer. A exceção é quando a planta
+  // não cai alinhada na grade (alguns normais de 7 saídas: 46 m de fundo ocupando 7 fundações): aí fica
+  // centrada e corta no máximo uma fundação numa ponta.
+  const designs = [[3, 3], [4, 4], [6, 6]].map(([n, m]) => L.butterflyDesign(n, m, [240], 480))
+    .concat([[1, 5], [2, 5], [1, 7], [4, 7]].map(([n, m]) => L.balancerDesign(n === 4 ? 'funnel-loop' : 'matrix-loop', n, m, [100], 1e9)));
+  for (const des of designs) {
+    const fp = L.planFootprint(lay3d(des, 'flat')), n = des.N, m = des.M;
+    for (const mk of [1, 2, 3].filter(k => k >= fp.mk && fp.mk)) {
+      const d = L.defaultMark(fp, mk), s = L.designerSize(mk), cells = L.planCells(fp);
+      const fits = cells.every(([a, b]) => b - a <= s), msg = `${n}→${m} Mk${mk}: ${JSON.stringify(d)} ${JSON.stringify(fp)}`;
+      assert.ok(onGrid(d), msg);
+      if (fits) assert.ok(inside(d, fp), msg);
+      else assert.ok([0, 1].every(k => { const v = k ? d.z : d.x; return v <= fp.min[k] + 8 && v + s >= fp.max[k] - 8; }), msg);
+    }
+  }
+  // Adicionar: numera em sequência, na grade, e nunca exatamente em cima de outra.
+  let marks = L.defaultMarks(fp9);
+  const c = [(fp9.min[0] + fp9.max[0]) / 2, (fp9.min[1] + fp9.max[1]) / 2];
+  for (const mk of [2, 2, 1]) marks = L.addMark(fp9, marks, mk, c);
+  assert.deepEqual(marks.map(m => [m.id, m.mk]), [[1, 2], [2, 2], [3, 1]]);
+  assert.ok(marks.every(onGrid));
+  assert.notDeepEqual([marks[0].x, marks[0].z], [marks[1].x, marks[1].z]);
+  // Mover: encaixa na grade e não se afasta do balancer (sempre encosta na faixa que ele ocupa).
+  const moved = L.placeMark(fp9, 2, marks[0].x + 13, marks[0].z - 3);
+  assert.deepEqual([moved.x, moved.z], [marks[0].x + 16, marks[0].z]);
+  const far = L.placeMark(fp9, 2, 1e4, -1e4), cells = L.planCells(fp9);
+  assert.equal(far.x, cells[0][1]);
+  assert.equal(far.z, cells[1][0] - 40);
+  assert.ok(onGrid(far));
+});
+
 test('planta: passo por peça numerado, chamando as outras pelo número', () => {
   const lay = L.byPiece3d(lay3d(L.butterflyDesign(4, 4, [100], 1e9), 'flat'));
   const labels = { ins: ['E1', 'E2', 'E3', 'E4'], outs: ['S1', 'S2', 'S3', 'S4'] };
