@@ -148,6 +148,8 @@
   .scenbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 14px; }
   .scenbar .scen-title { display: inline-flex; align-items: center; gap: 4px; font: 600 15px var(--display); color: var(--ink-dim); }
   .scenbar select.field { width: auto; min-width: 200px; max-width: 100%; }
+  .scenbar .hist { display: inline-flex; align-items: center; gap: 4px; }
+  .scenbar .hist .pbtn { font-size: 16px; }
   .scenbar .scen-msg { font-size: 13px; color: var(--ink-dim); overflow-wrap: anywhere; }
   .scenbar .scen-msg a { color: var(--ficsit); }
   .foot .report { margin-left: 20px; text-decoration: none; display: inline-block; }
@@ -560,6 +562,7 @@
     <button type="button" class="pbtn" id="scenSave" data-i18n="scenSave">Save</button>
     <button type="button" class="pbtn" id="scenDel" data-i18n="scenDel">Delete</button>
     <button type="button" class="pbtn prim" id="shareCopy" data-i18n="shareCopy">Copy link</button>
+    <span class="hist" role="group" data-i18n-aria="histAria" aria-label="Undo and redo"><button type="button" class="pbtn" id="undo" data-i18n-aria="undo" data-i18n-title="undo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)" disabled>↶</button><button type="button" class="pbtn" id="redo" data-i18n-aria="redo" data-i18n-title="redo" aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)" disabled>↷</button><button type="button" class="tip" data-tip="tipHist" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
     <span class="scen-msg" id="scenMsg" role="status" aria-live="polite"></span>
   </div>
   <div id="form">
@@ -787,6 +790,8 @@ const I18N = {
     faq6Q: 'Funciona com fluido?',
     faq6A: 'Funciona. Escolha "Fluido (cano)" e o tier do cano (Mk1 300, Mk2 600 m³/min). Como cano não tem splitter, a ferramenta não monta balancer: ela agrupa as máquinas por cano e junta ou divide os canos com Pipeline Junctions, dentro da capacidade. Altura e bombas ficam por sua conta.',
     scenTitle: 'Cenários', scenAria: 'Cenários salvos', scenPick: 'Cenários salvos…', scenSave: 'Salvar', scenDel: 'Apagar', shareCopy: 'Copiar link',
+    undo: 'Desfazer (Ctrl+Z)', redo: 'Refazer (Ctrl+Y)', histAria: 'Desfazer e refazer',
+    tipHist: 'Desfaz ou refaz as mudanças nas entradas (item, grupos de máquinas, taxas, esteira, políticas), e o resultado volta junto. Atalhos: Ctrl+Z desfaz; Ctrl+Y ou Ctrl+Shift+Z refaz (Cmd no Mac), mesmo com o cursor num campo. Uma digitação seguida conta como um passo só. O histórico vale só enquanto a página está aberta.',
     tipScen: 'Salvar guarda o cenário atual no seu navegador com o nome do item (o mesmo nome substitui o anterior). Copiar link gera um endereço com o cenário inteiro, para abrir em outro computador ou mandar para alguém.',
     scenSaved: name => `"${name}" salvo.`, scenDeleted: name => `"${name}" apagado.`,
     shareCopied: 'Link copiado.', shareFail: 'Não deu para copiar. Copie este link:', sharedLoaded: 'Cenário aberto a partir de um link.',
@@ -1118,6 +1123,8 @@ const I18N = {
     faq6Q: 'Does it work with fluids?',
     faq6A: 'Yes. Pick "Fluid (pipe)" and the pipe tier (Mk1 300, Mk2 600 m³/min). Since pipes have no splitter, the tool doesn’t build a balancer: it groups the machines per pipe and joins or divides the pipes with Pipeline Junctions, within capacity. Height and pumps are up to you.',
     scenTitle: 'Scenarios', scenAria: 'Saved scenarios', scenPick: 'Saved scenarios…', scenSave: 'Save', scenDel: 'Delete', shareCopy: 'Copy link',
+    undo: 'Undo (Ctrl+Z)', redo: 'Redo (Ctrl+Y)', histAria: 'Undo and redo',
+    tipHist: 'Undoes or redoes changes to the inputs (item, machine groups, rates, belt, policies), and the result follows. Shortcuts: Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes (Cmd on Mac), even with the cursor in a field. A burst of typing counts as one step. The history only lasts while the page is open.',
     tipScen: 'Save keeps the current scenario in your browser under the item name (the same name replaces the previous one). Copy link makes an address with the whole scenario, to open on another computer or send to someone.',
     scenSaved: name => `"${name}" saved.`, scenDeleted: name => `"${name}" deleted.`,
     shareCopied: 'Link copied.', shareFail: 'Couldn’t copy. Copy this link:', sharedLoaded: 'Scenario opened from a link.',
@@ -1449,6 +1456,8 @@ const I18N = {
     faq6Q: '¿Funciona con fluidos?',
     faq6A: 'Sí. Elige "Fluido (tubería)" y el tier de la tubería (Mk1 300, Mk2 600 m³/min). Como la tubería no tiene splitter, la herramienta no arma balanceador: agrupa las máquinas por tubería y junta o divide las tuberías con Pipeline Junctions, dentro de la capacidad. La altura y las bombas quedan por tu cuenta.',
     scenTitle: 'Escenarios', scenAria: 'Escenarios guardados', scenPick: 'Escenarios guardados…', scenSave: 'Guardar', scenDel: 'Borrar', shareCopy: 'Copiar enlace',
+    undo: 'Deshacer (Ctrl+Z)', redo: 'Rehacer (Ctrl+Y)', histAria: 'Deshacer y rehacer',
+    tipHist: 'Deshace o rehace los cambios en las entradas (ítem, grupos de máquinas, tasas, cinta, políticas), y el resultado vuelve con ellos. Atajos: Ctrl+Z deshace; Ctrl+Y o Ctrl+Shift+Z rehace (Cmd en Mac), incluso con el cursor en un campo. Una escritura seguida cuenta como un solo paso. El historial solo dura mientras la página está abierta.',
     tipScen: 'Guardar deja el escenario actual en tu navegador con el nombre del ítem (el mismo nombre reemplaza al anterior). Copiar enlace genera una dirección con todo el escenario, para abrirlo en otro ordenador o mandárselo a alguien.',
     scenSaved: name => `"${name}" guardado.`, scenDeleted: name => `"${name}" borrado.`,
     shareCopied: 'Enlace copiado.', shareFail: 'No se pudo copiar. Copia este enlace:', sharedLoaded: 'Escenario abierto desde un enlace.',
@@ -3340,6 +3349,26 @@ function computePlan(input) {
   };
 }
 
+// ---- Histórico de desfazer/refazer ----
+// Pilha imutável: past (mais antigo primeiro), present, future (o próximo a refazer primeiro).
+function historyNew(present, limit = 100) { return { past: [], present, future: [], limit }; }
+const sameState = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Passo novo: igual ao atual não conta; descarta o que dava para refazer; guarda no máximo `limit` passos para trás.
+function historyPush(h, state) {
+  if (sameState(h.present, state)) return h;
+  return { ...h, past: [...h.past, h.present].slice(-h.limit), present: state, future: [] };
+}
+function historyUndo(h) {
+  if (!h.past.length) return h;
+  return { ...h, past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] };
+}
+function historyRedo(h) {
+  if (!h.future.length) return h;
+  return { ...h, past: [...h.past, h.present].slice(-h.limit), present: h.future[0], future: h.future.slice(1) };
+}
+// Troca o estado atual sem criar passo (ex.: os mesmos números escritos no formato de outro idioma).
+function historyReplace(h, state) { return { ...h, present: state }; }
+
 // ---- Link do cenário ----
 // O cenário vai no fragmento da URL (#s=...), que o navegador não manda para o servidor.
 function encodeShare(state) {
@@ -3399,7 +3428,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, panView, zoomView, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, panView, zoomView, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, historyNew, historyPush, historyUndo, historyRedo, historyReplace, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -3414,6 +3443,7 @@ const DEFAULTS = {
 const STORE = 'sf-balancer:v3';
 const LANG_STORE = 'sf-balancer:lang';
 let selectedKey = null;
+let histQuiet = false;
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const O = l => srcTag(l.id);
@@ -3462,6 +3492,7 @@ function applyStatic() {
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+    root.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
   }
   const belt = $('belt').value;
   $('belt').innerHTML = BELTS.map(b => `<option value="${b.id}">${b.id}, ${fmt(b.cap)}/min</option>`).join('');
@@ -3498,10 +3529,12 @@ function changeLang(l) {
   const prev = LANG;
   setLang(l);
   try { localStorage.setItem(LANG_STORE, LANG); } catch (e) { /* sem storage */ }
+  if (histTimer) histCommit();
   convertInputs(prev);
   $('item').value = itemFor($('item').value);
   applyStatic();
   render();
+  if (HIST) HIST = historyReplace(HIST, histSnap());
   const rate = $('libRate').value.trim();
   if (rate) { setLang(prev); const v = parseNum(rate); setLang(l); if (isFinite(v)) $('libRate').value = fmt(v, 6); }
   renderBps();
@@ -3650,7 +3683,9 @@ function saveState() {
 function loadState(state) {
   $('item').value = itemFor(state.item);
   for (const side of ['src', 'dst']) {
-    rows[side].splice(0).forEach(r => r.el.remove());
+    // Tirar do DOM um campo editado e com foco dispara change no meio da troca; o histórico ignora até terminar.
+    histQuiet = true;
+    try { rows[side].splice(0).forEach(r => r.el.remove()); } finally { histQuiet = false; }
     (state[side] && state[side].length ? state[side] : DEFAULTS[side]).forEach(v => addGroup(side, v));
   }
   $('belt').value = BELTS.some(b => b.id === state.belt) ? state.belt : 'Mk4';
@@ -5215,11 +5250,76 @@ function openState(state) {
   render();
 }
 
+// ---- Desfazer e refazer ----
+// Só as entradas do planejador, só nesta sessão. Idioma e alternativa escolhida ficam de fora.
+let HIST = null, histTimer = null;
+const histSnap = () => { const s = currentState(); delete s.selectedKey; return s; };
+function syncHist() {
+  if (!HIST) return;
+  // Digitação ainda sem passo fechado já pode ser desfeita; refazer some porque o passo novo vai descartar.
+  $('undo').disabled = !HIST.past.length && !histTimer;
+  $('redo').disabled = !HIST.future.length || !!histTimer;
+}
+function histCommit() {
+  if (histQuiet) return;
+  clearTimeout(histTimer);
+  histTimer = null;
+  if (HIST) HIST = historyPush(HIST, histSnap());
+  syncHist();
+}
+// Digitação seguida vira um passo só: fecha após uma pausa curta ou ao sair do campo.
+function histSoon() {
+  clearTimeout(histTimer);
+  histTimer = setTimeout(histCommit, 500);
+  syncHist();
+}
+// Campo de grupo com foco: os grupos são recriados ao restaurar, então o foco volta para o campo equivalente.
+function focusSpot() {
+  const a = document.activeElement;
+  for (const side of ['src', 'dst']) for (const [i, r] of rows[side].entries()) {
+    for (const k of ['count', 'clock', 'nominal', 'total', 'per']) if (r[k] === a) return { side, i, k };
+  }
+  return null;
+}
+function histStep(dir) {
+  histCommit();
+  const next = dir < 0 ? historyUndo(HIST) : historyRedo(HIST);
+  if (next === HIST) return;
+  HIST = next;
+  const spot = focusSpot(), keep = selectedKey, state = HIST.present;
+  loadState(state);
+  if (state.lang !== LANG) {
+    convertInputs(state.lang);
+    HIST = historyReplace(HIST, histSnap());
+  }
+  selectedKey = keep;
+  render();
+  const r = spot && (rows[spot.side][spot.i] || rows[spot.side][rows[spot.side].length - 1]);
+  if (r) r[spot.k].focus();
+  syncHist();
+}
+$('undo').addEventListener('click', () => histStep(-1));
+$('redo').addEventListener('click', () => histStep(1));
+// Ctrl/Cmd+Z desfaz; Ctrl/Cmd+Y e Ctrl/Cmd+Shift+Z refazem, no lugar do desfazer nativo dos campos.
+// Campos de texto fora do planejador (biblioteca, diálogo) mantêm o desfazer nativo.
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const k = e.key.toLowerCase();
+  const undo = k === 'z' && !e.shiftKey, redo = k === 'y' || (k === 'z' && e.shiftKey);
+  if (!undo && !redo) return;
+  if (document.querySelector('dialog[open]')) return;
+  const el = e.target;
+  const typing = el.closest && el.closest('input:not([type=radio]):not([type=checkbox]), textarea, [contenteditable=""], [contenteditable=true]');
+  if (typing && !el.closest('#form') && el.id !== 'item') return;
+  e.preventDefault();
+  histStep(undo ? -1 : 1);
+});
+
 // ---- Eventos ----
 $('scenList').addEventListener('change', () => {
   const sc = SCENS[+$('scenList').value];
   $('scenDel').disabled = !sc;
-  if ($('scenList').value !== '' && sc) openState(sc.state);
+  if ($('scenList').value !== '' && sc) { openState(sc.state); histCommit(); }
 });
 $('scenSave').addEventListener('click', () => {
   const name = $('item').value.trim() || t('fallbackItem');
@@ -5252,9 +5352,16 @@ for (const ev of ['input', 'change']) {
   $('form').addEventListener(ev, render);
   $('item').addEventListener(ev, render);
 }
+// Histórico: digitação espera a pausa; seleção, rádio e saída do campo fecham o passo na hora.
+for (const el of [$('form'), $('item')]) {
+  el.addEventListener('input', histSoon);
+  el.addEventListener('change', histCommit);
+  el.addEventListener('focusout', () => { if (histTimer) histCommit(); });
+}
 $('form').addEventListener('click', e => {
   const side = e.target.dataset && e.target.dataset.add;
-  if (side) { addGroup(side).count.focus(); render(); }
+  if (side) { addGroup(side).count.focus(); render(); histCommit(); }
+  else if (e.target.closest('.rm')) histCommit();
 });
 // Etapa seguinte: as máquinas do destino viram a origem; a taxa do item novo e o destino ficam para preencher.
 $('dstToSrc').addEventListener('click', () => {
@@ -5270,6 +5377,7 @@ $('dstToSrc').addEventListener('click', () => {
   rows.dst.splice(0).forEach(r => r.el.remove());
   addGroup('dst');
   render();
+  histCommit();
   rows.src[0].nominal.focus();
 });
 $('out').addEventListener('click', e => {
@@ -5321,7 +5429,7 @@ $('catGrid').addEventListener('click', e => { const b = e.target.closest('[data-
 $('dlgClose').addEventListener('click', () => $('balDlg').close());
 $('balDlg').addEventListener('click', e => { if (e.target === $('balDlg')) $('balDlg').close(); });
 $('balDlg').addEventListener('close', () => { const st = $('dlgBody').querySelector('.wb-stage'); if (st && st._stop) st._stop(); hideTip(); });
-$('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); });
+$('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); histCommit(); });
 $('langs').addEventListener('click', e => {
   const btn = e.target.closest('[data-lang]');
   if (btn && btn.dataset.lang !== LANG) { changeLang(btn.dataset.lang); $('langs').querySelector(`[data-lang="${LANG}"]`).focus(); }
@@ -5348,6 +5456,8 @@ renderBps();
 renderCatalog();
 render();
 renderLib();
+HIST = historyNew(histSnap());
+syncHist();
 </script>
 </body>
 </html>

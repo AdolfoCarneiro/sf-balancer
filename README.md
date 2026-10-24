@@ -37,6 +37,7 @@ You can do that math by hand every time, or you can type the machine counts and 
 - **Shows the flow.** An animated diagram where items move at the belt tier's speed, like in the game, and belt thickness and item spacing follow the real rate.
 - **Warns you.** Belt over capacity, demand above supply, a donor part too small to cover the deficit, incomplete lines.
 - **Fluids too.** Switch to "Fluid (pipe)" and it uses Pipeline Mk1 (300) and Mk2 (600 m³/min). Pipes have no splitter, so instead of a balancer it joins and divides pipes with Pipeline Junctions into header pipes that stay within capacity, and when a source pipe has more than one header needs, a junction passes the rest on to the next one.
+- **Undo and redo.** Ctrl+Z undoes and Ctrl+Y (or Ctrl+Shift+Z, Cmd on Mac) redoes any change to the inputs, even while typing in a field, and the result follows. A burst of typing is a single step; the history lasts while the page is open.
 - **Saves and shares scenarios.** Save as many scenarios as you want in your browser, named after the item, and copy a link that carries the whole scenario, to open on another computer or send to a friend.
 - **Report an odd case.** A link at the bottom opens a GitHub issue already filled in with the scenario link and the layout shown, so you only describe what looks wrong.
 - **Explains itself.** Every field and result has a `?` with a short explanation, and there's a "How it works" section at the bottom.

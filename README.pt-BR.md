@@ -37,6 +37,7 @@ Dá para fazer essa conta na mão toda vez, ou digitar as máquinas e deixar o p
 - **Mostra o fluxo.** Um diagrama animado em que os itens andam na velocidade do tier da esteira, como no jogo, e a espessura e o espaço entre os itens seguem a taxa real.
 - **Avisa.** Esteira acima da capacidade, demanda maior que a oferta, parte da doadora menor que o déficit, linhas incompletas.
 - **Fluido também.** Troque para "Fluido (cano)" e ele usa Pipeline Mk1 (300) e Mk2 (600 m³/min). Cano não tem splitter, então no lugar do balancer ele junta e divide os canos com Pipeline Junctions em canos coletores que respeitam a capacidade, e quando um cano de origem tem mais do que um coletor precisa, uma junction passa o resto para o próximo.
+- **Desfazer e refazer.** Ctrl+Z desfaz e Ctrl+Y (ou Ctrl+Shift+Z, Cmd no Mac) refaz qualquer mudança nas entradas, mesmo digitando num campo, e o resultado volta junto. Uma digitação seguida é um passo só; o histórico vale enquanto a página está aberta.
 - **Salva e compartilha cenários.** Salve quantos cenários quiser no navegador, com o nome do item, e copie um link que leva o cenário inteiro, para abrir em outro computador ou mandar para um amigo.
 - **Reporte um caso estranho.** Um link no fim do plano abre uma issue no GitHub já preenchida com o link do cenário e a montagem mostrada, e você só descreve o que parece errado.
 - **Se explica.** Todo campo e resultado tem um `?` com uma explicação curta, e no fim da página tem a seção "Como funciona".

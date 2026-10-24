@@ -327,6 +327,31 @@ test('destino com por linha digitado usa o valor exato e não mistura grupos', (
 });
 
 // ---- Idiomas ----
+test('histórico: passo, desfazer, refazer, limite e estado repetido', () => {
+  let h = L.historyNew({ v: 0 }, 3);
+  assert.equal(L.historyUndo(h), h, 'sem passo, desfazer não muda nada');
+  assert.equal(L.historyRedo(h), h, 'sem passo, refazer não muda nada');
+  h = L.historyPush(h, { v: 1 });
+  assert.equal(L.historyPush(h, { v: 1 }), h, 'estado igual ao atual não vira passo');
+  h = L.historyPush(h, { v: 2 });
+  h = L.historyUndo(h);
+  assert.deepEqual(h.present, { v: 1 });
+  h = L.historyUndo(h);
+  assert.deepEqual(h.present, { v: 0 });
+  assert.equal(h.past.length, 0);
+  h = L.historyRedo(h);
+  assert.deepEqual(h.present, { v: 1 });
+  assert.deepEqual(h.future, [{ v: 2 }]);
+  h = L.historyPush(h, { v: 9 });
+  assert.deepEqual(h.future, [], 'passo novo descarta o que dava para refazer');
+  for (let i = 10; i < 20; i++) h = L.historyPush(h, { v: i });
+  assert.equal(h.past.length, 3, 'guarda no máximo o limite');
+  assert.deepEqual(h.past[0], { v: 16 });
+  const r = L.historyReplace(h, { v: 'x' });
+  assert.deepEqual(r.present, { v: 'x' });
+  assert.equal(r.past, h.past, 'trocar o atual não mexe na pilha');
+});
+
 // Roda o bloco em outro idioma e sempre volta pro português, que é o padrão dos outros testes.
 const inLang = (lang, fn) => { L.setLang(lang); try { return fn(); } finally { L.setLang('pt'); } };
 
