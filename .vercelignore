@@ -1,8 +1,11 @@
-# Publica só o site; o resto fica no repositório
-*
-!index.html
-!vercel.json
-!favicon.svg
-!og.png
-!robots.txt
-!sitemap.xml
+# Publica o código-fonte do build; o resto fica só no repositório
+docs/
+tests/
+.superpowers/
+.claude/
+README.md
+README.pt-BR.md
+README.es.md
+LICENSE
+AGENTS.md
+CLAUDE.md

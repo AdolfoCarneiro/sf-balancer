@@ -1,0 +1,9 @@
+{
+  "lang": "pt",
+  "shareHash": "#s=eyJpdGVtIjoiQmFycmEgZGUgZmVycm8iLCJzcmMiOlt7ImRyaXZlciI6Im1hY2hpbmVzIiwiY291bnQiOiI0MiIsImNsb2NrIjoiIiwibm9taW5hbCI6IjY1IiwidG90YWwiOiIiLCJwZXIiOiIifSx7ImRyaXZlciI6Im1hY2hpbmVzIiwiY291bnQiOiIiLCJjbG9jayI6IiIsIm5vbWluYWwiOiIiLCJ0b3RhbCI6IiIsInBlciI6IiJ9XSwiZHN0IjpbeyJkcml2ZXIiOiJtYWNoaW5lcyIsImNvdW50IjoiNjAiLCJjbG9jayI6IiIsIm5vbWluYWwiOiI0MCIsInRvdGFsIjoiIiwicGVyIjoiIn1dLCJtZWRpdW0iOiJpdGVtIiwiYmVsdCI6Ik1rNCIsInBpcGUiOiJNazIiLCJwb2xpY3kiOiJyZXByZXNhciIsImV4Y2VzcyI6InJlcHJlc2FyIiwiY29udiI6ImstMSIsInNlbGVjdGVkS2V5IjpudWxsLCJsYW5nIjoicHQifQ",
+  "localStorage": {
+    "sf-balancer:v3": "{\"item\":\"Barra de ferro\",\"src\":[{\"driver\":\"machines\",\"count\":\"42\",\"clock\":\"\",\"nominal\":\"65\",\"total\":\"\",\"per\":\"\"},{\"driver\":\"machines\",\"count\":\"\",\"clock\":\"\",\"nominal\":\"\",\"total\":\"\",\"per\":\"\"}],\"dst\":[{\"driver\":\"machines\",\"count\":\"60\",\"clock\":\"\",\"nominal\":\"40\",\"total\":\"\",\"per\":\"\"}],\"medium\":\"item\",\"belt\":\"Mk4\",\"pipe\":\"Mk2\",\"policy\":\"represar\",\"excess\":\"represar\",\"conv\":\"k-1\",\"selectedKey\":null,\"lang\":\"pt\"}",
+    "sf-balancer:scenarios": "[{\"name\":\"Barra de ferro\",\"state\":{\"item\":\"Barra de ferro\",\"src\":[{\"driver\":\"machines\",\"count\":\"42\",\"clock\":\"\",\"nominal\":\"65\",\"total\":\"\",\"per\":\"\"},{\"driver\":\"machines\",\"count\":\"\",\"clock\":\"\",\"nominal\":\"\",\"total\":\"\",\"per\":\"\"}],\"dst\":[{\"driver\":\"machines\",\"count\":\"60\",\"clock\":\"\",\"nominal\":\"40\",\"total\":\"\",\"per\":\"\"}],\"medium\":\"item\",\"belt\":\"Mk4\",\"pipe\":\"Mk2\",\"policy\":\"represar\",\"excess\":\"represar\",\"conv\":\"k-1\",\"selectedKey\":null,\"lang\":\"pt\"}}]",
+    "sf-balancer:lib": "{\"n\":\"2\",\"m\":\"5\",\"rate\":\"240\",\"belt\":\"Mk4\",\"view\":null,\"style\":\"normal\",\"mode3d\":\"towers\",\"mode3dBf\":\"floors\",\"per3d\":\"level\",\"view2d\":\"scheme\"}"
+  }
+}

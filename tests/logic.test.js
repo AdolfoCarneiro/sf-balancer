@@ -1,10 +1,12 @@
 // Roda com: node --test tests/logic.test.js
 // Extrai o bloco de lógica pura do index.html e testa com os casos do AGENTS.md.
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const src = html.slice(html.indexOf('// LOGIC-START'), html.indexOf('// LOGIC-END'));
 const mod = { exports: {} };
