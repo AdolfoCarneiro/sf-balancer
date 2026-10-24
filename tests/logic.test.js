@@ -1,20 +1,12 @@
 // Roda com: node --test tests/logic.test.js
-// Extrai o bloco de lógica pura do index.html e testa com os casos do AGENTS.md.
+// Testa a lógica pura de src/logic com os casos do AGENTS.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import * as logic from '../src/logic/index.js';
 import * as I from '../src/i18n/index.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
-const src = html.slice(html.indexOf('// LOGIC-START'), html.indexOf('// LOGIC-END'));
-const mod = { exports: {} };
-// O recorte não pode ter import: os textos e o idioma entram como parâmetros.
-const I18N_NAMES = ['I18N', 'LANGS', 'getLang', 'setLang', 't', 'srcTag', 'dstTag', 'fmt', 'parseNum'];
-new Function('module', ...I18N_NAMES, src)(mod, ...I18N_NAMES.map(n => I[n]));
-const L = { ...mod.exports, ...Object.fromEntries(I18N_NAMES.map(n => [n, I[n]])) };
+// L junta a lógica pura com o que vem de src/i18n (I18N, LANGS, setLang, t, fmt, parseNum…), como no bloco antigo.
+const L = { ...logic, ...I };
 
 const base = { cap: 480, belt: 'Mk4', policy: 'represar', conv: 'k-1', srcPer: 0, dstPer: 0 };
 const close = (a, b, msg) => assert.ok(Math.abs(a - b) < 0.05, `${msg || ''} ${a} ≈ ${b}`);
