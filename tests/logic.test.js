@@ -1088,6 +1088,22 @@ test('planta: tudo no chão, peças sem encostar, lados de acordo com a geometri
   }
 });
 
+test('planta: borboleta sem volta nas pontas (merger recebe do lado de onde a esteira vem)', () => {
+  for (const d of [L.butterflyDesign(6, 6, Array(6).fill(455), 480), L.butterflyDesign(3, 3, [100, 100, 100], 1e9), L.butterflyDesign(9, 9, Array(9).fill(100), 1e9)]) {
+    const lay = lay3d(d, 'flat'), byId = new Map(lay.pieces.map(p => [p.id, p])), at = `${d.N}→${d.M}`;
+    const inner = lay.belts.filter(b => byId.get(b.a).t === 's' && byId.get(b.b).t === 'm');
+    inner.forEach(b => {
+      const dz = byId.get(b.a).pos[2] - byId.get(b.b).pos[2];
+      // Vindo de baixo (z maior) não entra pela esquerda (em cima); vindo de cima não entra pela direita.
+      if (dz > 0) assert.notEqual(b.toSide, 'left', `${at}: esteira de baixo entrando por cima`);
+      if (dz < 0) assert.notEqual(b.toSide, 'right', `${at}: esteira de cima entrando por baixo`);
+      // Saiu pelo lado para o merger da mesma fileira: entra pelo mesmo lado (arco), sem contornar o splitter.
+      if (dz === 0 && b.fromSide !== 'front') assert.equal(b.toSide, b.fromSide, `${at}: arco pelo mesmo lado`);
+    });
+    assert.ok(inner.some(b => b.fromSide === 'left' && b.toSide === 'left') && inner.some(b => b.fromSide === 'right' && b.toSide === 'right'), `${at}: arcos nas duas pontas`);
+  }
+});
+
 test('planta: espaço em fundações e qual Blueprint Designer comporta', () => {
   const lay = lay3d(L.balancerDesign('matrix-loop', 1, 5, [100], 1e9), 'flat'), fp = L.planFootprint(lay);
   assert.ok(fp.w > 0 && fp.d > 0);
