@@ -1165,6 +1165,9 @@ test('planta: marcações do Blueprint Designer presas na grade de fundações',
   // Mover: encaixa na grade e não se afasta do balancer (sempre encosta na faixa que ele ocupa).
   const moved = L.placeMark(fp9, 2, marks[0].x + 13, marks[0].z - 3);
   assert.deepEqual([moved.x, moved.z], [marks[0].x + 16, marks[0].z]);
+  // Arrastando (step 1): de metro em metro, fora da grade de fundações.
+  const free = L.placeMark(fp9, 2, marks[0].x + 2.4, marks[0].z - 3.2, 1);
+  assert.deepEqual([free.x, free.z], [marks[0].x + 2, marks[0].z - 3]);
   const far = L.placeMark(fp9, 2, 1e4, -1e4), cells = L.planCells(fp9);
   assert.equal(far.x, cells[0][1]);
   assert.equal(far.z, cells[1][0] - 40);

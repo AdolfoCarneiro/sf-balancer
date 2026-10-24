@@ -1088,7 +1088,7 @@ const I18N = {
     bpMarkAddAria: (mk, f) => `Adicionar marcação do Blueprint Designer Mk${mk} (${f}×${f} fundações)`,
     bpMove: 'Mover marcação', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Remover marcação ${name}`,
     bpMarksNone: 'nenhuma marcação', lgDesigner: 'Blueprint Designer (marcação)',
-    tipBpMarks: 'Adicione marcações do tamanho dos Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 fundações) para planejar em quantos blueprints montar o balancer. Ctrl + arrastar (Cmd no Mac) sobre uma marcação move só ela, encaixando na grade de fundações; arrastar sem Ctrl move a vista. No celular, ligue Mover marcação e arraste. Se o balancer cabe num designer, o menor que comporta já aparece cobrindo ele. A marcação não confere as peças, é só para você fatiar. Vale para esta montagem: mudar N→M, taxa, tier ou montagem volta ao padrão.',
+    tipBpMarks: 'Adicione marcações do tamanho dos Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 fundações) para planejar em quantos blueprints montar o balancer. Ctrl + arrastar (Cmd no Mac) sobre uma marcação move só ela, de metro em metro, para encaixar como quiser; arrastar sem Ctrl move a vista. No celular, ligue Mover marcação e arraste. Se o balancer cabe num designer, o menor que comporta já aparece cobrindo ele. A marcação não confere as peças, é só para você fatiar. Vale para esta montagem: mudar N→M, taxa, tier ou montagem volta ao padrão.',
     conn3dIn: (side, other, extra) => `Entra ${side}, vindo ${/^do /.test(other) ? '' : 'de '}${other}${extra}.`, conn3dOut: (side, other, extra) => `Sai ${side} para ${other}${extra}.`,
     side3dBack: 'por trás', side3dFront: 'pela frente', side3dLeft: 'pela esquerda', side3dRight: 'pela direita',
     other3dPiece: (k, where) => `o ${k} ${where}`, other3dPieceFrom: (k, where) => `do ${k} ${where}`, other3dSink: 'o sink',
@@ -1426,7 +1426,7 @@ const I18N = {
     bpMarkAddAria: (mk, f) => `Add a Blueprint Designer Mk${mk} marker (${f}×${f} foundations)`,
     bpMove: 'Move marker', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Remove marker ${name}`,
     bpMarksNone: 'no markers', lgDesigner: 'Blueprint Designer (marker)',
-    tipBpMarks: 'Add markers the size of the Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 foundations) to plan how many blueprints to build the balancer in. Ctrl + drag (Cmd on Mac) on a marker moves only that marker, snapping to the foundation grid; dragging without Ctrl moves the view. On a phone, turn on Move marker and drag. If the balancer fits a designer, the smallest one that fits already shows covering it. Markers don’t check the pieces, they are only for you to slice it up. They belong to this build: changing N→M, rate, tier or build style resets them.',
+    tipBpMarks: 'Add markers the size of the Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 foundations) to plan how many blueprints to build the balancer in. Ctrl + drag (Cmd on Mac) on a marker moves only that marker, one metre at a time, so you can place it however you like; dragging without Ctrl moves the view. On a phone, turn on Move marker and drag. If the balancer fits a designer, the smallest one that fits already shows covering it. Markers don’t check the pieces, they are only for you to slice it up. They belong to this build: changing N→M, rate, tier or build style resets them.',
     conn3dIn: (side, other, extra) => `Input ${side} from ${other}${extra}.`, conn3dOut: (side, other, extra) => `Output ${side} to ${other}${extra}.`,
     side3dBack: 'at the back', side3dFront: 'at the front', side3dLeft: 'on the left', side3dRight: 'on the right',
     other3dPiece: (k, where) => `the ${k} ${where}`, other3dPieceFrom: (k, where) => `the ${k} ${where}`, other3dSink: 'the sink',
@@ -1764,7 +1764,7 @@ const I18N = {
     bpMarkAddAria: (mk, f) => `Añadir marcador del Blueprint Designer Mk${mk} (${f}×${f} cimientos)`,
     bpMove: 'Mover marcador', bpMarkName: (n, mk, f) => `#${n} · Mk${mk} ${f}×${f}`, bpMarkRemove: name => `Quitar marcador ${name}`,
     bpMarksNone: 'ningún marcador', lgDesigner: 'Blueprint Designer (marcador)',
-    tipBpMarks: 'Añade marcadores del tamaño de los Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 cimientos) para planear en cuántos blueprints montar el balanceador. Ctrl + arrastrar (Cmd en Mac) sobre un marcador mueve solo ese marcador, encajando en la cuadrícula de cimientos; arrastrar sin Ctrl mueve la vista. En el celular, activa Mover marcador y arrastra. Si el balanceador cabe en un designer, el más pequeño en el que cabe ya aparece cubriéndolo. Los marcadores no revisan las piezas, son solo para que lo dividas. Valen para este montaje: cambiar N→M, tasa, nivel o estilo de montaje los reinicia.',
+    tipBpMarks: 'Añade marcadores del tamaño de los Blueprint Designers (Mk1 4×4, Mk2 5×5, Mk3 6×6 cimientos) para planear en cuántos blueprints montar el balanceador. Ctrl + arrastrar (Cmd en Mac) sobre un marcador mueve solo ese marcador, de metro en metro, para colocarlo como quieras; arrastrar sin Ctrl mueve la vista. En el celular, activa Mover marcador y arrastra. Si el balanceador cabe en un designer, el más pequeño en el que cabe ya aparece cubriéndolo. Los marcadores no revisan las piezas, son solo para que lo dividas. Valen para este montaje: cambiar N→M, tasa, nivel o estilo de montaje los reinicia.',
     conn3dIn: (side, other, extra) => `Entra ${side}, desde ${other}${extra}.`, conn3dOut: (side, other, extra) => `Sale ${side} hacia ${other}${extra}.`,
     side3dBack: 'por atrás', side3dFront: 'por el frente', side3dLeft: 'por la izquierda', side3dRight: 'por la derecha',
     other3dPiece: (k, where) => `el ${k} ${where}`, other3dPieceFrom: (k, where) => `el ${k} ${where}`, other3dSink: 'el sink',
@@ -2665,7 +2665,8 @@ function planFootprint(lay) {
 // (linhas em x = 4 + 8k e z = 8k metros, com cada peça no meio de uma fundação). Posição = canto de menor x e z.
 const PLAN_GRID = [4, 0];
 const designerSize = mk => (BP_DESIGNERS.find(([m]) => m === mk) || [0, 0])[1] * 8;
-const snapGrid = (v, axis) => Math.round((v - PLAN_GRID[axis]) / 8) * 8 + PLAN_GRID[axis];
+// step 8 prende na grade de fundações; arrastando, step 1 deixa posicionar de metro em metro.
+const snapGrid = (v, axis, step = 8) => Math.round((v - PLAN_GRID[axis]) / step) * step + PLAN_GRID[axis];
 // Faixa da grade (em fundações inteiras) que o espaço da planta toca, por eixo: [início, fim] em metros.
 function planCells(fp) {
   return [0, 1].map(k => {
@@ -2673,10 +2674,10 @@ function planCells(fp) {
     return [Math.floor((fp.min[k] - o) / 8 + 1e-9) * 8 + o, Math.ceil((fp.max[k] - o) / 8 - 1e-9) * 8 + o];
   });
 }
-// Prende na grade e perto do balancer: a marcação sempre encosta na faixa que ele ocupa.
-function placeMark(fp, mk, x, z) {
+// Prende na grade (ou de step em step) e perto do balancer: a marcação sempre encosta na faixa que ele ocupa.
+function placeMark(fp, mk, x, z, step = 8) {
   const s = designerSize(mk), cells = planCells(fp);
-  const [px, pz] = [x, z].map((v, k) => Math.max(cells[k][0] - s, Math.min(cells[k][1], snapGrid(v, k))));
+  const [px, pz] = [x, z].map((v, k) => Math.max(cells[k][0] - s, Math.min(cells[k][1], snapGrid(v, k, step))));
   return { mk, x: px, z: pz };
 }
 // Padrão: centrada no balancer e, quando ele cabe na grade dela, cobrindo tudo.
@@ -5151,7 +5152,7 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       if (markDrag) {
         if (e.pointerId !== markDrag.pid) return;
         const [x, z] = toWorld(e.clientX, e.clientY), m = ms.list.find(o => o.id === markDrag.id);
-        const p = placeMark(fp, m.mk, markDrag.x + x - markDrag.at[0], markDrag.z + z - markDrag.at[1]);
+        const p = placeMark(fp, m.mk, markDrag.x + x - markDrag.at[0], markDrag.z + z - markDrag.at[1], 1);
         if (p.x !== m.x || p.z !== m.z) { ms.list = ms.list.map(o => (o.id === m.id ? { ...o, x: p.x, z: p.z } : o)); drawMarks(); }
         return;
       }
