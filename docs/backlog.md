@@ -23,11 +23,11 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 - **Ctrl + arrastar** move só essa marcação (e não a vista), para fatiar um balancer grande em pedaços.
 - Motivo: o balancer não cabe nem no Mk3, ou o jogador só tem o Mk2. Aí ele posiciona a marcação em 2 ou 4 partes, salva um blueprint de cada e monta o balancer maior juntando os pedaços.
 
-## Bug visual: ligações estranhas nas pontas da borboleta
+## Melhoria pequena: voltas das esteiras nas pontas da borboleta
 
-- Repro: Biblioteca de load balancers, 6 → 6, 455/min, Mk4, Montagem Borboleta, Desenho Planta, Por peça.
-- Entre a coluna de splitters em 3 (#13 a #18) e a de mergers (#19 a #24), as esteiras das pontas saem por cima do #13 e por baixo do #18, passam para fora da borda tracejada do blueprint e fazem curvas longas até mergers distantes. O miolo dessa coluna também vira um emaranhado de cruzamentos.
-- Esperado: rotas dentro da área do blueprint, sem esses arcos pelas extremidades.
+- Não é bug, e nada sai da área do blueprint. É só uma melhoria de leitura, de baixa prioridade.
+- Onde ver: Biblioteca de load balancers, 6 → 6, 455/min, Mk4, Montagem Borboleta, Desenho Planta, Por peça.
+- Entre a coluna de splitters em 3 (#13 a #18) e a de mergers (#19 a #24), as esteiras das pontas dão voltas estranhas por cima do #13 e por baixo do #18 até mergers distantes. Com rotas mais simples, a montagem ficaria mais fácil de seguir.
 
 ## Futuro (depois da planta)
 
