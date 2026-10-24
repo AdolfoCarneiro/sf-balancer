@@ -121,6 +121,8 @@ Receitas, cadeia completa, layout físico/posicionamento das máquinas, importa�
 
 ## Ideias para depois
 
+O backlog combinado (prioridades, bugs visuais anotados e ideias futuras) fica em `docs/backlog.md`.
+
 Importar taxas do planner (o usado é o Satisfactory Modeler, que salva `.sfmd` em JSON só com o grafo e as receitas, sem taxas: importar exigiria conhecer as receitas), vários itens por etapa.
 
 Já feito: cenários salvos e link compartilhável (`#s=` com o estado em base64url, lido por `decodeShare`, que valida tudo), botão que abre issue no GitHub com o link do cenário, modo fluido.
