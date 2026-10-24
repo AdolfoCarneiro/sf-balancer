@@ -7,7 +7,7 @@ import { inColor } from '../ui/balancerSvg.js';
 // esteira em tubo neon na cor da faixa com contorno escuro, gola + seta (saída) ou anel (entrada) em cada porta,
 // pontos de luz andando no sentido do fluxo. Passo atual em holograma pulsando; passar o mouse isola o caminho.
 let THREE_P = null;
-const load3d = () => (THREE_P ||= Promise.all([import(/* @vite-ignore */ 'three'), import(/* @vite-ignore */ 'three/addons/controls/OrbitControls.js'), import(/* @vite-ignore */ 'three/addons/geometries/RoundedBoxGeometry.js')])
+const load3d = () => (THREE_P ||= Promise.all([import('three'), import('three/addons/controls/OrbitControls.js'), import('three/addons/geometries/RoundedBoxGeometry.js')])
   .then(([T, O, R]) => ({ T, OrbitControls: O.OrbitControls, RoundedBoxGeometry: R.RoundedBoxGeometry }))
   .catch(e => { THREE_P = null; throw e; }));
 export const SPLITTER_3D = '#e8863a', MERGER_3D = '#3bb3a8';
