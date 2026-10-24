@@ -30,6 +30,10 @@ function chromePath() {
   throw new Error('nenhum chromium em ' + root);
 }
 
+function chromeOrExit() {
+  try { return chromePath(); } catch (e) { console.error(e.message); process.exit(1); }
+}
+
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}`;
 
 async function openPage(browser, viewport, url) {
@@ -50,7 +54,7 @@ const real = errs => errs.filter(e => !e.startsWith('Failed to load resource'));
 if (flags.has('--fixtures-check')) {
   // Abre o #s= e o localStorage antigos (fixtures.json) e confere que o cenário aparece. Uso: capture.js <url> <pasta> --fixtures-check
   const fx = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));
-  const b = await chromium.launch({ executablePath: chromePath() });
+  const b = await chromium.launch({ executablePath: chromeOrExit() });
   let fail = 0;
   const check = (name, ok, info) => { console.log(`${ok ? 'ok   ' : 'FALHA'} ${name} ${info}`); if (!ok) fail++; };
   const { ctx, pg, errs } = await openPage(b, { width: 1400, height: 1000 }, `${base}/${fx.shareHash}`);
@@ -75,7 +79,7 @@ if (flags.has('--fixtures-check')) {
   await c2.close(); await b.close();
   process.exit(fail ? 1 : 0);
 }
-const browser = await chromium.launch({ executablePath: chromePath(), args: ['--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--disable-partial-raster'] });
+const browser = await chromium.launch({ executablePath: chromeOrExit(), args: ['--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--disable-partial-raster'] });
 const consoleLog = {};
 const only = [...flags].find(f => f.startsWith('--only='))?.slice(7);
 const list = [];

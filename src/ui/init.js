@@ -12,6 +12,7 @@ import { histSnap, syncHist } from './history.js';
 export function init() {
 setLang(pickLang());
 applyStatic();
+document.documentElement.classList.remove('lang-pending');
 let saved = null;
 try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { saved = null; }
 // Link compartilhado ganha do que estava salvo; depois o endereço volta a ficar limpo.

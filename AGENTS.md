@@ -2,7 +2,7 @@
 
 ## O que é
 
-Uma ferramenta em **um único arquivo HTML**, que abro do lado do jogo, para planejar a **camada física** (esteiras, mergers, splitters, balancers) **entre duas etapas** de uma fábrica no Satisfactory.
+Uma ferramenta em **uma página estática (Vite + módulos ES)**, que abro do lado do jogo, para planejar a **camada física** (esteiras, mergers, splitters, balancers) **entre duas etapas** de uma fábrica no Satisfactory.
 
 Eu já uso um planner que resolve a **camada lógica** (quantas máquinas, quanto flui de A para B). O que falta é traduzir isso para esteira: quando uma etapa entrega N linhas de um tamanho e a próxima precisa de M linhas de outro tamanho, como eu conecto, quanto sobra e onde preciso de balancer.
 
@@ -80,7 +80,10 @@ Por trecho e no total:
 
 ## Interface
 
-- Um único `.html`, sem build. Dependências só se forem via CDN, e de preferência nenhuma.
+- Página estática montada com **Vite** (JavaScript puro, módulos ES, sem framework). Dependências só `three` (npm, carregado por `import()` dinâmico na aba 3D) e `vite`/`playwright` de desenvolvimento.
+- Estrutura: `index.html` (HTML base em inglês), `src/main.js` (entrada), `src/logic/` (lógica pura, sem DOM), `src/i18n/` (`pt.js`, `en.js`, `es.js`, `index.js`), `src/ui/` (interface), `src/view3d/` (cena 3D), `src/styles/main.css`, `public/` (estáticos copiados como estão para a raiz do site), `tests/` (testes e `tests/visual/`).
+- Comandos: `npm run dev` (servidor local), `npm test` (testes da lógica), `npm run build` (gera `dist/`), `npm run preview` (serve o build), `npm run visual:capture` e `npm run visual:compare` (comparação visual de telas contra uma linha de base; `visual:capture -- --fixtures-check` confere `#s=` e `localStorage`).
+- Testar como em produção: `docker compose up --build` e abrir http://localhost:8080 (nginx servindo `dist/`, com `/pt`, `/es` e `/en` → `/` como no `vercel.json`). `docker compose down --rmi local` limpa.
 - **Três idiomas: português (pt-BR), inglês e espanhol.** Ver a seção "Idiomas" abaixo.
 - Dark mode (vou usar do lado do jogo).
 - Resultado atualiza ao vivo enquanto digito.
@@ -97,7 +100,7 @@ Por trecho e no total:
 
 **Tudo que aparece na tela existe em português, inglês e espanhol.** Isso vale para qualquer feature nova, aviso, rótulo, tooltip, `aria-label`, texto de SVG, título e descrição da página.
 
-- Os textos ficam no objeto `I18N` no começo do bloco de lógica do `index.html` (`pt`, `en`, `es`). Nada de texto solto no código: use `t('chave')` ou `t('chave', ...args)`.
+- Os textos ficam em `src/i18n/pt.js`, `en.js` e `es.js` (objetos `pt`, `en`, `es`, reunidos em `I18N` por `src/i18n/index.js`). Nada de texto solto no código: use `t('chave')` ou `t('chave', ...args)`.
 - Chave nova entra **nos três idiomas na mesma mudança**. O teste `idiomas: as mesmas chaves, do mesmo tipo, nos três` quebra se faltar alguma.
 - Texto com número ou plural vira função: `stepUnfed: d => \`${d} fica sem alimentação...\``. Os números chegam já formatados com `fmt()`.
 - Texto fixo do HTML usa `data-i18n="chave"` (conteúdo) ou `data-i18n-aria="chave"` (`aria-label`); `applyStatic()` aplica.
@@ -112,7 +115,7 @@ Por trecho e no total:
 ## Deploy e analytics
 
 - Repositório público (MIT) `AdolfoCarneiro/sf-balancer`, com README em inglês, português e espanhol (`README.md`, `README.pt-BR.md`, `README.es.md`): mudança de comportamento visível atualiza os três; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
-- Publicados (lista em `.vercelignore`): `index.html`, `vercel.json`, `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo novo do site precisa entrar nessa lista. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
+- O deploy roda `npm run build` e publica `dist/`. Estáticos do site ficam em `public/`: `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo estático novo do site vai em `public/`. O `.vercelignore` só deixa de fora docs e testes do upload. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
 - Vercel Web Analytics via `<script defer src="/_vercel/insights/script.js">`, sem cookies. Localmente esse script dá 404, é esperado.
 
 ## Fora do escopo (v1)

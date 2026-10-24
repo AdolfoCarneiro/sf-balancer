@@ -12,7 +12,7 @@ English · [Português](README.pt-BR.md) · [Español](README.es.md)
 
 [![Live](https://img.shields.io/badge/live-sf--balancer.vercel.app-ff9b3d?style=flat-square)](https://sf-balancer.vercel.app)
 [![License: MIT](https://img.shields.io/badge/license-MIT-8fe3a4?style=flat-square)](LICENSE)
-![Single HTML file](https://img.shields.io/badge/build-none-15324f?style=flat-square)
+![Static site](https://img.shields.io/badge/build-vite-15324f?style=flat-square)
 
 <img src="docs/screenshot.png" alt="SF Balancer: six source lines of 455/min feeding five destination lines of 480/min through a splitter tree" width="900">
 
@@ -58,37 +58,47 @@ The planner knows no recipes. You type the rates from your production planner or
 
 ## Running it locally
 
-There is nothing to build. It's one HTML file.
+It's a static site built with Vite (Node 20.19+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git
 cd sf-balancer
-# open index.html in your browser, or serve the folder:
-npx serve .
+npm install
+npm run dev       # local dev server
+npm run build     # production build into dist/
 ```
 
-Tests (Node 18+, no dependencies):
+Tests (logic and i18n):
 
 ```bash
-node --test tests/logic.test.js
+npm test
 ```
+
+To try it as in production (nginx serving the build, with the `/pt`, `/es` routes), run `docker compose up --build` and open http://localhost:8080. Clean up with `docker compose down --rmi local`.
 
 ## How the code is organized
 
 ```
-index.html            the whole app: styles, i18n, pure logic and UI
-tests/logic.test.js   tests for the logic block, run against the real index.html
-vercel.json           headers, CSP and /pt, /es routes
+index.html            base HTML (in English, for search engines)
+src/main.js           entry point
+src/logic/            pure functions, no DOM (grouping, case classification, splitter trees, flow simulation)
+src/i18n/             texts in pt, en and es
+src/ui/               interface
+src/view3d/           3D scene (three.js, loaded only when the 3D tab opens)
+src/styles/main.css   styles
+public/               static files (favicon, og.png, robots.txt, sitemap.xml)
+tests/                logic tests and the visual comparison harness
+vercel.json           build, headers, CSP and /pt, /es routes
 ```
 
-Inside `index.html`, the code between `// LOGIC-START` and `// LOGIC-END` is pure functions (grouping, case classification, splitter trees, flow simulation). The tests extract that block and run it in Node, so the UI never needs a browser to be tested.
+The logic is pure functions imported straight by the tests in Node, so the UI never needs a browser to be tested.
 
 ## Contributing
 
 Issues and pull requests are welcome. A few rules keep the project healthy:
 
-1. **Keep it one file, no build.** No frameworks, no bundler. Opening `index.html` has to work.
-2. **Every visible text exists in three languages.** Strings live in the `I18N` object (`pt`, `en`, `es`) and are read with `t('key')`. A new key goes into all three in the same change; the test `idiomas: as mesmas chaves...` fails otherwise.
+1. **Plain JavaScript, no framework.** ES modules built with Vite; `src/logic` stays free of the DOM.
+2. **Every visible text exists in three languages.** Strings live in `src/i18n/` (`pt.js`, `en.js`, `es.js`) and are read with `t('key')`. A new key goes into all three in the same change; the test `idiomas: as mesmas chaves...` fails otherwise.
 3. **Logic goes in pure functions with tests.** Add a test case to `tests/logic.test.js` for any new layout or rule.
 4. **Don't invent game mechanics.** If you're not sure how a piece behaves in the game, open an issue first.
 

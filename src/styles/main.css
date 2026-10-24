@@ -506,3 +506,6 @@
   .dlg-body { padding: 18px; }
 
   .site-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ink-dim); }
+
+/* Ver o script no <head> do index.html: evita piscar em inglês em /pt e /es. */
+html.lang-pending body{visibility:hidden}

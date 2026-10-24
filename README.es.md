@@ -12,7 +12,7 @@ Tu planificador te dice cuántas máquinas. Esto te dice cómo conectarlas.
 
 [![En línea](https://img.shields.io/badge/en%20l%C3%ADnea-sf--balancer.vercel.app-ff9b3d?style=flat-square)](https://sf-balancer.vercel.app/es)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-8fe3a4?style=flat-square)](LICENSE)
-![Un archivo HTML](https://img.shields.io/badge/build-ninguno-15324f?style=flat-square)
+![Sitio estático](https://img.shields.io/badge/build-vite-15324f?style=flat-square)
 
 <img src="docs/screenshot-es.png" alt="SF Balancer: seis líneas de origen de 455/min alimentando cinco líneas de destino de 480/min a través de un árbol de splitters" width="900">
 
@@ -58,37 +58,47 @@ El planificador no conoce recetas. Tú escribes las tasas de tu planificador o d
 
 ## Ejecutarlo en local
 
-No hay nada que compilar. Es un solo archivo HTML.
+Es un sitio estático construido con Vite (Node 20.19+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git
 cd sf-balancer
-# abre index.html en el navegador, o sirve la carpeta:
-npx serve .
+npm install
+npm run dev       # servidor local
+npm run build     # build de producción en dist/
 ```
 
-Tests (Node 18+, sin dependencias):
+Tests (lógica e idiomas):
 
 ```bash
-node --test tests/logic.test.js
+npm test
 ```
+
+Para probarlo como en producción (nginx sirviendo el build, con las rutas `/pt` y `/es`), ejecuta `docker compose up --build` y abre http://localhost:8080. Para limpiar: `docker compose down --rmi local`.
 
 ## Cómo está organizado el código
 
 ```
-index.html            toda la app: estilos, idiomas, lógica pura e interfaz
-tests/logic.test.js   tests del bloque de lógica, contra el index.html real
-vercel.json           headers, CSP y las rutas /pt y /es
+index.html            HTML base (en inglés, para los buscadores)
+src/main.js           punto de entrada
+src/logic/            funciones puras, sin DOM (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo)
+src/i18n/             textos en pt, en y es
+src/ui/               interfaz
+src/view3d/           escena 3D (three.js, se carga solo al abrir la pestaña 3D)
+src/styles/main.css   estilos
+public/               estáticos (favicon, og.png, robots.txt, sitemap.xml)
+tests/                tests de la lógica y la comparación visual
+vercel.json           build, headers, CSP y las rutas /pt y /es
 ```
 
-Dentro de `index.html`, el código entre `// LOGIC-START` y `// LOGIC-END` son funciones puras (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo). Los tests extraen ese bloque y lo ejecutan en Node, sin navegador.
+La lógica son funciones puras que los tests importan directamente en Node, sin navegador.
 
 ## Contribuir
 
 Los issues y pull requests son bienvenidos. Unas pocas reglas mantienen el proyecto en orden:
 
-1. **Un solo archivo, sin build.** Sin frameworks, sin bundler. Abrir `index.html` tiene que funcionar.
-2. **Todo texto visible existe en los tres idiomas.** Los textos están en el objeto `I18N` (`pt`, `en`, `es`) y se leen con `t('clave')`. Una clave nueva entra en los tres en el mismo cambio; el test `idiomas: as mesmas chaves...` falla si falta alguna.
+1. **JavaScript puro, sin framework.** Módulos ES construidos con Vite; `src/logic` no toca el DOM.
+2. **Todo texto visible existe en los tres idiomas.** Los textos están en `src/i18n/` (`pt.js`, `en.js`, `es.js`) y se leen con `t('clave')`. Una clave nueva entra en los tres en el mismo cambio; el test `idiomas: as mesmas chaves...` falla si falta alguna.
 3. **La lógica va en funciones puras con tests.** Un montaje o regla nueva lleva su caso en `tests/logic.test.js`.
 4. **No inventes mecánicas del juego.** Si no sabes cómo se comporta una pieza, abre un issue primero.
 
