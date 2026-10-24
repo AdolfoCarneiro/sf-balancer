@@ -58,7 +58,7 @@ The planner knows no recipes. You type the rates from your production planner or
 
 ## Running it locally
 
-It's a static site built with Vite (Node 20.19+).
+It's a static site built with Vite (Node 20.19+ / 22.12+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git
@@ -89,6 +89,7 @@ src/styles/main.css   styles
 public/               static files (favicon, og.png, robots.txt, sitemap.xml)
 tests/                logic tests and the visual comparison harness
 vercel.json           build, headers, CSP and /pt, /es routes
+Dockerfile, nginx.conf, docker-compose.yml   local production-like test (nginx serving dist/)
 ```
 
 The logic is pure functions imported straight by the tests in Node, so the UI never needs a browser to be tested.

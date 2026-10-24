@@ -82,8 +82,7 @@ Por trecho e no total:
 
 - Página estática montada com **Vite** (JavaScript puro, módulos ES, sem framework). Dependências só `three` (npm, carregado por `import()` dinâmico na aba 3D) e `vite`/`playwright` de desenvolvimento.
 - Estrutura: `index.html` (HTML base em inglês), `src/main.js` (entrada), `src/logic/` (lógica pura, sem DOM), `src/i18n/` (`pt.js`, `en.js`, `es.js`, `index.js`), `src/ui/` (interface), `src/view3d/` (cena 3D), `src/styles/main.css`, `public/` (estáticos copiados como estão para a raiz do site), `tests/` (testes e `tests/visual/`).
-- Comandos: `npm run dev` (servidor local), `npm test` (testes da lógica), `npm run build` (gera `dist/`), `npm run preview` (serve o build), `npm run visual:capture` e `npm run visual:compare` (comparação visual de telas contra uma linha de base; `visual:capture -- --fixtures-check` confere `#s=` e `localStorage`).
-- Testar como em produção: `docker compose up --build` e abrir http://localhost:8080 (nginx servindo `dist/`, com `/pt`, `/es` e `/en` → `/` como no `vercel.json`). `docker compose down --rmi local` limpa.
+- Comandos: `npm run dev` (servidor local), `npm test` (testes da lógica), `npm run build` (gera `dist/`), `npm run preview` (serve o build), `npm run visual:capture -- <url-base> <pasta> [--routes] [--only=<trecho>] [--fixtures] [--fixtures-check]` (captura as telas; ex.: `npm run visual:capture -- http://localhost:4173 /tmp/out`; `--routes` inclui `/pt` e `/es`, `--only=` limita os cenários, `--fixtures` grava `tests/visual/fixtures.json`, `--fixtures-check` confere `#s=` e `localStorage` antigos) e `npm run visual:compare -- <pasta-a> <pasta-b>` (compara duas capturas; sai com código != 0 se algo diferir).
 - **Três idiomas: português (pt-BR), inglês e espanhol.** Ver a seção "Idiomas" abaixo.
 - Dark mode (vou usar do lado do jogo).
 - Resultado atualiza ao vivo enquanto digito.
@@ -109,6 +108,7 @@ Por trecho e no total:
 - Rótulo das linhas: origem `O1` em pt/es e `S1` em en (`srcTag`), destino `D1` (`dstTag`).
 - **Inglês é o padrão.** O idioma vem do caminho (`/pt`, `/es`; `/` é inglês), depois de `?lang=pt|en|es`, depois da escolha salva; sem nada disso, inglês (não detecta pelo navegador). No site (`*.vercel.app`) a URL e o `canonical` acompanham o idioma; aberto do disco, a URL não muda. O HTML base (título, `lang`, descrição, textos com `data-i18n`) fica em inglês: é o que os buscadores leem primeiro.
 - **Ajuda contextual:** campos e resultados importantes têm um botão `?` (`class="tip" data-tip="chave"`, ou `tip('chave')` no HTML gerado) que abre um balão com `t(chave)`. Explicação nova = chave `tip...` nos três idiomas. A seção "Como funciona" e o FAQ no fim da página também usam `data-i18n`.
+- **Idioma novo** também entra no script inline anti-piscada do `index.html` (regex `(pt|es|en)` e a chave `sf-balancer:lang`, espelho do `pickLang` em `src/ui/lang.js`) e no rewrite `/:lang(pt|es)` do `vercel.json` (e no `nginx.conf`).
 - Seletor com bandeira em SVG + sigla (`FLAGS`): emoji de bandeira não renderiza no Windows. Idioma novo precisa de bandeira em `FLAGS`.
 - Os testes da lógica rodam em português; use `inLang('en', () => ...)` para testar outro idioma.
 
@@ -116,6 +116,7 @@ Por trecho e no total:
 
 - Repositório público (MIT) `AdolfoCarneiro/sf-balancer`, com README em inglês, português e espanhol (`README.md`, `README.pt-BR.md`, `README.es.md`): mudança de comportamento visível atualiza os três; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
 - O deploy roda `npm run build` e publica `dist/`. Estáticos do site ficam em `public/`: `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo estático novo do site vai em `public/`. O `.vercelignore` só deixa de fora docs e testes do upload. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
+- Testar como em produção: `docker compose up --build` e abrir http://localhost:8080 (nginx servindo `dist/`, com `/pt`, `/es` e `/en` → `/` como no `vercel.json`). `docker compose down --rmi local` limpa. O `nginx.conf` precisa espelhar as rotas do `vercel.json` (rewrites e redirects): mudou um, muda o outro. `Dockerfile`, `nginx.conf`, `docker-compose.yml` e `.dockerignore` não vão para a Vercel (estão no `.vercelignore`).
 - Vercel Web Analytics via `<script defer src="/_vercel/insights/script.js">`, sem cookies. Localmente esse script dá 404, é esperado.
 
 ## Fora do escopo (v1)

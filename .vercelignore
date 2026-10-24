@@ -9,3 +9,7 @@ README.es.md
 LICENSE
 AGENTS.md
 CLAUDE.md
+Dockerfile
+nginx.conf
+docker-compose.yml
+.dockerignore

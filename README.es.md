@@ -58,7 +58,7 @@ El planificador no conoce recetas. Tú escribes las tasas de tu planificador o d
 
 ## Ejecutarlo en local
 
-Es un sitio estático construido con Vite (Node 20.19+).
+Es un sitio estático construido con Vite (Node 20.19+ / 22.12+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git
@@ -89,6 +89,7 @@ src/styles/main.css   estilos
 public/               estáticos (favicon, og.png, robots.txt, sitemap.xml)
 tests/                tests de la lógica y la comparación visual
 vercel.json           build, headers, CSP y las rutas /pt y /es
+Dockerfile, nginx.conf, docker-compose.yml   prueba local como en producción (nginx sirviendo dist/)
 ```
 
 La lógica son funciones puras que los tests importan directamente en Node, sin navegador.

@@ -18,6 +18,7 @@ export const extLink = (href, text) => `<a href="${href}" target="_blank" rel="n
 const extLinks = () => [extLink(EXT_MOD, 'Modular Load Balancers (ficsit.app)'), extLink(extBpUrl(), t('extBp'))].join(' · ');
 export const LANG_PATH = { en: '/', pt: '/pt', es: '/es' };
 export const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
+// A lista de idiomas e a chave salva também estão no script inline anti-piscada do index.html: mantenha os dois iguais.
 // Ordem: caminho (/pt, /es), ?lang= na URL, escolha salva, inglês.
 export function pickLang() {
   const fromPath = (location.pathname.match(/^\/(pt|es|en)\/?$/) || [])[1];
