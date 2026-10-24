@@ -75,7 +75,7 @@ if (flags.has('--fixtures-check')) {
   await c2.close(); await b.close();
   process.exit(fail ? 1 : 0);
 }
-const browser = await chromium.launch({ executablePath: chromePath(), args: ['--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none'] });
+const browser = await chromium.launch({ executablePath: chromePath(), args: ['--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--disable-partial-raster'] });
 const consoleLog = {};
 const only = [...flags].find(f => f.startsWith('--only='))?.slice(7);
 const list = [];

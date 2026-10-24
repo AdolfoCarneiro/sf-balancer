@@ -14,6 +14,19 @@ const setLib = async (pg, n, m, rate, style, view, per) => {
   if (view) { await pg.click(`#libOut [data-v2d="${view}"]`); await pg.waitForTimeout(300); }
   if (per) { await pg.click(`#libOut [data-per="${per}"]`); await pg.waitForTimeout(300); }
 };
+// Espera o planejador assentar: o histórico confirma a edição 500 ms depois (habilita o desfazer), então a captura
+// só vale quando #out e os botões desfazer/refazer ficam iguais em duas leituras seguidas.
+const settle = async pg => {
+  const snap = () => pg.evaluate(() => document.getElementById('out').innerHTML + '|' + document.getElementById('undo').disabled + '|' + document.getElementById('redo').disabled);
+  await pg.waitForTimeout(700);
+  let prev = await snap();
+  for (let i = 0; i < 50; i++) {
+    await pg.waitForTimeout(100);
+    const cur = await snap();
+    if (cur === prev) return;
+    prev = cur;
+  }
+};
 const toLibrary = pg => pg.locator('#library').scrollIntoViewIfNeeded();
 
 export const scenarios = [
@@ -24,12 +37,12 @@ export const scenarios = [
     actions: async pg => {
       await pg.fill('#dstGroups .g-count', '44');
       await pg.fill('#dstGroups .g-per', '11');
-      await pg.waitForTimeout(300);
+      await settle(pg);
     },
   },
   {
     name: 'caso3-6-por-linha', path: '/', viewport: DESKTOP,
-    actions: async pg => { await pg.fill('#srcGroups .g-per', '6'); await pg.waitForTimeout(300); },
+    actions: async pg => { await pg.fill('#srcGroups .g-per', '6'); await settle(pg); },
   },
   {
     name: 'modo-fluido', path: '/', viewport: DESKTOP,
