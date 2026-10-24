@@ -2318,6 +2318,15 @@ function layout3d(d, mode, spread = 1) {
     // Na planta o lado é o da geometria: o que vem reto entra por trás, o que vem de cima (z menor) pela
     // esquerda e o de baixo pela direita; se o lado já está ocupado, o que sobrar.
     if (mode === 'flat') {
+      // Splitter da mesma fileira que solta pelo lado (o de cima de uma borboleta sai pela esquerda para o merger
+      // da frente): entra pelo mesmo lado, num arco curto, se ninguém mais vem daquele lado. Pela traseira ela
+      // contornaria o splitter e, com três entradas, empurraria quem vem de longe para o lado oposto, dando a volta
+      // no merger; na fileira da ponta, a volta ainda sairia do espaço. Com duas entradas no meio, a traseira cruza menos.
+      const edgeRow = (id, sg) => [...F.values()].every(q => (q[2] - F.get(id)[2]) * sg < 1e-9);
+      left.filter(ei => edges[ei].kind !== 'loop' && Math.abs(dz(n.id, src(ei))) < 1e-9 && (fromSide[ei] === 'left' || fromSide[ei] === 'right')).forEach(ei => {
+        const sd = fromSide[ei], sg = sd === 'left' ? -1 : 1;
+        if (free.has(sd) && !left.some(o => o !== ei && dz(n.id, src(o)) * sg > 1e-9) && (left.length >= 3 || edgeRow(src(ei), sg))) take(ei, sd);
+      });
       const ahead = left.filter(ei => edges[ei].kind !== 'loop' && Math.abs(dz(n.id, src(ei))) < 1e-9);
       const straight = ahead.find(ei => fromSide[ei] === 'front') ?? ahead[0];
       if (straight !== undefined) take(straight, 'back');
@@ -4353,7 +4362,10 @@ function flatSvg(d, lay, labels, per, plan) {
         const a1 = { x: a.x + a.n[0] * 10, y: a.y + a.n[1] * 10 }, zx = z.n[0] ? z.x + z.n[0] * 12 : z.x;
         path = `M${f(a.x)},${f(a.y)} L${f(a1.x)},${f(a1.y)} L${f(a1.x)},${f(yL)} L${f(zx)},${f(yL)} L${f(zx)},${f(z.y)} L${f(z.x)},${f(z.y)}`;
       } else {
-        const k = Math.max(16, Math.min(70, Math.hypot(z.x - a.x, z.y - a.y) * 0.45));
+        // Arco entre duas peças da mesma fileira, saindo e entrando pelo mesmo lado: rente às peças, sem passar
+        // do toco de 1,2 m (a curva sobe 3/4 de k), para ficar dentro do espaço da planta.
+        const arch = a.n[0] === z.n[0] && a.n[1] === z.n[1] && Math.abs(a.y - z.y) < 1;
+        const k = arch ? 1.6 * sz :Math.max(16, Math.min(70, Math.hypot(z.x - a.x, z.y - a.y) * 0.45));
         path = `M${f(a.x)},${f(a.y)} C${f(a.x + a.n[0] * k)},${f(a.y + a.n[1] * k)} ${f(z.x + z.n[0] * k)},${f(z.y + z.n[1] * k)} ${f(z.x)},${f(z.y)}`;
       }
     }
