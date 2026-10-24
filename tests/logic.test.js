@@ -1027,6 +1027,17 @@ test('idiomas: texto do passo peça por peça', () => {
   });
 });
 
+test('desenho 2D: zoom no ponto e arrastar sem sair do desenho', () => {
+  const full = { x: 0, y: 0, w: 800, h: 400 };
+  const z = L.zoomView(full, full, 2, 200, 100);
+  assert.deepEqual([z.w, z.h], [400, 200], 'aproxima mantendo a proporção');
+  assert.deepEqual([z.x, z.y], [100, 50], 'o ponto do cursor fica no lugar');
+  assert.equal(L.zoomView(full, full, 0.5, 400, 200).w, 800, 'não afasta além do desenho inteiro');
+  assert.equal(L.zoomView(full, full, 100, 400, 200).w, 100, 'no máximo 8×');
+  const p = L.panView(z, full, 1000, -1000);
+  assert.deepEqual([p.x, p.y], [400, 0], 'arrastar prende na borda');
+});
+
 // ---- Planta (2D vista de cima) ----
 test('planta: tudo no chão, peças sem encostar, lados de acordo com a geometria', () => {
   for (const d of [L.balancerDesign('matrix-loop', 2, 5, [100], 1e9), L.balancerDesign('funnel-sink', 3, 5, [100], 1e9), L.butterflyDesign(4, 4, [100], 1e9), L.butterflyDesign(5, 5, [100], 1e9, 'butterfly-loop')]) {

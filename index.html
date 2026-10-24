@@ -426,6 +426,16 @@
   .cap-i:empty { display: none; }
   .bsvg.plan { --grid-line: rgba(120, 160, 200, .14); }
   .bsvg.flat [data-id] { cursor: pointer; }
+  .bsvg.flat { touch-action: none; user-select: none; }
+  .bsvg.flat.zoomed { cursor: grab; }
+  .bsvg.flat.zoomed:active { cursor: grabbing; }
+  .stage { position: relative; }
+  .stage.stage2d { padding: 0; overflow: hidden; max-height: none; min-height: 340px; }
+  .stage.stage2d svg { width: 100%; height: 100%; max-width: none; max-height: none; }
+  .stage2d .pmode { position: absolute; top: 0; left: 0; z-index: 1; max-width: calc(100% - 190px); padding: 10px 12px; }
+  .zctl { position: absolute; top: 10px; right: 10px; z-index: 1; display: flex; gap: 4px; }
+  .zctl .pbtn { min-width: 32px; background: var(--bench); }
+  @media (max-width: 640px) { .stage2d .pmode { max-width: 100%; padding-top: 48px; } }
   .bsvg.focusing [data-b]:not(.lit):not(.fut), .bsvg.focusing [data-id]:not(.lit):not(.fut) { opacity: .12; }
   .bsvg.focusing .lit path { stroke-width: 4.5; }
   .plegend { --grid-line: rgba(120, 160, 200, .5); }
@@ -1040,6 +1050,7 @@ const I18N = {
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `na torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `no andar ${lv}, ${at}ª a partir da esquerda`,
     where3dFlat: (lv, at) => `na coluna ${lv}, ${at}ª de cima`,
+    zoomIn: 'Aproximar', zoomOut: 'Afastar', zoomFit: 'Ver tudo', hint2dZoom: 'Roda do mouse ou pinça para o zoom, arraste para mover. Passe o mouse ou toque numa peça para ver só o caminho dela.',
     view2dLabel: 'Desenho', view2dScheme: 'Esquema', view2dPlan: 'Planta',
     tipView2d: 'Nos dois, cada esteira sai e entra pelo lado certo da peça, como no jogo: o splitter recebe por trás e solta pela frente e pelos lados, o merger o contrário, e nunca duas no mesmo lado. Esquema: compacto, cabe na tela. Planta: o mesmo desenho em escala, com a grade de fundações, o espaço que ocupa e se cabe num Blueprint Designer. Passe o mouse ou toque numa peça, entrada ou saída para ver só o caminho dela.',
     lgMixed: 'esteira misturada: cor da saída para onde vai',
@@ -1370,6 +1381,7 @@ const I18N = {
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `in tower ${lv}, height ${at}`, where3dFloors: (lv, at) => `on floor ${lv}, position ${at} from the left`,
     where3dFlat: (lv, at) => `in column ${lv}, no. ${at} from the top`,
+    zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomFit: 'Show all', hint2dZoom: 'Mouse wheel or pinch to zoom, drag to move. Hover or tap a piece to see only its path.',
     view2dLabel: 'Drawing', view2dScheme: 'Diagram', view2dPlan: 'Plan',
     tipView2d: 'In both, every belt goes in and out through the right side of the piece, like in the game: a splitter takes input at the back and outputs at the front and sides, a merger the other way around, and never two on the same side. Diagram: compact, fits the screen. Plan: the same drawing to scale, with the foundation grid, the space it takes and whether it fits a Blueprint Designer. Hover or tap a piece, input or output to see only its path.',
     lgMixed: 'mixed belt: color of the output it goes to',
@@ -1700,6 +1712,7 @@ const I18N = {
     stPiece3d: (name, where, conns) => `${name} ${where}. ${conns}`,
     where3dTowers: (lv, at) => `en la torre ${lv}, altura ${at}`, where3dFloors: (lv, at) => `en el piso ${lv}, posición ${at} desde la izquierda`,
     where3dFlat: (lv, at) => `en la columna ${lv}, ${at}º desde arriba`,
+    zoomIn: 'Acercar', zoomOut: 'Alejar', zoomFit: 'Ver todo', hint2dZoom: 'Rueda del mouse o pellizco para el zoom, arrastra para mover. Pasa el mouse o toca una pieza para ver solo su camino.',
     view2dLabel: 'Dibujo', view2dScheme: 'Esquema', view2dPlan: 'Planta',
     tipView2d: 'En los dos, cada cinta entra y sale por el lado correcto de la pieza, como en el juego: el splitter recibe por atrás y saca por el frente y los lados, el merger al revés, y nunca dos por el mismo lado. Esquema: compacto, cabe en la pantalla. Planta: el mismo dibujo a escala, con la cuadrícula de cimientos, el espacio que ocupa y si cabe en un Blueprint Designer. Pasa el mouse o toca una pieza, entrada o salida para ver solo su camino.',
     lgMixed: 'cinta mezclada: color de la salida a la que va',
@@ -2614,6 +2627,17 @@ function tapGesture() {
   };
 }
 
+// Zoom do desenho 2D pelo viewBox: k > 1 aproxima no ponto (cx, cy), sem passar de 8× nem afastar além do
+// desenho inteiro, e sem sair dele; panView move e prende dentro do desenho.
+function panView(vb, full, dx, dy) {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  return { ...vb, x: clamp(vb.x + dx, full.x, full.x + full.w - vb.w), y: clamp(vb.y + dy, full.y, full.y + full.h - vb.h) };
+}
+function zoomView(vb, full, k, cx, cy) {
+  const w = Math.max(full.w / 8, Math.min(full.w, vb.w / k)), h = w * full.h / full.w, r = w / vb.w;
+  return panView({ x: cx - (cx - vb.x) * r, y: cy - (cy - vb.y) * r, w, h }, full, 0, 0);
+}
+
 // Distância da câmera para a esfera que envolve os limites caber inteira, no menor dos dois ângulos de visão.
 function fitDistance(bounds, fovDeg, aspect) {
   const r = Math.hypot(...bounds.max.map((v, i) => v - bounds.min[i])) / 2;
@@ -3375,7 +3399,7 @@ function parseNum(str) {
   return /^-?\d*\.?\d+$/.test(norm) ? Number(norm) : NaN;
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, setLang, t, BELTS, PIPES, resolveGroup, buildLines, sizeParts, lineComp, summarizeRates, manifoldPieces, isDirect, nextDirect, splitTree, describeTree, divisionOptions, mergersFor, junctionsFor, chainSizes, chainSlot, DESIGN_KINDS, balancerDesign, blueprintDesign, butterflyGroup, butterflyNet, butterflyDesign, buildBalancer, makeGraph, addNode, addEdge, designFloors, L3D, PORT3D, layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, panView, zoomView, tapGesture, fitDistance, balancerCandidates, rankDesigns, designWhy, designPieces, designOut, designName, waterfill, simulate, generatePlans, headerGroups, evaluatePlan, computePlan, encodeShare, decodeShare, issueUrl, fmt, parseNum };
 // LOGIC-END
 </script>
 
@@ -4285,9 +4309,12 @@ function flatSvg(d, lay, labels, per, plan) {
   const up = loops.filter(b => b.toSide === 'left'), down = loops.filter(b => b.toSide !== 'left');
   const fp = plan ? planFootprint(lay) : null;
   const padL = inW + 16, padR = outW + 16;
-  const padT = boxH / 2 + 18 + up.length * 7 + (plan ? 30 : 0), padB = boxH / 2 + 18 + down.length * 7;
+  const padT = boxH / 2 + 18 + up.length * 7 + (plan ? 6 : 0), padB = boxH / 2 + 18 + down.length * 7;
   const X = x => padL + (x - minX) * sx, Y = z => padT + (z - minZ) * sz;
-  const W = Math.ceil(X(maxX) + padR), H = Math.ceil(Y(maxZ) + padB);
+  // O retângulo do espaço (em fundações inteiras) pode passar das peças: o desenho cresce para ele caber,
+  // com o texto embaixo dele.
+  const fr = fp && { x: X(fp.min[0]), y: Y(fp.min[1]), w: fp.fw * 8 * sx, h: fp.fd * 8 * sz };
+  const W = Math.ceil(Math.max(X(maxX) + padR, fr ? fr.x + fr.w + 8 : 0)), H = Math.ceil(Math.max(Y(maxZ) + padB, fr ? fr.y + fr.h + 24 : 0));
   const out = [];
   const g = (step, svg, attr = '') => out.push(`<g data-s="${step}"${attr}>${svg}</g>`);
   if (plan) {
@@ -4296,9 +4323,8 @@ function flatSvg(d, lay, labels, per, plan) {
     for (let x = Math.floor((minX - padL / sx) / 8) * 8 + 4; X(x) <= W; x += 8) if (X(x) >= 0) grid.push(`M${f(X(x))},0 V${H}`);
     for (let z = Math.floor((minZ - padT / sz) / 8) * 8; Y(z) <= H; z += 8) if (Y(z) >= 0) grid.push(`M0,${f(Y(z))} H${W}`);
     out.push(`<path d="${grid.join(' ')}" stroke="var(--grid-line)" stroke-width="1" fill="none"/>`);
-    const fx = X(fp.min[0]), fz = Y(fp.min[1]);
-    out.push(`<rect x="${f(fx)}" y="${f(fz)}" width="${fp.fw * 8 * sx}" height="${fp.fd * 8 * sz}" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
-      <text class="sm" x="${f(fx)}" y="${f(fz - 8)}" style="fill:var(--ok)">${esc(t('fpLabel', fp.fw, fp.fd, fp.mk))}</text>`);
+    out.push(`<rect x="${f(fr.x)}" y="${f(fr.y)}" width="${fr.w}" height="${fr.h}" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text class="sm" x="${f(fr.x)}" y="${f(fr.y + fr.h + 16)}" style="fill:var(--ok)">${esc(t('fpLabel', fp.fw, fp.fd, fp.mk))}</text>`);
   }
   const P = q => [X(q.pos[0]), Y(q.pos[2])];
   const port = (id, side) => { const q = byId.get(id), [cx, cy] = P(q), n = PORT_N[side], r = isPart(q) ? h : 0; return { x: cx + n[0] * r, y: cy + n[1] * r, n }; };
@@ -4758,8 +4784,11 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       <div class="seg" role="radiogroup" aria-label="${esc(t('view2dLabel'))}">${['scheme', 'plan'].map(v => `<button type="button" role="radio" aria-checked="${v === (plan ? 'plan' : 'scheme')}" data-v2d="${v}">${t('view2d' + cap1(v))}</button>`).join('')}</div>${tip('tipView2d')}
       <span>${t('perLabel')}</span>
       <div class="seg" role="radiogroup" aria-label="${esc(t('perLabel'))}">${['level', 'piece'].map(v => `<button type="button" role="radio" aria-checked="${v === per}" data-per="${v}">${t('per3d' + cap1(v))}</button>`).join('')}</div>${tip('tipPer2d')}</div>` : '';
-  root.innerHTML = `<div class="ponder" tabindex="-1">${ctl2d}
-    <div class="stage${in3d ? ' stage3d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}</div>
+  // No desenho 2D a área escura inteira é o desenho: os controles ficam por cima, como no 3D.
+  root.innerHTML = `<div class="ponder" tabindex="-1">${flat2d ? '' : ctl2d}
+    <div class="stage${in3d ? ' stage3d' : flat2d ? ' stage2d' : ''}">${in3d ? `${ctl3d}<p class="load3d">${t('loading3d')}</p><span class="hint3d">${t('hint3dFocus')}</span>` : svg}${flat2d ? `${ctl2d}<div class="zctl">
+      <button type="button" class="pbtn" data-z="in" aria-label="${esc(t('zoomIn'))}">+</button><button type="button" class="pbtn" data-z="out" aria-label="${esc(t('zoomOut'))}">−</button><button type="button" class="pbtn" data-z="fit">${t('zoomFit')}</button></div>
+      <span class="hint3d hint2d">${t('hint2dZoom')}</span>` : ''}</div>
     <div class="cap" aria-live="polite"><span class="cap-n"></span><span class="cap-i"></span><p class="cap-t"></p></div>
     <div class="pctl">
       <button type="button" class="pbtn" data-p="prev" aria-label="${esc(t('stepPrev'))}">‹</button>
@@ -4850,13 +4879,66 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       st.querySelectorAll('[data-b]').forEach(el => el.classList.toggle('lit', !!f && f.belts.has(+el.dataset.b)));
     };
     let pinned = null;
-    st.addEventListener('pointerover', e => { if (pinned === null) { const el = e.target.closest('[data-id]'); light(el ? +el.dataset.id : null); } });
+    const drag = new Map(), tap = tapGesture();
+    st.addEventListener('pointerover', e => { if (pinned === null && !drag.size) { const el = e.target.closest('[data-id]'); light(el ? +el.dataset.id : null); } });
     st.addEventListener('pointerleave', () => { if (pinned === null) light(null); });
-    st.addEventListener('click', e => {
-      const el = e.target.closest('[data-id]'), id = el ? +el.dataset.id : null;
+    // Zoom e arrastar: mexe só no viewBox (abre mostrando tudo). Roda ou pinça no ponto, botões no centro;
+    // arrastar move quando há zoom. Toque parado (tapGesture) fixa ou solta o caminho aceso.
+    // "Ver tudo": o desenho inteiro no meio da área livre (abaixo dos botões, acima da dica), com a proporção
+    // da área; zoom e arrastar ficam dentro desse quadro. A altura da área acompanha o desenho, até 68% da tela.
+    const W0 = st.viewBox.baseVal.width, H0 = st.viewBox.baseVal.height, stage = q('.stage2d');
+    let full = { x: 0, y: 0, w: W0, h: H0 }, vb = { ...full }, pinch = null, fitW = -1;
+    const apply = () => { st.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); st.classList.toggle('zoomed', vb.w < full.w - 1e-6); };
+    const fit = () => {
+      const cw = stage.clientWidth;
+      if (!cw) return;
+      fitW = cw;
+      const top = stage.querySelector('.pmode').offsetHeight + 16, bot = stage.querySelector('.hint2d').offsetHeight + 16;
+      stage.style.height = `${Math.round(Math.max(340, Math.min(innerHeight * 0.68, cw * H0 / W0 + top + bot)))}px`;
+      const ch = stage.clientHeight, s = Math.max(W0 / cw, H0 / Math.max(80, ch - top - bot));
+      full = { x: (W0 - cw * s) / 2, y: -top * s - ((ch - top - bot) * s - H0) / 2, w: cw * s, h: ch * s };
+      vb = { ...full };
+      apply();
+    };
+    fit();
+    // Só refaz quando a largura muda (a altura quem muda é o próprio fit).
+    const ro = new ResizeObserver(() => requestAnimationFrame(() => { if (stage.isConnected && stage.clientWidth !== fitW) fit(); }));
+    ro.observe(stage);
+    const stop0 = root._stop;
+    root._stop = () => { ro.disconnect(); stop0(); };
+    const toSvg = (x, y) => { const m = st.getScreenCTM(); if (!m) return [vb.x + vb.w / 2, vb.y + vb.h / 2]; const pt = new DOMPoint(x, y).matrixTransform(m.inverse()); return [pt.x, pt.y]; };
+    const zoom = (k, at) => { vb = zoomView(vb, full, k, ...(at || [vb.x + vb.w / 2, vb.y + vb.h / 2])); apply(); };
+    q('.zctl').addEventListener('click', e => {
+      const b = e.target.closest('[data-z]');
+      if (!b) return;
+      if (b.dataset.z === 'fit') fit(); else zoom(b.dataset.z === 'in' ? 1.5 : 1 / 1.5);
+    });
+    st.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(-e.deltaY * 0.0015), toSvg(e.clientX, e.clientY)); }, { passive: false });
+    st.addEventListener('pointerdown', e => { st.setPointerCapture(e.pointerId); drag.set(e.pointerId, [e.clientX, e.clientY]); tap.down(e.pointerId, e.clientX, e.clientY); pinch = null; });
+    st.addEventListener('pointermove', e => {
+      const prev = drag.get(e.pointerId);
+      if (!prev) return;
+      drag.set(e.pointerId, [e.clientX, e.clientY]);
+      if (drag.size === 1) {
+        const [x0, y0] = toSvg(...prev), [x1, y1] = toSvg(e.clientX, e.clientY);
+        vb = panView(vb, full, x0 - x1, y0 - y1);
+        apply();
+      } else if (drag.size === 2) {
+        const [a, b] = [...drag.values()], dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) zoom(dist / pinch, toSvg((a[0] + b[0]) / 2, (a[1] + b[1]) / 2));
+        pinch = dist;
+      }
+    });
+    st.addEventListener('pointerup', e => {
+      if (!drag.delete(e.pointerId)) return;
+      pinch = null;
+      if (!tap.up(e.pointerId, e.clientX, e.clientY)) return;
+      // Com o ponteiro capturado o alvo é o próprio svg: a peça tocada vem da posição.
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-id]'), id = el && st.contains(el) ? +el.dataset.id : null;
       pinned = id === pinned ? null : id;
       light(pinned);
     });
+    st.addEventListener('pointercancel', e => { drag.delete(e.pointerId); tap.cancel(e.pointerId); pinch = null; });
   }
   if (in3d) {
     const token = {};
@@ -5061,7 +5143,7 @@ function renderCatalog() {
   $('catGrid').innerHTML = CATALOG.map((c, i) => {
     const d = c.kind.startsWith('butterfly') ? butterflyDesign(c.n, c.m, [c.rate], 480, c.kind) : balancerDesign(c.kind, c.n, c.m, [c.rate], 480);
     return `<div class="plate cat">
-      <div class="thumb" aria-hidden="true">${balancerBuild(d, libLabels(c.n, c.m)).svg}</div>
+      <div class="thumb" aria-hidden="true">${flatSvg(d, flatLayout(d), libLabels(c.n, c.m), 'level', false)}</div>
       <h4>${esc(cap1(designName(d)))}</h4>
       <p>${t(c.ds)}</p>
       <button type="button" class="pbtn" data-cat="${i}">${t('catExample', c.n, c.m)}</button>
