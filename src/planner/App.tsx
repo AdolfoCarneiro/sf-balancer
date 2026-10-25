@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
 import { PLANNER_PATH, type Lang } from './lang.ts';
@@ -9,7 +9,9 @@ import { usePlanner } from './store.ts';
 import { Header } from './ui/Header.tsx';
 import { Sidebar } from './ui/Sidebar.tsx';
 import { Inspector } from './ui/Inspector.tsx';
-import type { Selection } from './ui/selection.ts';
+import type { SearchRequest, Selection } from './ui/selection.ts';
+import { Graph } from './ui/Graph.tsx';
+import { meios } from './model/meio.ts';
 
 const data = game as unknown as GameData;
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
@@ -32,7 +34,14 @@ export function App() {
   };
 
   const { chain, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
-  const [selection, setSelection] = useState<Selection>(null);
+  const [picked, setSelection] = useState<Selection>(null);
+  // Pedido de busca vindo do grafo (porta arrastada para o vazio); a Task 9 mostra a busca.
+  const [, setSearch] = useState<SearchRequest | null>(null);
+  const meioList = useMemo(() => meios(chain, data), [chain]);
+  // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
+  const selection: Selection = !picked ? null
+    : picked.kind === 'stage' ? (chain.stages.some(s => s.id === picked.id) ? picked : null)
+    : (meioList.some(m => m.id === picked.id) ? picked : null);
   const { stages, machines } = chainTotals(chain, data);
 
   // Ctrl/Cmd+Z desfaz, +Shift refaz; ignora quando o foco está num campo.
@@ -54,7 +63,10 @@ export function App() {
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
       <div className="pl-body">
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection} />
-        <main className="pl-center" id="pl-graph" aria-label={t('plGraph')} />
+        <main className="pl-center" id="pl-graph" aria-label={t('plGraph')}>
+          <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
+            dispatch={dispatch} onOpenSearch={setSearch} />
+        </main>
         <Inspector selection={selection} />
       </div>
     </div>

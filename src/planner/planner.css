@@ -48,8 +48,55 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-sw-b { background: var(--flow); }
 .pl-sw-p { background: var(--holo); }
 .pl-sw-tag { flex: none; padding: 0 6px; border: 1px solid var(--ficsit); color: var(--ficsit); font: 600 11px var(--display); }
-.pl-center { flex: 999 1 560px; min-width: 0; padding: 20px; }
+.pl-center { flex: 999 1 560px; min-width: 0; min-height: 520px; position: relative; padding: 0; }
 .pl-inspector { flex: 1 1 280px; max-width: 340px; padding: 20px; border-left: 1px solid var(--line); background: rgba(10, 27, 45, .7); }
+
+/* Grafo (React Flow), no tema escuro dos tokens */
+.pl-center .react-flow { --xy-background-color: rgba(13, 33, 54, .85); --xy-node-border-radius: 0; --xy-edge-stroke: var(--flow);
+  --xy-controls-button-background-color: var(--plate); --xy-controls-button-background-color-hover: var(--grid);
+  --xy-controls-button-color: var(--ink); --xy-controls-button-border-color: var(--line); --xy-attribution-background-color: transparent;
+  --xy-connectionline-stroke: var(--ficsit); --xy-handle-background-color: var(--flow); --xy-handle-border-color: transparent;
+  font: 13px/1.4 var(--body); color: var(--ink); }
+.pl-center .react-flow__attribution a { color: var(--ink-dim); }
+.pl-center .react-flow__node { cursor: grab; }
+.pl-center .react-flow__node.dragging { cursor: grabbing; }
+.pl-center .react-flow__node:focus-visible { outline: none; }
+.pl-center .react-flow__node:focus-visible .pl-node { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+.pl-node { position: relative; min-width: 200px; background: var(--plate); border: 1px solid var(--line); color: var(--ink); }
+.pl-node.on { border-color: var(--ficsit); box-shadow: 0 0 0 1px var(--ficsit); }
+.pl-node-head { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.pl-node-name { display: flex; align-items: center; gap: 8px; font: 600 15px var(--display); }
+.pl-alt { padding: 0 5px; border: 1px solid var(--ficsit); color: var(--ficsit); font: 600 10px var(--display); letter-spacing: .06em; }
+.pl-node-sub { font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pl-node-body { padding: 12px; }
+.pl-node-body svg { display: block; }
+.pl-mach { fill: #1f4a72; stroke: var(--ink-dim); stroke-width: 1; }
+.pl-belt { fill: var(--flow); }
+.pl-belt.pl-pipe { fill: var(--holo); }
+.pl-node-foot { display: flex; flex-direction: column; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pl-dim { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pl-warn { color: var(--ficsit); }
+.pl-center .react-flow__handle.pl-port { width: 10px; height: 10px; min-width: 0; min-height: 0; border: 0; border-radius: 0; background: var(--flow); transform: none; }
+.pl-center .react-flow__handle-left.pl-port { left: -6px; }
+.pl-center .react-flow__handle-right.pl-port { right: -6px; left: auto; }
+.pl-center .react-flow__handle.pl-port-fluid { background: var(--holo); }
+.pl-center .react-flow__handle.pl-port:hover, .pl-center .react-flow__handle.connectingfrom { box-shadow: 0 0 0 2px var(--ficsit); }
+.pl-center .react-flow__handle.pl-port-hidden { opacity: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; }
+.pl-raw { width: 130px; height: 40px; padding: 0 10px; display: flex; flex-direction: column; justify-content: center; border: 1px dashed var(--ink-dim); background: var(--paper); font-size: 12px; line-height: 1.3; color: var(--ink); cursor: default; }
+.pl-raw-fluid { border-color: var(--holo); }
+.pl-center .react-flow__node-raw { cursor: default; }
+.pl-edge { stroke: var(--flow) !important; stroke-width: 3; }
+.pl-edge-fluid { stroke: var(--holo) !important; }
+.pl-edge.on { stroke: var(--ficsit) !important; }
+.pl-meio { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: all; }
+.pl-meio-note { font-size: 11px; color: var(--ficsit); font-variant-numeric: tabular-nums; white-space: nowrap; background: rgba(13, 33, 54, .85); padding: 0 3px; }
+.pl-meio-short { color: var(--sink); }
+.pl-meio-btn { min-width: 62px; height: 26px; padding: 0 8px; background: var(--ficsit); color: var(--bench); border: 0; font: 700 12px var(--display); cursor: pointer; white-space: nowrap; }
+.pl-meio-btn.on { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pl-meio-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pl-live { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 5; max-width: 90%; pointer-events: none; }
+.pl-live:not(:empty) { padding: 6px 12px; background: var(--bench); border: 1px solid var(--ficsit); color: var(--ink); font-size: 13px; }
+
 @media (max-width: 900px) {
   .pl-side, .pl-inspector { max-width: none; border: 0; border-bottom: 1px solid var(--line); }
 }
