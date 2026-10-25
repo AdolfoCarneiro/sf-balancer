@@ -8,5 +8,10 @@ export type Side = 'ins' | 'outs';
 // tiers: chave `in:<item>` ou `out:<item>` (o mesmo item pode entrar e sair da receita).
 export interface Stage { id: StageId; recipe: RecipeId; machines: number; clock: number; perRow: number | null; locked: boolean; tiers: Record<string, string>; pos: { x: number; y: number } }
 export interface Link { id: string; item: ItemId; from: StageId; to: StageId }
-export interface Chain { v: 1; stages: Stage[]; links: Link[]; policy: 'represar' | 'sink' | 'extra' }
+// Quartos de volta no sentido horário: 0 entradas pela esquerda (saída à direita), 1 por cima, 2 pela direita, 3 por baixo.
+export type Rot = 0 | 1 | 2 | 3;
+// Metros, canto superior esquerdo do bloco já girado, no mundo; x/y múltiplos de 8.
+export interface MapPlace { x: number; y: number; rot: Rot; gapRow?: number; gapMachine?: number }
+// map: posição de cada etapa no mapa; alts: id do meio -> `key` da montagem escolhida.
+export interface Chain { v: 1; stages: Stage[]; links: Link[]; policy: 'represar' | 'sink' | 'extra'; map?: Record<StageId, MapPlace>; alts?: Record<string, string> }
 export interface PortWarning { item: ItemId; side: Side; rowRate: number; tier: string; cap: number; fixTier: string | null; fixPerRow: number }

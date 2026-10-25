@@ -1,6 +1,7 @@
-import type { Chain, GameData, ItemId, Link, RecipeId, Side, Stage, StageId } from './types.ts';
+import type { Chain, GameData, ItemId, Link, MapPlace, RecipeId, Rot, Side, Stage, StageId } from './types.ts';
 import { tierKey } from './stage.ts';
 import { MAX_MACHINES, addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
+import { meios } from './meio.ts';
 import { placeNew, withLayout } from './autolayout.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
@@ -24,6 +25,9 @@ export type Action =
   | { type: 'setLocked'; id: StageId; locked: boolean }
   | { type: 'moveStage'; id: StageId; pos: Pos }
   | { type: 'setPolicy'; policy: Chain['policy'] }
+  | { type: 'placeBlock'; id: StageId; place: MapPlace }
+  | { type: 'setPlaces'; places: Record<StageId, MapPlace> }
+  | { type: 'setMeioAlt'; meio: string; key: string | null }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'load'; chain: Chain };
@@ -40,6 +44,22 @@ const safeId = (v: unknown): string | null => {
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+const MAP_LIMIT = 100000, MAP_GRID = 8, MAP_GAP_MAX = 64, ALT_KEY_MAX = 40;
+const snap = (v: number) => Math.round(v / MAP_GRID) * MAP_GRID + 0; // + 0 troca -0 por 0
+// Posição de mapa saneada: x/y limitados e presos na grade de 8 m; rot fora de 0..3 ou x/y inválidos = null.
+function cleanPlace(v: unknown): MapPlace | null {
+  if (!isObj(v)) return null;
+  const { x, y, rot } = v;
+  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (rot !== 0 && rot !== 1 && rot !== 2 && rot !== 3) return null;
+  const p: MapPlace = { x: snap(clamp(x, -MAP_LIMIT, MAP_LIMIT)), y: snap(clamp(y, -MAP_LIMIT, MAP_LIMIT)), rot: rot as Rot };
+  for (const k of ['gapRow', 'gapMachine'] as const) {
+    const g = v[k];
+    if (typeof g === 'number' && Number.isFinite(g) && g >= 0 && g <= MAP_GAP_MAX) p[k] = g;
+  }
+  return p;
+}
 
 export function decodeChain(str: string, data: GameData): Chain | null {
   let raw: any;
@@ -91,8 +111,26 @@ export function decodeChain(str: string, data: GameData): Chain | null {
     const nl: Link = { id, item: l.item, from, to };
     chain = { ...chain, links: [...chain.links, nl] };
   }
+  if (isObj(raw.map)) {
+    const map: Record<StageId, MapPlace> = {};
+    for (const [key, v] of Object.entries(raw.map)) {
+      const id = safeId(key), place = cleanPlace(v);
+      if (id && id === key && place && seen.has(id)) map[id] = place;
+    }
+    if (Object.keys(map).length) chain = { ...chain, map };
+  }
+  if (isObj(raw.alts)) {
+    const ids = new Set(meios(chain, data).map(m => m.id));
+    const alts: Record<string, string> = {};
+    for (const [key, v] of Object.entries(raw.alts)) {
+      if (Object.hasOwn(raw.alts, key) && ids.has(key) && typeof v === 'string' && v.length <= ALT_KEY_MAX) alts[key] = v;
+    }
+    if (Object.keys(alts).length) chain = { ...chain, alts };
+  }
   return chain;
 }
+
+const omitAlts = (c: Chain): Chain => { const { alts: _a, ...rest } = c; return rest; };
 
 function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>, d: GameData): Chain {
   switch (a.type) {
@@ -103,7 +141,12 @@ function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>,
       return { ...c2, stages: c2.stages.map(s => (s.id === id ? { ...s, pos: placeNew(c2, d, id) } : s)) };
     }
     case 'addLinkedStage': return addLinkedStage(c, d, a.recipe, a.at);
-    case 'removeStage': return removeStage(c, d, a.id);
+    case 'removeStage': {
+      const c2 = removeStage(c, d, a.id);
+      if (!c2.map || !(a.id in c2.map)) return c2;
+      const { [a.id]: _gone, ...map } = c2.map;
+      return { ...c2, map };
+    }
     case 'link': return link(c, d, a.from, a.to, a.item);
     case 'unlink': return unlink(c, a.linkId);
     case 'setMachines': return setMachines(c, d, a.id, a.n);
@@ -114,6 +157,23 @@ function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>,
     case 'setLocked': return setLocked(c, a.id, a.locked);
     case 'moveStage': return moveStage(c, a.id, a.pos);
     case 'setPolicy': return setPolicy(c, a.policy);
+    case 'placeBlock': {
+      const place = cleanPlace(a.place);
+      return place && c.stages.some(s => s.id === a.id) ? { ...c, map: { ...c.map, [a.id]: place } } : c;
+    }
+    case 'setPlaces': {
+      const map: Record<StageId, MapPlace> = {};
+      for (const [id, v] of Object.entries(a.places)) {
+        const place = cleanPlace(v);
+        if (place && c.stages.some(s => s.id === id)) map[id] = place;
+      }
+      return { ...c, map };
+    }
+    case 'setMeioAlt': {
+      const { [a.meio]: _old, ...rest } = c.alts ?? {};
+      if (a.key === null) return Object.keys(rest).length ? { ...c, alts: rest } : omitAlts(c);
+      return { ...c, alts: { ...rest, [a.meio]: a.key } };
+    }
   }
 }
 
