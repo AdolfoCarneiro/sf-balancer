@@ -138,7 +138,7 @@ export default {
   pcTitle: 'Piezas por tramo', thSection: 'Tramo', thLines: 'Líneas', thMergers: 'Mergers', thSplitters: 'Splitters', thSmart: 'Smart',
   rowCollect: 'Recolección', rowMid: 'Medio', rowDist: 'Distribución', rowTotal: 'Total',
   pcHint: (conv, belts) => `Manifolds contados como ${conv} piezas por línea de k máquinas; los grupos indicados solo por el total no entran en la cuenta.${belts > 1 ? ` ${belts} cintas llegan al sink; únelas con mergers o usa más de un sink.` : ''}`,
-  svgHeld: h => `retiene ${h}`, svgToSink: f => `${f} al sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Línea extra',
+  svgToExtra: f => `${f} a la línea extra`, svgHeld: h => `retiene ${h}`, svgToSink: f => `${f} al sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Línea extra',
   svgGot: (g, r) => `${g} de ${r}`, svgAria: 'Flujo en las cintas de la alternativa elegida', svgTitleHeld: (o, out, held) => `${o}: sale ${out}, retiene ${held}`,
   treeAria: 'Árbol de splitters', treeInLoop: 'entrada: donante + retorno', treeIn: 'entrada: donante', treeSink: 'sink',
   intro: 'Tu planificador te dice cuántas máquinas; esto te dice cómo conectarlas. Indica lo que produce una etapa y lo que consume la siguiente: la herramienta agrupa las máquinas en líneas de cinta y muestra cómo conectarlas, directo, juntando líneas o con un balanceador, con el número exacto de piezas.',

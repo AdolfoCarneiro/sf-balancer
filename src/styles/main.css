@@ -206,6 +206,7 @@
   .legend i { display: inline-block; width: 20px; height: 4px; }
   .legend i.held { height: 10px; width: 14px; background: repeating-linear-gradient(135deg, var(--held) 0 2px, transparent 2px 5px); border: 1px solid var(--held); }
   .legend i.piece { width: 10px; height: 10px; border: 2px solid var(--ficsit); transform: rotate(45deg); }
+  .legend i.loopi { background: repeating-linear-gradient(90deg, var(--ink-dim) 0 5px, transparent 5px 8px); }
   .legend i.smart { width: 12px; height: 12px; border: 2px solid var(--ficsit); }
 
   .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
@@ -289,7 +290,14 @@
   .intro .links { display: inline-flex; gap: 16px; }
 
   /* Bloco do balancer no diagrama do meio: abre a montagem */
+  .pflow .rate { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; stroke-linejoin: round; }
   .balblock { cursor: pointer; }
+  .balblock .blk { fill: rgba(255, 154, 60, .04); stroke: var(--ficsit); stroke-opacity: .55; stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .balblock .blkname { fill: var(--ficsit); font-size: 13px; paint-order: normal; stroke: none; }
+  .balblock .blktag { fill: var(--paper); stroke: var(--ficsit); stroke-opacity: .7; stroke-width: 1.2; }
+  .balblock:hover .blk { fill: rgba(255, 154, 60, .1); stroke-opacity: 1; }
+  .balblock:hover .blktag { stroke-opacity: 1; }
+  .balblock:focus-visible .blk, .balblock:focus-visible .blktag { stroke: var(--holo); stroke-width: 2.5; stroke-opacity: 1; }
   .balblock:hover polygon { fill: var(--plate); }
   .balblock:focus { outline: none; }
   .balblock:focus-visible polygon { stroke: var(--holo); stroke-width: 3; }

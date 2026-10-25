@@ -138,7 +138,7 @@ export default {
   pcTitle: 'Peças por trecho', thSection: 'Trecho', thLines: 'Linhas', thMergers: 'Mergers', thSplitters: 'Splitters', thSmart: 'Smart',
   rowCollect: 'Coleta', rowMid: 'Meio', rowDist: 'Distribuição', rowTotal: 'Total',
   pcHint: (conv, belts) => `Manifolds contados como ${conv} peças por linha de k máquinas; grupos informados só pelo total não entram na conta.${belts > 1 ? ` ${belts} esteiras chegam no sink; junte com mergers ou use mais de um sink.` : ''}`,
-  svgHeld: h => `represa ${h}`, svgToSink: f => `${f} pro sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Linha extra',
+  svgToExtra: f => `${f} pra linha extra`, svgHeld: h => `represa ${h}`, svgToSink: f => `${f} pro sink`, svgStopped: 'parada', svgSink: 'Awesome Sink', svgExtra: 'Linha extra',
   svgGot: (g, r) => `${g} de ${r}`, svgAria: 'Fluxo nas esteiras da alternativa escolhida', svgTitleHeld: (o, out, held) => `${o}: sai ${out}, represa ${held}`,
   treeAria: 'Árvore de splitters', treeInLoop: 'entrada: doadora + retorno', treeIn: 'entrada: doadora', treeSink: 'sink',
   intro: 'O seu planner diz quantas máquinas; isto diz como ligar. Informe o que uma etapa produz e o que a próxima consome: a ferramenta agrupa as máquinas em linhas de esteira e mostra como conectar, direto, juntando linhas ou com balancer, com a contagem exata de peças.',

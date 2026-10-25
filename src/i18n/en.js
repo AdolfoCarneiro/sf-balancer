@@ -138,7 +138,7 @@ export default {
   pcTitle: 'Pieces per segment', thSection: 'Segment', thLines: 'Lines', thMergers: 'Mergers', thSplitters: 'Splitters', thSmart: 'Smart',
   rowCollect: 'Collection', rowMid: 'Middle', rowDist: 'Distribution', rowTotal: 'Total',
   pcHint: (conv, belts) => `Manifolds counted as ${conv} pieces per line of k machines; groups entered only by total are not counted.${belts > 1 ? ` ${belts} belts reach the sink; merge them or use more than one sink.` : ''}`,
-  svgHeld: h => `holds back ${h}`, svgToSink: f => `${f} to sink`, svgStopped: 'idle', svgSink: 'Awesome Sink', svgExtra: 'Extra line',
+  svgToExtra: f => `${f} to extra line`, svgHeld: h => `holds back ${h}`, svgToSink: f => `${f} to sink`, svgStopped: 'idle', svgSink: 'Awesome Sink', svgExtra: 'Extra line',
   svgGot: (g, r) => `${g} of ${r}`, svgAria: 'Belt flow for the selected alternative', svgTitleHeld: (o, out, held) => `${o}: out ${out}, holds back ${held}`,
   treeAria: 'Splitter tree', treeInLoop: 'input: donor + return', treeIn: 'input: donor', treeSink: 'sink',
   intro: 'Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.',

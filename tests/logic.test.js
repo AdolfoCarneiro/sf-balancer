@@ -1460,3 +1460,27 @@ test('layout do fluxo: colunas e portas', () => {
   assert.equal(lay.cols, 2);
   n.belts.filter(b => n.nodes[b.b].t === 'dst').forEach(b => assert.equal(lay.nodes.get(b.a).row, lay.nodes.get(b.b).row));
 });
+
+// Desenho do fluxo: cada peça da rede vira uma peça no SVG, com o bloco clicável.
+test('fluxo desenhado em peças', async () => {
+  const { flowSvg } = await import('../src/ui/flow.js');
+  const p = caso1(), count = (s, t) => (s.match(new RegExp(`data-piece="${t}"`, 'g')) || []).length;
+  const alts = [...p.alternatives, ...p.alternatives.find(x => x.designAlts).designAlts];
+  const bp = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
+  for (const a of [...alts, bp.alternatives[0]]) {
+    const svg = flowSvg(a === bp.alternatives[0] ? bp : p, a);
+    assert.ok(!/NaN|undefined/.test(svg), `NaN/undefined em ${a.key}`);
+    assert.equal(count(svg, 's'), a.pieces.splitters, `splitters em ${a.key}`);
+    assert.equal(count(svg, 'm'), a.pieces.mergers, `mergers em ${a.key}`);
+    assert.equal(count(svg, 'ov'), a.pieces.smart, `smart em ${a.key}`);
+    L.flowNet(a).blocks.forEach(b => assert.ok(svg.includes(`data-open-bal="${b.key}"`), `bloco ${b.key} em ${a.key}`));
+  }
+  assert.equal(count(flowSvg(bp, bp.alternatives[0]), 'bp'), 1);
+  // Caso 2 direto: pequeno, sem rolagem.
+  const p2 = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 });
+  assert.match(flowSvg(p2, alt(p2, 'direto')), /viewBox="0 0 960 /);
+  // Modo fluido: o desenho de antes (coletor com Junction), sem peças.
+  const f = L.computePlan({ ...base, medium: 'fluid', belt: 'Mk2', cap: 600, srcCount: 12, srcRate: 100, srcPer: 4, dstCount: 16, dstRate: 75, dstPer: 4 });
+  f.alternatives.forEach(a => { const s = flowSvg(f, a); assert.ok(!s.includes('data-piece')); });
+  assert.ok(f.alternatives.some(a => flowSvg(f, a).includes('Junction')));
+});
