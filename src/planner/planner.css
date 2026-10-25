@@ -1,0 +1,17 @@
+/* Planner 2D: usa os tokens de src/styles/tokens.css (mesmo visual do balancer). */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var(--paper); }
+.pl-app { display: flex; flex-direction: column; height: 100%; }
+.pl-top { display: flex; align-items: center; gap: 18px; padding: 8px 16px; background: var(--plate); border-bottom: 1px solid var(--line); }
+.pl-brand { font: 700 15px var(--display); letter-spacing: .08em; color: var(--ficsit); }
+.pl-back { color: var(--ink-dim); text-decoration: none; font: 600 13px var(--display); margin-right: auto; }
+.pl-back:hover { color: var(--ink); }
+.pl-back:focus-visible, .pl-langs button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
+.pl-langs { display: flex; border: 1px solid var(--line); }
+.pl-langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 5px 10px; font: 600 13px var(--display); }
+.pl-langs button:first-child { border-left: 0; }
+.pl-langs button:hover { color: var(--ink); }
+.pl-langs button[aria-pressed="true"] { background: var(--paper); color: var(--ficsit); }
+.pl-flag svg { display: block; width: 20px; height: 14px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); opacity: .7; }
+.pl-langs button:hover .pl-flag svg, .pl-langs button[aria-pressed="true"] .pl-flag svg { opacity: 1; }

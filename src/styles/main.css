@@ -1,29 +1,4 @@
-  :root {
-    --paper: #0d2136;
-    --plate: #15324f;
-    --grid: #1a3858;
-    --grid-fine: #13304c;
-    --ink: #e4eef8;
-    --ink-dim: #8eabc6;
-    --line: #2d5176;
-    --ficsit: #ff9b3d;
-    --flow: #e4eef8;
-    --donor: #c6a6ff;
-    --sink: #ff6d7c;
-    --held: #7f9bb8;
-    --ok: #8fe3a4;
-    --holo: #6fe3ff;
-    --bench: #0a1b2d;
-    /* Piso do Blueprint Designer na planta: chapa mais clara que o fundo, grade clara, borda quase branca */
-    --bp-floor: #1b3550;
-    --bp-line: rgba(226, 240, 252, .42);
-    --bp-sub: rgba(226, 240, 252, .11);
-    --bp-edge: #eaf3fb;
-    --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
-    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --cut: 14px;
-    color-scheme: dark;
-  }
+@import "./tokens.css";
   * { box-sizing: border-box; }
   body {
     margin: 0;

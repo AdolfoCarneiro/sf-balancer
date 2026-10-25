@@ -334,4 +334,5 @@ export default {
   loading3d: 'Loading the 3D view…', no3d: 'The 3D view needs WebGL and to download Three.js, and that didn’t work here. Here’s the 2D step by step.',
   lbBfTitle: 'Butterfly and vertical builds',
   lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
+  plPageTitle: 'Satisfactory 2D Belt Planner', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
 };

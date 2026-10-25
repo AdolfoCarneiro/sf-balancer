@@ -334,4 +334,5 @@ export default {
   loading3d: 'Cargando la vista 3D…', no3d: 'La vista 3D necesita WebGL y descargar Three.js, y aquí no funcionó. Sigue el paso a paso 2D.',
   lbBfTitle: 'Mariposa y montaje vertical',
   lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
+  plPageTitle: 'Planner 2D de Cintas para Satisfactory', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
 };
