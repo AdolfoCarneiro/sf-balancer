@@ -105,6 +105,25 @@ export function flowLayout(net) {
   }
   pass(back, id => (succs(id).length ? succs(id) : preds(id)));
 
+  // Balancer do plano: dentro de cada coluna as peças trocam de linha (as mesmas linhas) pela ordem de montagem,
+  // como na planta da biblioteca: entrada a entrada, cada árvore na ordem das folhas. Assim as árvores não se cruzam.
+  net.blocks.filter(bk => bk.kind === 'bal').forEach(bk => {
+    const inB = new Set(bk.nodes), order = new Map();
+    const starts = bk.nodes.filter(id => flat(ins[id]).some(b => !inB.has(b.a)))
+      .sort((x, y) => Math.min(...flat(ins[x]).map(b => row[b.a])) - Math.min(...flat(ins[y]).map(b => row[b.a])));
+    const visit = id => { if (order.has(id) || !inB.has(id)) return; order.set(id, order.size); flat(outs[id]).forEach(b => visit(b.b)); };
+    starts.forEach(visit);
+    bk.nodes.forEach(id => visit(id));
+    // A cascata de mergers que termina num destino e as peças que a alimentam ficam onde estão (o baricentro já as
+    // alinha com o destino); trocar estas faz a cascata receber tudo de um lado só.
+    const toDst = id => nodes[id].t === 'dst' || (nodes[id].t === 'm' && flat(outs[id]).some(b => toDst(b.b)));
+    for (let c = 0; c < cols; c++) {
+      const ids = byCol[c].filter(id => inB.has(id) && !flat(outs[id]).some(b => toDst(b.b)));
+      const rs = ids.map(id => row[id]).sort((x, y) => x - y);
+      ids.sort((x, y) => order.get(x) - order.get(y)).forEach((id, i) => { row[id] = rs[i]; });
+    }
+  });
+
   // Portas: splitter (e Smart Splitter) entra por trás e sai pela frente e pelos lados; merger entra por trás e pelos
   // lados e sai pela frente. Quem vai para cima usa a esquerda, para baixo a direita, reto frente/trás; o retorno do
   // loop pega um lado livre (o do sentido, se der). Caixa de blueprint: tudo entra por trás e sai pela frente.

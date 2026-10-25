@@ -1467,6 +1467,12 @@ test('layout do fluxo: colunas e portas', () => {
       }
     }
   }
+  // Balancer do plano: as entradas chegam ao bloco sem se cruzar (peças na ordem das entradas, como na planta).
+  for (const a of [alt(caso1(), 'balancer-matrix-loop'), alt(L.computePlan({ ...base, srcCount: 2, srcRate: 480, srcPer: 1, dstCount: 5, dstRate: 192, dstPer: 1 }), 'balancer-butterfly-loop')]) {
+    const { n, lay } = checkLayout(a), r = id => lay.nodes.get(id).row;
+    const inb = n.belts.filter(b => n.nodes[b.a].t === 'src').sort((x, y) => r(x.a) - r(y.a));
+    inb.forEach((b, i) => i && assert.ok(r(b.b) > r(inb[i - 1].b), `entradas cruzam em ${a.key}`));
+  }
   // Caso 2 com sink: o sink não puxa o Smart Splitter, que fica na linha do destino.
   {
     const { n, lay } = checkLayout(alt(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }), 'direto-sink'));
