@@ -335,4 +335,11 @@ export default {
   lbBfTitle: 'Mariposa y montaje vertical',
   lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
   plPageTitle: 'Planner 2D de Cintas para Satisfactory', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
+  plTabChain: 'Cadena', plTabMap: 'Mapa', plViews: 'Vistas', plPhase2: 'fase 2', plPhase3: 'fase 3',
+  plModeNode: 'Nodo a nodo', plModeGoal: 'Por objetivo', plModeLabel: 'Cómo montar la cadena',
+  plTotals: (s, m) => `${s} ${s === '1' ? 'etapa' : 'etapas'} · ${m} ${m === '1' ? 'máquina' : 'máquinas'}`,
+  plUndo: 'Deshacer', plRedo: 'Rehacer', plShare: 'Compartir', plCopied: 'Enlace copiado', plShareLink: 'Enlace del escenario',
+  plAddStage: 'Añadir etapa', plAddStageSoon: 'La búsqueda de recetas llega pronto.', plStages: 'Etapas', plNoStages: 'Aún no hay etapas.',
+  plLegend: 'Leyenda', plLegMachine: 'máquina, a escala', plLegBelt: 'cinta', plLegPipe: 'tubería', plLegMeio: 'el medio entre etapas (clic para abrir)',
+  plGraph: 'Cadena', plInspector: 'Detalles', plInspectorEmpty: 'Selecciona una etapa o un medio para ver los detalles.',
 };

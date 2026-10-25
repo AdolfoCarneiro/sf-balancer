@@ -335,4 +335,11 @@ export default {
   lbBfTitle: 'Butterfly and vertical builds',
   lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
   plPageTitle: 'Satisfactory 2D Belt Planner', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
+  plTabChain: 'Chain', plTabMap: 'Map', plViews: 'Views', plPhase2: 'phase 2', plPhase3: 'phase 3',
+  plModeNode: 'Node by node', plModeGoal: 'By goal', plModeLabel: 'How to build the chain',
+  plTotals: (s, m) => `${s} ${s === '1' ? 'stage' : 'stages'} · ${m} ${m === '1' ? 'machine' : 'machines'}`,
+  plUndo: 'Undo', plRedo: 'Redo', plShare: 'Share', plCopied: 'Link copied', plShareLink: 'Scenario link',
+  plAddStage: 'Add stage', plAddStageSoon: 'Recipe search is coming soon.', plStages: 'Stages', plNoStages: 'No stages yet.',
+  plLegend: 'Legend', plLegMachine: 'machine, to scale', plLegBelt: 'belt', plLegPipe: 'pipe', plLegMeio: 'the middle between stages (click to open)',
+  plGraph: 'Chain', plInspector: 'Details', plInspectorEmpty: 'Select a stage or a middle to see its details.',
 };

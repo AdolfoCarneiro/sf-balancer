@@ -335,4 +335,11 @@ export default {
   lbBfTitle: 'Borboleta e montagem vertical',
   lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
   plPageTitle: 'Planner 2D de Esteiras para Satisfactory', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
+  plTabChain: 'Cadeia', plTabMap: 'Mapa', plViews: 'Vistas', plPhase2: 'fase 2', plPhase3: 'fase 3',
+  plModeNode: 'Nó a nó', plModeGoal: 'Pelo objetivo', plModeLabel: 'Como montar a cadeia',
+  plTotals: (s, m) => `${s} ${s === '1' ? 'etapa' : 'etapas'} · ${m} ${m === '1' ? 'máquina' : 'máquinas'}`,
+  plUndo: 'Desfazer', plRedo: 'Refazer', plShare: 'Compartilhar', plCopied: 'Link copiado', plShareLink: 'Link do cenário',
+  plAddStage: 'Adicionar etapa', plAddStageSoon: 'A busca de receitas entra em breve.', plStages: 'Etapas', plNoStages: 'Nenhuma etapa ainda.',
+  plLegend: 'Legenda', plLegMachine: 'máquina, em escala', plLegBelt: 'esteira', plLegPipe: 'cano', plLegMeio: 'o meio entre etapas (clique abre)',
+  plGraph: 'Cadeia', plInspector: 'Detalhes', plInspectorEmpty: 'Selecione uma etapa ou um meio para ver os detalhes.',
 };

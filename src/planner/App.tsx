@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
-import { I18N, LANGS, getLang, setLang, t } from '../i18n/index.js';
+import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
-import { FLAGS } from '../ui/flags.js';
-import { PLANNER_PATH, SITE_PATH, type Lang } from './lang.ts';
+import { PLANNER_PATH, type Lang } from './lang.ts';
+import game from './data/game.json';
+import type { GameData } from './model/types.ts';
+import { chainTotals } from './model/totals.ts';
+import { usePlanner } from './store.ts';
+import { Header } from './ui/Header.tsx';
+import { Sidebar } from './ui/Sidebar.tsx';
+import { Inspector } from './ui/Inspector.tsx';
+import type { Selection } from './ui/selection.ts';
 
+const data = game as unknown as GameData;
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 
 export function App() {
@@ -23,20 +31,32 @@ export function App() {
     setLangState(l);
   };
 
+  const { chain, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
+  const [selection, setSelection] = useState<Selection>(null);
+  const { stages, machines } = chainTotals(chain, data);
+
+  // Ctrl/Cmd+Z desfaz, +Shift refaz; ignora quando o foco está num campo.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 'z') return;
+      const el = e.target as HTMLElement | null;
+      if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+      e.preventDefault();
+      dispatch({ type: e.shiftKey ? 'redo' : 'undo' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [dispatch]);
+
   return (
     <div className="pl-app">
-      <header className="pl-top">
-        <span className="pl-brand">{t('plBrand')}</span>
-        <a className="pl-back" href={SITE_PATH[lang]}>{t('plBack')}</a>
-        <div className="pl-langs" role="group" aria-label={t('langLabel')}>
-          {(LANGS as Lang[]).map(l => (
-            <button key={l} type="button" lang={I18N[l].htmlLang} title={I18N[l].langName} aria-pressed={l === lang} onClick={() => change(l)}>
-              <span className="pl-flag" dangerouslySetInnerHTML={{ __html: FLAGS[l] }} />
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </header>
+      <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
+        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
+      <div className="pl-body">
+        <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection} />
+        <main className="pl-center" id="pl-graph" aria-label={t('plGraph')} />
+        <Inspector selection={selection} />
+      </div>
     </div>
   );
 }
