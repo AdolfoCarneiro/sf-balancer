@@ -73,3 +73,18 @@ test('Container de fluido usa o ícone do Fluid Buffer', () => {
   const s = pickerEntries(data, '', { consumes: 'Desc_SteelIngot_C' }).special.find(e => e.spec.kind === 'container')!;
   assert.equal(s.icon, '/icons/Build_StorageContainerMk1_C.webp');
 });
+
+test('seletor de uma saída: receitas comuns primeiro, alternativas depois, Converter e FICSMAS por último', () => {
+  const r = pickerEntries(data, '', { consumes: 'Desc_IronIngot_C' }).recipes.map(e => e.title);
+  assert.deepEqual(r.slice(0, 2), ['Iron Plate', 'Iron Rod']);
+  const at = (n: string) => r.indexOf(n);
+  assert.ok(at('Solid Steel Ingot') > at('Iron Rod'));
+  assert.ok(at('Ficsite Ingot (Iron)') > at('Solid Steel Ingot') && at('Ficsite Ingot (Iron)') > at('Iron Wire'));
+  assert.equal(r.at(-1), 'Iron FICSMAS Ornament');
+  // Busca digitada: o nome exato da saída vem primeiro, e o evento fica depois do resto que casou.
+  const s = pickerEntries(data, 'ingot').recipes.map(e => e.title);
+  assert.ok(s.indexOf('Iron Ingot') < s.indexOf('Ficsite Ingot (Iron)'));
+  assert.equal(pickerEntries(data, 'iron ingot').recipes[0].title, 'Iron Ingot');
+  const orn = pickerEntries(data, 'ornament').recipes.map(e => e.title);
+  assert.ok(orn.length > 0 && orn.every(n => /FICSMAS/.test(n)));
+});

@@ -30,18 +30,22 @@ export function Header({ lang, onLang, blocks, machines, status, canUndo, canRed
     }
   };
 
+  // A marca em duas partes: SF BALANCER e, apagado, o nome da página.
+  const brand = t('plBrand').split(' / ');
   return (
     <header className="pl-top">
-      <div className="pl-brand">{t('plBrand')}</div>
+      <div className="pl-brand">{brand[0]}{brand[1] && <span> / {brand[1]}</span>}</div>
+      <a className="pl-nav" href={BALANCER_PATH[lang]}>{t('plBalancerLink')}</a>
       <div className="pl-grow" />
       <div className="pl-status" role="status">{status.join(' · ')}</div>
       <div className="pl-totals">{t('plTotals', fmt(blocks, 0), fmt(machines, 0))}</div>
-      <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{t('plUndo')}</button>
-      <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{t('plRedo')}</button>
+      <div className="pl-pair">
+        <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{t('plUndo')}</button>
+        <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{t('plRedo')}</button>
+      </div>
       <button type="button" className="pl-btn pl-primary" onClick={share}>{t('plShare')}</button>
       <span className="pl-copied" aria-live="polite">{copied ? t('plCopied') : ''}</span>
       {manual && <input className="pl-url" readOnly value={manual} aria-label={t('plShareLink')} onFocus={e => e.currentTarget.select()} ref={el => el?.select()} />}
-      <a className="pl-nav" href={BALANCER_PATH[lang]}>{t('plBalancerLink')}</a>
       <div className="pl-langs" role="group" aria-label={t('langLabel')}>
         {(LANGS as Lang[]).map(l => (
           <button key={l} type="button" lang={I18N[l].htmlLang} title={I18N[l].langName} aria-pressed={l === lang} onClick={() => onLang(l)}>

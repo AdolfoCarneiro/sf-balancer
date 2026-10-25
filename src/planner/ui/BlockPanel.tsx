@@ -36,14 +36,17 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
     <NumField label={label} value={place[k] ?? 0} valid={n => n >= 0 && n <= GAP_MAX} bad={t('plMapGapBad')}
       onCommit={n => onPlace({ ...place, [k]: n })} />
   );
+  const outlet = b.kind === 'sink' || b.kind === 'container' || b.kind === 'export';
   return (
     <>
       <h2 className="pl-insp-kicker">{t('plSelStage')}</h2>
-      <div className="pl-insp-title pl-bp-title">
-        {url && <img src={url} alt="" width={28} height={28} />}
-        <span>{blockName(b, data)}</span>
+      <div className="pl-bp-head">
+        {url && <img src={url} alt="" width={36} height={36} />}
+        <div>
+          <div className="pl-insp-title">{blockName(b, data)}</div>
+          <div className="pl-insp-sub">{t('plMapBlockSize')}: {sizeText(rect)}</div>
+        </div>
       </div>
-      <div className="pl-insp-sub">{t('plMapBlockSize')}: {sizeText(rect)}</div>
       {badges.length > 0 && (
         <ul className="pl-badges" role="status">
           {badges.map((x, i) => (
@@ -56,7 +59,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       {b.kind === 'recipe' && <RecipeFields b={b} bf={bf} f={f} data={data} dispatch={dispatch} />}
       {b.kind === 'miner' && <MinerFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
-      {(b.kind === 'sink' || b.kind === 'container' || b.kind === 'export') && (
+      {outlet && (
         <>
           <h3 className="pl-insp-h">{t('plOutletGets')}</h3>
           {bf?.ins.length
@@ -70,21 +73,30 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
             : <p className="pl-note">—</p>}
         </>
       )}
-      <fieldset className="pl-map-sides">
-        <legend className="pl-insp-h">{t('plMapInSide')}</legend>
-        {SIDES.map(([rot, key]) => (
-          <label key={rot} className="pl-check">
-            <input type="radio" name="pl-map-side" value={rot} checked={place.rot === rot}
-              onChange={() => onPlace({ ...place, rot: rot as Rot })} />
-            <span>{t(key)}</span>
-          </label>
-        ))}
-      </fieldset>
-      <button type="button" className="pl-btn" onClick={() => onPlace(rotated(place))}>{t('plMapRotate')}</button>
-      {gap(t('plMapGapRow'), 'gapRow')}
-      {gap(t('plMapGapMachine'), 'gapMachine')}
-      {onOpen && <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>}
-      <button type="button" className="pl-btn pl-danger" onClick={onDelete}>{t('plDeleteBlock')}</button>
+      <section className="pl-bp-sec" aria-labelledby="pl-bp-map">
+        <h3 className="pl-insp-h" id="pl-bp-map">{t('plBpMap')}</h3>
+        <fieldset className="pl-seg">
+          <legend>{t('plMapInSide')}</legend>
+          <div className="pl-seg-row">
+            {SIDES.map(([rot, key]) => (
+              <label key={rot} className="pl-seg-opt">
+                <input type="radio" name="pl-map-side" value={rot} checked={place.rot === rot}
+                  onChange={() => onPlace({ ...place, rot: rot as Rot })} />
+                <span>{t(key)}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <button type="button" className="pl-btn" onClick={() => onPlace(rotated(place))}>{t('plMapRotate')}</button>
+        <div className="pl-two">
+          {gap(t('plMapGapRow'), 'gapRow')}
+          {gap(t('plMapGapMachine'), 'gapMachine')}
+        </div>
+      </section>
+      <div className="pl-two">
+        {onOpen && <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>}
+        <button type="button" className="pl-btn pl-danger" onClick={onDelete}>{t('plDeleteBlock')}</button>
+      </div>
     </>
   );
 }
@@ -97,7 +109,7 @@ function LimitField({ label, value, fixed, valid, bad, unbounded, onCommit, onRe
 }) {
   return (
     <div className={'pl-limit ' + (fixed ? 'pl-fixed' : 'pl-calc')}>
-      <NumField label={label} value={value} valid={valid} bad={bad} always={!fixed} onCommit={onCommit}
+      <NumField label={label} value={value} valid={valid} bad={bad} always={!fixed} onCommit={onCommit} className="pl-row"
         placeholder={unbounded && !fixed ? t('plUnbounded') : undefined} />
       <div className="pl-limit-state">
         {fixed
@@ -122,9 +134,11 @@ function RecipeFields({ b, bf, f, data, dispatch }: { b: RecipeBlock; bf: BlockF
     return { ...(lim.machines !== undefined ? { machines: lim.machines } : {}), ...(Object.keys(inputs).length ? { inputs } : {}) };
   };
   const solidOuts = r.outs.filter(x => !data.items[x.item]?.fluid);
+  // A nota das entradas sem ligação aparece uma vez, embaixo da última delas.
+  const lastRaw = lv.inputs.filter(p => p.raw).at(-1)?.item;
   return (
     <>
-      <label className="pl-field">
+      <label className="pl-field pl-recipe">
         <span>{t('plChangeRecipe')}</span>
         <select value={r.id} onChange={e => dispatch({ type: 'setRecipe', id: b.id, recipe: e.target.value })}>
           {options.map(o => <option key={o.id} value={o.id}>{o.alt ? `${o.name} · ${t('plPickAlt')}` : o.name}</option>)}
@@ -140,12 +154,12 @@ function RecipeFields({ b, bf, f, data, dispatch }: { b: RecipeBlock; bf: BlockF
         return (
           <LimitField key={p.item} label={t('plLimitInput', it?.name ?? p.item, it?.fluid ? 'm³/min' : '/min')} value={p.value} fixed={p.fixed}
             valid={rateOk} bad={t('plRateBad')} unbounded={!!bf?.unbounded}
-            note={p.raw ? t('plLimitRawHint') : undefined}
+            note={p.item === lastRaw ? t('plLimitRawHint') : undefined}
             onCommit={n => setLimits({ ...lim, inputs: { ...lim.inputs, [p.item]: n } })}
             onReset={() => setLimits(withoutInput(p.item))} />
         );
       })}
-      <NumField label={t('plClock')} value={b.clock} valid={n => n >= 1 && n <= 250}
+      <NumField label={t('plClock')} value={b.clock} valid={n => n >= 1 && n <= 250} className="pl-row"
         onCommit={n => dispatch({ type: 'setClock', id: b.id, clock: n })} bad={t('plClockBad')} />
       {solidOuts.length > 0 && (
         <fieldset className="pl-collect">
@@ -168,7 +182,7 @@ function MinerFields({ b, bf, data, dispatch }: { b: MinerBlock; bf: BlockFlow |
   const out = bf?.outs[0];
   return (
     <>
-      <NumField label={t('plMinerRate')} value={b.rate} valid={rateOk} bad={t('plRateBad')}
+      <NumField label={t('plMinerRate')} value={b.rate} valid={rateOk} bad={t('plRateBad')} className="pl-row"
         onCommit={n => dispatch({ type: 'setMinerRate', id: b.id, rate: n })} />
       {out && out.rate !== null && <p className="pl-note">{t('plPortOut', data.items[b.item]?.name ?? b.item)}: {rateText(data.items[b.item], out.rate)}</p>}
     </>
@@ -183,7 +197,7 @@ function ExtractorFields({ b, bf, data, dispatch }: { b: ExtractorBlock; bf: Blo
   return (
     <>
       {e?.purity && (
-        <label className="pl-field">
+        <label className="pl-field pl-row">
           <span>{t('plPurity')}</span>
           <select value={b.purity} onChange={ev => dispatch({ type: 'setExtractor', id: b.id, purity: ev.target.value as Purity })}>
             {PURITIES.map(([p, key]) => <option key={p} value={p}>{t(key)}</option>)}

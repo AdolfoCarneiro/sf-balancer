@@ -47,7 +47,8 @@ const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;
-const HINT_STORE = 'sf-balancer:planner-map-hint';   // até aqui o ponteiro só clicou; passou disso, arrasta
+const HINT_STORE = 'sf-balancer:planner-map-hint';
+const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)   // até aqui o ponteiro só clicou; passou disso, arrasta
 const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
 const NOTICE_MS = 3500;
 const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink' } as const;
@@ -155,8 +156,9 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     badgeLabel: (id, x) => { const b = f.blocks.find(y => y.id === id); return b ? badgeText(x, b, data, false) : ''; },
     blockText: id => {
       const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
-      // Travado: o motivo no lugar do sub; loop travado no título.
+      // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
       const bs = badges.get(id) ?? [], stall = bs.find(x => x.kind === 'stalled');
+      const alert = stall ? badgeText(stall, b, data, true) : '';
       const lock = bs.some(x => x.kind === 'deadlock') ? ` · ${t('plDeadlockShort')}` : '';
       if (b.kind !== 'recipe') {
         // Origem: o que sai; sobra: o que chega, por item.
@@ -164,12 +166,12 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
         const title = blockName(b, data) + (typeof n === 'number' ? ` × ${fmt(n, 0)}` : '');
         const ports = (b.kind === 'miner' || b.kind === 'extractor' ? bf?.outs : bf?.ins) ?? [];
         const sub = ports.map(p => (p.rate === null ? t('plUnbounded') : rateText(data.items[p.item], p.rate))).join(' · ');
-        return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, warn: false };
+        return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, alert };
       }
       const s = solvedStage(b, bf), r = data.recipes[s.recipe], bd = data.buildings[r.building];
       const count = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
-      const sub = stall ? badgeText(stall, b, data, true) : t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name);
-      return { title: `${r.name} · ${count}${lock}`, sub, icon, warn: !!stall };
+      const sub = t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name);
+      return { title: `${r.name} · ${count}${lock}`, sub, icon, alert };
     },
     meioText: id => {
       const r = results.get(id), m = meioList.find(x => x.id === id), icon = m?.item ?? null;
@@ -462,6 +464,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
           {picker && (
             <Picker data={data} filter={picker.filter} x={picker.x} y={picker.y} area={size.current} onPick={pick} onClose={closePicker} />
           )}
+          <MapLegend />
           {hint && (
             <p className="pl-map-hint">
               <span>{t('plCanvasHint')} · {t('plMapHint')}</span>
@@ -480,5 +483,29 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
         onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
         onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />
     </>
+  );
+}
+
+// Legenda do mapa, recolhível, no canto de cima à esquerda. Os sinais repetem a forma do canvas (falta e represado em
+// círculo, travado em quadrado, loop travado em losango).
+const LEGEND: [string, string][] = [
+  ['machine', 'plLegMachine'], ['belt', 'plLegBelt'], ['pipe', 'plLegPipe'], ['meio', 'plLegMeio'], ['marker', 'plLegMarker'],
+  ['port', 'plLegPort'], ['short', 'plLegShort'], ['held', 'plLegHeld'], ['stalled', 'plLegStalled'], ['deadlock', 'plLegDeadlock'],
+  ['unbounded', 'plLegUnbounded'], ['clash', 'plLegClash'],
+];
+function MapLegend() {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(LEGEND_STORE) === '1'; } catch { return false; } });
+  const toggle = (e: React.SyntheticEvent<HTMLDetailsElement>) => {
+    const v = e.currentTarget.open;
+    setOpen(v);
+    try { localStorage.setItem(LEGEND_STORE, v ? '1' : '0'); } catch { /* sem storage */ }
+  };
+  return (
+    <details className="pl-map-legend" open={open} onToggle={toggle}>
+      <summary>{t('plLegend')}</summary>
+      <ul>
+        {LEGEND.map(([k, key]) => <li key={k}><i className={'pl-lg pl-lg-' + k} aria-hidden="true" />{t(key)}</li>)}
+      </ul>
+    </details>
   );
 }

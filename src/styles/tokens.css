@@ -13,6 +13,8 @@
     --held: #7f9bb8;
     --ok: #8fe3a4;
     --holo: #6fe3ff;
+    /* Loop travado no planner: amarelo de faixa de perigo (o travado comum fica no laranja FICSIT) */
+    --lock: #ffd84a;
     --bench: #0a1b2d;
     /* Piso do Blueprint Designer na planta: chapa mais clara que o fundo, grade clara, borda quase branca */
     --bp-floor: #1b3550;

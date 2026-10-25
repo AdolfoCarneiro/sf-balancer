@@ -77,7 +77,7 @@ function Overview({ scene, nameOf, gap, onGap, onPropose, onFocus }: {
       <h2 className="pl-insp-kicker">{t('plMapArea')}</h2>
       <div className="pl-insp-title">{sizeText(scene.bounds)}</div>
       <button type="button" className="pl-btn" onClick={onPropose}>{t('plMapPropose')}</button>
-      <NumField label={t('plMapPieceGap')} value={gap} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={onGap} />
+      <NumField label={t('plMapPieceGap')} value={gap} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={onGap} className="pl-row" />
       <h3 className="pl-insp-h">{t('plMapWarnings')}</h3>
       {scene.overlaps.length || n
         ? (
