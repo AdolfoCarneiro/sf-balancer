@@ -201,3 +201,43 @@ test('desempenho: cadeia de ~2.000 máquinas monta a cena em menos de 200 ms', (
   assert.equal(s.belts.length, 9 * 2 * rows + rows);
   assert.ok(dt < 200, `${dt.toFixed(1)} ms`);
 });
+
+// Algum trecho da esteira passa por dentro do retângulo (encostar na borda não conta)?
+const cuts = (pts: [number, number][], r: Rect) => pts.some((q, i) => {
+  if (!i) return false;
+  const [x0, y0] = pts[i - 1], [x1, y1] = q;
+  if (y0 === y1) return r.y < y0 && y0 < r.y + r.h && Math.min(x0, x1) < r.x + r.w && Math.max(x0, x1) > r.x;
+  return r.x < x0 && x0 < r.x + r.w && Math.min(y0, y1) < r.y + r.h && Math.max(y0, y1) > r.y;
+});
+
+test('meio → consumidora girada: a esteira chega pelo eixo da entrada, de fora, sem atravessar o bloco nem o meio', () => {
+  const geos = geosDoExemplo();
+  const p0 = proposeMap(ex, data, geos);
+  const IRON = 'Desc_IronIngot_C:s1>s2';
+  for (const rot of [0, 1, 2, 3] as const) {
+    const p = { ...p0, s2: { ...p0.s2, rot } };
+    const s = buildScene(ex, data, p, geos);
+    const blk = blockOf(s, 's2').rect, m = meioOf(s, IRON).rect;
+    const toS2 = s.belts.filter(b => b.item === 'Desc_IronIngot_C' && b.role === 'main' && inside(blk, ...b.pts[b.pts.length - 1]));
+    assert.equal(toS2.length, 5, `rot ${rot}`);
+    for (const b of toS2) {
+      assert.ok(!cuts(b.pts, blk), `rot ${rot}: ${JSON.stringify(b.pts)} atravessa o bloco`);
+      assert.ok(!cuts(b.pts, m), `rot ${rot}: ${JSON.stringify(b.pts)} atravessa o meio`);
+      // Último trecho no eixo da entrada (x para rot 0/2, y para 1/3).
+      const [a, z] = b.pts.slice(-2);
+      assert.equal(rot % 2 ? a[0] === z[0] : a[1] === z[1], true, `rot ${rot}: ${JSON.stringify(b.pts)}`);
+      assert.ok(b.pts.every((q, i) => i === 0 || q[0] === b.pts[i - 1][0] || q[1] === b.pts[i - 1][1]));
+    }
+  }
+});
+
+test('proposta do exemplo com os meios de verdade: nenhum cruzamento e nada sobreposto', () => {
+  const geos = geosDoExemplo();
+  const s = buildScene(ex, data, proposeMap(ex, data, geos), geos);
+  assert.deepEqual(s.crossings, []);
+  assert.deepEqual(s.overlaps, []);
+  // A esteira do meio para a consumidora vira logo na saída do meio (1 m), não no meio do caminho.
+  const m = meioOf(s, 'Desc_IronIngot_C:s1>s2').rect;
+  const out = s.belts.filter(b => b.item === 'Desc_IronIngot_C' && b.pts[0][0] === m.x + m.w && b.pts.length > 2);
+  assert.ok(out.length > 0 && out.every(b => b.pts[1][0] === m.x + m.w + 1));
+});

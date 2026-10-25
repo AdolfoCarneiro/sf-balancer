@@ -3,7 +3,7 @@
 import type { Chain, GameData, MapPlace, Rot, Stage, StageId } from '../types.ts';
 import { meios as meiosOf, type Meio } from '../meio.ts';
 import { blockGeo } from './block.ts';
-import { route, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
+import { clean, cutsRect, route, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
 import { crossings, intersects, overlaps } from './checks.ts';
 
@@ -37,6 +37,28 @@ export function toWorld(p: Pt, size: Size, place: { x: number; y: number; rot: R
 // Direção do x local no mundo (sentido do fluxo dentro do bloco).
 const DIR: Record<Rot, Pt> = { 0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1] };
 const axis = (rot: Rot): 'x' | 'y' => (rot % 2 ? 'y' : 'x');
+
+// Esteira reta na saída e na chegada antes da primeira curva (e folga para contornar um retângulo), em metros.
+const LEAD = 1;
+const step = (p: Pt, d: Pt, k: number): Pt => [p[0] + d[0] * k, p[1] + d[1] * k];
+
+// Esteira em ângulo reto de `a` (saindo na direção da) até `b` (chegando na direção db, vinda de fora), tentando
+// não atravessar os retângulos de `avoid` (quem a esteira liga). Curva logo depois da saída: primeiro de lado, depois
+// até a frente da entrada; se isso atravessa algo, contorna por uma faixa ao lado dos retângulos.
+export function link(a: Pt, da: Pt, b: Pt, db: Pt, avoid: Rect[]): Pt[] {
+  const p = step(a, da, LEAD), q = step(b, db, -LEAD);
+  const xa = da[0] !== 0, xb = db[0] !== 0;
+  const mids: Pt[][] = [xa ? [[p[0], q[1]]] : [[q[0], p[1]]], xa ? [[q[0], p[1]]] : [[p[0], q[1]]]];
+  // Faixas paralelas à chegada, por fora de cada retângulo e de todos juntos.
+  const lanes: number[] = [];
+  const lo = (r: Rect) => (xb ? r.y : r.x) - LEAD, hi = (r: Rect) => (xb ? r.y + r.h : r.x + r.w) + LEAD;
+  for (const r of avoid) lanes.push(lo(r), hi(r));
+  if (avoid.length > 1) lanes.push(Math.min(...avoid.map(lo)), Math.max(...avoid.map(hi)));
+  for (const v of lanes) mids.push(xb ? [[p[0], v], [q[0], v]] : [[v, p[1]], [v, q[1]]]);
+  const paths = mids.map(m => clean([a, p, ...m, q, b]));
+  const clear = (pts: Pt[], rs: Rect[]) => pts.every((v, i) => i === 0 || !rs.some(r => cutsRect(pts[i - 1], v, r)));
+  return paths.find(x => clear(x, avoid)) ?? paths.find(x => clear(x, avoid.slice(-1))) ?? paths[0];
+}
 
 const meioSize = (geo: MeioGeo | null | undefined): Size => (geo && !geo.tooLarge ? geo : STRIP);
 const realGeo = (geo: MeioGeo | null | undefined): MeioGeo | null => (geo && !geo.tooLarge ? geo : null);
@@ -93,9 +115,15 @@ export function proposeMap(chain: Chain, data: GameData, geos: Geos): Record<Sta
   }
   const rk = ranks(chain), cols = new Map<number, Stage[]>();
   for (const s of chain.stages) { const r = rk.get(s.id)!; const l = cols.get(r); if (l) l.push(s); else cols.set(r, [s]); }
+  // Coluna com entrada sem ligação: os tocos de RAW_STUB chegam pela esquerda e precisam de lugar antes dela.
+  const hasRaw = (s: Stage) => {
+    const linked = new Set(chain.links.filter(l => l.to === s.id).map(l => l.item));
+    return (data.recipes[s.recipe]?.ins ?? []).some(f => !linked.has(f.item));
+  };
   const out: Record<StageId, MapPlace> = {};
   let x = 0;
   for (const r of [...cols.keys()].sort((a, b) => a - b)) {
+    if (x > 0 && cols.get(r)!.some(hasRaw)) x = snap(x + RAW_STUB);
     let cursor = 0, blockW = 0, meioW = 0;
     for (const s of cols.get(r)!) {
       const e = ext.get(s.id)!, y = snap(cursor - e.top);
@@ -176,7 +204,8 @@ export function buildScene(chain: Chain, data: GameData, places: Record<StageId,
       if (!b) continue;
       const from = ports(b, 'outs', m.item), to = byRow(geo.ins, id);
       for (let k = 0; k < Math.min(from.length, to.length); k++) {
-        belts.push({ pts: route(from[k].at, mw(to[k]), axis(b.place.rot)), item: m.item, rate: from[k].rate, role: 'main', fluid: fluid(m.item) });
+        const pts = link(from[k].at, DIR[b.place.rot], mw(to[k]), DIR[sm.rot], [b.rect, sm.rect]);
+        belts.push({ pts, item: m.item, rate: from[k].rate, role: 'main', fluid: fluid(m.item) });
       }
     }
     for (const id of m.consumers) {
@@ -184,7 +213,8 @@ export function buildScene(chain: Chain, data: GameData, places: Record<StageId,
       if (!b) continue;
       const from = byRow(geo.outs, id), to = ports(b, 'ins', m.item);
       for (let k = 0; k < Math.min(from.length, to.length); k++) {
-        belts.push({ pts: route(mw(from[k]), to[k].at, axis(sm.rot)), item: m.item, rate: to[k].rate, role: 'main', fluid: fluid(m.item) });
+        const pts = link(mw(from[k]), DIR[sm.rot], to[k].at, DIR[b.place.rot], [sm.rect, b.rect]);
+        belts.push({ pts, item: m.item, rate: to[k].rate, role: 'main', fluid: fluid(m.item) });
       }
     }
   });

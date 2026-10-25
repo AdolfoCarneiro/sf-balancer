@@ -5,7 +5,7 @@ import { designFloors } from '../../../logic/layout3d.js';
 import { lineOwner, type Meio, type Plan, type PlanLine } from '../meio.ts';
 import type { Item } from '../types.ts';
 import { JUNCTION, PIECE, PIECE_GAP, SINK } from './sizes.ts';
-import { route, type Anchor, type BeltPath, type BeltRole, type MeioGeo, type Piece, type PieceKind, type Pt } from './geo.ts';
+import { clean, route, type Anchor, type BeltPath, type BeltRole, type MeioGeo, type Piece, type PieceKind, type Pt } from './geo.ts';
 
 // O que o meio lê da alternativa completa do computePlan (o tipo `Plan` exportado é o lite).
 interface LineRef { id: number }
@@ -23,17 +23,6 @@ interface Layout { cols: number; nodes: Map<number, { col: number; row: number }
 const CELL = PIECE + PIECE_GAP;
 const E = 1e-9;
 const KIND: Record<string, PieceKind> = { s: 'splitter', m: 'merger', ov: 'smart', bp: 'bp' };
-
-// Tira pontos repetidos e intermediários colineares.
-function clean(pts: Pt[]): Pt[] {
-  const out: Pt[] = [];
-  for (const p of pts) { const l = out[out.length - 1]; if (!l || l[0] !== p[0] || l[1] !== p[1]) out.push(p); }
-  return out.filter((p, k) => {
-    if (k === 0 || k === out.length - 1) return true;
-    const q = out[k - 1], r = out[k + 1];
-    return !((q[0] === p[0] && p[0] === r[0]) || (q[1] === p[1] && p[1] === r[1]));
-  });
-}
 
 // Ponta de esteira: o ponto e o eixo em que ela sai (ou entra) na peça.
 interface End { p: Pt; dir: 'x' | 'y' }
