@@ -243,7 +243,8 @@ function mountPonder(root, d, labels, view = '2d', opts = {}) {
       });
       st.addEventListener('click', e => { const rm = e.target.closest('[data-rm]'); if (rm) removeMark(+rm.dataset.rm, false); });
     }
-    st.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(-e.deltaY * 0.0015), toSvg(e.clientX, e.clientY)); }, { passive: false });
+    // Roda sozinha rola a página; zoom com Ctrl + roda ou pinça (no touchpad ela chega como Ctrl + roda).
+    st.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoom(Math.exp(-e.deltaY * 0.0015), toSvg(e.clientX, e.clientY)); }, { passive: false });
     st.addEventListener('pointerdown', e => {
       if (markDrag || e.target.closest('[data-rm]')) return;
       const m = wantsMark(e) && !drag.size ? hitMark(toWorld(e.clientX, e.clientY)) : null;

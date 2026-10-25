@@ -24,6 +24,9 @@ export async function mount3d(stage, d, labels, lay, opts = {}) {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.outputColorSpace = T.SRGBColorSpace;
   stage.append(renderer.domElement);
+  // Rolar a página passa por cima da cena; zoom só com Ctrl (a pinça do touchpad chega como Ctrl + roda).
+  // Registrado antes do OrbitControls para cortar o evento antes dele.
+  renderer.domElement.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) e.stopImmediatePropagation(); });
   const scene = new T.Scene();
   scene.background = new T.Color(hex('var(--bench)'));
   scene.add(new T.HemisphereLight(0xffffff, 0x123050, 1.4));
