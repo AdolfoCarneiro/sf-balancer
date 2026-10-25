@@ -146,7 +146,7 @@ html, body { overflow-x: hidden; }
 .pl-stageview { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; }
 .pl-sv-body { flex-shrink: 0; }
 .pl-sv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
-.pl-crumb b { font-family: var(--display); }
+.pl-crumb b, .pl-crumb h2 { font-family: var(--display); }
 .pl-linkbtn { background: none; border: 0; padding: 0; color: var(--ink-dim); font: inherit; cursor: pointer; text-decoration: underline; }
 .pl-linkbtn:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
 .pl-sv-body { display: flex; flex-wrap: wrap; flex: 1 1 auto; min-height: 0; align-items: stretch; }
@@ -168,4 +168,8 @@ html, body { overflow-x: hidden; }
 .pl-machines { display: flex; margin: 4px 0; }
 .pl-machine { box-sizing: border-box; background: var(--plate); border: 1px solid var(--held); }
 .pl-port-set { display: flex; flex-direction: column; gap: 6px; }
-.pl-warn-box { padding: 8px; border: 1px solid var(--ficsit); background: rgba(255, 155, 61, .08); color: var(--ficsit); font-size: 13px; }
+.pl-warn-box { padding: 8px; border: 1px solid var(--ficsit); background: color-mix(in srgb, var(--ficsit) 8%, transparent); color: var(--ficsit); font-size: 13px; }
+
+.pl-crumb-h { display: inline; margin: 0; font: inherit; }
+.pl-crumb-h:focus { outline: none; }
+.pl-crumb-h:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }

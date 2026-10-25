@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
 import { PLANNER_PATH, type Lang } from './lang.ts';
@@ -39,8 +39,25 @@ export function App() {
   // Pedido de busca vindo do grafo (porta arrastada para o vazio).
   const [search, setSearch] = useState<SearchRequest | null>(null);
   // Etapa aberta na vista de detalhe; some se a etapa deixar de existir (apagar, desfazer).
-  const [openId, setOpenStage] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const setOpenStage = (id: string | null) => {
+    if (id) openerRef.current = document.activeElement as HTMLElement | null;
+    setOpenId(id);
+  };
   const openStage = openId ? chain.stages.find(s => s.id === openId) : undefined;
+  // Etapa que sumiu (apagar, desfazer): fecha de vez, para não reabrir se o id voltar.
+  useEffect(() => { if (openId && !openStage) setOpenId(null); }, [openId, openStage]);
+  // Ao fechar, o foco volta a quem abriu (se ainda existe) ou ao grafo.
+  const wasOpen = useRef(false);
+  const isOpen = !!openStage;
+  useEffect(() => {
+    if (isOpen) { wasOpen.current = true; return; }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    const o = openerRef.current;
+    (o && o.isConnected && o !== document.body ? o : document.getElementById('pl-graph'))?.focus();
+  }, [isOpen]);
   const meioList = useMemo(() => meios(chain, data), [chain]);
   // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
@@ -68,7 +85,7 @@ export function App() {
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
           search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
-        <main className="pl-center" id="pl-graph" aria-label={t('plGraph')}>
+        <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plGraph')}>
           <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
             dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
         </main>

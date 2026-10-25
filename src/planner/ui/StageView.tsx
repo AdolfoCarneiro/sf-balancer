@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
 import { BELTS, PIPES } from '../../logic/belts.js';
 import { stageDrawing, type Lane } from '../model/drawing.ts';
@@ -30,6 +30,10 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
   const width = GUTTER + widest * mw + CELL;
   const height = rows.length * rowH + (rows.length - 1) * ROW_GAP + CELL;
 
+  // Ao abrir, o foco vai para o título da etapa.
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus(); }, []);
+
   // Esc volta à cadeia, a menos que esteja num campo (lá o Esc cancela a edição).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -44,7 +48,8 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
   const color = (l: Lane, i: number) => (l.fluid ? 'var(--holo)' : l.side === 'out' ? 'var(--ficsit)' : i === 0 ? 'var(--flow)' : 'var(--held)');
   const name = (id: string) => data.items[id]?.name ?? id;
   const laneEl = (l: Lane, i: number, k: number) => (
-    <div key={l.side + l.item} className="pl-lane" style={{ height: LANE, width: k * mw }} title={name(l.item)}>
+    <div key={l.side + l.item} className="pl-lane" style={{ height: LANE, width: k * mw }} role="img"
+      aria-label={l.fluid ? t('plLaneFluid', name(l.item), l.side) : t(l.side === 'in' ? 'plLaneIn' : 'plLaneOut', name(l.item), fmt(l.marks))}>
       <i className="pl-lane-line" style={{ background: color(l, i) }} />
       {Array.from({ length: l.marks }, (_, c) => (
         <i key={c} className="pl-mark" style={{ left: (c + 1) * mw + mw / 2 - MARK / 2, width: MARK, height: MARK, background: color(l, i) }} />
@@ -53,11 +58,11 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
   );
 
   return (
-    <div className="pl-stageview" aria-label={t('plStageView')}>
+    <div className="pl-stageview" role="region" aria-label={t('plStageView')}>
       <div className="pl-sv-head">
         <nav className="pl-crumb" aria-label={t('plCrumbChain')}>
           <button type="button" className="pl-linkbtn" onClick={onClose}>{t('plCrumbChain')}</button>
-          <span aria-hidden="true"> › </span><b>{r.name}</b>
+          <span aria-hidden="true"> › </span><h2 className="pl-crumb-h" tabIndex={-1} ref={heading}>{r.name}</h2>
         </nav>
         <button type="button" className="pl-btn" onClick={onClose}>{t('plBackChain')}</button>
       </div>
@@ -75,12 +80,12 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
           <div className="pl-draw-scroll" tabIndex={0} role="group" aria-label={t('plDrawAria')}>
             <div className="pl-draw" style={{ width, height, backgroundSize: `${CELL}px ${CELL}px`, backgroundPosition: '0 0' }}>
               {draw.rows.map((row, ri) => (
-                <div key={ri} className="pl-drow" role="group" aria-label={t('plRowAria', String(ri + 1), String(row.machines))}
+                <div key={ri} className="pl-drow" role="group" aria-label={t('plRowAria', String(ri + 1), String(row.machines), b.name)}
                   style={{ top: ri * (rowH + ROW_GAP), height: rowH, left: 0 }}>
                   <span className="pl-rowtag" style={{ width: GUTTER }}>L{ri + 1}</span>
                   <div className="pl-rowbody" style={{ left: GUTTER }}>
                     {row.lanes.filter(l => l.side === 'in').map((l, i) => laneEl(l, i, row.machines))}
-                    <div className="pl-machines" style={{ height: ml, width: row.machines * mw }}>
+                    <div className="pl-machines" aria-hidden="true" style={{ height: ml, width: row.machines * mw }}>
                       {Array.from({ length: row.machines }, (_, m) => <div key={m} className="pl-machine" style={{ width: mw, height: ml }} title={b.name} />)}
                     </div>
                     {row.lanes.filter(l => l.side === 'out').map((l, i) => laneEl(l, i, row.machines))}
