@@ -30,7 +30,13 @@ export type Action =
 
 export const encodeChain = (chain: Chain): string => encodeShare(chain);
 
-const MAX_STAGES = 200;
+const MAX_STAGES = 200, MAX_LINKS = 2000;
+// Id seguro para chave de objeto e para os nós `raw:` do grafo.
+const safeId = (v: unknown): string | null => {
+  if (typeof v !== 'string') return null;
+  const id = v.slice(0, 40);
+  return /^[A-Za-z0-9_-]+$/.test(id) && !(id in Object.prototype) ? id : null;
+};
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -46,9 +52,9 @@ export function decodeChain(str: string, data: GameData): Chain | null {
   const seen = new Set<string>();
   const stages: Stage[] = [];
   for (const r of (Array.isArray(raw.stages) ? raw.stages : []).slice(0, MAX_STAGES)) {
-    if (!isObj(r) || typeof r.id !== 'string' || !r.id || typeof r.recipe !== 'string') continue;
+    const id = isObj(r) ? safeId(r.id) : null;
+    if (!id || typeof r.recipe !== 'string') continue;
     const recipe = Object.hasOwn(data.recipes, r.recipe) ? data.recipes[r.recipe] : null;
-    const id = r.id.slice(0, 40);
     if (!recipe || seen.has(id)) continue;
     seen.add(id);
     // Chave `in:`/`out:` + item; a antiga (só o item) vai para a saída se o item sai, senão para a entrada.
@@ -76,11 +82,11 @@ export function decodeChain(str: string, data: GameData): Chain | null {
   }
 
   let chain: Chain = { v: 1, stages, links: [], policy: ['represar', 'sink', 'extra'].includes(raw.policy) ? raw.policy : 'represar' };
-  for (const l of Array.isArray(raw.links) ? raw.links : []) {
-    if (!isObj(l) || typeof l.from !== 'string' || typeof l.to !== 'string' || typeof l.item !== 'string') continue;
-    const from = l.from.slice(0, 40), to = l.to.slice(0, 40);
-    if (!canLink(chain, data, from, to, l.item).ok) continue;
-    let id = typeof l.id === 'string' && l.id ? l.id.slice(0, 40) : '';
+  for (const l of (Array.isArray(raw.links) ? raw.links : []).slice(0, MAX_LINKS)) {
+    if (!isObj(l) || typeof l.item !== 'string') continue;
+    const from = safeId(l.from), to = safeId(l.to);
+    if (!from || !to || !canLink(chain, data, from, to, l.item).ok) continue;
+    let id = safeId(l.id) ?? '';
     if (!id || chain.links.some(x => x.id === id)) id = nextLinkId(chain);
     const nl: Link = { id, item: l.item, from, to };
     chain = { ...chain, links: [...chain.links, nl] };

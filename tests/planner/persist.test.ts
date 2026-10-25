@@ -95,3 +95,22 @@ test('abrir: link igual ao salvo, sem salvo ou só salvo começam sem passo para
   const s = initialHistory('', encodeChain({ ...ex, policy: 'sink' }), data);
   assert.equal(s.past.length, 0); assert.equal(s.present.policy, 'sink');
 });
+
+test('salvar: ids hostis (constructor, __proto__, raw:z, espaço) somem com as ligações; ids de ligação idem', () => {
+  const st = (id: string) => ({ id, recipe: 'Recipe_Alternate_PureIronIngot_C', machines: 1, clock: 100 });
+  const raw = { v: 1, policy: 'represar', stages: [st('constructor'), st('__proto__'), st('raw:z'), st('a b'), st('toString'), st('ok-1'), { ...st('s_2'), recipe: 'Recipe_Alternate_IngotSteel_1_C' }],
+    links: [
+      { id: 'l1', item: 'Desc_IronIngot_C', from: 'constructor', to: 's_2' },
+      { id: 'raw:x', item: 'Desc_IronIngot_C', from: 'ok-1', to: 's_2' },
+    ] };
+  const c = decodeChain(encodeShare(raw), data)!;
+  assert.deepEqual(c.stages.map(s => s.id), ['ok-1', 's_2']);
+  assert.deepEqual(c.links.map(l => [l.id, l.from, l.to]), [['l1', 'ok-1', 's_2']]);
+});
+test('salvar: no máximo 2.000 ligações lidas do link', () => {
+  const st = (id: string, recipe: string) => ({ id, recipe, machines: 1, clock: 100 });
+  const stages = [st('a', 'Recipe_Alternate_PureIronIngot_C'), st('b', 'Recipe_Alternate_IngotSteel_1_C')];
+  const junk = Array.from({ length: 2000 }, () => ({ id: 'x', item: 'nada', from: 'a', to: 'b' }));
+  const raw = { v: 1, policy: 'represar', stages, links: [...junk, { id: 'l9', item: 'Desc_IronIngot_C', from: 'a', to: 'b' }] };
+  assert.equal(decodeChain(encodeShare(raw), data)!.links.length, 0);
+});
