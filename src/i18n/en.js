@@ -348,6 +348,7 @@ export default {
   plSelMeio: 'Selected · the middle', plSelStage: 'Selected · the stage', plFeeds: (a, b) => `${a} → ${b}`,
   plSupply: 'Supply', plDemand: 'Demand', plLeftover: 'Surplus', plShortage: 'Short', plPieces: 'Pieces',
   plMeioTooLarge: (s, d) => `Too large to plan here (${s} × ${d} lines)`, plMeioTooLargeShort: 'Too large',
+  plMeioCalc: 'calculating…', plMeioAlts: 'Layout', plMeioAltPieces: (s, m, k) => `${s} Splitter · ${m} Merger · ${k} Awesome Sink`,
   plOpenMeio: 'Open the full middle', plMeioHint: 'Opens the logistics tool with this connection already filled in, with the step-by-step plan and the balancer.',
   plRecipe: 'Recipe', plBuilding: 'Building', plMachines: 'Machines', plClock: 'Clock (%)', plLock: 'Lock', plOpenStage: 'Open stage', plDeleteStage: 'Delete stage',
   plMachinesBad: max => `Enter a whole number from 1 to ${max}.`, plClockBad: 'Enter a value from 1 to 250.',

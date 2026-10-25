@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
-import { meioPlan, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
+import { meioSummary, meioUrl, type Meio } from '../model/meio.ts';
+import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
 import type { Action } from '../model/persist.ts';
 import { MAX_MACHINES } from '../model/chain.ts';
 import type { Chain, GameData, Stage } from '../model/types.ts';
@@ -8,39 +9,45 @@ import type { Lang } from '../lang.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
-  selection: Selection; chain: Chain; data: GameData; lang: Lang; meioList: Meio[];
+  selection: Selection; chain: Chain; data: GameData; lang: Lang; meioList: Meio[]; results: Map<string, MeioResult | null>;
   dispatch: (a: Action) => void; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void;
 }
 
 const POLICIES = [['represar', 'policyHold'], ['sink', 'policySink'], ['extra', 'policyExtra']] as const;
 
-export function Inspector({ selection, chain, data, lang, meioList, dispatch, onSelect, onOpenStage }: Props) {
+export function Inspector({ selection, chain, data, lang, meioList, results, dispatch, onSelect, onOpenStage }: Props) {
   const meio = selection?.kind === 'meio' ? meioList.find(m => m.id === selection.id) : undefined;
   const stage = selection?.kind === 'stage' ? chain.stages.find(s => s.id === selection.id) : undefined;
   return (
     <aside className="pl-inspector" aria-label={t('plInspector')} id="pl-inspector">
       {!meio && !stage && <p className="pl-note">{t('plInspectorEmpty')}</p>}
-      {meio && <MeioPanel meio={meio} chain={chain} data={data} lang={lang} dispatch={dispatch} />}
+      {meio && <MeioPanel meio={meio} result={results.get(meio.id)} chain={chain} data={data} lang={lang} dispatch={dispatch} />}
       {stage && <StagePanel key={stage.id} stage={stage} data={data} dispatch={dispatch} onSelect={onSelect} onOpenStage={onOpenStage} />}
     </aside>
   );
 }
 
-function MeioPanel({ meio, chain, data, lang, dispatch }: { meio: Meio; chain: Chain; data: GameData; lang: Lang; dispatch: (a: Action) => void }) {
-  // Só o meio selecionado é calculado aqui (o grafo calcula o resumo de todos).
-  const plan = useMemo(() => { try { return meioPlan(meio, chain, data); } catch { return null; } }, [meio, chain, data, lang]);
+// result: null = calculando; undefined = o meio não pôde ser calculado.
+function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
+  meio: Meio; result: MeioResult | null | undefined; chain: Chain; data: GameData; lang: Lang; dispatch: (a: Action) => void;
+}) {
+  const plan = result?.plan ?? null;
   const names = (ids: string[]) => ids.map(id => {
     const s = chain.stages.find(x => x.id === id);
     return s ? data.recipes[s.recipe].name : id;
   }).join(', ');
   const item = data.items[meio.item];
-  const sum = plan ? meioSummary(plan) : null;
-  const warns = plan ? [...plan.warnings.map(w => w.text), ...(plan.alternatives[0]?.warnings ?? [])] : [];
+  // Resumo, peças e avisos são da montagem escolhida (a primeira, se a escolhida sumiu).
+  const altKey = plan ? chosenAlt(plan, chain.alts?.[meio.id]) : null;
+  const alt = plan?.alternatives.find(a => a.key === altKey);
+  const sum = plan ? meioSummary(plan, altKey ?? undefined) : null;
+  const warns = plan ? [...plan.warnings.map(w => w.text), ...(alt?.warnings ?? [])] : [];
   return (
     <div className="pl-insp">
       <h2 className="pl-insp-kicker">{t('plSelMeio')}</h2>
       <div className="pl-insp-title">{item?.name ?? meio.item}</div>
       <div className="pl-insp-sub">{t('plFeeds', names(meio.producers), names(meio.consumers))}</div>
+      {result === null && <p className="pl-note" role="status">{t('plMeioCalc')}</p>}
       {sum && (
         <>
           <dl className="pl-nums">
@@ -55,6 +62,21 @@ function MeioPanel({ meio, chain, data, lang, dispatch }: { meio: Meio; chain: C
             : (
               <>
                 <div className="pl-case">{sum.caseLabel}</div>
+                {plan && plan.alternatives.length > 1 && (
+                  <fieldset className="pl-malts">
+                    <legend className="pl-insp-h">{t('plMeioAlts')}</legend>
+                    {plan.alternatives.map(a => (
+                      <label key={a.key} className="pl-malt">
+                        <input type="radio" name={'pl-alt-' + meio.id} value={a.key} checked={a.key === altKey}
+                          onChange={() => dispatch({ type: 'setMeioAlt', meio: meio.id, key: a.key })} />
+                        <span>
+                          <span>{a.title}</span>
+                          <small>{a.caseLabel} · {t('plMeioAltPieces', fmt(a.pieces.splitters, 0), fmt(a.pieces.mergers, 0), fmt(a.sinkRate > 1e-6 ? 1 : 0, 0))}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
                 {warns.length > 0 && <ul className="pl-warns">{warns.map((w, i) => <li key={i}>{w}</li>)}</ul>}
                 <h3 className="pl-insp-h">{t('plPieces')}</h3>
                 <ul className="pl-pieces">

@@ -6,7 +6,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { t } from '../../i18n/index.js';
 import { canLink, rawInputs, unlinkedFluids } from '../model/chain.ts';
-import { meioPlan, meioSummary, type Meio, type MeioSummary } from '../model/meio.ts';
+import { meioSummary, type Meio, type MeioSummary } from '../model/meio.ts';
+import type { MeioResult } from '../model/meioresult.ts';
 import { nodeSize } from '../model/autolayout.ts';
 import type { Action } from '../model/persist.ts';
 import type { Chain, GameData } from '../model/types.ts';
@@ -20,20 +21,19 @@ const edgeTypes: EdgeTypes = { meio: MeioEdge } as unknown as EdgeTypes;
 type Pos = { x: number; y: number };
 
 interface Props {
-  chain: Chain; data: GameData; lang: string; meioList: Meio[];
+  chain: Chain; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void;
   dispatch: (a: Action) => void; onOpenSearch: (r: SearchRequest) => void; onOpenStage: (id: string) => void;
 }
 
-export function Graph({ chain, data, lang, meioList, selection, onSelect, dispatch, onOpenSearch, onOpenStage }: Props) {
-  // O plano de cada meio é pesado: uma vez por mudança na cadeia (ou no idioma, que muda o caseLabel).
+export function Graph({ chain, data, lang, meioList, results, selection, onSelect, dispatch, onOpenSearch, onOpenStage }: Props) {
+  // Os planos vêm prontos (worker + cache); aqui só o resumo da montagem escolhida. null = calculando.
+  const alts = chain.alts;
   const summaries = useMemo(() => {
     const m = new Map<string, MeioSummary | null>();
-    for (const me of meioList) {
-      try { m.set(me.id, meioSummary(meioPlan(me, chain, data))); } catch { m.set(me.id, null); }
-    }
+    for (const [id, r] of results) m.set(id, r ? meioSummary(r.plan, alts?.[id]) : null);
     return m;
-  }, [meioList, chain, data, lang]);
+  }, [results, alts]);
 
   // Posição durante o arraste; no fim vira um moveStage (um passo de desfazer).
   const [drag, setDrag] = useState<Record<string, Pos>>({});
@@ -83,7 +83,7 @@ export function Graph({ chain, data, lang, meioList, selection, onSelect, dispat
         const it = data.items[l.item];
         const e: MeioEdgeType = {
           id: l.id, type: 'meio', source: l.from, sourceHandle: l.item, target: l.to, targetHandle: l.item, focusable: false,
-          data: { meioId: me.id, itemName: it?.name ?? l.item, fluid: !!it?.fluid, on: selMeio === me.id, label: i === 0 ? summaries.get(me.id) ?? null : null, onSelect: selectMeio },
+          data: { meioId: me.id, itemName: it?.name ?? l.item, fluid: !!it?.fluid, on: selMeio === me.id, label: i === 0 ? summaries.get(me.id) ?? null : null, calc: i === 0 && summaries.get(me.id) === null, onSelect: selectMeio },
         };
         out.push(e);
       });

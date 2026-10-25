@@ -131,6 +131,13 @@ html, body { overflow-x: hidden; }
 .pl-nums .pl-short dd { color: var(--sink); }
 .pl-case { padding: 8px 10px; background: var(--plate); border-left: 3px solid var(--ficsit); font-size: 14px; }
 .pl-warns { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ficsit); }
+.pl-malts legend { padding: 0; margin-bottom: 4px; }
+.pl-malts { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pl-malt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; background: var(--plate); font-size: 14px; cursor: pointer; }
+.pl-malt input { margin-top: 3px; accent-color: var(--ficsit); }
+.pl-malt > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-malt small { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pl-meio-calc { opacity: .7; font-style: italic; }
 .pl-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .pl-pieces li { display: flex; justify-content: space-between; padding: 4px 8px; background: var(--plate); font-size: 14px; font-variant-numeric: tabular-nums; }
 .pl-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-dim); }

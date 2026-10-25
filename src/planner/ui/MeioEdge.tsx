@@ -5,8 +5,8 @@ import type { MeioSummary } from '../model/meio.ts';
 
 export type MeioEdgeData = {
   meioId: string | null; itemName: string; fluid: boolean; on: boolean;
-  // Só a primeira aresta de cada meio leva o botão.
-  label: MeioSummary | null; onSelect?: (id: string) => void;
+  // Só a primeira aresta de cada meio leva o botão; calc: o meio ainda está sendo calculado.
+  label: MeioSummary | null; calc?: boolean; onSelect?: (id: string) => void;
 };
 export type MeioEdgeType = Edge<MeioEdgeData, 'meio'>;
 
@@ -18,6 +18,16 @@ function MeioEdgeImpl({ id, sourceX, sourceY, targetX, targetY, sourcePosition, 
   return (
     <>
       <BaseEdge id={id} path={path} className={cls} />
+      {d.calc && d.meioId && (
+        <EdgeLabelRenderer>
+          <div className="pl-meio nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }}>
+            <button type="button" className={'pl-meio-btn pl-meio-calc' + (d.on ? ' on' : '')} aria-pressed={d.on}
+              aria-label={t('plMeioAria', d.itemName, t('plMeioCalc'))} onClick={() => d.onSelect?.(d.meioId!)}>
+              {t('plMeioCalc')}
+            </button>
+          </div>
+        </EdgeLabelRenderer>
+      )}
       {sum && d.meioId && (
         <EdgeLabelRenderer>
           <div className="pl-meio nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }}>

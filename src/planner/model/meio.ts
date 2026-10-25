@@ -15,7 +15,7 @@ export interface MeioInput {
 // Só o que o planner lê do resultado do computePlan.
 export interface PlanLine { machines: number; rate: number; partial: boolean; comp: { gi: number; count?: number; rate: number; total?: boolean }[] }
 export interface PlanAlt {
-  key: string; caseLabel: string; sinkRate: number; warnings: string[];
+  key: string; title: string; caseLabel: string; sinkRate: number; warnings: string[];
   pieces: { mergers: number; splitters: number; smart: number; blueprints: number; junctions: number; sinkBelts: number };
 }
 export interface Plan {
@@ -105,8 +105,15 @@ export function meioPlan(meio: Meio, chain: Chain, data: GameData): Plan {
   return computePlan(inp) as unknown as Plan;
 }
 
-export function meioSummary(plan: Plan): MeioSummary {
-  const a = plan.alternatives[0];
+// A montagem escolhida se ainda existe, senão a primeira; null quando o meio não tem alternativas.
+export function chosenAlt(plan: Plan, chosen: string | undefined): string | null {
+  if (chosen && plan.alternatives.some(a => a.key === chosen)) return chosen;
+  return plan.alternatives[0]?.key ?? null;
+}
+
+export function meioSummary(plan: Plan, key?: string): MeioSummary {
+  const k = chosenAlt(plan, key);
+  const a = plan.alternatives.find(x => x.key === k);
   return {
     tooLarge: plan.tooLarge ?? null,
     caseLabel: a?.caseLabel ?? '', supply: plan.supply, demand: plan.demand,

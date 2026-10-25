@@ -12,6 +12,7 @@ import { Inspector } from './ui/Inspector.tsx';
 import type { SearchRequest, Selection } from './ui/selection.ts';
 import { Graph } from './ui/Graph.tsx';
 import { meios } from './model/meio.ts';
+import { useMeioResults } from './meios.ts';
 import { StageView } from './ui/StageView.tsx';
 
 const data = game as unknown as GameData;
@@ -64,6 +65,8 @@ export function App() {
     (o && o.isConnected && o !== document.body ? o : document.getElementById('pl-graph'))?.focus();
   }, [isOpen]);
   const meioList = useMemo(() => meios(chain, data), [chain]);
+  // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
+  const meioResults = useMeioResults(chain, data, lang, meioList);
   // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
     : picked.kind === 'stage' ? (chain.stages.some(s => s.id === picked.id) ? picked : null)
@@ -91,10 +94,10 @@ export function App() {
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
           search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
         <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plGraph')}>
-          <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
+          <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
             dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
         </main>
-        <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList}
+        <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults}
           dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
       </div>
       {openStage && <StageView key={openStage.id} stage={openStage} chain={chain} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
