@@ -1,23 +1,25 @@
 // Edições do mapa: posições novas a partir de arrastar, setas e giro, e o retângulo de um aviso. Puro.
-import type { MapPlace, Rot, StageId } from '../types.ts';
+import type { LigPlace, MapPlace, Rot, StageId } from '../types.ts';
 import type { Pt, Rect } from './geo.ts';
 import type { Scene } from './scene.ts';
 import { FOUNDATION } from './sizes.ts';
 
 const snap = (v: number) => Math.round(v / FOUNDATION) * FOUNDATION + 0;   // + 0: sem -0
 
-// A posição de partida deslocada (dx, dy) m, presa na grade de fundações.
-export const dragged = (p: MapPlace, dx: number, dy: number): MapPlace => ({ ...p, x: snap(p.x + dx), y: snap(p.y + dy) });
+// A posição de partida deslocada (dx, dy) m, presa na grade de fundações (de um bloco ou de uma ligação).
+export const dragged = <P extends LigPlace>(p: P, dx: number, dy: number): P => ({ ...p, x: snap(p.x + dx), y: snap(p.y + dy) });
+export const ligDragged: (p: LigPlace, dx: number, dy: number) => LigPlace = dragged;
 
 const ARROWS: Record<string, Pt> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 // Seta: uma fundação para o lado; outra tecla: null.
-export function nudged(p: MapPlace, key: string): MapPlace | null {
+export function nudged<P extends LigPlace>(p: P, key: string): P | null {
   const d = ARROWS[key];
   return d ? dragged(p, d[0] * FOUNDATION, d[1] * FOUNDATION) : null;
 }
 
 // Quarto de volta no sentido horário (as entradas passam para o lado seguinte: esquerda, cima, direita, baixo).
-export const rotated = (p: MapPlace): MapPlace => ({ ...p, rot: ((p.rot + 1) % 4) as Rot });
+export const rotated = <P extends LigPlace>(p: P): P => ({ ...p, rot: ((p.rot + 1) % 4) as Rot });
+export const ligRotated: (p: LigPlace) => LigPlace = rotated;
 
 // Todas as posições com uma trocada: o mapa inteiro fica fixo num passo só do desfazer.
 export const withPlace = (places: Record<StageId, MapPlace>, id: StageId, place: MapPlace): Record<StageId, MapPlace> =>

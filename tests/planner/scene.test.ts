@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Factory, GameData, MapPlace, RecipeBlock, StageId } from '../../src/planner/model/types.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
-import { connect, meiosOf, nextBlockId, setLimits } from '../../src/planner/model/factory.ts';
+import { connect, disconnect, meiosOf, nextBlockId, placeLig, setLimits } from '../../src/planner/model/factory.ts';
 import { solveFactory, type FlowResult } from '../../src/planner/model/solve.ts';
 import { solvedStage } from '../../src/planner/model/solved.ts';
 import { meioPlan } from '../../src/planner/model/meio.ts';
@@ -298,4 +298,60 @@ test('origem e sobra entram como marcadores fora de escala, ligados às linhas d
   assert.equal(geos['Desc_OreIron_C:m1>s1']!.ins.length, fromM1.length);
   // Nenhum toco de entrada bruta no minério (vem da mineradora).
   assert.ok(!s.belts.some(b => b.role === 'raw' && b.item === 'Desc_OreIron_C'));
+});
+
+const IRON_MEIO = 'Desc_IronIngot_C:s1>s2';
+// Pontas das esteiras que saem do bloco `id` com o item: o primeiro ponto na borda dele.
+const endsFrom = (s: ReturnType<typeof buildScene>, id: StageId, item: string) =>
+  s.belts.filter(b => b.item === item && inside(blockOf(s, id).rect, ...b.pts[0])).map(b => b.pts[b.pts.length - 1]);
+
+test('ligação posicionada fica onde foi posta e não anda com a produtora', () => {
+  const geos = geosDoExemplo();
+  const f = placeLig(ex, IRON_MEIO, { x: 400, y: 80, rot: 0 });
+  const p = proposeMap(ex, data, geos);
+  const s = buildScene(f, data, p, geos), m = meioOf(s, IRON_MEIO), g = geos[IRON_MEIO]!;
+  assert.deepEqual([m.rect.x, m.rect.y, m.rect.w, m.rect.h, m.rot], [400, 80, g.w, g.h, 0]);
+  // As entradas da ligação no mundo: as esteiras de s1 terminam nelas.
+  const ins = g.ins.filter(a => !a.extra && a.stage === 's1').sort((a, b) => a.row - b.row).map(a => [400 + a.x, 80 + a.y]);
+  assert.deepEqual(endsFrom(s, 's1', 'Desc_IronIngot_C'), ins);
+  // Mover s1 em +80: a ligação fica; as esteiras são refeitas e continuam chegando nas mesmas entradas.
+  const s2 = buildScene(f, data, { ...p, s1: { ...p.s1, x: p.s1.x + 80 } }, geos);
+  assert.deepEqual(meioOf(s2, IRON_MEIO).rect, m.rect);
+  assert.deepEqual(endsFrom(s2, 's1', 'Desc_IronIngot_C'), ins);
+  assert.ok(s2.belts.every(b => b.pts.every((q, i) => i === 0 || q[0] === b.pts[i - 1][0] || q[1] === b.pts[i - 1][1])));
+  // Girada: ocupa o retângulo girado a partir do canto salvo; hitTest acha ela lá.
+  const r = meioOf(buildScene(placeLig(ex, IRON_MEIO, { x: 400, y: 80, rot: 1 }), data, p, geos), IRON_MEIO);
+  assert.deepEqual([r.rect.x, r.rect.y, r.rect.w, r.rect.h, r.rot], [400, 80, g.h, g.w, 1]);
+  assert.deepEqual(hitTest(s, 400 + g.w / 2, 80 + g.h / 2), { kind: 'meio', id: IRON_MEIO });
+});
+
+test('ligação cujo id mudou (nova ligação no grupo) volta a colar na origem sem erro', () => {
+  const placed = placeLig(ex, STEEL_MEIO, { x: 800, y: 800, rot: 0 });
+  const gone = ex.links.find(l => l.from === 's2' && l.to === 's4')!.id;
+  const f = disconnect(placed, gone);
+  assert.equal(f.ligs, undefined);
+  const geos = geosOf(f), p = proposeMap(f, data, geos);
+  const s = buildScene(f, data, p, geos), id = meiosOf(f).find(m => m.item === 'Desc_SteelIngot_C')!.id;
+  assert.notEqual(id, STEEL_MEIO);
+  const m = meioOf(s, id).rect, blk = blockOf(s, 's2').rect;
+  assert.equal(m.x, blk.x + blk.w + 2);
+  // Nova ligação no grupo (mais uma consumidora do aço): o mesmo, a posição sai e a ligação cola na produtora.
+  const more = withBlock(placed, 'Recipe_SteelPipe_C', 4), extra = more.blocks[more.blocks.length - 1].id;
+  const g = connect(more, data, 's2', extra, 'Desc_SteelIngot_C');
+  assert.equal(g.ligs, undefined);
+  const gGeos = geosOf(g), gs = buildScene(g, data, placesOf(g, data, gGeos), gGeos);
+  const gm = meioOf(gs, meiosOf(g).find(m => m.item === 'Desc_SteelIngot_C')!.id).rect, gb = blockOf(gs, 's2').rect;
+  assert.equal(gm.x, gb.x + gb.w + 2);
+  // Uma posição guardada para um id que não existe mais (estado antigo) também é ignorada pela cena.
+  const stale: Factory = { ...f, ligs: { [STEEL_MEIO]: { x: 800, y: 800, rot: 0 } } };
+  assert.deepEqual(meioOf(buildScene(stale, data, p, geos), id).rect, meioOf(s, id).rect);
+});
+
+test('placeLig null volta para a posição colada', () => {
+  const geos = geosDoExemplo(), p = proposeMap(ex, data, geos);
+  const before = meioOf(buildScene(ex, data, p, geos), STEEL_MEIO).rect;
+  const f = placeLig(placeLig(ex, STEEL_MEIO, { x: 400, y: 80, rot: 2 }), STEEL_MEIO, null);
+  const s = buildScene(f, data, p, geos);
+  assert.deepEqual(meioOf(s, STEEL_MEIO).rect, before);
+  assert.equal(meioOf(s, STEEL_MEIO).rot, 0);
 });

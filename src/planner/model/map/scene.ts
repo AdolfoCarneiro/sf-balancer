@@ -1,5 +1,5 @@
 // A cena do mapa, no mundo (metros): blocos da fábrica (receitas em escala, origens e sobras como marcadores), meios
-// colados na primeira produtora, esteiras entre eles, sobreposições e cruzamentos. Puro: o canvas só desenha o que sai
+// (as ligações) onde foram postos ou colados na primeira produtora, esteiras entre eles, sobreposições e cruzamentos. Puro: o canvas só desenha o que sai
 // daqui.
 import type { Block, Factory, GameData, MapPlace, Rot, StageId } from '../types.ts';
 import { groupLinks, type Meio } from '../meio.ts';
@@ -157,6 +157,9 @@ function layout(f: Factory, data: GameData, places: Record<StageId, MapPlace>, g
   const list = groupLinks(f.links).filter(m => byId.has(m.producers[0]));
   const att = attach(list, geos, id => byId.get(id)!.geo);
   const meios: SceneMeio[] = list.map(m => {
+    // Ligação posta no mapa: canto e giro salvos; senão colada na primeira produtora.
+    const lig = f.ligs && Object.hasOwn(f.ligs, m.id) ? f.ligs[m.id] : null;
+    if (lig) return { meio: m.id, rect: { x: lig.x, y: lig.y, ...rotSize(meioSize(geos[m.id]), lig.rot) }, rot: lig.rot, geo: geos[m.id] ?? null };
     const a = att.get(m.id)!, owner = byId.get(a.owner)!;
     const p = toWorld(a.at, owner.geo, owner.place), q = toWorld([a.at[0] + a.size.w, a.at[1] + a.size.h], owner.geo, owner.place);
     const rect = { x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) };

@@ -43,8 +43,10 @@ function MeioPanel({ meio, result, factory: f, flow, data, lang, dispatch }: {
   const altKey = plan ? chosenAlt(plan, f.alts?.[meio.id]) : null;
   const alt = plan?.alternatives.find(a => a.key === altKey);
   const sum = plan && !plan.unbounded ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
-  // A geometria da montagem escolhida, girada com a primeira produtora (o meio anda com ela no mapa).
+  // A geometria da montagem escolhida, com o giro da ligação posta no mapa ou, colada, o da primeira produtora.
   const geo = result ? chosenGeo(result, f.alts?.[meio.id]) : null;
+  const lig = f.ligs && Object.hasOwn(f.ligs, meio.id) ? f.ligs[meio.id] : null;
+  const rot = lig ? lig.rot : f.map?.[meio.producers[0]]?.rot ?? 0;
   const warns = plan ? [...plan.warnings.map(w => w.text), ...(alt?.warnings ?? [])] : [];
   return (
     <div className="pl-insp">
@@ -53,7 +55,9 @@ function MeioPanel({ meio, result, factory: f, flow, data, lang, dispatch }: {
       <div className="pl-insp-sub">{t('plFeeds', names(meio.producers), names(meio.consumers))}</div>
       {result === null && <p className="pl-note" role="status">{t('plMeioCalc')}</p>}
       {plan?.unbounded && <p className="pl-note" role="status">{t('plUnbounded')}</p>}
-      {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, f.map?.[meio.producers[0]]?.rot ?? 0))}</div>}
+      {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, rot))}</div>}
+      <p className="pl-note">{t('plLigMoveHint')}</p>
+      {lig && <button type="button" className="pl-btn" onClick={() => dispatch({ type: 'placeLig', meio: meio.id, place: null })}>{t('plLigReset')}</button>}
       {sum && (
         <>
           <dl className="pl-nums">

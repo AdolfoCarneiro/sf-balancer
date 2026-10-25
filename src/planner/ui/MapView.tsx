@@ -1,6 +1,7 @@
 // Vista do mapa: a cena em escala num canvas, com a navegação do Figma (rolar move, Ctrl/⌘ + rodinha ou pinça
-// dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo. Clicar seleciona, arrastar um bloco
-// o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista os avisos.
+// dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo. Clicar seleciona, arrastar um bloco ou
+// uma ligação o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista
+// os avisos.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
@@ -8,12 +9,12 @@ import type { Meio } from '../model/meio.ts';
 import { perRowOf, stageRows } from '../model/stage.ts';
 import { solvedStage } from '../model/solved.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Factory, GameData, MapPlace, StageId } from '../model/types.ts';
+import type { Factory, GameData, LigPlace, MapPlace, StageId } from '../model/types.ts';
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
-import { dragged, nudged, rotated, withPlace } from '../model/map/edit.ts';
+import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
 import { blockName, rateText, sizeText } from './format.ts';
@@ -74,14 +75,21 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     return g;
   }, [meioList, results, f.alts]);
   // Posições mostradas: as salvas e, para quem não tem, a derivada (que pode mudar quando os meios chegam). Arrastando,
-  // o bloco usa a posição provisória (a cena é refeita sem recalcular meio nem fluxo).
+  // o bloco ou a ligação usa a posição provisória (a cena é refeita sem recalcular meio nem fluxo).
   const basePlaces = useMemo(() => placesOf(f, data, geos, flow), [f, data, geos, flow]);
-  const [moving, setMoving] = useState<{ id: StageId; place: MapPlace } | null>(null);
-  const places = useMemo(() => (moving ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
-  const scene = useMemo(() => buildScene(f, data, places, geos, flow), [f, data, places, geos, flow]);
+  const [moving, setMoving] = useState<{ kind: 'block'; id: StageId; place: MapPlace } | { kind: 'meio'; id: string; place: LigPlace } | null>(null);
+  const places = useMemo(() => (moving?.kind === 'block' ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
+  const shown = useMemo(() => (moving?.kind === 'meio' ? { ...f, ligs: { ...f.ligs, [moving.id]: moving.place } } : f), [f, moving]);
+  const scene = useMemo(() => buildScene(shown, data, places, geos, flow), [shown, data, places, geos, flow]);
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
   const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(f, data, geos, flow) });
+  const placeLig = (id: string, p: LigPlace | null) => dispatch({ type: 'placeLig', meio: id, place: p });
+  // Onde a ligação está agora (posta ou colada): o canto do retângulo e o giro, como na cena.
+  const ligAt = (id: string): LigPlace | null => {
+    const m = scene.meios.find(x => x.meio === id);
+    return m ? { x: m.rect.x, y: m.rect.y, rot: m.rot } : null;
+  };
 
   // A dica de navegação fica até ser fechada (lembrado neste navegador).
   const [hint, setHint] = useState(() => { try { return localStorage.getItem(HINT_STORE) !== '0'; } catch { return true; } });
@@ -203,7 +211,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   // marca o que está embaixo.
   const drag = useRef<{
     id: number; button: number; x0: number; y0: number; x: number; y: number; moved: boolean;
-    hit: ReturnType<typeof hitTest>; from: MapPlace | null; to: MapPlace | null;
+    hit: ReturnType<typeof hitTest>; from: LigPlace | null; to: LigPlace | null;
   } | null>(null);
   const [dragging, setDragging] = useState<'pan' | 'block' | null>(null);
   const local = (e: React.PointerEvent) => { const r = e.currentTarget.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -217,7 +225,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     if (e.button !== 0 && e.button !== 1) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const hit = e.button === 0 ? hitAt(e) : null;
-    const from = hit?.kind === 'block' ? basePlaces[hit.id] ?? null : null;
+    const from = hit?.kind === 'block' ? basePlaces[hit.id] ?? null : hit?.kind === 'meio' ? ligAt(hit.id) : null;
     drag.current = { id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -230,9 +238,11 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
         setDragging(d.from ? 'block' : 'pan');
       }
       if (d.from && d.hit) {
-        const p = dragged(d.from, (e.clientX - d.x0) / c.zoom, (e.clientY - d.y0) / c.zoom), id = d.hit.id;
+        const dx = (e.clientX - d.x0) / c.zoom, dy = (e.clientY - d.y0) / c.zoom, { id, kind } = d.hit;
+        const p = kind === 'block' ? dragged(d.from as MapPlace, dx, dy) : ligDragged(d.from, dx, dy);
         d.to = p;
-        setMoving(m => (m && m.id === id && m.place.x === p.x && m.place.y === p.y ? m : { id, place: p }));
+        setMoving(m => (m && m.id === id && m.place.x === p.x && m.place.y === p.y ? m
+          : kind === 'block' ? { kind, id, place: p as MapPlace } : { kind, id, place: p }));
       } else {
         moveCam(pan(c, d.x - e.clientX, d.y - e.clientY));
       }
@@ -254,8 +264,14 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       return;
     }
     if (d.from && d.hit) {
-      if (d.to && (d.to.x !== d.from.x || d.to.y !== d.from.y)) place(d.hit.id, d.to);
-      onSelect({ kind: 'stage', id: d.hit.id });
+      const changed = d.to && (d.to.x !== d.from.x || d.to.y !== d.from.y);
+      if (d.hit.kind === 'meio') {
+        if (changed) placeLig(d.hit.id, d.to);
+        onSelect({ kind: 'meio', id: d.hit.id });
+      } else {
+        if (changed) place(d.hit.id, d.to as MapPlace);
+        onSelect({ kind: 'stage', id: d.hit.id });
+      }
     }
   };
   const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -280,6 +296,19 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     place(id, next);
   };
 
+  // Teclado com a ligação selecionada: setas movem 8 m, R gira (a partir de onde ela está, posta ou colada), Esc solta.
+  const ligKey = (e: React.KeyboardEvent, id: string) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { e.preventDefault(); onSelect(null); return; }
+    const cur = ligAt(id);
+    if (!cur) return;
+    const next = e.key === 'r' || e.key === 'R' ? ligRotated(cur) : nudged(cur, e.key);
+    if (!next) return;
+    e.preventDefault();
+    placeLig(id, next);
+  };
+  const canvasKey = (e: React.KeyboardEvent) => (selection?.kind === 'meio' ? ligKey(e, selection.id) : blockKey(e, selStage));
+
   // Aviso clicado no painel: a câmera vai até ele.
   const focus = (r: Rect) => { const c = cam.current; if (c && size.current.w) moveCam(centerOn(c, r, size.current.w, size.current.h)); };
 
@@ -296,7 +325,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
             aria-label={t('plMapAria', fmt(f.blocks.length, 0), area)}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
             onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} onDoubleClick={onDoubleClick}
-            onKeyDown={e => blockKey(e, selStage)} />
+            onKeyDown={canvasKey} />
           {hint && (
             <p className="pl-map-hint">
               <span>{t('plMapHint')}</span>

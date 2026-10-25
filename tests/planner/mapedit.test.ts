@@ -9,7 +9,7 @@ import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
 import { centerOn } from '../../src/planner/model/map/camera.ts';
-import { dragged, nudged, rotated, warningRect, withPlace } from '../../src/planner/model/map/edit.ts';
+import { dragged, ligDragged, ligRotated, nudged, rotated, warningRect, withPlace } from '../../src/planner/model/map/edit.ts';
 
 const data = game as GameData;
 const ex = exampleFactory(data), flow = solveFactory(ex, data);
@@ -29,6 +29,14 @@ test('setas movem 8 m; outra tecla não move', () => {
   assert.deepEqual(nudged(p, 'ArrowUp'), { x: 8, y: 0, rot: 0 });
   assert.deepEqual(nudged(p, 'ArrowDown'), { x: 8, y: 16, rot: 0 });
   assert.equal(nudged(p, 'a'), null);
+});
+
+test('ligação: arrastar prende na grade de 8 m, setas movem 8 m e girar soma um quarto, sem campos de bloco', () => {
+  const p = { x: 400, y: 80, rot: 3 as const };
+  assert.deepEqual(ligDragged(p, 13, -3.9), { x: 416, y: 80, rot: 3 });
+  assert.deepEqual(ligDragged(p, -4.1, 4), { x: 392, y: 88, rot: 3 });
+  assert.deepEqual(nudged(p, 'ArrowUp'), { x: 400, y: 72, rot: 3 });
+  assert.deepEqual(ligRotated(p), { x: 400, y: 80, rot: 0 });
 });
 
 test('girar 90°: rot + 1, volta a 0 depois de 3', () => {
