@@ -1,0 +1,98 @@
+import { BELTS, PIPES } from '../../logic/belts.js';
+import type { GameData, Item, ItemId, PortWarning, Stage, Flow } from './types.ts';
+
+const E = 1e-9;
+const floorE = (x: number) => Math.floor(x + E);
+const ceil8 = (x: number) => Math.ceil(x / 8 - E) * 8;
+
+const flowOf = (stage: Stage, data: GameData, item: ItemId): Flow => {
+  const r = data.recipes[stage.recipe];
+  const f = [...r.ins, ...r.outs].find(p => p.item === item);
+  if (!f) throw new Error(`item ${item} não está na receita ${stage.recipe}`);
+  return f;
+};
+const ports = (stage: Stage, data: GameData) => { const r = data.recipes[stage.recipe]; return [...r.ins, ...r.outs]; };
+const tiersOf = (item: Item) => (item.fluid ? PIPES : BELTS) as { id: string; cap: number }[];
+
+// Taxa do item numa máquina, já com o clock.
+export function perMachine(stage: Stage, data: GameData, item: ItemId): number {
+  return flowOf(stage, data, item).perMin * stage.clock / 100;
+}
+
+export function stageTotals(stage: Stage, data: GameData) {
+  const r = data.recipes[stage.recipe];
+  const tot = (fs: Flow[]) => fs.map(f => ({ item: f.item, total: perMachine(stage, data, f.item) * stage.machines }));
+  return { ins: tot(r.ins), outs: tot(r.outs) };
+}
+
+export const defaultTier = (item: Item): string => (item.fluid ? 'Mk2' : 'Mk4');
+
+export function capOf(item: Item, tier: string): number {
+  const t = tiersOf(item).find(x => x.id === tier);
+  if (!t) throw new Error(`tier ${tier} desconhecido`);
+  return t.cap;
+}
+
+export function suggestedPerRow(stage: Stage, data: GameData): number {
+  let m = Infinity;
+  for (const p of ports(stage, data)) {
+    const it = data.items[p.item];
+    m = Math.min(m, floorE(capOf(it, defaultTier(it)) / perMachine(stage, data, p.item)));
+  }
+  return Math.max(1, Number.isFinite(m) ? m : 1);
+}
+
+export const perRowOf = (stage: Stage, data: GameData): number => stage.perRow ?? suggestedPerRow(stage, data);
+
+export function stageRows(stage: Stage, data: GameData): number[] {
+  const per = perRowOf(stage, data);
+  const rows = Array(Math.floor(stage.machines / per)).fill(per);
+  const rest = stage.machines - per * rows.length;
+  if (rest > 0) rows.push(rest);
+  return rows;
+}
+
+// Fileira mais cheia = a primeira.
+const maxRow = (stage: Stage, data: GameData) => stageRows(stage, data)[0] ?? 0;
+
+export function portTier(stage: Stage, data: GameData, item: ItemId): string {
+  const chosen = stage.tiers[item];
+  if (chosen) return chosen;
+  const it = data.items[item];
+  const rate = maxRow(stage, data) * perMachine(stage, data, item);
+  const list = tiersOf(it);
+  const from = list.findIndex(t => t.id === defaultTier(it));
+  const cands = list.slice(Math.max(0, from));
+  return (cands.find(t => t.cap >= rate - E) ?? cands[cands.length - 1]).id;
+}
+
+export function portWarnings(stage: Stage, data: GameData): PortWarning[] {
+  const out: PortWarning[] = [];
+  for (const p of ports(stage, data)) {
+    const it = data.items[p.item];
+    const pm = perMachine(stage, data, p.item);
+    const rowRate = maxRow(stage, data) * pm;
+    const tier = portTier(stage, data, p.item);
+    const cap = capOf(it, tier);
+    if (rowRate <= cap + E) continue;
+    out.push({ item: p.item, rowRate, tier, cap, fixTier: tiersOf(it).find(t => t.cap >= rowRate - E)?.id ?? null, fixPerRow: floorE(cap / pm) });
+  }
+  return out;
+}
+
+// k−1 por fileira, por porta sólida.
+export function stagePieces(stage: Stage, data: GameData): { splitters: number; mergers: number } {
+  const r = data.recipes[stage.recipe];
+  const per = stageRows(stage, data).reduce((s, k) => s + Math.max(0, k - 1), 0);
+  const n = (fs: Flow[]) => fs.filter(f => !data.items[f.item].fluid).length * per;
+  return { splitters: n(r.ins), mergers: n(r.outs) };
+}
+
+// Estimativa até a fase 4.
+export function stageArea(stage: Stage, data: GameData): { w: number; d: number } {
+  const b = data.buildings[data.recipes[stage.recipe].building];
+  const rows = stageRows(stage, data).length;
+  const w = perRowOf(stage, data) * b.w;
+  const d = rows * (b.l + 2 * ports(stage, data).length) + (rows - 1) * 4;
+  return { w: ceil8(w), d: ceil8(d) };
+}
