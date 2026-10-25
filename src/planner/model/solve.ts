@@ -71,6 +71,8 @@ function build(f: Factory, d: GameData) {
     src.outs[out].links.push(edges.length); dst.ins[inp].links.push(edges.length);
     edges.push({ id: l.id, from: fi, out, to: ti, inp });
   }
+  // Limite numa entrada ligada é teto do bloco; sem ligação, é o que existe ali (fica no suprimento).
+  for (const n of nodes) for (const p of n.ins) if (p.links.length && p.limit !== null) n.U0 = Math.min(n.U0, p.limit / p.a);
   for (const n of nodes) n.outs.forEach((p, j) => {
     const collect = n.block.kind === 'recipe' && (n.block.collect ?? []).includes(p.item);
     if (p.links.some(e => nodes[edges[e].to].outlet) || collect || (!p.links.length && (j === 0 || n.block.kind !== 'recipe'))) p.mode = 'free';
@@ -114,6 +116,10 @@ const same = (a: number, b: number) =>
   a === b || (Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= EPS * Math.max(1, Math.abs(a), Math.abs(b)));
 const fin = (v: number) => (Number.isFinite(v) ? v : null);
 const snap = (v: number) => (v < EPS ? 0 : v);
+// Tolerância relativa do resultado: o resto do ponto fixo não vira máquina a mais nem falta de 1e-7.
+const REL = 1e-7;
+const tidy = (v: number, scale: number) => (v <= REL * Math.max(1, Math.abs(scale)) ? 0 : v);
+const ceilTol = (v: number) => Math.ceil(v * (1 - REL));
 
 export function solveFactory(f: Factory, d: GameData): FlowResult {
   const { nodes, edges, groups } = build(f, d);
@@ -186,28 +192,39 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
   const links: Record<string, number | null> = {};
   for (const l of f.links) links[l.id] = 0;
   edges.forEach((E, e) => { links[E.id] = fin(snap(flow[e])); });
+  const delivered = (p: OutPort) => p.links.reduce((s, e) => s + flow[e], 0);
+  const tops = nodes.map((nd, i) => Math.min(nd.U0, supOf(i)));
+  // O que a produtora ainda daria nesta saída e não foi entregue (represado ou saindo livre).
+  const spare = (i: number, j: number) => {
+    const p = nodes[i].outs[j];
+    return tops[i] === INF ? INF : Math.max(0, p.b * tops[i] - delivered(p));
+  };
   nodes.forEach((nd, i) => {
-    const b = nd.block, xi = x[i], acc = accOf(i), sup = supOf(i);
-    const top = Math.min(nd.U0, sup), want = Math.min(nd.U0, acc);
-    const delivered = (p: OutPort) => p.links.reduce((s, e) => s + flow[e], 0);
+    const b = nd.block, xi = x[i], acc = accOf(i), top = tops[i], want = Math.min(nd.U0, acc);
     const ins: PortFlow[] = nd.ins.map((p, k) => {
-      const avail = intake[i][k];
+      // Falta só o que as produtoras ligadas não tinham para dar: a entrada que não está curta mostra 0.
+      let avail = intake[i][k];
+      const seen = new Set<string>();
+      for (const e of p.links) {
+        const E = edges[e], key = `${E.from}:${E.out}`;
+        if (!seen.has(key)) { seen.add(key); avail += spare(E.from, E.out); }
+      }
       const need = p.a * want;
-      const deficit = nd.limited && Number.isFinite(need) ? snap(need - avail) : 0;
+      const deficit = nd.limited && Number.isFinite(need) ? tidy(Math.max(0, need - avail), need) : 0;
       return { item: p.item, rate: fin(snap(nd.outlet ? avail : p.a * xi)), deficit, held: 0, exits: 0 };
     });
     const outs: PortFlow[] = nd.outs.map(p => {
-      const held = Number.isFinite(top) ? snap(p.b * (top - xi)) : 0;
-      const exits = p.mode === 'free' ? fin(xi === INF ? INF : snap(p.b * xi - delivered(p))) : 0;
+      const held = Number.isFinite(top) ? tidy(p.b * (top - xi), p.b * top) : 0;
+      const exits = p.mode === 'free' ? fin(xi === INF ? INF : tidy(p.b * xi - delivered(p), p.b * xi)) : 0;
       return { item: p.item, rate: fin(snap(p.b * xi)), deficit: 0, held, exits };
     });
     const stalled = nd.outs.find(p => p.mode === 'stall')?.item ?? null;
     let machines: number | null = null, runClock: number | null = null, extractors: number | null = null;
     if (b.kind === 'recipe' && xi !== INF) {
-      machines = b.limits?.machines ?? (xi === 0 ? 0 : Math.ceil(xi * 100 / b.clock - EPS));
+      machines = b.limits?.machines ?? (xi === 0 ? 0 : ceilTol(xi * 100 / b.clock));
       runClock = machines ? 100 * xi / machines : 0;
     }
-    if (b.kind === 'extractor') extractors = b.count ?? (xi === INF ? null : Math.ceil(xi / nd.mult - EPS));
+    if (b.kind === 'extractor') extractors = b.count ?? (xi === INF ? null : ceilTol(xi / nd.mult));
     blocks[b.id] = { id: b.id, x: fin(xi), machines, runClock, extractors, unbounded: xi === INF, stalled, ins, outs };
   });
   return { blocks, links, deadlock: deadlocks(nodes, edges, x), converged, iterations };

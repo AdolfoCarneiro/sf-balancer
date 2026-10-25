@@ -225,3 +225,35 @@ test('solver: desempenho: 10 blocos encadeados de 200 máquinas + um loop resolv
   assert.ok(ms < 50, `${ms} ms`);
   assert.equal(r.converged, true); finite(r);
 });
+
+test('solver: s1 com limite de 100 de minério ligado: x = 100/35, mineradora represa 180', () => {
+  const r = solveFactory(setLimits(vf(), 's1', { inputs: { Desc_OreIron_C: 100 } }), data);
+  close(r.blocks.s1.x, 100 / 35); close(r.links.lOre, 100);
+  close(r.blocks.m1.outs[0].held, 180); close(port(r.blocks.s1.ins, 'Desc_OreIron_C').deficit, 0);
+});
+
+test('solver: duas entradas ligadas, só uma curta: a falta aparece só nela', () => {
+  const f = fac([
+    { id: 'mi', kind: 'miner', item: 'Desc_IronIngot_C', rate: 200 } as Block,   // fonte de teste (não é minério de verdade)
+    { id: 'mc', kind: 'miner', item: 'Desc_Coal_C', rate: 1000 },
+    recipe('s2', 'Recipe_Alternate_IngotSteel_1_C', { machines: 8 }),
+  ], [link('li', 'Desc_IronIngot_C', 'mi', 's2'), link('lc', 'Desc_Coal_C', 'mc', 's2')]);
+  const r = solveFactory(f, data);
+  close(r.blocks.s2.x, 5);
+  close(port(r.blocks.s2.ins, 'Desc_IronIngot_C').deficit, 120); assert.equal(port(r.blocks.s2.ins, 'Desc_Coal_C').deficit, 0);
+  close(r.blocks.mc.outs[0].held, 800);
+});
+
+test('solver: o resto do ponto fixo não vira máquina a mais nem falta minúscula (loop da alumina)', () => {
+  // A Alumina Solution fixado em 20 (Silica coletada), S Aluminum Scrap livre; a água do S volta para o A, o resto vem do extrator.
+  const f = fac([
+    { ...recipe('A', 'Recipe_AluminaSolution_C', { machines: 20 }), collect: ['Desc_Silica_C'] },
+    recipe('S', 'Recipe_AluminumScrap_C'),
+    { id: 'w', kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C', purity: 'normal', count: null },
+  ], [link('l1', 'Desc_AluminaSolution_C', 'A', 'S'), link('l2', 'Desc_Water_C', 'S', 'A'), link('l3', 'Desc_Water_C', 'w', 'A')]);
+  const r = solveFactory(f, data);
+  // Água: 20·180 = 3600; o S (10 máquinas) devolve 1200; o extrator dá 2400 = 20 extratores.
+  assert.equal(r.blocks.w.extractors, 20); assert.equal(r.blocks.S.machines, 10);
+  for (const p of r.blocks.A.ins) assert.equal(p.deficit, 0);
+  assert.equal(r.converged, true);
+});
