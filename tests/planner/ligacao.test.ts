@@ -95,7 +95,7 @@ test('idioma: título e legenda no idioma pedido', () => {
 test('balancerUrl: o link do Balancer com esta ligação', () => {
   const me = meioDoExemplo('l1');
   assert.equal(balancerUrl(me, f, flow, data, 'es'), meioUrl(me, f, flow, data, 'es'));
-  assert.match(balancerUrl(me, f, flow, data, 'en'), /^\/#s=/);
+  assert.match(balancerUrl(me, f, flow, data, 'en'), /^\/balancer#s=/);
   // A montagem escolhida vai no link como selectedKey (a página Balancer abre com ela escolhida).
   const url = balancerUrl(me, f, flow, data, 'en', altComBalancer);
   const st = decodeShare(url.slice(url.indexOf('#s=') + 3))!;

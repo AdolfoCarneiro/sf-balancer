@@ -30,9 +30,9 @@ const settle = async pg => {
 const toLibrary = pg => pg.locator('#library').scrollIntoViewIfNeeded();
 
 export const scenarios = [
-  { name: 'padrao', path: '/', viewport: DESKTOP, actions: async () => {} },
+  { name: 'padrao', path: '/balancer.html', viewport: DESKTOP, actions: async () => {} },
   {
-    name: 'caso2-destino-440', path: '/', viewport: DESKTOP,
+    name: 'caso2-destino-440', path: '/balancer.html', viewport: DESKTOP,
     // 44 máquinas x 40/min, 11 por linha = 4 linhas de 440
     actions: async pg => {
       await pg.fill('#dstGroups .g-count', '44');
@@ -41,46 +41,46 @@ export const scenarios = [
     },
   },
   {
-    name: 'caso3-6-por-linha', path: '/', viewport: DESKTOP,
+    name: 'caso3-6-por-linha', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await pg.fill('#srcGroups .g-per', '6'); await settle(pg); },
   },
   {
-    name: 'modo-fluido', path: '/', viewport: DESKTOP,
+    name: 'modo-fluido', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await pg.check('input[name="medium"][value="fluid"]'); await pg.waitForTimeout(300); },
   },
   {
-    name: 'lib-6x6-borboleta-esquema', path: '/', viewport: DESKTOP,
+    name: 'lib-6x6-borboleta-esquema', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await setLib(pg, 6, 6, 240, 'butterfly', 'scheme'); await toLibrary(pg); },
   },
   {
-    name: 'lib-6x6-borboleta-planta', path: '/', viewport: DESKTOP,
+    name: 'lib-6x6-borboleta-planta', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await setLib(pg, 6, 6, 240, 'butterfly', 'plan'); await toLibrary(pg); },
   },
   {
-    name: 'lib-6x6-borboleta-planta-por-peca', path: '/', viewport: DESKTOP,
+    name: 'lib-6x6-borboleta-planta-por-peca', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await setLib(pg, 6, 6, 240, 'butterfly', 'plan', 'piece'); await toLibrary(pg); },
   },
   {
-    name: 'lib-9x9', path: '/', viewport: DESKTOP,
+    name: 'lib-9x9', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await setLib(pg, 9, 9, 240); await toLibrary(pg); },
   },
   {
-    name: 'balao-de-ajuda', path: '/', viewport: DESKTOP,
+    name: 'balao-de-ajuda', path: '/balancer.html', viewport: DESKTOP,
     actions: async pg => { await pg.click('#form .tip[data-tip="tipSrc"]'); await pg.waitForTimeout(300); },
   },
-  { name: 'mobile-390', path: '/', viewport: MOBILE, actions: async () => {} },
+  { name: 'mobile-390', path: '/balancer.html', viewport: MOBILE, actions: async () => {} },
   {
-    name: 'aba-3d', path: '/', viewport: DESKTOP, fuzzy: true,
+    name: 'aba-3d', path: '/balancer.html', viewport: DESKTOP, fuzzy: true,
     actions: async pg => {
       await setLib(pg, 6, 6, 240, '3d');
       await toLibrary(pg);
       await pg.waitForTimeout(2500);
     },
   },
-  // Planner 2D (/planner.html: o vite preview não serve /planner sem a extensão). localStorage limpo = exemplo carregado.
-  { name: 'planner', path: '/planner.html', viewport: DESKTOP, clearStore: 'sf-balancer:planner', actions: async pg => { await pg.waitForSelector('.react-flow__node-stage'); } },
+  // Builder (/; o Balancer em /balancer.html: o vite preview não serve /balancer sem a extensão). localStorage limpo = exemplo carregado.
+  { name: 'planner', path: '/', viewport: DESKTOP, clearStore: 'sf-balancer:planner', actions: async pg => { await pg.waitForSelector('.react-flow__node-stage'); } },
   {
-    name: 'planner-etapa', path: '/planner.html', viewport: DESKTOP, clearStore: 'sf-balancer:planner',
+    name: 'planner-etapa', path: '/', viewport: DESKTOP, clearStore: 'sf-balancer:planner',
     actions: async pg => {
       await pg.waitForSelector('.react-flow__node-stage');
       const f = pg.locator('.react-flow__node-stage', { hasText: 'Foundry' });
@@ -90,7 +90,7 @@ export const scenarios = [
   },
   {
     // O mapa abre pela aba do cabeçalho; limpa também a vista lembrada. Espera o canvas e um quadro desenhado.
-    name: 'planner-mapa', path: '/planner.html', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view', 'sf-balancer:planner-map-hint'],
+    name: 'planner-mapa', path: '/', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view', 'sf-balancer:planner-map-hint'],
     actions: async pg => {
       await pg.waitForSelector('.react-flow__node-stage');
       await pg.locator('[role=tablist] [data-view=map]').click();
@@ -103,8 +103,8 @@ export const scenarios = [
 
 // Rotas reais (/pt e /es): só existem com o servidor aplicando as rewrites do vercel.json.
 export const routeScenarios = [
-  { name: 'rota-pt', path: '/pt', lang: 'pt', viewport: DESKTOP, actions: async () => {} },
-  { name: 'rota-es', path: '/es', lang: 'es', viewport: DESKTOP, actions: async () => {} },
+  { name: 'rota-pt', path: '/pt/balancer', lang: 'pt', viewport: DESKTOP, actions: async () => {} },
+  { name: 'rota-es', path: '/es/balancer', lang: 'es', viewport: DESKTOP, actions: async () => {} },
 ];
 
 export const LANGS = ['pt', 'en', 'es'];

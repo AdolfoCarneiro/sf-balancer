@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
-import { PLANNER_PATH, type Lang } from './lang.ts';
+import { BUILDER_PATH, type Lang } from './lang.ts';
 import game from './data/game.json';
 import type { GameData } from './model/types.ts';
 import { meiosOf } from './model/factory.ts';
@@ -31,9 +31,9 @@ export function App() {
     document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', t('plMetaDesc'));
     let canon = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
     if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
-    canon.href = SITE + PLANNER_PATH[lang];
+    canon.href = SITE + BUILDER_PATH[lang];
     // No site, o endereço acompanha o idioma; aberto do disco, fica como está.
-    if (onVercel && location.pathname !== PLANNER_PATH[lang]) history.replaceState(null, '', PLANNER_PATH[lang] + location.hash);
+    if (onVercel && location.pathname !== BUILDER_PATH[lang]) history.replaceState(null, '', BUILDER_PATH[lang] + location.hash);
   }, [lang]);
 
   const change = (l: Lang) => {

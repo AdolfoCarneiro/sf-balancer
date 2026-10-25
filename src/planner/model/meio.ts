@@ -1,7 +1,7 @@
 // O meio de cada ligação: as linhas dos produtores viram as linhas dos consumidores pelo computePlan da página, com os
 // números do fluxo resolvido (oferta real de quem produz, o que quer quem consome).
 import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
-import { SITE_PATH, type Lang } from '../lang.ts';
+import { BALANCER_PATH, type Lang } from '../lang.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
 import { solvedStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
@@ -206,4 +206,4 @@ export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData, 
 }
 
 export const meioUrl = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: Lang, selectedKey?: string | null): string =>
-  SITE_PATH[lang] + meioHash(meio, f, flow, d, selectedKey);
+  BALANCER_PATH[lang] + meioHash(meio, f, flow, d, selectedKey);

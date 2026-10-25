@@ -7,24 +7,25 @@ import { rows, syncGroups } from './groups.js';
 import { renderScenarios } from './scenarios.js';
 import { histCommit, histSnap } from './history.js';
 import { render } from './render.js';
-import { PLANNER_PATH } from '../planner/lang.ts';
+import { BALANCER_PATH, BUILDER_PATH, pathLang } from '../planner/lang.ts';
 import { renderBps, renderCatalog, renderLib } from './library.js';
 
 // ---- Idioma ----
-// Cada idioma tem um endereço próprio no site (/, /pt, /es) para os buscadores; o vercel.json reescreve para o index.html.
+// Cada idioma tem um endereço próprio no site (/balancer, /pt/balancer, /es/balancer) para os buscadores; o vercel.json
+// reescreve para o balancer.html.
 export const SITE = 'https://sf-balancer.vercel.app';
 // Atalhos externos para quem não quer montar o balancer na mão: o mod e os blueprints da comunidade.
 export const EXT_MOD = 'https://ficsit.app/mod/LoadBalancers';
 export const extBpUrl = () => `https://satisfactory-calculator.com/${getLang()}/blueprints`;
 export const extLink = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${esc(text)}</a>`;
 const extLinks = () => [extLink(EXT_MOD, 'Modular Load Balancers (ficsit.app)'), extLink(extBpUrl(), t('extBp'))].join(' · ');
-export const LANG_PATH = { en: '/', pt: '/pt', es: '/es' };
+export const LANG_PATH = BALANCER_PATH;
 export const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
-// A lista de idiomas e a chave salva também estão no script inline anti-piscada do index.html: mantenha os dois iguais.
-// Ordem: caminho (/pt, /es), ?lang= na URL, escolha salva, inglês.
+// A lista de idiomas e a chave salva também estão no script inline anti-piscada do balancer.html: mantenha os dois iguais.
+// Ordem: caminho (/pt/balancer, /es/balancer), ?lang= na URL, escolha salva, inglês.
 export function pickLang() {
-  const fromPath = (location.pathname.match(/^\/(pt|es|en)\/?$/) || [])[1];
-  if (I18N[fromPath]) return fromPath;
+  const fromPath = pathLang(location.pathname);
+  if (fromPath) return fromPath;
   const fromUrl = new URLSearchParams(location.search).get('lang');
   if (I18N[fromUrl]) return fromUrl;
   let saved = null;
@@ -45,7 +46,7 @@ export function applyStatic() {
   // No site, o endereço acompanha o idioma; aberto direto do disco ou em outro servidor, fica como está.
   if (onVercel && location.pathname !== LANG_PATH[getLang()]) history.replaceState(null, '', LANG_PATH[getLang()] + location.hash);
   const pl = document.getElementById('plLink');
-  if (pl) pl.href = PLANNER_PATH[getLang()];
+  if (pl) pl.href = BUILDER_PATH[getLang()];
   const roots = [document, $('grpTpl').content];
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });

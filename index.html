@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Espelho de legacyTarget (src/planner/lang.ts): link antigo da ferramenta (/#s=…, /pt#s=…) vai para o Balancer do mesmo idioma. Mudou um, muda o outro (tests/planner/routes.test.ts roda os dois). -->
+<script>/* legacyTarget */try{if(/^#s=/.test(location.hash)){var m=location.pathname.match(/^\/(?:(pt|es|en)\/?|index\.html)?$/);if(m)location.replace((m[1]==='pt'||m[1]==='es'?'/'+m[1]:'')+'/balancer'+location.hash)}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Satisfactory Belt Balancer &amp; Logistics Planner</title>
-<meta name="description" content="Free Satisfactory belt planner: turn machine counts into belt lines, mergers, splitters and load balancers between two factory stages. No sign-up.">
+<title>Satisfactory Factory Planner &amp; Belt Balancer</title>
+<meta name="description" content="Free Satisfactory factory planner: chain recipe blocks on a map, see the belt flow between them and get the mergers, splitters and load balancers of each connection. No sign-up.">
+<link rel="canonical" href="https://sf-balancer.vercel.app/">
 <meta name="theme-color" content="#0d2136">
 <meta name="google-site-verification" content="2h-6PSSVAV2SRrTRHCR5VE-JYggT4UCPsifdsTf6jzI">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -14,8 +17,8 @@
 <link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SF Balancer">
-<meta property="og:title" content="Satisfactory Belt Balancer &amp; Logistics Planner">
-<meta property="og:description" content="Turn machine counts into belt lines, mergers, splitters and load balancers between two stages of your Satisfactory factory.">
+<meta property="og:title" content="Satisfactory Factory Planner &amp; Belt Balancer">
+<meta property="og:description" content="Chain recipe blocks on a map, see the belt flow between them and get the mergers, splitters and load balancers of each connection in your Satisfactory factory.">
 <meta property="og:url" content="https://sf-balancer.vercel.app/">
 <meta property="og:image" content="https://sf-balancer.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
@@ -30,9 +33,9 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "SF Balancer",
-  "alternateName": "Satisfactory Belt Balancer & Logistics Planner",
+  "alternateName": "Satisfactory Factory Planner & Belt Balancer",
   "url": "https://sf-balancer.vercel.app/",
-  "description": "Plan belts, mergers, splitters and load balancers between two stages of a Satisfactory factory.",
+  "description": "Plan a Satisfactory factory on a map: recipe blocks, the belt flow between them and the mergers, splitters and load balancers of each connection.",
   "applicationCategory": "GameApplication",
   "operatingSystem": "Any",
   "browserRequirements": "Requires JavaScript",
@@ -48,207 +51,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<!-- Idioma que não é inglês: esconde o corpo até o app traduzir (evita piscar em inglês); some sozinho em 3 s se algo falhar. Mesma ordem do pickLang (src/ui/lang.js): idioma novo ou chave nova precisa mudar nos dois lugares. -->
-<script>try{var l=(location.pathname.match(/^\/(pt|es|en)\/?$/)||[])[1]||new URLSearchParams(location.search).get('lang')||localStorage.getItem('sf-balancer:lang');if(l&&l!=='en'){document.documentElement.classList.add('lang-pending');setTimeout(function(){document.documentElement.classList.remove('lang-pending')},3000)}}catch(e){}</script>
-<link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
-<div class="wrap">
-  <nav class="langbar">
-    <a class="pl-link" id="plLink" href="/planner" data-i18n="plOpen">Planner (beta)</a>
-    <div class="langs" role="group" id="langs" data-i18n-aria="langLabel" aria-label="Language"></div>
-  </nav>
-  <header class="top">
-    <div>
-      <h1 class="kicker" data-i18n="kicker">Satisfactory belt balancer · logistics between stages</h1>
-      <input class="item-name" id="item" value="Iron Ingot" data-i18n-aria="itemAria" aria-label="Item name" spellcheck="false">
-    </div>
-    <dl class="ledger num" id="ledger"></dl>
-  </header>
-  <p class="intro"><span data-i18n="intro">Your production planner tells you how many machines. This tells you how to wire them: enter what one stage produces and what the next one consumes, and it packs the machines into belt lines and shows how to connect them, direct, merged or through a balancer, with the exact piece count.</span> <span class="links"><a href="#how" data-i18n="howLink">How it works</a><a href="#library" data-i18n="libLink">Balancer library</a></span></p>
-
-  <div class="scenbar" role="group" data-i18n-aria="scenAria" aria-label="Saved scenarios">
-    <span class="scen-title"><span data-i18n="scenTitle">Scenarios</span><button type="button" class="tip" data-tip="tipScen" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
-    <select class="field" id="scenList" data-i18n-aria="scenAria" aria-label="Saved scenarios"></select>
-    <button type="button" class="pbtn" id="scenSave" data-i18n="scenSave">Save</button>
-    <button type="button" class="pbtn" id="scenDel" data-i18n="scenDel">Delete</button>
-    <button type="button" class="pbtn prim" id="shareCopy" data-i18n="shareCopy">Copy link</button>
-    <span class="hist" role="group" data-i18n-aria="histAria" aria-label="Undo and redo"><button type="button" class="pbtn" id="undo" data-i18n-aria="undo" data-i18n-title="undo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)" disabled>↶</button><button type="button" class="pbtn" id="redo" data-i18n-aria="redo" data-i18n-title="redo" aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)" disabled>↷</button><button type="button" class="tip" data-tip="tipHist" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
-    <span class="scen-msg" id="scenMsg" role="status" aria-live="polite"></span>
-  </div>
-  <div id="form">
-    <div class="band">
-      <section class="plate">
-        <h2><span data-i18n="sideSrc">Source</span><button type="button" class="tip" data-tip="tipSrc" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h2>
-        <div id="srcGroups"></div>
-        <button class="linkbtn" data-add="src" data-i18n="addGroup" type="button">+ Add machine group</button>
-      </section>
-      <div class="arrow" aria-hidden="true"></div>
-      <section class="plate">
-        <h2><span data-i18n="sideDst">Destination</span><button type="button" class="tip" data-tip="tipDst" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h2>
-        <div id="dstGroups"></div>
-        <div class="dst-actions">
-          <button class="linkbtn" data-add="dst" data-i18n="addGroup" type="button">+ Add machine group</button>
-          <span><button class="linkbtn" id="dstToSrc" data-i18n="dstToSrc" type="button">Use destination as the next source →</button><button type="button" class="tip" data-tip="tipDstToSrc" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span>
-        </div>
-      </section>
-    </div>
-    <section class="plate rules">
-      <div class="rule">
-        <h3><span data-i18n="medTitle">Carries</span><button type="button" class="tip" data-tip="tipMedium" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <div class="inline">
-          <label class="choice"><input type="radio" name="medium" value="item" checked> <span data-i18n="medItem">Items (belt)</span></label>
-          <label class="choice"><input type="radio" name="medium" value="fluid"> <span data-i18n="medFluid">Fluid (pipe)</span></label>
-        </div>
-      </div>
-      <div class="rule" id="beltRule">
-        <h3><span data-i18n="belt">Belt</span><button type="button" class="tip" data-tip="tipBelt" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <select class="field" id="belt" data-i18n-aria="beltAria" aria-label="Belt tier"></select>
-      </div>
-      <div class="rule" id="pipeRule" hidden>
-        <h3><span data-i18n="pipe">Pipe</span><button type="button" class="tip" data-tip="tipPipe" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <select class="field" id="pipe" data-i18n-aria="pipeAria" aria-label="Pipe tier"></select>
-      </div>
-      <div class="rule">
-        <h3><span data-i18n="policyTitle">Source lines with no destination</span><button type="button" class="tip" data-tip="tipPolicy" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <div class="inline">
-          <label class="choice"><input type="radio" name="policy" value="represar" checked> <span data-i18n="policyHold">Stay idle</span></label>
-          <label class="choice" id="policySinkChoice"><input type="radio" name="policy" value="sink"> <span data-i18n="policySink">Go to the Awesome Sink</span></label>
-          <label class="choice"><input type="radio" name="policy" value="extra"> <span data-i18n="policyExtra">Leave on an extra line</span></label>
-        </div>
-      </div>
-      <div class="rule" id="excessRule">
-        <h3><span data-i18n="excessTitle">Excess on the lines</span><button type="button" class="tip" data-tip="tipExcess" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <div class="inline">
-          <label class="choice"><input type="radio" name="excess" value="represar" checked> <span data-i18n="excessHold">Backs up at the source</span></label>
-          <label class="choice" id="excessSinkChoice"><input type="radio" name="excess" value="sink"> <span data-i18n="excessSink">Goes to the Awesome Sink</span></label>
-        </div>
-      </div>
-      <div class="rule">
-        <h3><span data-i18n="convTitle">Pieces per manifold</span><button type="button" class="tip" data-tip="tipConv" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></h3>
-        <div class="inline">
-          <label class="choice"><input type="radio" name="conv" value="k-1" checked> <span data-i18n="convK1">k machines, k−1 pieces</span></label>
-          <label class="choice"><input type="radio" name="conv" value="k"> <span data-i18n="convK">k machines, k pieces</span></label>
-        </div>
-      </div>
-    </section>
-  </div>
-  <div class="warns" id="warns"></div>
-
-  <div id="out"></div>
-
-  <div class="foot hint">
-    <button class="linkbtn" id="reset" data-i18n="reset" type="button">Back to the refinery example</button>
-    <a class="linkbtn report" id="report" href="https://github.com/AdolfoCarneiro/sf-balancer/issues/new" target="_blank" rel="noopener" data-i18n="report">Something wrong with this case? Report it on GitHub</a>
-  </div>
-
-  <!-- Texto fixo em inglês para quem lê sem JavaScript (buscadores); applyStatic() troca pelo idioma escolhido. -->
-  <section class="library" id="library" aria-labelledby="libTitle">
-    <h2 id="libTitle" data-i18n="libTitle">Load balancer library</h2>
-    <p class="lead" data-i18n="libLead">Build an N→M balancer from scratch: pick how many belts go in and how many come out, and the tool tries every design, checks the rate on each segment and shows the build piece by piece.</p>
-    <div class="plate gen" id="gen">
-      <div class="fld"><div class="cell-head"><label for="libN" data-i18n="genIn">Inputs</label></div><input class="field" id="libN" type="text" inputmode="numeric"></div>
-      <span class="gen-arrow" aria-hidden="true">→</span>
-      <div class="fld"><div class="cell-head"><label for="libM" data-i18n="genOut">Outputs</label></div><input class="field" id="libM" type="text" inputmode="numeric"></div>
-      <div class="fld"><div class="cell-head"><span><label for="libRate" data-i18n="genRate">Each input /min</label><button type="button" class="tip" data-tip="tipGenRate" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span></div><input class="field" id="libRate" type="text" inputmode="decimal"></div>
-      <div class="fld"><div class="cell-head"><label for="libBelt" data-i18n="genBelt">Belt</label></div><select class="field" id="libBelt"></select></div>
-      <div class="bps-wrap">
-        <div class="cell-head"><span><span data-i18n="bpTitle">Blueprints I have</span><button type="button" class="tip" data-tip="tipBp" data-i18n-aria="helpLabel" aria-label="What is this?">?</button></span></div>
-        <div class="bps" id="bpList"></div>
-      </div>
-    </div>
-    <div id="libOut"></div>
-    <div class="learn">
-      <div><h3 data-i18n="lbWhatTitle">What it is</h3><p data-i18n="lbWhat">A load balancer is a set of splitters and mergers that takes N belts and delivers M belts at exactly the same rate, no matter how much each input carries. There is no “balancer” piece in the game: you build it from regular pieces.</p></div>
-      <div><h3 data-i18n="lbHowTitle">How it works</h3><p data-i18n="lbHow">A splitter divides evenly among the outputs that accept items, into 2 or 3. Chaining splitters cuts a belt into any product of 2 and 3 (2, 3, 4, 6, 8, 9, 12…). A merger joins up to 3 belts, taking from each in turn. A matrix uses both: each input is cut into M equal parts and each output gets one part from every input, so every output adds up to the same.</p></div>
-      <div><h3 data-i18n="lbWhyTitle">Why use one</h3><p data-i18n="lbWhy">A manifold balances itself across machines, but not across lines: if one destination line gets 455 and another 300, the machines on the second starve forever. A balancer makes every line carry the same share of the total. It’s also how you split a belt into 5 or 7, which a splitter can’t do directly.</p></div>
-      <div><h3 data-i18n="lbNotTitle">When you don’t need one</h3><p data-i18n="lbNot">If each source line already covers a destination, connect them directly. If the shortfall is small, a split donor line or a Smart Splitter with overflow does it with fewer pieces. The alternatives above compare this for your case.</p></div>
-      <div class="bf"><h3 data-i18n="lbBfTitle">Butterfly and vertical builds</h3><p data-i18n="lbBf">Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.</p></div>
-      <div class="build">
-        <h3 data-i18n="lbBuildTitle">How to build your own</h3>
-        <ol>
-          <li data-i18n="lbBuild1">Write M as a product of 2 and 3, the 2s first (6 = 2 × 3: 3 splitters, while 3 × 2 takes 4). If you can’t (5, 7, 10…), use the next number that works and choose: loop or sink.</li>
-          <li data-i18n="lbBuild2">On each input, build the tree: one splitter for the first factor, then one splitter on each output for the next factor.</li>
-          <li data-i18n="lbBuild3">For each output, take the part with the same number from every input and join them with a merger. With more than 3 inputs, chain mergers.</li>
-          <li data-i18n="lbBuild4">Loop: the extra parts go back to a merger before the first splitter (3 or more parts: cascaded mergers). Sink: they go to the Awesome Sink.</li>
-          <li data-i18n="lbBuild5">Check the belt on every segment. If the total fits on one belt, the funnel (merge everything, then split) uses far fewer pieces.</li>
-        </ol>
-      </div>
-    </div>
-    <div class="catalog">
-      <h3 data-i18n="catTitle">Design catalog</h3>
-      <p class="lead" data-i18n="catLead">The design families the tool builds, including 5, 7 and other counts a splitter can’t reach directly. Open an example in the generator.</p>
-      <div class="cat-grid" id="catGrid"></div>
-    </div>
-  </section>
-
-  <section class="guide" id="how" aria-labelledby="howTitle">
-    <h2 id="howTitle" data-i18n="guideTitle">How it works</h2>
-    <p class="lead" data-i18n="guideLead">Between two stages of a factory there are three belt segments. The tool solves each one and shows the result above.</p>
-    <div class="segs">
-      <div class="plate"><span class="seg-n" data-i18n="gCollectN">Segment 1</span><h3 data-i18n="gCollectTitle">Collection</h3><p data-i18n="gCollect">Joins the source machines into belt lines with mergers (an output manifold). Machines per line = belt capacity ÷ rate per machine, rounded down. Leftover machines share a partial line.</p></div>
-      <div class="plate"><span class="seg-n" data-i18n="gMidN">Segment 2</span><h3 data-i18n="gMidTitle">Middle</h3><p data-i18n="gMid">Connects the collection lines to the distribution lines. This is where lines get merged, topped up by a donor line or split by a load balancer.</p></div>
-      <div class="plate"><span class="seg-n" data-i18n="gDistN">Segment 3</span><h3 data-i18n="gDistTitle">Distribution</h3><p data-i18n="gDist">Splits each incoming line among the destination machines with splitters (an input manifold). A manifold balances itself across machines, so the tool only balances between lines.</p></div>
-    </div>
-    <div class="guide-cols">
-      <div>
-        <h3 data-i18n="casesTitle">The cases in the middle</h3>
-        <ul>
-          <li><b data-i18n="caseAName">Case A</b> <span data-i18n="caseAText">Source line ≥ destination line. One source line straight into each destination. The excess backs up at the source and spare lines follow your policy.</span></li>
-          <li><b data-i18n="caseBName">Case B</b> <span data-i18n="caseBText">Source line a bit short. A donor line is split into equal parts, one per destination, and each part is merged into a main line.</span></li>
-          <li><b data-i18n="caseCName">Case C</b> <span data-i18n="caseCText">Source lines much smaller than destination lines. Several whole source lines are merged into one, within the belt capacity and 3 inputs per merger.</span></li>
-          <li><b data-i18n="caseDName">Case D</b> <span data-i18n="caseDText">Mixed lines. A line with surplus sends its excess, through a Smart Splitter’s Overflow output, to a destination that is short. If no simple layout exists, the tool says so.</span></li>
-        </ul>
-      </div>
-      <div>
-        <h3 data-i18n="mechTitle">Game rules it follows</h3>
-        <ul>
-          <li><b>Splitter</b> <span data-i18n="mechSplitter">Up to 3 outputs, divides evenly among the outputs that accept items. Direct splits only reach halves and thirds (1/2, 1/3, 1/4, 1/6, 1/9…).</span></li>
-          <li><b>Merger</b> <span data-i18n="mechMerger">Up to 3 inputs, takes from them in turn. A top-up line running in series through several mergers is drained by the first ones, so the tool never suggests that.</span></li>
-          <li><b>Smart Splitter</b> <span data-i18n="mechSmart">The Overflow output only gets items when the Any output is full. That lets a line fill its own destination first and pass on only the excess.</span></li>
-          <li><b>Awesome Sink</b> <span data-i18n="mechSink">Takes any leftover. Backing up at the source is fine too: the machines there just slow down.</span></li>
-        </ul>
-      </div>
-    </div>
-    <div class="faq">
-      <h3 data-i18n="faqTitle">Questions</h3>
-      <details><summary data-i18n="faq1Q">Why can’t a splitter make 5 equal parts?</summary><p data-i18n="faq1A">A splitter divides by 2 or 3, so chaining them only reaches products of 2 and 3. For 5 parts you either build a balancer with a loop (some outputs go back to the input) or split into 6 and send the sixth part to the sink. The tool shows both.</p></details>
-      <details><summary data-i18n="faq2Q">Where do the numbers come from?</summary><p data-i18n="faq2A">From you. The tool knows no recipes: type the machine count and the per-minute rate from your production planner or from the recipe in the game.</p></details>
-      <details><summary data-i18n="faq3Q">Is my plan saved?</summary><p data-i18n="faq3A">Yes, only in your browser, and you can save several named scenarios. There’s no account and nothing you type is sent to a server. The Copy link address carries the scenario in the address itself, after the #, a part the browser doesn’t send to the server.</p></details>
-      <details><summary data-i18n="faq4Q">Which game version?</summary><p data-i18n="faq4A">Satisfactory 1.0 and later, with belts from Mk1 (60/min) to Mk6 (1,200/min).</p></details>
-      <details><summary data-i18n="faq5Q">Can I use a mod or a ready-made blueprint instead?</summary><p data-i18n="faq5A">Yes. If you play with mods, Modular Load Balancers (unlocked at Tier 4) adds modules that snap together into a group and split items equally among all its outputs, any size. If you play vanilla, Satisfactory Calculator has balancer blueprints shared by other players. Either way the tool still answers what comes before: how many lines, whether you need a balancer and which N→M.</p><p class="ext" id="faqExt"></p></details>
-      <details><summary data-i18n="faq6Q">Does it work with fluids?</summary><p data-i18n="faq6A">Yes. Pick "Fluid (pipe)" and the pipe tier (Mk1 300, Mk2 600 m³/min). Since pipes have no splitter, the tool doesn’t build a balancer: it groups the machines per pipe and joins or divides the pipes with Pipeline Junctions, within capacity. Height and pumps are up to you.</p></details>
-    </div>
-  </section>
-
-  <footer class="site-foot">
-    <a href="https://github.com/AdolfoCarneiro/sf-balancer" data-i18n="footSource">Open source on GitHub</a>
-    <span data-i18n="footLicense">MIT License</span>
-    <a class="coffee" href="https://ko-fi.com/dofal" target="_blank" rel="noopener" data-i18n="footCoffee">Buy me a coffee</a>
-    <span data-i18n="footDisclaimer">Fan-made tool, not affiliated with Coffee Stain Studios.</span>
-  </footer>
-</div>
-<div id="tipbox" role="tooltip" hidden></div>
-<dialog class="dlg" id="balDlg" aria-labelledby="dlgTitle">
-  <div class="dlg-head"><h2 id="dlgTitle"></h2><button type="button" class="pbtn" id="dlgClose" data-i18n="dlgClose">Close</button></div>
-  <div class="dlg-body" id="dlgBody"></div>
-</dialog>
+<div id="root"></div>
 <noscript><p style="text-align:center">This planner needs JavaScript to calculate.</p></noscript>
-
-<template id="grpTpl">
-  <div class="grp">
-    <div class="grp-head"><span class="grp-name"></span><button class="rm" data-i18n="removeGroup" type="button">Remove group</button></div>
-    <div class="grp-fields">
-      <div class="cell"><div class="cell-head"><span><label data-for="g-count" data-i18n="fMachines">Machines</label><button type="button" class="tip" data-tip="tipMachines" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-count" type="text" inputmode="decimal"></div>
-      <div class="cell"><div class="cell-head"><span><label data-for="g-clock" data-i18n="fClock">Clock %</label><button type="button" class="tip" data-tip="tipClock" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-clock" type="text" inputmode="decimal"></div>
-      <div class="cell"><div class="cell-head"><span><label data-for="g-nom" class="g-nom-label"></label><button type="button" class="tip g-nom-tip" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-nom" type="text" inputmode="decimal"></div>
-      <div class="cell"><div class="cell-head"><span><label data-for="g-total" data-i18n="fTotal">Total /min</label><button type="button" class="tip" data-tip="tipTotal" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-total" type="text" inputmode="decimal"></div>
-      <div class="cell"><div class="cell-head"><span><label data-for="g-per" data-i18n="fPer">Per line</label><button type="button" class="tip" data-tip="tipPer" data-i18n-aria="helpLabel">?</button></span></div><input class="field g-per" type="text" inputmode="numeric"></div>
-    </div>
-    <p class="eq num"></p>
-  </div>
-</template>
-
-<script type="module" src="/src/main.js"></script>
+<script type="module" src="/src/planner/main.tsx"></script>
 </body>
 </html>

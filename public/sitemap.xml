@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://sf-balancer.vercel.app/</loc>
-    <lastmod>2026-10-18</lastmod>
+    <lastmod>2026-10-25</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/"/>
     <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es"/>
@@ -10,7 +10,7 @@
   </url>
   <url>
     <loc>https://sf-balancer.vercel.app/pt</loc>
-    <lastmod>2026-10-18</lastmod>
+    <lastmod>2026-10-25</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/"/>
     <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es"/>
@@ -18,34 +18,34 @@
   </url>
   <url>
     <loc>https://sf-balancer.vercel.app/es</loc>
-    <lastmod>2026-10-18</lastmod>
+    <lastmod>2026-10-25</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/"/>
     <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/"/>
   </url>
   <url>
-    <loc>https://sf-balancer.vercel.app/planner</loc>
+    <loc>https://sf-balancer.vercel.app/balancer</loc>
     <lastmod>2026-10-25</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/planner"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/planner"/>
-    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/planner"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/planner"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/balancer"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/balancer"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/balancer"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/balancer"/>
   </url>
   <url>
-    <loc>https://sf-balancer.vercel.app/pt/planner</loc>
+    <loc>https://sf-balancer.vercel.app/pt/balancer</loc>
     <lastmod>2026-10-25</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/planner"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/planner"/>
-    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/planner"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/planner"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/balancer"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/balancer"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/balancer"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/balancer"/>
   </url>
   <url>
-    <loc>https://sf-balancer.vercel.app/es/planner</loc>
+    <loc>https://sf-balancer.vercel.app/es/balancer</loc>
     <lastmod>2026-10-25</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/planner"/>
-    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/planner"/>
-    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/planner"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/planner"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sf-balancer.vercel.app/balancer"/>
+    <xhtml:link rel="alternate" hreflang="pt-BR" href="https://sf-balancer.vercel.app/pt/balancer"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://sf-balancer.vercel.app/es/balancer"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/balancer"/>
   </url>
 </urlset>

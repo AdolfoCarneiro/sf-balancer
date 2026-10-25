@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type { Factory, GameData } from './model/types.ts';
 import { PLANNER_STORE, encodeFactory, initialHistory, reduce, shouldPersist, type Action, type History } from './model/factorystate.ts';
-import { PLANNER_PATH, type Lang } from './lang.ts';
+import { BUILDER_PATH, type Lang } from './lang.ts';
 import { getLang } from '../i18n/index.js';
 
 export function usePlanner(data: GameData) {
@@ -29,7 +29,7 @@ export function usePlanner(data: GameData) {
     try { localStorage.setItem(PLANNER_STORE, encodeFactory(factory)); } catch { /* sem storage */ }
   }, [factory, hist]);
 
-  const shareUrl = useCallback(() => location.origin + PLANNER_PATH[getLang() as Lang] + '#p=' + encodeFactory(factory), [factory]);
+  const shareUrl = useCallback(() => location.origin + BUILDER_PATH[getLang() as Lang] + '#p=' + encodeFactory(factory), [factory]);
   return useMemo(() => ({ factory, dispatch, canUndo: hist.past.length > 0, canRedo: hist.future.length > 0, shareUrl }),
     [factory, hist.past.length, hist.future.length, shareUrl]);
 }

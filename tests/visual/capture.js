@@ -69,7 +69,7 @@ if (flags.has('--fixtures-check')) {
   const p2 = await c2.newPage();
   const e2 = [];
   p2.on('pageerror', e => e2.push(e.message));
-  await p2.goto(`${base}/`, { waitUntil: 'load' });
+  await p2.goto(`${base}/balancer.html`, { waitUntil: 'load' });
   await p2.waitForTimeout(500);
   const v2 = await p2.evaluate(() => [...document.querySelectorAll('input')].map(i => i.value));
   const lang = await p2.evaluate(() => document.documentElement.lang);
@@ -106,7 +106,7 @@ fs.writeFileSync(path.join(outDir, 'console.json'), JSON.stringify(consoleLog, n
 
 if (flags.has('--fixtures')) {
   // Entradas antigas reais: link #s= (caso 1 + um grupo extra) e localStorage depois de salvar um cenário.
-  const { ctx, pg } = await openPage(browser, { width: 1400, height: 1000 }, `${base}/?lang=pt`);
+  const { ctx, pg } = await openPage(browser, { width: 1400, height: 1000 }, `${base}/balancer.html?lang=pt`);
   await pg.click('[data-add="src"]');
   await pg.waitForTimeout(300);
   await pg.click('#shareCopy');

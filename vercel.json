@@ -5,11 +5,14 @@
   "cleanUrls": true,
   "redirects": [
     { "source": "/en", "destination": "/", "permanent": true },
-    { "source": "/en/planner", "destination": "/planner", "permanent": true }
+    { "source": "/en/balancer", "destination": "/balancer", "permanent": true },
+    { "source": "/planner", "destination": "/", "permanent": true },
+    { "source": "/en/planner", "destination": "/", "permanent": true },
+    { "source": "/:lang(pt|es)/planner", "destination": "/:lang", "permanent": true }
   ],
   "rewrites": [
     { "source": "/:lang(pt|es)", "destination": "/" },
-    { "source": "/:lang(pt|es)/planner", "destination": "/planner" }
+    { "source": "/:lang(pt|es)/balancer", "destination": "/balancer" }
   ],
   "headers": [
     {

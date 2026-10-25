@@ -78,7 +78,7 @@ export function flowView(meio: Meio, f: Factory, flow: FlowResult, d: GameData, 
   };
 }
 
-// O link da página Balancer com esta ligação, com a montagem escolhida (`selectedKey` do `#s=`; o caminho da seção
-// chega na Task 9; até lá, o da página atual).
+// O link da página Balancer (/balancer, /pt/balancer, /es/balancer) com esta ligação, com a montagem escolhida
+// (`selectedKey` do `#s=`).
 export const balancerUrl = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: Lang, altKey?: string | null): string =>
   meioUrl(meio, f, flow, d, lang, altKey);

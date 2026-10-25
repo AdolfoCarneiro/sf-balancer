@@ -58,7 +58,7 @@ test('meio: link do meio completo abre com os mesmos números em pt, en e es', (
   assert.equal(st.lang, 'en'); assert.equal(st.src[0].clock, '212.5'); assert.equal(st.src[0].per, '3'); assert.equal(st.belt, 'Mk4');
   assert.deepEqual(st.dst[0], { driver: 'clock', count: '60', clock: '100', nominal: '40', total: '', per: '12' });
   assert.equal(st.medium, 'item'); assert.equal(st.item, data.items['Desc_IronIngot_C'].name);
-  assert.equal(meioUrl(meioFor(f, 'l1'), f, flow, data, 'pt'), '/pt' + hash);
+  assert.equal(meioUrl(meioFor(f, 'l1'), f, flow, data, 'pt'), '/pt/balancer' + hash);
   // A página lê os números no idioma do link ('en') e converte para o dela: em 'en', '2.125' é 2,125 (em 'pt' seria 2125).
   const prev = getLang(); setLang('en'); assert.equal(parseNum('2.125'), 2.125); setLang(prev);
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { I18N, LANGS, fmt, t } from '../../i18n/index.js';
 import { FLAGS } from '../../ui/flags.js';
-import { SITE_PATH, type Lang } from '../lang.ts';
+import { BALANCER_PATH, type Lang } from '../lang.ts';
 
 interface Props {
   lang: Lang; onLang: (l: Lang) => void;
@@ -41,7 +41,7 @@ export function Header({ lang, onLang, blocks, machines, status, canUndo, canRed
       <button type="button" className="pl-btn pl-primary" onClick={share}>{t('plShare')}</button>
       <span className="pl-copied" aria-live="polite">{copied ? t('plCopied') : ''}</span>
       {manual && <input className="pl-url" readOnly value={manual} aria-label={t('plShareLink')} onFocus={e => e.currentTarget.select()} ref={el => el?.select()} />}
-      <a className="pl-back" href={SITE_PATH[lang]}>{t('plBack')}</a>
+      <a className="pl-back" href={BALANCER_PATH[lang]}>{t('plBalancerLink')}</a>
       <div className="pl-langs" role="group" aria-label={t('langLabel')}>
         {(LANGS as Lang[]).map(l => (
           <button key={l} type="button" lang={I18N[l].htmlLang} title={I18N[l].langName} aria-pressed={l === lang} onClick={() => onLang(l)}>
