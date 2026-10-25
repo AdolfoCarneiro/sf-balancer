@@ -47,15 +47,18 @@ const flowOf = (s: Stage, data: GameData, item: ItemId, side: 'ins' | 'outs') =>
 };
 
 // Componentes conexas das ligações de um mesmo item (produtor ou consumidor em comum).
-export function meios(chain: Chain, _data: GameData): Meio[] {
+export const meios = (chain: Chain, _data: GameData): Meio[] => groupLinks(chain.links);
+
+// O agrupamento dos meios, só pelas ligações (serve à cadeia v1 e à fábrica v2).
+export function groupLinks(links: Link[]): Meio[] {
   const out: Meio[] = [], used = new Set<Link>();
-  for (const l0 of chain.links) {
+  for (const l0 of links) {
     if (used.has(l0)) continue;
     const g = [l0];
     used.add(l0);
     for (let grew = true; grew;) {
       grew = false;
-      for (const l of chain.links) if (!used.has(l) && l.item === l0.item && g.some(x => x.from === l.from || x.to === l.to)) { g.push(l); used.add(l); grew = true; }
+      for (const l of links) if (!used.has(l) && l.item === l0.item && g.some(x => x.from === l.from || x.to === l.to)) { g.push(l); used.add(l); grew = true; }
     }
     const producers = uniq(g.map(l => l.from)), consumers = uniq(g.map(l => l.to));
     out.push({ id: `${l0.item}:${producers.join(',')}>${consumers.join(',')}`, item: l0.item, producers, consumers, links: g.map(l => l.id) });

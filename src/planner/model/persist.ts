@@ -1,9 +1,9 @@
-import type { Chain, GameData, ItemId, Link, MapPlace, RecipeId, Rot, Side, Stage, StageId } from './types.ts';
+import type { Chain, GameData, ItemId, Link, MapPlace, RecipeId, Side, Stage, StageId } from './types.ts';
 import { tierKey } from './stage.ts';
 import { MAX_MACHINES, addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
 import { meios } from './meio.ts';
 import { placeNew, withLayout } from './autolayout.ts';
-import { PIECE_GAP, validPieceGap } from './map/sizes.ts';
+import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
@@ -36,39 +36,31 @@ export type Action =
 
 export const encodeChain = (chain: Chain): string => encodeShare(chain);
 
-const MAX_STAGES = 200, MAX_LINKS = 2000;
+export const MAX_STAGES = 200, MAX_LINKS = 2000;
 // Id seguro para chave de objeto e para os nós `raw:` do grafo.
-const safeId = (v: unknown): string | null => {
+export const safeId = (v: unknown): string | null => {
   if (typeof v !== 'string') return null;
   const id = v.slice(0, 40);
   return /^[A-Za-z0-9_-]+$/.test(id) && !(id in Object.prototype) ? id : null;
 };
-const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
-const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
-const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+export const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
+export const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
+export const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-const MAP_LIMIT = 100000, MAP_GRID = 8, MAP_GAP_MAX = 64, ALT_KEY_MAX = 40;
-const snap = (v: number) => Math.round(v / MAP_GRID) * MAP_GRID + 0; // + 0 troca -0 por 0
-// Posição de mapa saneada: x/y limitados e presos na grade de 8 m; rot fora de 0..3 ou x/y inválidos = null.
-function cleanPlace(v: unknown): MapPlace | null {
-  if (!isObj(v)) return null;
-  const { x, y, rot } = v;
-  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return null;
-  if (rot !== 0 && rot !== 1 && rot !== 2 && rot !== 3) return null;
-  const p: MapPlace = { x: snap(clamp(x, -MAP_LIMIT, MAP_LIMIT)), y: snap(clamp(y, -MAP_LIMIT, MAP_LIMIT)), rot: rot as Rot };
-  for (const k of ['gapRow', 'gapMachine'] as const) {
-    const g = v[k];
-    if (typeof g === 'number' && Number.isFinite(g) && g >= 0 && g <= MAP_GAP_MAX) p[k] = g;
-  }
-  return p;
-}
+export const ALT_KEY_MAX = 40;
 
-export function decodeChain(str: string, data: GameData): Chain | null {
-  let raw: any;
+// O JSON de um link `#p=` (base64url), ou undefined se não abre.
+export function parseShare(str: string): unknown {
   try {
     const bin = atob(String(str).replace(/-/g, '+').replace(/_/g, '/'));
-    raw = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
-  } catch { return null; }
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+  } catch { return undefined; }
+}
+
+export const decodeChain = (str: string, data: GameData): Chain | null => cleanChain(parseShare(str), data);
+
+// Cadeia v1 saneada (tudo que vem de fora: link, localStorage, migração).
+export function cleanChain(raw: any, data: GameData): Chain | null {
   if (!isObj(raw) || raw.v !== 1) return null;
 
   const seen = new Set<string>();

@@ -20,3 +20,23 @@ export interface Chain {
   map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number;
 }
 export interface PortWarning { item: ItemId; side: Side; rowRate: number; tier: string; cap: number; fixTier: string | null; fixPerRow: number }
+
+// Estado v2 (fase 3): a fábrica em blocos. Convive com o Chain v1 até a troca do app.
+export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'sink' | 'container' | 'export';
+export type Purity = 'impure' | 'normal' | 'pure';
+// Valores fixados pelo usuário; ausente = livre (o solver calcula). Os dois podem coexistir.
+export interface Limits { machines?: number; inputs?: Record<ItemId, number> }
+// collect: saídas sólidas que coletam o excesso.
+export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; clock: number; perRow: number | null; tiers: Record<string, string>; limits?: Limits; collect?: ItemId[] }
+export interface MinerBlock { id: StageId; kind: 'miner'; item: ItemId; rate: number }
+// count null = a ferramenta calcula quantos extratores.
+export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null }
+export interface OutletBlock { id: StageId; kind: 'sink' | 'container' | 'export' }
+export type Block = RecipeBlock | MinerBlock | ExtractorBlock | OutletBlock;
+// Posição livre da ligação (meio) no mapa, presa na grade de 8 m.
+export interface LigPlace { x: number; y: number; rot: Rot }
+// ligs: id do meio -> posição da ligação; map, alts e mapGap como no Chain.
+export interface Factory {
+  v: 2; blocks: Block[]; links: Link[];
+  map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number; ligs?: Record<string, LigPlace>;
+}
