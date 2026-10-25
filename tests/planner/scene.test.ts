@@ -241,6 +241,8 @@ test('meio → consumidora girada: a esteira chega pelo eixo da entrada, de fora
       assert.equal(rot % 2 ? a[0] === z[0] : a[1] === z[1], true, `rot ${rot}: ${JSON.stringify(b.pts)}`);
       assert.ok(b.pts.every((q, i) => i === 0 || q[0] === b.pts[i - 1][0] || q[1] === b.pts[i - 1][1]));
     }
+    // A esteira chega passando dos tocos do carvão (entrada bruta no mesmo lado): não cruza nenhum.
+    assert.deepEqual(crossings(s.belts.filter(b => b.item === 'Desc_IronIngot_C' || (b.item === 'Desc_Coal_C' && b.role === 'raw'))), [], `rot ${rot}`);
   }
 });
 

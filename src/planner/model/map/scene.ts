@@ -45,8 +45,9 @@ const step = (p: Pt, d: Pt, k: number): Pt => [p[0] + d[0] * k, p[1] + d[1] * k]
 // Esteira em ângulo reto de `a` (saindo na direção da) até `b` (chegando na direção db, vinda de fora), tentando
 // não atravessar os retângulos de `avoid` (quem a esteira liga). Curva logo depois da saída: primeiro de lado, depois
 // até a frente da entrada; se isso atravessa algo, contorna por uma faixa ao lado dos retângulos.
-export function link(a: Pt, da: Pt, b: Pt, db: Pt, avoid: Rect[]): Pt[] {
-  const p = step(a, da, LEAD), q = step(b, db, -LEAD);
+// lead: reta antes da chegada (numa etapa, passa dos tocos das entradas brutas no mesmo lado).
+export function link(a: Pt, da: Pt, b: Pt, db: Pt, avoid: Rect[], lead = LEAD): Pt[] {
+  const p = step(a, da, LEAD), q = step(b, db, -lead);
   const xa = da[0] !== 0, xb = db[0] !== 0;
   const mids: Pt[][] = [xa ? [[p[0], q[1]]] : [[q[0], p[1]]], xa ? [[q[0], p[1]]] : [[p[0], q[1]]]];
   // Faixas paralelas à chegada, por fora de cada retângulo e de todos juntos.
@@ -221,7 +222,7 @@ export function buildScene(chain: Chain, data: GameData, places: Record<StageId,
       if (!b) continue;
       const from = byRow(geo.outs, id), to = ports(b, 'ins', m.item);
       for (let k = 0; k < Math.min(from.length, to.length); k++) {
-        const pts = link(mw(from[k]), DIR[sm.rot], to[k].at, DIR[b.place.rot], [sm.rect, b.rect]);
+        const pts = link(mw(from[k]), DIR[sm.rot], to[k].at, DIR[b.place.rot], [sm.rect, b.rect], RAW_STUB + LEAD);
         belts.push({ pts, item: m.item, rate: to[k].rate, role: 'main', fluid: fluid(m.item) });
       }
     }
