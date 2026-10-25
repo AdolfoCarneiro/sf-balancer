@@ -19,8 +19,7 @@ export const SP_COLOR = '#e8863a', MG_COLOR = '#3bb3a8';
 export const PIECE_ICON = {
   splitter: ways => `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" rx="2" fill="rgba(232,134,58,.22)" stroke="${SP_COLOR}" stroke-width="1.6"/><text x="13" y="14" text-anchor="middle" style="fill:${SP_COLOR};font:700 11px var(--display)">${ways}</text></svg>`,
   merger: `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" rx="2" fill="rgba(59,179,168,.22)" stroke="${MG_COLOR}" stroke-width="1.6"/><path d="M9,6 L13,10 L9,14 M13,10 H18" stroke="${MG_COLOR}" stroke-width="1.6" fill="none"/></svg>`,
-  // Losango e quadrado com » do diagrama do plano (merger e Smart Splitter de lá).
-  planMerger: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="8" y="5" width="10" height="10" transform="rotate(45 13 10)" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="1.8"/></svg>',
+  // Smart Splitter com », como no fluxo.
   smart: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M9,6 l4,4 l-4,4 M13,6 l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></svg>',
   grid: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="none" stroke="var(--grid-line)" stroke-width="1.4"/></svg>',
   designer: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><rect x="4" y="1" width="18" height="18" fill="var(--bp-floor)" stroke="var(--bp-edge)" stroke-width="1.6"/><path d="M13,1 V19 M4,10 H22" stroke="var(--bp-line)" stroke-width="1"/></svg>',

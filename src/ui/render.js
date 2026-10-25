@@ -1,12 +1,12 @@
 import { t, dstTag, fmt } from '../i18n/index.js';
-import { sizeParts, lineComp, summarizeRates, describeTree, balancerCandidates, rankDesigns, designPieces, designName, computePlan, issueUrl, flowNet } from '../logic/index.js';
+import { sizeParts, lineComp, summarizeRates, describeTree, balancerCandidates, rankDesigns, designPieces, designName, computePlan, issueUrl } from '../logic/index.js';
 import { S } from './state.js';
 import { $, Dn, O, esc } from './common.js';
 import { hideTip, tip } from './help.js';
 import { readInput, saveState, showEquivalences, syncMedium, tierLabel } from './input.js';
 import { shareLink } from './scenarios.js';
 import { PIECE_ICON, cap1 } from './balancerSvg.js';
-import { flowSvg, treeSvg } from './flow.js';
+import { flowSvg, flowHasLoop, treeSvg } from './flow.js';
 import { BPS } from './library.js';
 import { checksTable, whyText } from './workbench.js';
 
@@ -52,7 +52,7 @@ export function render() {
             <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
             <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
             <span><i class="held"></i>${t('lgHeld')}</span>
-            ${flowNet(alt)?.belts.some(b => b.role === 'loop') ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
+            ${flowHasLoop(alt) ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
             <span>${PIECE_ICON.splitter('2/3')}${t('lgSplitter')}</span>
             <span>${PIECE_ICON.merger}${t('lgMerger')}</span>
             <span>${PIECE_ICON.smart}${t('lgSmart')}</span>`;

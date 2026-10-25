@@ -1,4 +1,4 @@
-import { t, dstTag, fmt } from '../i18n/index.js';
+import { t, fmt } from '../i18n/index.js';
 import { lineComp, designName, flowNet, flowLayout } from '../logic/index.js';
 import { SP_COLOR, MG_COLOR } from './balancerSvg.js';
 import { EPS } from '../logic/belts.js';
@@ -21,6 +21,9 @@ const labelOf = front => (x, y, text, color, anchor = 'start') =>
   front.push(`<text class="rate" x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${text}</text>`);
 const plateOf = (x, y, stroke, w, boxH) => `<polygon points="${x},${y} ${x + w - 10},${y} ${x + w},${y + 10} ${x + w},${y + boxH} ${x},${y + boxH}" fill="var(--plate)" stroke="${stroke}" stroke-width="1.5"/>`;
 
+// Tem retorno de loop desenhado (legenda)? Sem montar a rede: loop de doadora ou design com loop.
+export const flowHasLoop = a => a.groups.some(g => g.mode === 'loop') || /loop/.test(a.bal?.design.kind || '');
+
 export function flowSvg(p, a) {
   const net = p.fluid ? null : flowNet(a);
   return net ? pieceSvg(p, a, net) : pipeSvg(p, a);
@@ -39,8 +42,10 @@ function pieceSvg(p, a, net) {
   const rows = [...lay.nodes.values()].map(q => q.row), r0 = Math.min(...rows);
   const X = c => (c === 0 ? boxW : c === lay.cols - 1 ? xDst : xL + (c - 0.5) * cw);
   const Y = id => (lay.nodes.get(id).row - r0) * rowH + boxH / 2;
-  const N = net.nodes, ins = id => net.belts.filter(b => b.b === id), outs = id => net.belts.filter(b => b.a === id);
-  const blks = [], front = [], top = [], boxes = [];
+  const N = net.nodes, inL = N.map(() => []), outL = N.map(() => []);
+  net.belts.forEach(b => { outL[b.a].push(b); inL[b.b].push(b); });
+  const ins = id => inL[id].slice(), outs = id => outL[id].slice();
+  const front = [], top = [], boxes = [];
   const belt = beltOf(cap, front), label = labelOf(top);
   const rate = r => `${fmt(r)}/min`;
   // Caixa de blueprint: altura pelas portas; esteiras entram por trás e saem pela frente, na ordem da outra ponta.
@@ -86,16 +91,17 @@ function pieceSvg(p, a, net) {
     }
     paths.set(b.id, { s, z, d });
   });
-  // Contorno dos blocos (com os retornos dentro), clicável como o bloco de antes.
+  // Contorno dos blocos (com os retornos dentro): o bloco inteiro, peças inclusive, abre o diálogo como antes.
+  const bHead = [], bTail = [], bPieces = net.blocks.map(() => []);
   net.blocks.forEach((bk, i) => {
     const e = ext[i], x1 = e.x1 - 10, x2 = e.x2 + 10, y1 = e.y1 - 10, y2 = e.y2 + 10;
     const gi = bk.kind === 'group' ? +bk.key.slice(1) : -1, gr = gi >= 0 ? v.groups[gi].gr : null, d = bk.kind === 'bal' ? v.bal.design : null;
     const dn = d && designName(d), name = gr ? (gr.mode === 'loop' ? `÷${gr.p} ↺` : `÷${gr.mode === 'sink' ? gr.n : gr.p}`) : esc(dn.includes(`${d.N}→${d.M}`) ? dn : `${d.N}→${d.M} · ${dn}`);
     const aria = esc(gr ? t('blkAria', 1, gr.p) : t('blkAria', d.N, d.M));
     yMin = Math.min(yMin, y1 - 12); yMax = Math.max(yMax, y2 + 4);
-    blks.push(`<g class="balblock" data-open-bal="${bk.key}" tabindex="0" role="button" aria-label="${aria}"><title>${t('blkHint')}</title>
-      <rect class="blk" x="${f1(x1)}" y="${f1(y1)}" width="${f1(x2 - x1)}" height="${f1(y2 - y1)}" rx="8"/>
-      <rect class="blktag" x="${f1(x1)}" y="${f1(y1 - 10)}" width="${Math.round(name.length * 7.2 + 14)}" height="20" rx="3"/>
+    bHead.push(`<g class="balblock" data-open-bal="${bk.key}" tabindex="0" role="button" aria-label="${aria}"><title>${t('blkHint')}</title>
+      <rect class="blk" x="${f1(x1)}" y="${f1(y1)}" width="${f1(x2 - x1)}" height="${f1(y2 - y1)}" rx="8"/>`);
+    bTail.push(`<rect class="blktag" x="${f1(x1)}" y="${f1(y1 - 10)}" width="${Math.round(name.length * 7.2 + 14)}" height="20" rx="3"/>
       <text class="lbl blkname" x="${f1(x1 + 7)}" y="${f1(y1 + 5)}">${name}</text></g>`);
   });
   net.belts.forEach(b => {
@@ -112,24 +118,25 @@ function pieceSvg(p, a, net) {
     if (n) label(f1(z.x + 7), f1(z.y + (n < 0 ? -4 : 13)), txt, ROLE_COLOR[b.role]);
     else label(f1(z.x - 10), f1(z.y - 9), txt, ROLE_COLOR[b.role], 'end');
   });
-  // Peças.
+  // Peças; as de um bloco ficam dentro dele.
+  const pc = id => (blockOf.has(id) ? bPieces[blockOf.get(id)] : top);
   N.forEach(q => {
     const { x, y } = pos(q.id), at = `data-piece="${q.t}"`;
     if (q.t === 's' || q.t === 'm') {
       const sp = q.t === 's', c = sp ? SP_COLOR : MG_COLOR, m = h / 10;
       const mark = sp ? `<text x="${x}" y="${f1(y + 4 * m)}" text-anchor="middle" style="fill:${c};font:700 ${Math.round(11 * m)}px var(--display)">${q.ways}</text>`
         : `<path d="M${f1(x - 3 * m)},${f1(y - 4 * m)} L${f1(x + m)},${y} L${f1(x - 3 * m)},${f1(y + 4 * m)}" stroke="${c}" stroke-width="${f1(1.4 * Math.sqrt(m))}" fill="none"/>`;
-      top.push(`<g ${at}><title>${sp ? `Splitter ÷${q.ways}` : 'Merger'}</title><rect x="${x - h}" y="${y - h}" width="${2 * h}" height="${2 * h}" rx="2.5" fill="${sp ? '#2a2018' : '#13282a'}" stroke="${c}" stroke-width="1.8"/>${mark}</g>`);
+      pc(q.id).push(`<g ${at}><title>${sp ? `Splitter ÷${q.ways}` : 'Merger'}</title><rect x="${x - h}" y="${y - h}" width="${2 * h}" height="${2 * h}" rx="2.5" fill="${sp ? '#2a2018' : '#13282a'}" stroke="${c}" stroke-width="1.8"/>${mark}</g>`);
     } else if (q.t === 'ov') {
-      top.push(`<g ${at}><title>Smart Splitter (Overflow)</title><rect x="${x - h}" y="${y - h}" width="${2 * h}" height="${2 * h}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M${x - 5},${y - 5} l5,5 l-5,5 M${x},${y - 5} l5,5 l-5,5" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></g>`);
+      pc(q.id).push(`<g ${at}><title>Smart Splitter (Overflow)</title><rect x="${x - h}" y="${y - h}" width="${2 * h}" height="${2 * h}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M${x - 5},${y - 5} l5,5 l-5,5 M${x},${y - 5} l5,5 l-5,5" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/></g>`);
     } else if (q.t === 'bp') {
       const d = v.bal.design, H = bpH(q.id), y1 = y - H / 2;
-      top.push(`<g ${at}><polygon points="${x - 40},${y1} ${x + 28},${y1} ${x + 40},${y1 + 12} ${x + 40},${y1 + H} ${x - 40},${y1 + H}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
+      pc(q.id).push(`<g ${at}><polygon points="${x - 40},${y1} ${x + 28},${y1} ${x + 40},${y1 + 12} ${x + 40},${y1 + H} ${x - 40},${y1 + H}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
         <text class="lbl" x="${x}" y="${y - 2}" text-anchor="middle" style="fill:var(--ficsit)">${d.bp.n}→${d.bp.m}</text>
         <text class="sm" x="${x}" y="${y + 14}" text-anchor="middle">blueprint</text></g>`);
     } else if (q.t === 'sink' || q.t === 'extra') {
       const sk = q.t === 'sink', c = ROLE_COLOR[q.t], r = ins(q.id)[0].rate;
-      top.push(`<g ${at}><rect x="${x}" y="${y - 7}" width="6" height="14" fill="${c}"/>
+      pc(q.id).push(`<g ${at}><rect x="${x}" y="${y - 7}" width="6" height="14" fill="${c}"/>
         <text class="rate" x="${x + 11}" y="${y + 5}" style="fill:${c}">${sk ? t('svgToSink', fmt(r)) : t('svgToExtra', fmt(r))}</text></g>`);
     }
   });
@@ -171,14 +178,15 @@ function pieceSvg(p, a, net) {
   return `<svg class="pflow" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${t('svgAria')}">
     <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="5" height="5" fill="var(--line)"/><rect width="2" height="5" fill="var(--held)"/></pattern></defs>
-    <g transform="translate(0,${-vy})">${front.join('')}${boxes.join('')}${blks.join('')}${top.join('')}</g></svg>`;
+    <g transform="translate(0,${-vy})">${front.join('')}${boxes.join('')}${bHead.map((x, i) => x + bPieces[i].join('') + bTail[i]).join('')}${top.join('')}</g></svg>`;
 }
 
-// ---- Planta do fluxo de canos (modo fluido): coletores com Pipeline Junction ----
+// ---- Planta do fluxo de canos (modo fluido): ligação direta ou cano coletor com Pipeline Junction ----
+// No fluido não há doadora, balancer, Smart Splitter nem sink (o plano para antes deles).
 function pipeSvg(p, a) {
-  const cap = p.cap, v = a.view, fl = e => (e === null || e === undefined ? 0 : a.sim.flow[e]);
+  const cap = p.cap, v = a.view, fl = e => a.sim.flow[e];
   const rowH = 54, boxW = 184, dstW = 224, boxH = 40, W = 960, top = 8;
-  const xSrc = 0, xDst = W - dstW, xMerge = xDst - 42, xOv = xDst - 150, xDiv = 410;
+  const xSrc = 0, xDst = W - dstW;
 
   // Destinos na ordem das linhas (que é a dos grupos); cada origem fica na altura do destino que alimenta.
   const feedsInOrder = v.feeds.slice().sort((x, y) => x.f.dst.id - y.f.dst.id);
@@ -186,82 +194,20 @@ function pipeSvg(p, a) {
   const seen = new Set();
   const push = l => { if (!seen.has(l.id)) { seen.add(l.id); srcOrder.push(l); } };
   feedsInOrder.forEach(fv => fv.f.mains.forEach(push));
-  v.groups.forEach(g => push(g.gr.donor));
-  if (v.bal) a.bal.inputs.forEach(push);
   (v.headers || []).forEach(hv => hv.h.inputs.forEach(push));
   v.leftovers.forEach(l => push(l.line));
   const dstOrder = [...v.feeds.map(fv => fv.f.dst), ...a.unfed].sort((x, y) => x.id - y.id);
-  const hasSink = a.g.nodes[v.sink].ins.length > 0;
   const hasExtra = a.g.nodes[v.extra].ins.length > 0;
-  const dstRows = dstOrder.length + (hasSink ? 1 : 0) + (hasExtra ? 1 : 0);
-  const rows = Math.max(srcOrder.length, dstRows);
+  const rows = Math.max(srcOrder.length, dstOrder.length + (hasExtra ? 1 : 0));
   const H = top * 2 + rows * rowH - (rowH - boxH);
 
   const ySrc = new Map(srcOrder.map((l, i) => [l.id, top + i * rowH + boxH / 2]));
   const yDst = new Map(dstOrder.map((d, i) => [d.id, top + i * rowH + boxH / 2]));
-  const ySink = top + dstOrder.length * rowH + boxH / 2;
-  const yExtra = ySink + (hasSink ? rowH : 0);
-  const donorIds = new Set(v.groups.map(g => g.gr.donor.id));
+  const yExtra = top + dstOrder.length * rowH + boxH / 2;
 
   const back = [], front = [];
   const belt = beltOf(cap, front), label = labelOf(front);
-  const merger = (x, y) => front.push(`<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>`);
-  const smart = (x, y) => front.push(`<rect x="${x - 9}" y="${y - 9}" width="18" height="18" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/><path d="M${x - 4},${y - 4} l4,4 l-4,4 M${x},${y - 4} l4,4 l-4,4" stroke="var(--ficsit)" stroke-width="1.6" fill="none"/>`);
-
-  v.groups.forEach((g, gi) => {
-    const gr = g.gr;
-    const y0 = ySrc.get(gr.donor.id);
-    const members = gr.members.map(m => v.feeds.find(fv => fv.f.dst.id === m));
-    if (gr.p === 1) {
-      const fv = members[0];
-      belt(curve(xSrc + boxW, y0, xMerge, yDst.get(fv.f.dst.id)), fl(fv.partEdge), 'var(--donor)');
-      label(xMerge - 14, yDst.get(fv.f.dst.id) + 20, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
-      return;
-    }
-    const ys = members.map(fv => yDst.get(fv.f.dst.id));
-    const mid = (Math.min(...ys) + Math.max(...ys)) / 2 + (ys.length % 2 ? rowH / 2 : 0);
-    const sy = Math.max(top + 12, Math.min(mid, H - 14));
-    belt(curve(xSrc + boxW, y0, xDiv - 22, sy), fl(g.donorEdge), 'var(--donor)');
-    members.forEach(fv => {
-      const y = yDst.get(fv.f.dst.id);
-      belt(curve(xDiv + 22, sy, xMerge, y), fl(fv.partEdge), 'var(--donor)');
-      label(xMerge - 14, y + 20, '+' + fmt(fl(fv.partEdge)), 'var(--donor)', 'end');
-    });
-    if (g.sinkEdges.length) {
-      const f = g.sinkEdges.reduce((s, e) => s + fl(e), 0);
-      belt(curve(xDiv + 22, sy, xDst, ySink), f, 'var(--sink)', back);
-      label(xDiv + 30, sy + (ySink > sy ? 24 : -12), t('svgToSink', fmt(f)), 'var(--sink)');
-    }
-    const txt = gr.mode === 'loop' ? `÷${gr.p} ↺` : `÷${gr.mode === 'sink' ? gr.n : gr.p}`;
-    front.push(`<g class="balblock" data-open-bal="g${gi}" tabindex="0" role="button" aria-label="${esc(t('blkAria', 1, gr.p))}">
-      <polygon points="${xDiv - 24},${sy - 15} ${xDiv + 16},${sy - 15} ${xDiv + 24},${sy - 7} ${xDiv + 24},${sy + 15} ${xDiv - 24},${sy + 15}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
-      <text class="lbl" x="${xDiv}" y="${sy + 5}" text-anchor="middle" style="fill:var(--ficsit)">${txt}</text></g>`);
-  });
-
-  // Balancer N→M: um bloco só no meio; o detalhe abre num diálogo.
-  if (v.bal) {
-    const d = v.bal.design;
-    const ys = [...a.bal.inputs.map(l => ySrc.get(l.id)), ...dstOrder.map(dd => yDst.get(dd.id))];
-    const ym = (Math.min(...ys) + Math.max(...ys)) / 2, half = Math.max((Math.max(...ys) - Math.min(...ys)) / 2 + 18, 40);
-    const y1 = Math.max(2, ym - half), y2 = Math.min(H - 2, ym + half);
-    const bx = 330, bw = 170;
-    a.bal.inputs.forEach((l, i) => {
-      const y = ySrc.get(l.id), f = fl(v.bal.inEdges[i]), held = a.sources.get(l.id).held;
-      belt(curve(xSrc + boxW, y, bx, y), f, 'var(--flow)');
-      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${y - 10}" style="fill:var(--flow)">${fmt(f)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(held))}</tspan>` : ''}</text>`);
-    });
-    v.feeds.forEach(fv => { const y = yDst.get(fv.f.dst.id); belt(curve(bx + bw, y, xDst, y), fl(fv.outEdge), 'var(--flow)'); });
-    if (v.bal.sinkEdges.length) {
-      const f = v.bal.sinkEdges.reduce((acc, e) => acc + fl(e), 0);
-      belt(curve(bx + bw, y2 - 10, xDst, ySink), f, 'var(--sink)', back);
-      label(bx + bw + 12, y2 + 4, t('svgToSink', fmt(f)), 'var(--sink)');
-    }
-    front.push(`<g class="balblock" data-open-bal="plan" tabindex="0" role="button" aria-label="${esc(t('blkAria', d.N, d.M))}">
-      <polygon points="${bx},${y1} ${bx + bw - 14},${y1} ${bx + bw},${y1 + 14} ${bx + bw},${y2} ${bx},${y2}" fill="var(--paper)" stroke="var(--ficsit)" stroke-width="2"/>
-      <text class="lbl" x="${bx + bw / 2}" y="${ym - 4}" text-anchor="middle" style="fill:var(--ficsit);font-size:26px">${d.N}→${d.M}</text>
-      <text class="sm" x="${bx + bw / 2}" y="${ym + 16}" text-anchor="middle">${esc(designName(d))}</text>
-      <text class="sm" x="${bx + bw / 2}" y="${ym + 31}" text-anchor="middle" style="fill:var(--holo)">${t('blkHint')}</text></g>`);
-  }
+  const srcRate = (l, f) => front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${ySrc.get(l.id) - 10}" style="fill:var(--flow)">${fmt(f)}${a.sources.get(l.id).held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(a.sources.get(l.id).held))}</tspan>` : ''}</text>`);
 
   // Cano coletor: os canos de origem entram num bloco e os de destino saem dele.
   const labeled = new Set();
@@ -272,11 +218,11 @@ function pipeSvg(p, a) {
     const y1 = Math.max(2, ym - half), y2 = Math.min(H - 2, ym + half);
     const bx = 400, bw = 120;
     hv.h.inputs.forEach((l, i) => {
-      const y = ySrc.get(l.id), f = fl(hv.inEdges[i]), held = a.sources.get(l.id).held;
-      belt(curve(xSrc + boxW, y, bx, Math.min(Math.max(y, y1 + 8), y2 - 8)), f, 'var(--flow)');
+      const y = ySrc.get(l.id);
+      belt(curve(xSrc + boxW, y, bx, Math.min(Math.max(y, y1 + 8), y2 - 8)), fl(hv.inEdges[i]), 'var(--flow)');
       if (labeled.has(l.id)) return;
       labeled.add(l.id);
-      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${y - 10}" style="fill:var(--flow)">${fmt(a.sources.get(l.id).out)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(held))}</tspan>` : ''}</text>`);
+      srcRate(l, a.sources.get(l.id).out);
     });
     hv.h.members.forEach((d, j) => {
       const y = yDst.get(d.id);
@@ -287,42 +233,14 @@ function pipeSvg(p, a) {
       <text class="sm" x="${bx + bw / 2}" y="${ym + 14}" text-anchor="middle">${hv.junctions} × Junction</text>`);
   });
 
+  // Ligação direta: um cano de origem por destino.
   v.feeds.forEach(fv => {
     if (fv.header) return;
-    const y = yDst.get(fv.f.dst.id);
-    const ov = fv.overflowNode !== null;
-    const via = fv.mergeNode !== null;
-    const endX = ov ? xOv : via ? xMerge : xDst;
     fv.f.mains.forEach((l, i) => {
       const f = fl(fv.mainEdges[i]);
-      const held = a.sources.get(l.id).held;
-      belt(curve(xSrc + boxW, ySrc.get(l.id), endX, y), f, 'var(--flow)');
-      front.push(`<text class="rate" x="${xSrc + boxW + 10}" y="${ySrc.get(l.id) - 10}" style="fill:var(--flow)">${fmt(f)}${held > 0.05 ? `<tspan class="sm" dx="6" style="fill:var(--held)">${t('svgHeld', fmt(held))}</tspan>` : ''}</text>`);
+      belt(curve(xSrc + boxW, ySrc.get(l.id), xDst, yDst.get(fv.f.dst.id)), f, 'var(--flow)');
+      srcRate(l, f);
     });
-    if (ov) {
-      belt(`M${xOv},${y} L${xDst},${y}`, fl(fv.outEdge), 'var(--flow)');
-      if (fv.overflowTo === null) {
-        belt(curve(xOv, y, xDst, ySink), fl(fv.sinkEdge), 'var(--sink)', back);
-        if (fl(fv.sinkEdge) > 0.05) label(xOv - 12, y + 22, t('svgToSink', fmt(fl(fv.sinkEdge))), 'var(--sink)', 'end');
-      } else {
-        const yt = yDst.get(fv.overflowTo);
-        const f = fl(fv.overflowEdge);
-        belt(`M${xOv},${y} C${xOv + 20},${y} ${xOv + 30},${yt} ${xMerge},${yt}`, f, 'var(--ficsit)', back);
-        label(xOv - 12, y + 22, `${fmt(f)} → ${dstTag(fv.overflowTo)}`, 'var(--ficsit)', 'end');
-      }
-      smart(xOv, y);
-    } else if (via) {
-      belt(`M${xMerge},${y} L${xDst},${y}`, fl(fv.outEdge), 'var(--flow)');
-      merger(xMerge, y);
-    }
-  });
-
-  // Smart Splitter logo na saída da linha: o que o meio não puxa vai pro sink.
-  v.drains.forEach(d => {
-    const y0 = ySrc.get(d.line.id), x = xSrc + boxW + 34, f = fl(d.sinkEdge);
-    belt(curve(x, y0, xDst, ySink), f, 'var(--sink)', back);
-    if (f > 0.05) label(x + 14, y0 + 24, t('svgToSink', fmt(f)), 'var(--sink)');
-    smart(x, y0);
   });
 
   v.leftovers.forEach(l => {
@@ -332,9 +250,8 @@ function pipeSvg(p, a) {
         <text class="sm" x="${xSrc + boxW + 36}" y="${y0 + 4}">${t('svgStopped')}</text>`);
       return;
     }
-    const isSink = a.g.edges[l.edge].to === v.sink;
-    belt(curve(xSrc + boxW, y0, xDst, isSink ? ySink : yExtra), fl(l.edge), isSink ? 'var(--sink)' : 'var(--ink-dim)', back);
-    label(xSrc + boxW + 10, y0 - 10, fmt(fl(l.edge)), isSink ? 'var(--sink)' : 'var(--ink-dim)');
+    belt(curve(xSrc + boxW, y0, xDst, yExtra), fl(l.edge), 'var(--ink-dim)', back);
+    label(xSrc + boxW + 10, y0 - 10, fmt(fl(l.edge)), 'var(--ink-dim)');
   });
 
   const boxes = [];
@@ -344,7 +261,7 @@ function pipeSvg(p, a) {
   srcOrder.forEach(l => {
     const y = ySrc.get(l.id) - boxH / 2;
     const st = a.sources.get(l.id);
-    const color = donorIds.has(l.id) ? 'var(--donor)' : v.leftovers.some(x => x.line.id === l.id) ? 'var(--held)' : 'var(--flow)';
+    const color = v.leftovers.some(x => x.line.id === l.id) ? 'var(--held)' : 'var(--flow)';
     const outW = (boxW - 16) * st.out / Math.max(l.rate, EPS);
     boxes.push(`${plateBox(xSrc, y, color)}
       <text class="lbl" x="${xSrc + 10}" y="${y + 20}">${O(l)}</text>
@@ -366,12 +283,6 @@ function pipeSvg(p, a) {
       <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${dstW - 16}" height="5" fill="var(--line)"/>
       <rect x="${xDst + 8}" y="${y + boxH - 11}" width="${fill.toFixed(1)}" height="5" fill="${short ? 'var(--sink)' : 'var(--ok)'}"/>`);
   });
-  if (hasSink) {
-    const y = ySink - boxH / 2;
-    boxes.push(`${plateBox(xDst, y, 'var(--sink)', dstW)}
-      <text class="lbl" x="${xDst + 10}" y="${y + 25}">${t('svgSink')}</text>
-      <text class="rate" x="${xDst + dstW - 12}" y="${y + 25}" text-anchor="end" style="fill:var(--sink)">${fmt(a.sinkRate)}/min</text>`);
-  }
   if (hasExtra) {
     const y = yExtra - boxH / 2;
     boxes.push(`${plateBox(xDst, y, 'var(--ink-dim)', dstW)}

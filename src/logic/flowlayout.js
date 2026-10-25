@@ -77,14 +77,17 @@ export function flowLayout(net) {
   const late = id => +(nodes[id].t === 'sink' || nodes[id].t === 'extra');
   const mean = list => list.reduce((s, x) => s + row[x], 0) / list.length;
   // Esteira reta que atravessa a coluna: a peça fica a pelo menos meia linha dela, para não ser desenhada em cima.
+  // Só conta esteira com as duas pontas já posicionadas (`done`); antes disso a linha é o 0 inicial.
+  const done = new Set(fixed);
   const place = (c, want) => {
     const placed = byCol[c].filter(id => fixed.has(id)).map(id => row[id]);
-    const thru = belts.filter(b => b.role !== 'loop' && col[b.a] < c && col[b.b] > c && Math.abs(row[b.a] - row[b.b]) < EPS).map(b => row[b.a]);
+    const thru = belts.filter(b => b.role !== 'loop' && col[b.a] < c && col[b.b] > c && done.has(b.a) && done.has(b.b) && Math.abs(row[b.a] - row[b.b]) < EPS).map(b => row[b.a]);
     byCol[c].filter(id => !fixed.has(id) && want.has(id)).sort((x, y) => late(x) - late(y) || want.get(x) - want.get(y) || x - y).forEach(id => {
       const w = want.get(id), ok = r => placed.every(p => Math.abs(p - r) > 1 - EPS) && thru.every(p => Math.abs(p - r) > 0.5 - EPS);
       const cand = [w, ...placed.flatMap(p => [p - 1, p + 1]), ...thru.flatMap(p => [p - 0.5, p + 0.5])].filter(ok).sort((x, y) => Math.abs(x - w) - Math.abs(y - w) || x - y);
       row[id] = cand[0];
       placed.push(cand[0]);
+      done.add(id);
     });
   };
   const pass = (order, nb) => order.forEach(c => {

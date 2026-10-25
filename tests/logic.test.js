@@ -2,6 +2,7 @@
 // Testa a lógica pura de src/logic com os casos do AGENTS.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import * as logic from '../src/logic/index.js';
 import * as I from '../src/i18n/index.js';
 
@@ -1455,6 +1456,27 @@ test('layout do fluxo: colunas e portas', () => {
   checkLayout(alt(L.computePlan({ ...base, srcCount: 1, srcRate: 480, srcPer: 1, dstCount: 20, dstRate: 23.52, dstPer: 1 }), 'balancer-matrix-split-loop'));
   L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }).alternatives.forEach(checkLayout);
   L.computePlan({ ...base, srcCount: 10, srcRate: 100, dstCount: 2, dstRate: 480, srcPer: 1, dstPer: 1 }).alternatives.forEach(checkLayout);
+  // Esteira reta que atravessa uma coluna não passa por cima de peça (caso 1: as principais seguem retas até o merger).
+  for (const a of caso1().alternatives) {
+    const { n, lay } = checkLayout(a), pos = id => lay.nodes.get(id);
+    const straight = n.belts.filter(b => b.role !== 'loop' && Math.abs(pos(b.a).row - pos(b.b).row) < 1e-9);
+    if (a.key.startsWith('doadora')) assert.ok(straight.some(b => pos(b.b).col - pos(b.a).col > 1), `há esteira reta atravessando colunas em ${a.key}`);
+    for (const q of n.nodes.filter(q => q.t !== 'src' && q.t !== 'dst')) {
+      for (const b of straight) {
+        if (pos(b.a).col < pos(q.id).col && pos(q.id).col < pos(b.b).col) assert.ok(Math.abs(pos(q.id).row - pos(b.a).row) >= 0.5 - 1e-9, `${q.t}${q.id} em cima da esteira ${b.id} em ${a.key}`);
+      }
+    }
+  }
+  // Caso 2 com sink: o sink não puxa o Smart Splitter, que fica na linha do destino.
+  {
+    const { n, lay } = checkLayout(alt(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }), 'direto-sink'));
+    const ovs = n.nodes.filter(q => q.t === 'ov');
+    assert.equal(ovs.length, 4);
+    ovs.forEach(q => {
+      const d = n.belts.find(b => b.a === q.id && n.nodes[b.b].t === 'dst').b;
+      assert.equal(lay.nodes.get(q.id).row, lay.nodes.get(d).row, `ov ${q.id} na linha do destino`);
+    });
+  }
   // Caso A direto: cada origem na linha do destino que alimenta, 2 colunas.
   const { n, lay } = checkLayout(alt(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 }), 'direto'));
   assert.equal(lay.cols, 2);
@@ -1463,7 +1485,7 @@ test('layout do fluxo: colunas e portas', () => {
 
 // Desenho do fluxo: cada peça da rede vira uma peça no SVG, com o bloco clicável.
 test('fluxo desenhado em peças', async () => {
-  const { flowSvg } = await import('../src/ui/flow.js');
+  const { flowSvg, flowHasLoop } = await import('../src/ui/flow.js');
   const p = caso1(), count = (s, t) => (s.match(new RegExp(`data-piece="${t}"`, 'g')) || []).length;
   const alts = [...p.alternatives, ...p.alternatives.find(x => x.designAlts).designAlts];
   const bp = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
@@ -1473,14 +1495,34 @@ test('fluxo desenhado em peças', async () => {
     assert.equal(count(svg, 's'), a.pieces.splitters, `splitters em ${a.key}`);
     assert.equal(count(svg, 'm'), a.pieces.mergers, `mergers em ${a.key}`);
     assert.equal(count(svg, 'ov'), a.pieces.smart, `smart em ${a.key}`);
-    L.flowNet(a).blocks.forEach(b => assert.ok(svg.includes(`data-open-bal="${b.key}"`), `bloco ${b.key} em ${a.key}`));
+    // Cada bloco: um só elemento focável, com as peças dele dentro (o clique numa peça abre o diálogo).
+    const net = L.flowNet(a);
+    assert.equal((svg.match(/tabindex="0"/g) || []).length, net.blocks.length);
+    net.blocks.forEach(b => {
+      const i = svg.indexOf(`data-open-bal="${b.key}"`);
+      assert.ok(i >= 0, `bloco ${b.key} em ${a.key}`);
+      const inner = svg.slice(i, svg.indexOf('class="blktag"', i));
+      assert.equal((inner.match(/data-piece=/g) || []).length, b.nodes.length, `peças dentro do bloco ${b.key} em ${a.key}`);
+    });
+    assert.equal(flowHasLoop(a), net.belts.some(b => b.role === 'loop'), `legenda do loop em ${a.key}`);
   }
+  for (const a of [alt(L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 }), 'doadora-1-loop'),
+    ...L.computePlan({ ...base, srcCount: 2, srcRate: 480, srcPer: 1, dstCount: 5, dstRate: 192, dstPer: 1 }).alternatives.find(x => x.designAlts).designAlts])
+    assert.equal(flowHasLoop(a), L.flowNet(a).belts.some(b => b.role === 'loop'), `legenda do loop em ${a.key}`);
   assert.equal(count(flowSvg(bp, bp.alternatives[0]), 'bp'), 1);
   // Caso 2 direto: pequeno, sem rolagem.
   const p2 = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 });
   assert.match(flowSvg(p2, alt(p2, 'direto')), /viewBox="0 0 960 /);
-  // Modo fluido: o desenho de antes (coletor com Junction), sem peças.
-  const f = L.computePlan({ ...base, medium: 'fluid', belt: 'Mk2', cap: 600, srcCount: 12, srcRate: 100, srcPer: 4, dstCount: 16, dstRate: 75, dstPer: 4 });
-  f.alternatives.forEach(a => { const s = flowSvg(f, a); assert.ok(!s.includes('data-piece')); });
-  assert.ok(f.alternatives.some(a => flowSvg(f, a).includes('Junction')));
+});
+
+// Modo fluido: o desenho de canos fica igual ao de antes, byte a byte (tests/fluxo-fluido.json, gravado antes do
+// desenho em peças). Para regravar de propósito: gerar com flowSvg para as mesmas entradas, em português.
+test('fluxo do modo fluido igual ao gravado', async () => {
+  const { flowSvg } = await import('../src/ui/flow.js');
+  const snap = JSON.parse(fs.readFileSync(new URL('./fluxo-fluido.json', import.meta.url), 'utf8'));
+  for (const { input, svgs } of snap) {
+    const p = L.computePlan(input);
+    assert.deepEqual(p.alternatives.map(a => a.key), Object.keys(svgs));
+    p.alternatives.forEach(a => assert.equal(flowSvg(p, a), svgs[a.key], `fluido ${a.key}`));
+  }
 });
