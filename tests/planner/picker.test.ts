@@ -1,0 +1,75 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import game from '../../src/planner/data/game.json' with { type: 'json' };
+import type { GameData } from '../../src/planner/model/types.ts';
+import { pickerEntries } from '../../src/planner/model/picker.ts';
+import { setLang } from '../../src/i18n/index.js';
+
+const data = game as GameData;
+const inLang = <T>(l: string, f: () => T): T => { setLang(l); try { return f(); } finally { setLang('pt'); } };
+
+test('seletor de uma saída sólida: quem consome + Sink, Container e Saída', () => {
+  const r = pickerEntries(data, '', { consumes: 'Desc_SteelIngot_C' });
+  assert.deepEqual(r.special.map(e => e.spec.kind), ['sink', 'container', 'export']);
+  assert.ok(r.recipes.some(e => e.title === 'Steel Beam') && r.recipes.every(e => e.ins.includes('Desc_SteelIngot_C')));
+  assert.ok(r.recipes.every(e => e.spec.kind === 'recipe'));
+});
+
+test('seletor de uma saída fluida não oferece o Awesome Sink', () => {
+  const r = pickerEntries(data, '', { consumes: 'Desc_Water_C' });
+  assert.deepEqual(r.special.map(e => e.spec.kind), ['container', 'export']);
+  assert.ok(r.recipes.length > 0 && r.recipes.every(e => e.ins.includes('Desc_Water_C')));
+});
+
+test('seletor de uma entrada de minério: Miner; de água: Water Extractor e Resource Well Extractor', () => {
+  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special.map(e => e.spec), [{ kind: 'miner', item: 'Desc_OreIron_C' }]);
+  const w = pickerEntries(data, '', { produces: 'Desc_Water_C' });
+  assert.deepEqual(w.special.map(e => e.spec).sort((a: any, b: any) => a.building.localeCompare(b.building)), [
+    { kind: 'extractor', building: 'Build_FrackingExtractor_C', item: 'Desc_Water_C' },
+    { kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C' },
+  ]);
+  assert.ok(w.recipes.some(e => e.title === 'Aluminum Scrap') && w.recipes.every(e => e.outs.includes('Desc_Water_C')));
+  // Item feito por receita: nenhuma origem.
+  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_IronIngot_C' }).special, []);
+});
+
+test('seletor sem filtro: Miner por minério sólido, extrator por item, depois Sink, Container e Saída', () => {
+  const r = pickerEntries(data, '', undefined);
+  const kinds = r.special.map(e => e.spec.kind);
+  const raws = Object.values(data.items).filter(i => i.raw && !i.fluid).map(i => i.id).sort();
+  assert.deepEqual(r.special.filter(e => e.spec.kind === 'miner').map(e => (e.spec as any).item).sort(), raws);
+  assert.equal(r.special.filter(e => e.spec.kind === 'extractor').length, Object.values(data.extractors).reduce((n, x) => n + x.items.length, 0));
+  assert.deepEqual(kinds.slice(-3), ['sink', 'container', 'export']);
+  assert.equal(r.recipes.length, Object.keys(data.recipes).length);
+  // Cartão de receita: ícone do produto, prédio no subtítulo.
+  const pure = r.recipes.find(e => e.spec.kind === 'recipe' && e.spec.recipe === 'Recipe_Alternate_PureIronIngot_C')!;
+  assert.equal(pure.icon, '/icons/Desc_IronIngot_C.webp');
+  assert.equal(pure.sub, 'Refinery');
+  assert.deepEqual(pure.ins, ['Desc_OreIron_C', 'Desc_Water_C']);
+  assert.deepEqual(pure.outs, ['Desc_IronIngot_C']);
+  assert.ok(r.special.every(e => e.icon === null || e.icon.startsWith('/icons/')));
+});
+
+test('alternativas marcadas e depois das normais', () => {
+  const r = pickerEntries(data, 'iron ingot').recipes;
+  const first = r.findIndex(e => e.alt);
+  assert.ok(first > 0);
+  assert.ok(r.slice(0, first).every(e => !e.alt) && r.slice(first).every(e => e.alt));
+  assert.equal(r[0].title, 'Iron Ingot');
+  assert.ok(r.some(e => e.alt && e.title === 'Pure Iron Ingot'));
+});
+
+test('busca casa com o nome da especial (no idioma da tela) e com o item da origem', () => {
+  assert.deepEqual(pickerEntries(data, 'sink').special.map(e => e.spec.kind), ['sink']);
+  assert.deepEqual(pickerEntries(data, 'iron ore').special.map(e => e.spec), [{ kind: 'miner', item: 'Desc_OreIron_C' }]);
+  inLang('pt', () => assert.deepEqual(pickerEntries(data, 'saída').special.map(e => e.spec.kind), ['export']));
+  inLang('en', () => assert.deepEqual(pickerEntries(data, 'export').special.map(e => e.spec.kind), ['export']));
+  assert.deepEqual(pickerEntries(data, 'zzz nada'), { special: [], recipes: [] });
+});
+
+test('Container de fluido usa o ícone do Fluid Buffer', () => {
+  const c = pickerEntries(data, '', { consumes: 'Desc_Water_C' }).special.find(e => e.spec.kind === 'container')!;
+  assert.equal(c.icon, '/icons/Build_PipeStorageTank_C.webp');
+  const s = pickerEntries(data, '', { consumes: 'Desc_SteelIngot_C' }).special.find(e => e.spec.kind === 'container')!;
+  assert.equal(s.icon, '/icons/Build_StorageContainerMk1_C.webp');
+});

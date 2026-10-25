@@ -10,7 +10,6 @@ import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
-import { Sidebar } from './ui/Sidebar.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import type { Selection } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
@@ -105,7 +104,6 @@ export function App() {
       <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
-        <Sidebar factory={f} flow={flow} data={data} selection={selection} onSelect={setSelection} dispatch={dispatch} />
         <MapView factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} inspector={inspector} />
       </div>

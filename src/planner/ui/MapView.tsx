@@ -1,21 +1,27 @@
 // Vista do mapa: a cena em escala num canvas, com a navegação do Figma (rolar move, Ctrl/⌘ + rodinha ou pinça
 // dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo. Clicar seleciona, arrastar um bloco ou
 // uma ligação o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista
-// os avisos.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+// os avisos. Montar como no Modeler: duplo clique ou botão direito no vazio abre o seletor ali; arrastar de uma porta
+// liga (soltando numa porta) ou cria o próximo bloco já ligado (soltando no vazio); Delete apaga o bloco.
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
 import { perRowOf, stageRows } from '../model/stage.ts';
 import { solvedStage } from '../model/solved.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Factory, GameData, LigPlace, MapPlace, StageId } from '../model/types.ts';
+import type { Factory, GameData, ItemId, LigPlace, MapPlace, StageId } from '../model/types.ts';
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
-import type { MeioGeo, Rect } from '../model/map/geo.ts';
+import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
-import { drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
+import { dropTarget, portAt, scenePorts, type ScenePort } from '../model/map/ports.ts';
+import { nextBlockId } from '../model/factory.ts';
+import type { PickerEntry, PickerFilter } from '../model/picker.ts';
+import { Picker } from './Picker.tsx';
+import { iconImage } from './icons.ts';
+import { PORT_ZOOM, drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
 import { blockName, rateText, sizeText } from './format.ts';
 import type { Selection } from './selection.ts';
@@ -30,19 +36,24 @@ interface Props {
 // camMoved: o usuário já mexeu na câmera (aí ela não reenquadra sozinha quando os meios chegam).
 let sessionCam: Camera | null = null;
 let camMoved = false, refitted = false;
-let sessionSize = { w: 0, h: 0 };
 
-// O centro da vista no mundo (m): onde nasce o bloco criado pela busca lateral.
-export function mapCenter(): [number, number] {
-  const c = sessionCam;
-  return c ? screenToWorld(c, sessionSize.w / 2, sessionSize.h / 2) : [0, 0];
-}
+// Mapa vazio: a origem no centro, de perto (enquadrar um retângulo vazio daria o zoom máximo).
+const EMPTY_ZOOM = 2;
+const fitAll = (b: Rect, w: number, h: number): Camera =>
+  (b.w || b.h ? fit(b, w, h) : { x: -w / 2 / EMPTY_ZOOM, y: -h / 2 / EMPTY_ZOOM, zoom: EMPTY_ZOOM });
 
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;
 const HINT_STORE = 'sf-balancer:planner-map-hint';   // até aqui o ponteiro só clicou; passou disso, arrasta
+const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
+const NOTICE_MS = 3500;
+const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink' } as const;
+export const portKey = (p: ScenePort): string => `${p.block}|${p.side}|${p.item}`;
+
+// Seletor aberto: onde (tela e mundo) e, vindo de uma porta, o filtro e a porta que o bloco novo liga.
+interface PickerAt { x: number; y: number; at: Pt; filter?: PickerFilter; port?: { block: StageId; item: ItemId; side: 'in' | 'out' } }
 
 // Cor de cada item como na tela da etapa: fluido em holo; o item como entrada principal de quem consome em flow,
 // como entrada secundária em held; produto que ninguém consome (saída final) e o que sai das origens em ficsit.
@@ -81,6 +92,21 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const places = useMemo(() => (moving?.kind === 'block' ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
   const shown = useMemo(() => (moving?.kind === 'meio' ? { ...f, ligs: { ...f.ligs, [moving.id]: moving.place } } : f), [f, moving]);
   const scene = useMemo(() => buildScene(shown, data, places, geos, flow), [shown, data, places, geos, flow]);
+  const ports = useMemo(() => scenePorts(scene, f, data), [scene, f, data]);
+  // Montar: seletor aberto, porta sendo puxada (com a ponta no ponteiro), porta sob o ponteiro e o aviso de não ligou.
+  const [picker, setPicker] = useState<PickerAt | null>(null);
+  const [wire, setWire] = useState<{ from: ScenePort; to: Pt } | null>(null);
+  const [hoverPort, setHoverPort] = useState<ScenePort | null>(null);
+  const [notice, setNotice] = useState<(typeof WHY)[keyof typeof WHY] | null>(null);   // a chave: o texto segue o idioma
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(id);
+  }, [notice]);
+  // As portas que aceitam a puxada acendem (calculado uma vez por arraste).
+  const wireFrom = wire?.from ?? null;
+  const lit = useMemo(() => new Set(wireFrom ? ports.filter(p => dropTarget(f, data, wireFrom, p).kind === 'connect').map(portKey) : []),
+    [wireFrom, ports, f, data]);
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
   const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(f, data, geos, flow) });
@@ -103,9 +129,20 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const [theme, setTheme] = useState<MapTheme | null>(null);
 
   const colors = useMemo(() => (theme ? itemColors(f, data, theme) : {}), [f, data, theme]);
+  // Ícone pronto para o canvas, ou null; o que ainda carrega pede outro desenho quando chegar.
+  const redraw = useRef<() => void>(() => {});
+  const loading = useRef(new Set<string>());
+  const icon = useCallback((id: string): HTMLImageElement | null => {
+    const img = iconImage(id);
+    if (!img) return null;
+    if (img.complete) return img.naturalWidth ? img : null;
+    if (!loading.current.has(id)) { loading.current.add(id); img.addEventListener('load', () => redraw.current(), { once: true }); }
+    return null;
+  }, []);
   const opts = useMemo((): DrawOpts | null => theme && {
     // lang nas dependências: os rótulos mudam com o idioma.
     selected, hover, colors, theme,
+    ports, portHover: hoverPort ? portKey(hoverPort) : null, wire: wire && { from: wire.from, to: wire.to, lit }, icon,
     names: item => data.items[item]?.name ?? item,
     blockText: id => {
       const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id];
@@ -134,7 +171,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       const alt = r.plan.alternatives.find(a => a.key === key);
       return { title: alt?.caseLabel ?? '', sub: lines };
     },
-  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang]);
+  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang, ports, hoverPort, wire, lit]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
   const latest = useRef({ scene, opts });
@@ -151,6 +188,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     el.dataset.cam = `${c.x.toFixed(2)},${c.y.toFixed(2)},${c.zoom.toFixed(4)}`;
   };
   const request = () => { if (!frame.current) frame.current = requestAnimationFrame(draw); };
+  redraw.current = request;
   const setCam = (c: Camera) => { cam.current = c; sessionCam = c; request(); };
   const moveCam = (c: Camera) => { camMoved = true; setCam(c); };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
@@ -171,9 +209,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     const resize = () => {
       const w = box.clientWidth, h = box.clientHeight, dpr = window.devicePixelRatio || 1;
       size.current = { w, h };
-      sessionSize = { w, h };
       el.width = Math.max(1, Math.round(w * dpr)); el.height = Math.max(1, Math.round(h * dpr));
-      if (!cam.current && w && h) setCam(fit(boundsRef.current, w, h));
+      if (!cam.current && w && h) setCam(fitAll(boundsRef.current, w, h));
       request();
     };
     resize();
@@ -187,7 +224,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   useEffect(() => {
     if (!ready || refitted) return;
     refitted = true;
-    if (!camMoved && size.current.w) setCam(fit(boundsRef.current, size.current.w, size.current.h));
+    if (!camMoved && size.current.w) setCam(fitAll(boundsRef.current, size.current.w, size.current.h));
   }, [ready]);
 
   // Rodinha: sem Ctrl move; com Ctrl/⌘ (ou pinça no touchpad, que chega como Ctrl) dá zoom no cursor.
@@ -207,26 +244,59 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Arrastar um bloco o muda de lugar; arrastar o resto move o mapa; sem arrastar, é um clique (seleciona) e o ponteiro
-  // marca o que está embaixo.
+  // Arrastar uma porta puxa uma esteira; arrastar um bloco o muda de lugar; arrastar o resto move o mapa; sem arrastar,
+  // é um clique (seleciona) e o ponteiro marca o que está embaixo.
   const drag = useRef<{
     id: number; button: number; x0: number; y0: number; x: number; y: number; moved: boolean;
-    hit: ReturnType<typeof hitTest>; from: LigPlace | null; to: LigPlace | null;
+    hit: ReturnType<typeof hitTest>; from: LigPlace | null; to: LigPlace | null; port: ScenePort | null;
   } | null>(null);
-  const [dragging, setDragging] = useState<'pan' | 'block' | null>(null);
-  const local = (e: React.PointerEvent) => { const r = e.currentTarget.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  const hitAt = (e: React.PointerEvent) => {
+  const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | null>(null);
+  const local = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top] as Pt;
+  };
+  const worldAt = (e: { clientX: number; clientY: number; currentTarget: Element }): Pt | null => {
     const c = cam.current;
     if (!c) return null;
-    const [x, y] = local(e), [wx, wy] = screenToWorld(c, x, y);
-    return hitTest(scene, wx, wy);
+    const [x, y] = local(e);
+    return screenToWorld(c, x, y);
+  };
+  const hitAt = (e: React.PointerEvent | React.MouseEvent) => {
+    const w = worldAt(e);
+    return w ? hitTest(scene, w[0], w[1]) : null;
+  };
+  const portUnder = (e: React.PointerEvent) => {
+    const w = worldAt(e), c = cam.current;
+    // De longe as portas não aparecem: a borda do bloco volta a mover o bloco.
+    return w && c && c.zoom >= PORT_ZOOM ? portAt(ports, w[0], w[1], PORT_PX / c.zoom) : null;
+  };
+  // Seletor no ponto da tela (px do mapa); de uma porta, filtrado e ligando o bloco novo a ela.
+  const openPicker = (x: number, y: number, extra: Pick<PickerAt, 'filter' | 'port'> = {}) => {
+    const c = cam.current;
+    if (!c) return;
+    setPicker({ x, y, at: screenToWorld(c, x, y), ...extra });
+  };
+  const closePicker = useCallback((refocus: boolean) => {
+    setPicker(null);
+    if (refocus) canvas.current?.focus();
+  }, []);
+  const pick = (e: PickerEntry) => {
+    if (!picker) return;
+    const id = nextBlockId(f);
+    dispatch(picker.port
+      ? { type: 'addLinkedBlock', spec: e.spec, port: picker.port, at: picker.at }
+      : { type: 'addBlock', spec: e.spec, at: picker.at });
+    onSelect({ kind: 'stage', id });
+    closePicker(true);
   };
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.button !== 1) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    const hit = e.button === 0 ? hitAt(e) : null;
+    // Uma porta vem antes do corpo do bloco (ela fica na borda).
+    const port = e.button === 0 ? portUnder(e) : null;
+    const hit = e.button === 0 && !port ? hitAt(e) : null;
     const from = hit?.kind === 'block' ? basePlaces[hit.id] ?? null : hit?.kind === 'meio' ? ligAt(hit.id) : null;
-    drag.current = { id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null };
+    drag.current = { id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null, port };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current, c = cam.current;
@@ -235,9 +305,14 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       if (!d.moved) {
         if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK_PX) return;
         d.moved = true;
-        setDragging(d.from ? 'block' : 'pan');
+        setDragging(d.port ? 'link' : d.from ? 'block' : 'pan');
       }
-      if (d.from && d.hit) {
+      if (d.port) {
+        const w = worldAt(e);
+        if (w) setWire({ from: d.port, to: w });
+        const over = portUnder(e);
+        if ((over && portKey(over)) !== (hoverPort && portKey(hoverPort))) setHoverPort(over);
+      } else if (d.from && d.hit) {
         const dx = (e.clientX - d.x0) / c.zoom, dy = (e.clientY - d.y0) / c.zoom, { id, kind } = d.hit;
         const p = kind === 'block' ? dragged(d.from as MapPlace, dx, dy) : ligDragged(d.from, dx, dy);
         d.to = p;
@@ -249,8 +324,27 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       d.x = e.clientX; d.y = e.clientY;
       return;
     }
-    const hit = hitAt(e)?.id ?? null;
+    const over = portUnder(e);
+    if ((over && portKey(over)) !== (hoverPort && portKey(hoverPort))) setHoverPort(over);
+    const hit = over ? null : hitAt(e)?.id ?? null;
     if (hit !== hover) setHover(hit);
+  };
+  // Soltou a porta puxada: numa porta (ou no corpo de um bloco, que vale como a porta do item) liga; no vazio abre o
+  // seletor filtrado; incompatível só avisa o motivo.
+  const dropPort = (e: React.PointerEvent<HTMLCanvasElement>, from: ScenePort) => {
+    const w = worldAt(e);
+    if (!w) return;
+    let to = portUnder(e);
+    if (!to) {
+      const hit = hitTest(scene, w[0], w[1]);
+      if (hit?.kind === 'block') to = { block: hit.id, item: from.item, side: from.side === 'out' ? 'in' : 'out', x: w[0], y: w[1], fluid: from.fluid };
+    }
+    const r = dropTarget(f, data, from, to);
+    if (r.kind === 'connect') dispatch({ type: 'connect', from: r.from, to: r.to, item: r.item });
+    else if (r.kind === 'picker') {
+      const [x, y] = local(e);
+      openPicker(x, y, { filter: r.filter, port: { block: from.block, item: from.item, side: from.side } });
+    } else setNotice(WHY[r.reason]);
   };
   const endDrag = (e: React.PointerEvent<HTMLCanvasElement>, cancel = false) => {
     const d = drag.current;
@@ -258,11 +352,14 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     drag.current = null;
     setDragging(null);
     setMoving(null);
+    setWire(null);
     if (cancel) return;
     if (!d.moved) {
-      if (d.button === 0) onSelect(d.hit ? { kind: d.hit.kind === 'block' ? 'stage' : 'meio', id: d.hit.id } : null);
+      // Clique numa porta seleciona o bloco dela.
+      if (d.button === 0) onSelect(d.port ? { kind: 'stage', id: d.port.block } : d.hit ? { kind: d.hit.kind === 'block' ? 'stage' : 'meio', id: d.hit.id } : null);
       return;
     }
+    if (d.port) { dropPort(e, d.port); return; }
     if (d.from && d.hit) {
       const changed = d.to && (d.to.x !== d.from.x || d.to.y !== d.from.y);
       if (d.hit.kind === 'meio') {
@@ -274,21 +371,34 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       }
     }
   };
+  // Duplo clique: no bloco abre a etapa; no vazio, o seletor. Botão direito no vazio também abre o seletor.
   const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const c = cam.current;
-    if (!c) return;
-    const r = e.currentTarget.getBoundingClientRect(), [wx, wy] = screenToWorld(c, e.clientX - r.left, e.clientY - r.top);
-    const hit = hitTest(scene, wx, wy);
+    const hit = hitAt(e);
     if (hit?.kind === 'block') onOpenStage(hit.id);
+    else if (!hit) { const [x, y] = local(e); openPicker(x, y); }
+  };
+  const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (hitAt(e)) return;
+    const [x, y] = local(e);
+    openPicker(x, y);
   };
 
-  // Teclado no bloco (na lista do painel ou no canvas): setas movem 8 m, R gira, Enter abre a etapa, Esc solta.
+  // Teclado no bloco (na lista do painel ou no canvas): setas movem 8 m, R gira, Enter abre a etapa, Delete ou
+  // Backspace apaga (desfazível), Esc solta.
   const blockKey = (e: React.KeyboardEvent, id: StageId | null) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Escape') { if (selection) { e.preventDefault(); onSelect(null); } return; }
     if (!id || !basePlaces[id]) return;
     const cur = basePlaces[id];
     if (e.key === 'Enter') { e.preventDefault(); onOpenStage(id); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      dispatch({ type: 'removeBlock', id });
+      onSelect(null);
+      canvas.current?.focus();   // o botão da lista some com o bloco
+      return;
+    }
     const next = e.key === 'r' || e.key === 'R' ? rotated(cur) : nudged(cur, e.key);
     if (!next) return;
     e.preventDefault();
@@ -313,7 +423,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const focus = (r: Rect) => { const c = cam.current; if (c && size.current.w) moveCam(centerOn(c, r, size.current.w, size.current.h)); };
 
   const zoomCenter = (f: number) => { const c = cam.current; if (c) moveCam(zoomAt(c, f, size.current.w / 2, size.current.h / 2)); };
-  const showAll = () => { if (size.current.w) moveCam(fit(scene.bounds, size.current.w, size.current.h)); };
+  const showAll = () => { if (size.current.w) moveCam(fitAll(scene.bounds, size.current.w, size.current.h)); };
 
   const area = sizeText(scene.bounds);
   return (
@@ -321,18 +431,24 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plViewMap')}>
         <div className="pl-map" ref={wrap}>
           <canvas ref={canvas} tabIndex={0} role="img"
-            className={'pl-map-canvas' + (dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : hover ? ' over' : '')}
+            className={'pl-map-canvas' + (dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : dragging === 'link' || hoverPort ? ' linking' : hover ? ' over' : '')}
             aria-label={t('plMapAria', fmt(f.blocks.length, 0), area)}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
-            onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} onDoubleClick={onDoubleClick}
-            onKeyDown={canvasKey} />
+            onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); } }}
+            onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onKeyDown={canvasKey} />
+          {!f.blocks.length && !picker && <p className="pl-map-empty">{t('plCanvasHint')}</p>}
+          {notice && <p className="pl-map-notice" role="status">{t(notice)}</p>}
+          {picker && (
+            <Picker data={data} filter={picker.filter} x={picker.x} y={picker.y} area={size.current} onPick={pick} onClose={closePicker} />
+          )}
           {hint && (
             <p className="pl-map-hint">
-              <span>{t('plMapHint')}</span>
+              <span>{t('plCanvasHint')} · {t('plMapHint')}</span>
               <button type="button" onClick={hideHint} aria-label={t('plMapHintClose')} title={t('plMapHintClose')}>×</button>
             </p>
           )}
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
+            <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>+ {t('plPickTitle')}</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
             <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{t('plMapFit')}</button>
