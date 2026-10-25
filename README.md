@@ -45,7 +45,7 @@ You can do that math by hand every time, or you can type the machine counts and 
 
 ## Planner 2D (beta)
 
-A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. The Map tab lays the whole chain out on a top-down map to scale (8 m foundation grid): drag and rotate blocks, belts and each link's middle drawn between them, with overlap and belt-crossing warnings (phase 2). The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
+A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. The Map tab lays the whole chain out on a top-down map to scale (8 m foundation grid): drag and rotate blocks, belts and each link's middle drawn between them, with overlap and belt-crossing warnings; each block and middle shows its size in meters and foundations, and the gap between a middle's pieces is adjustable (phase 2). The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
 
 ## Game rules it follows
 

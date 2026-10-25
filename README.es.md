@@ -45,7 +45,7 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 
 ## Planner 2D (beta)
 
-Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra el medio de cada enlace (la misma lógica de la herramienta), con un botón que abre la herramienta ya rellenada. Al abrir una etapa ves las filas de máquinas a escala. La pestaña Mapa coloca toda la cadena en un plano visto desde arriba a escala (cuadrícula de cimientos de 8 m): arrastra y gira los bloques, y ve las cintas y el medio de cada enlace dibujados entre ellos, con avisos de solapamiento y cruce de cintas (fase 2). Los datos del juego se generan del Docs del juego (`node scripts/gamedata.mjs <en-US.json>`).
+Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra el medio de cada enlace (la misma lógica de la herramienta), con un botón que abre la herramienta ya rellenada. Al abrir una etapa ves las filas de máquinas a escala. La pestaña Mapa coloca toda la cadena en un plano visto desde arriba a escala (cuadrícula de cimientos de 8 m): arrastra y gira los bloques, y ve las cintas y el medio de cada enlace dibujados entre ellos, con avisos de solapamiento y cruce de cintas; cada bloque y medio muestra su medida en metros y en cimientos, y el espacio entre las piezas del medio es ajustable (fase 2). Los datos del juego se generan del Docs del juego (`node scripts/gamedata.mjs <en-US.json>`).
 
 ## Reglas del juego que respeta
 
