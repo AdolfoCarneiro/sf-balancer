@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { fmt, parseNum, t } from '../../i18n/index.js';
+import { fmt, t } from '../../i18n/index.js';
 import { altPieces, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Action } from '../model/factorystate.ts';
@@ -103,28 +102,5 @@ function MeioPanel({ meio, result, factory: f, flow, data, lang, dispatch }: {
       <a className="pl-btn pl-primary pl-link" href={meioUrl(meio, f, flow, data, lang)}>{t('plOpenMeio')}</a>
       <p className="pl-note">{t('plMeioHint')}</p>
     </div>
-  );
-}
-
-// Campo numérico com texto local: confirma no blur ou no Enter, uma ação por edição.
-export function NumField({ label, value, valid, onCommit, bad }: {
-  label: string; value: number; valid: (n: number) => boolean; onCommit: (n: number) => void; bad: string;
-}) {
-  const [text, setText] = useState<string | null>(null);
-  const shown = text ?? fmt(value);
-  const n = parseNum(shown);
-  const invalid = text !== null && !valid(n);
-  const commit = () => {
-    if (text === null) return;
-    if (valid(n)) { if (n !== value) onCommit(n); setText(null); }
-  };
-  return (
-    <label className="pl-field">
-      <span>{label}</span>
-      <input type="text" inputMode="decimal" value={shown} aria-invalid={invalid} aria-label={label}
-        onChange={e => setText(e.target.value)} onBlur={commit}
-        onKeyDown={e => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setText(null); }} />
-      {invalid && <small className="pl-bad" role="alert">{bad}</small>}
-    </label>
   );
 }

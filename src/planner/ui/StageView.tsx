@@ -9,7 +9,7 @@ import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stag
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
-import { NumField } from './Inspector.tsx';
+import { NumField } from './NumField.tsx';
 
 const PX = 4;        // 1 m = 4 px
 const CELL = 32;     // fundação de 8 m
@@ -156,7 +156,7 @@ function Side({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onCl
         </label>
         <div className="pl-note">{recipeLine(r, data)}</div>
         <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
-          onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
+          always={block.limits?.machines === undefined} onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
         <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
           onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
         <PerRowField stage={stage} data={data} dispatch={dispatch} />

@@ -257,14 +257,18 @@ export function buildScene(f: Factory, data: GameData, places: Record<StageId, M
       }
     }
   });
-  // Entradas sem ligação: toco de RAW_STUB chegando pela borda de entrada.
+  // Entradas sem ligação: toco de RAW_STUB chegando pela borda de entrada, com a taxa resolvida da porta repartida
+  // como as faixas das fileiras (sem fluxo ou sem limite: a nominal das faixas).
   for (const b of blocks) {
     const linked = new Set(f.links.filter(l => l.to === b.stage).map(l => l.item));
     const [dx, dy] = DIR[b.place.rot];
     for (const item of new Set(b.geo.ins.map(a => a.item))) {
       if (linked.has(item)) continue;
-      for (const p of ports(b, 'ins', item)) {
-        belts.push({ pts: route([p.at[0] - dx * RAW_STUB, p.at[1] - dy * RAW_STUB], p.at, axis(b.place.rot)), item, rate: p.rate, role: 'raw', fluid: fluid(item) });
+      const ps = ports(b, 'ins', item), nominal = ps.reduce((s, p) => s + p.rate, 0);
+      const real = flow.blocks[b.stage]?.ins.find(p => p.item === item)?.rate;
+      const scale = typeof real === 'number' && nominal > 0 ? real / nominal : 1;
+      for (const p of ps) {
+        belts.push({ pts: route([p.at[0] - dx * RAW_STUB, p.at[1] - dy * RAW_STUB], p.at, axis(b.place.rot)), item, rate: p.rate * scale, role: 'raw', fluid: fluid(item) });
       }
     }
   }

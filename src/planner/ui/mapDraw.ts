@@ -4,6 +4,7 @@ import { fmt, t } from '../../i18n/index.js';
 import { DETAIL_ZOOM, visible, type Camera } from '../model/map/camera.ts';
 import { route, type BeltPath, type BlockGeo, type Piece, type Pt, type Rect } from '../model/map/geo.ts';
 import type { ScenePort } from '../model/map/ports.ts';
+import type { Badge, BadgeKind } from '../model/badges.ts';
 import { toWorld, type Scene } from '../model/map/scene.ts';
 import { BELT, FOUNDATION } from '../model/map/sizes.ts';
 import type { ItemId, Rot, StageId } from '../model/types.ts';
@@ -12,7 +13,7 @@ import { sizeText } from './format.ts';
 // Cores e fontes lidas dos tokens CSS (o canvas não entende var()).
 export interface MapTheme {
   floor: string; sub: string; edge: string; paper: string; bench: string; plate: string; line: string;
-  ink: string; inkDim: string; ficsit: string; flow: string; held: string; holo: string; sink: string; donor: string;
+  ink: string; inkDim: string; ficsit: string; flow: string; held: string; holo: string; sink: string; donor: string; ok: string;
   machine: string; display: string; body: string;
 }
 
@@ -22,7 +23,7 @@ export function readTheme(el: Element): MapTheme {
     floor: v('--bp-floor', '#1b3550'), sub: v('--bp-sub', 'rgba(226,240,252,.11)'), edge: v('--bp-edge', '#eaf3fb'),
     paper: v('--paper', '#0d2136'), bench: v('--bench', '#0a1b2d'), plate: v('--plate', '#15324f'), line: v('--line', '#2d5176'),
     ink: v('--ink', '#e4eef8'), inkDim: v('--ink-dim', '#8eabc6'), ficsit: v('--ficsit', '#ff9b3d'), flow: v('--flow', '#e4eef8'),
-    held: v('--held', '#7f9bb8'), holo: v('--holo', '#6fe3ff'), sink: v('--sink', '#ff6d7c'), donor: v('--donor', '#c6a6ff'),
+    held: v('--held', '#7f9bb8'), holo: v('--holo', '#6fe3ff'), sink: v('--sink', '#ff6d7c'), donor: v('--donor', '#c6a6ff'), ok: v('--ok', '#8fe3a4'),
     machine: '#1f4a72', display: v('--display', 'sans-serif'), body: v('--body', 'sans-serif'),
   };
 }
@@ -31,9 +32,13 @@ export interface DrawOpts {
   selected: string | null; hover: string | null;
   colors: Record<string, string>; names: (item: ItemId) => string;
   theme: MapTheme;
-  // Rótulos de fora: o bloco (receita · máquinas, fileiras) e o meio (caso, linhas), já no idioma da tela.
-  blockText: (stage: StageId) => { title: string; sub: string };
-  meioText: (meio: string) => { title: string; sub: string };
+  // Rótulos de fora: o bloco (receita · máquinas, fileiras) e o meio (caso, linhas), já no idioma da tela. icon: id do
+  // ícone antes do título (produto principal, prédio da origem ou da sobra, item da ligação); warn: o sub é um aviso.
+  blockText: (stage: StageId) => { title: string; sub: string; icon: string | null; warn: boolean };
+  meioText: (meio: string) => { title: string; sub: string; icon: string | null };
+  // Avisos do fluxo de cada bloco (falta, represado, saída, travado…) e o texto curto de cada um (sem unidade).
+  badges: (stage: StageId) => Badge[];
+  badgeLabel: (stage: StageId, b: Badge) => string;
   // Portas dos blocos: a que está sob o ponteiro (chave bloco|lado|item) e, puxando uma, a esteira provisória até o
   // ponteiro e as portas que aceitam (lit). icon: o ícone já carregado, ou null.
   ports: ScenePort[]; portHover: string | null;
@@ -44,6 +49,9 @@ export interface DrawOpts {
 export const PORT_ZOOM = 0.5;    // de longe as portas somem (a não ser puxando uma) e não pegam o ponteiro
 const STUB_PX = 9, PORT_PX = 4, ICON_PX = 16;
 const portId = (p: ScenePort) => `${p.block}|${p.side}|${p.item}`;
+// De longe, um ponto por tipo de aviso no canto do bloco (a saída da fábrica não é aviso).
+const DOT_KINDS: BadgeKind[] = ['deficit', 'held', 'stalled', 'deadlock', 'unbounded'];
+const DOT_PX = 4, TITLE_ICON = 16;
 
 const GRID_MIN_ZOOM = 0.4;
 const SCALES = [1, 5, 10, 50, 100, 500, 1000];
@@ -135,6 +143,13 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     if (b.marker) ctx.setLineDash([px(4), px(3)]);
     ctx.strokeRect(r.x, r.y, r.w, r.h);
     ctx.setLineDash([]);
+    // Travado (subproduto parado ou loop travado): contorno de aviso por fora.
+    if (o.badges(b.stage).some(x => x.kind === 'stalled' || x.kind === 'deadlock')) {
+      const m = px(3);
+      ctx.strokeStyle = th.ficsit; ctx.lineWidth = px(2); ctx.setLineDash([px(6), px(4)]);
+      ctx.strokeRect(r.x - m, r.y - m, r.w + 2 * m, r.h + 2 * m);
+      ctx.setLineDash([]);
+    }
   }
   // Esteiras entre blocos e meios (e as entradas brutas).
   strokeBelts(scene.belts, true);
@@ -256,21 +271,28 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     return true;
   };
   const title = `600 13px ${th.display}`, small = `11px ${th.body}`;
+  // Ícone antes de um título com a linha de base em y; devolve quanto o texto anda para a direita (0 sem ícone pronto).
+  const iconShift = (id: string | null) => (id && o.icon(id) ? TITLE_ICON + 4 : 0);
+  const drawIcon = (id: string | null, x: number, y: number) => {
+    const img = id ? o.icon(id) : null;
+    if (img) ctx.drawImage(img, x, y - TITLE_ICON + 3, TITLE_ICON, TITLE_ICON);
+  };
   for (const b of blocks) {
     const x = sx(b.rect.x), y = sy(b.rect.y), w = b.rect.w * z, h = b.rect.h * z;
     if (w < 24) continue;
-    const on = o.selected === b.stage, txt = o.blockText(b.stage);
+    const on = o.selected === b.stage, txt = o.blockText(b.stage), sh = iconShift(txt.icon);
+    const subColor = txt.warn ? th.ficsit : th.inkDim;
     const size = b.marker ? t('plNotToScale') : sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
     if (detail) {
       // De perto as máquinas ocupam o bloco: nome e fileiras em cima dele, medida embaixo. Se ali tem outro bloco ou
       // meio (vizinho empilhado a 8 m, por exemplo), vão por dentro, numa chapa na faixa de cima e na de baixo.
       const max = w - 12, tc = on ? th.ficsit : th.ink;
-      if (clear(labelRect(txt.title, x, y - 22, title), b.stage) && clear(labelRect(txt.sub, x, y - 6, small), b.stage)) {
-        text(txt.title, x, y - 22, title, tc, 'left', { plate: true });
-        text(txt.sub, x, y - 6, small, th.inkDim, 'left', { plate: true, optional: true });
+      if (clear(labelRect(txt.title, x + sh, y - 22, title), b.stage) && clear(labelRect(txt.sub, x, y - 6, small), b.stage)) {
+        if (text(txt.title, x + sh, y - 22, title, tc, 'left', { plate: true })) drawIcon(txt.icon, x, y - 22);
+        text(txt.sub, x, y - 6, small, subColor, 'left', { plate: true, optional: !txt.warn });
       } else {
-        text(txt.title, x + 6, y + 18, title, tc, 'left', { plate: true, max });
-        if (h >= 56) text(txt.sub, x + 6, y + 34, small, th.inkDim, 'left', { plate: true, optional: true, max });
+        if (text(txt.title, x + 6 + sh, y + 18, title, tc, 'left', { plate: true, max: max - sh })) drawIcon(txt.icon, x + 6, y + 18);
+        if (h >= 56) text(txt.sub, x + 6, y + 34, small, subColor, 'left', { plate: true, optional: true, max });
       }
       if (!text(size, x, y + h + 14, small, on ? th.ficsit : th.inkDim, 'left', { plate: true, optional: true, avoid: b.stage }) && h >= 80) {
         text(size, x + 6, y + h - 7, small, on ? th.ficsit : th.inkDim, 'left', { plate: true, optional: true, max });
@@ -279,13 +301,58 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     }
     // De longe o bloco é uma chapa: os rótulos vão dentro, cortados na largura dele.
     const lines: [string, string, string, number][] = [
-      [txt.title, title, on ? th.ficsit : th.ink, 18], [txt.sub, small, th.inkDim, 15], [size, small, on ? th.ficsit : th.inkDim, 15],
+      [txt.title, title, on ? th.ficsit : th.ink, 18], [txt.sub, small, subColor, 15], [size, small, on ? th.ficsit : th.inkDim, 15],
     ];
     let ly = y;
-    for (const [s, font, color, step] of lines) {
+    lines.forEach(([s, font, color, step], i) => {
       ly += step;
-      if (ly + 4 > y + h) break;
-      text(s, x + 6, ly, font, color, 'left', { max: w - 12 });
+      if (ly + 4 > y + h) return;
+      const shift = i === 0 && w - 12 - sh >= 40 ? sh : 0;
+      if (text(s, x + 6 + shift, ly, font, color, 'left', { max: w - 12 - shift }) && shift) drawIcon(txt.icon, x + 6, ly);
+    });
+  }
+  // Avisos do fluxo: de perto, o texto na ponta de cada porta (falta em vermelho na entrada, represado e saída da fábrica
+  // em verde na saída); de longe, um ponto por tipo de aviso no canto do bloco.
+  const near = z >= PORT_ZOOM;
+  const badgeColor: Record<BadgeKind, string> = {
+    deficit: th.sink, held: th.ok, exit: th.ok, stalled: th.ficsit, deadlock: th.ficsit, unbounded: th.holo,
+  };
+  const portOf = new Map(o.ports.map(p => [portId(p), p]));
+  const badgeRects: Rect[] = [];
+  for (const b of blocks) {
+    const bs = o.badges(b.stage);
+    if (!bs.length) continue;
+    if (!near) {
+      const kinds = DOT_KINDS.filter(k => bs.some(x => x.kind === k));
+      const x1 = sx(b.rect.x + b.rect.w), y0 = sy(b.rect.y), w = b.rect.w * z;
+      if (w < 8) continue;
+      kinds.forEach((k, i) => {
+        ctx.beginPath(); ctx.arc(x1 - 7 - i * (2 * DOT_PX + 3), y0 + 7, DOT_PX, 0, Math.PI * 2);
+        ctx.fillStyle = badgeColor[k]; ctx.fill();
+        ctx.strokeStyle = th.bench; ctx.lineWidth = 1; ctx.stroke();
+      });
+      continue;
+    }
+    const stack = new Map<string, number>();
+    for (const x of bs) {
+      // Travado: o motivo também na saída parada, por fora.
+      if ((x.side === 'block' && x.kind !== 'stalled') || !x.item) continue;
+      const p = portOf.get(`${b.stage}|${x.side === 'in' ? 'in' : 'out'}|${x.item}`);
+      if (!p) continue;
+      const k = stack.get(portId(p)) ?? 0;
+      stack.set(portId(p), k + 1);
+      // A saída da fábrica e a saída parada ficam do lado de fora (ali não há ligação); falta e represado, por dentro da
+      // borda (do lado de fora fica a ligação).
+      const [px0, py0] = p.dir ?? [x.side === 'in' ? -1 : 1, 0];
+      const outside = x.kind === 'exit' || x.kind === 'stalled', dx = outside ? px0 : -px0, dy = outside ? py0 : -py0;
+      const off = outside ? STUB_PX + PORT_PX * 1.5 + ICON_PX + 8 : 6;
+      const align: CanvasTextAlign = dx > 0 ? 'left' : dx < 0 ? 'right' : 'center';
+      const tx = sx(p.x) + dx * off, label = o.badgeLabel(b.stage, x), font = `700 12px ${th.body}`, step = 15 * (dy < 0 ? -1 : 1);
+      let ty = sy(p.y) + dy * (off + 10) + (dy ? 0 : 4) + k * step;
+      // Portas vizinhas (fluido e sólido na mesma borda): um aviso não cobre o outro.
+      for (let i = 0; i < 4 && badgeRects.some(r => hit(r, labelRect(label, tx, ty, font, align))); i++) ty += step;
+      badgeRects.push(labelRect(label, tx, ty, font, align));
+      text(label, tx, ty, font, badgeColor[x.kind], align, { plate: true });
     }
   }
   for (const m of meios) {
@@ -298,16 +365,18 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     if (detail) {
       // De perto as peças ocupam o meio: o rótulo vai para cima dele e a medida para baixo; se ali tem outro bloco
       // ou meio, por dentro, numa chapa.
-      const head = txt.title + (txt.sub ? ` · ${txt.sub}` : ''), font = `700 12px ${th.display}`;
-      if (!text(head, x, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })
-        && !text(txt.title, x, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })) {
-        text(head, x + 4, y + 16, font, th.ficsit, 'left', { plate: true, max: w - 8 });
-      }
+      const head = txt.title + (txt.sub ? ` · ${txt.sub}` : ''), font = `700 12px ${th.display}`, sh = iconShift(txt.icon);
+      if (text(head, x + sh, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })
+        || text(txt.title, x + sh, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })) drawIcon(txt.icon, x, y - 6);
+      else if (text(head, x + 4 + sh, y + 16, font, th.ficsit, 'left', { plate: true, max: w - 8 - sh })) drawIcon(txt.icon, x + 4, y + 16);
       if (extra && !text(extra, x, y + h + 14, small, th.inkDim, 'left', { plate: true, avoid: m.meio })) {
         text(extra, x + 4, y + h - 6, small, th.inkDim, 'left', { plate: true, optional: true, max: w - 8 });
       }
     } else if (h >= 34) {
-      text(txt.title, cx, y + h / 2 - (txt.sub ? 2 : -4), `700 12px ${th.display}`, th.ficsit, 'center', { max: w - 6 });
+      const ty = y + h / 2 - (txt.sub ? 2 : -4), font = `700 12px ${th.display}`;
+      ctx.font = font;
+      const tw = Math.min(ctx.measureText(txt.title).width, w - 6), sh = w - 6 - tw >= 24 ? iconShift(txt.icon) : 0;
+      if (text(txt.title, cx + sh / 2, ty, font, th.ficsit, 'center', { max: w - 6 - sh }) && sh) drawIcon(txt.icon, cx + sh / 2 - tw / 2 - sh, ty);
       if (txt.sub) text(txt.sub, cx, y + h / 2 + 12, small, th.inkDim, 'center', { max: w - 6 });
     }
   }

@@ -23,7 +23,8 @@ import { Picker } from './Picker.tsx';
 import { iconImage } from './icons.ts';
 import { PORT_ZOOM, drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
-import { blockName, rateText, sizeText } from './format.ts';
+import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
+import { blockBadges, type Badge } from '../model/badges.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
@@ -129,6 +130,12 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const [theme, setTheme] = useState<MapTheme | null>(null);
 
   const colors = useMemo(() => (theme ? itemColors(f, data, theme) : {}), [f, data, theme]);
+  // Avisos do fluxo de cada bloco (mudam só com o fluxo).
+  const badges = useMemo(() => {
+    const m = new Map<StageId, Badge[]>();
+    for (const b of f.blocks) { const bf = flow.blocks[b.id]; m.set(b.id, bf ? blockBadges(bf, flow) : []); }
+    return m;
+  }, [f.blocks, flow]);
   // Ícone pronto para o canvas, ou null; o que ainda carrega pede outro desenho quando chegar.
   const redraw = useRef<() => void>(() => {});
   const loading = useRef(new Set<string>());
@@ -144,34 +151,39 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     selected, hover, colors, theme,
     ports, portHover: hoverPort ? portKey(hoverPort) : null, wire: wire && { from: wire.from, to: wire.to, lit }, icon,
     names: item => data.items[item]?.name ?? item,
+    badges: id => badges.get(id) ?? [],
+    badgeLabel: (id, x) => { const b = f.blocks.find(y => y.id === id); return b ? badgeText(x, b, data, false) : ''; },
     blockText: id => {
-      const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id];
+      const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
+      // Travado: o motivo no lugar do sub; loop travado no título.
+      const bs = badges.get(id) ?? [], stall = bs.find(x => x.kind === 'stalled');
+      const lock = bs.some(x => x.kind === 'deadlock') ? ` · ${t('plDeadlockShort')}` : '';
       if (b.kind !== 'recipe') {
         // Origem: o que sai; sobra: o que chega, por item.
         const n = b.kind === 'extractor' ? bf?.extractors : undefined;
         const title = blockName(b, data) + (typeof n === 'number' ? ` × ${fmt(n, 0)}` : '');
         const ports = (b.kind === 'miner' || b.kind === 'extractor' ? bf?.outs : bf?.ins) ?? [];
         const sub = ports.map(p => (p.rate === null ? t('plUnbounded') : rateText(data.items[p.item], p.rate))).join(' · ');
-        return { title: bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title, sub };
+        return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, warn: false };
       }
       const s = solvedStage(b, bf), r = data.recipes[s.recipe], bd = data.buildings[r.building];
       const count = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
-      return { title: `${r.name} · ${count}`, sub: t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name) };
+      const sub = stall ? badgeText(stall, b, data, true) : t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name);
+      return { title: `${r.name} · ${count}${lock}`, sub, icon, warn: !!stall };
     },
     meioText: id => {
-      const r = results.get(id);
-      if (r === undefined) return { title: '', sub: '' };
-      if (r === null) return { title: t('plMapCalc'), sub: '' };
-      if (r.plan.unbounded) return { title: t('plUnbounded'), sub: '' };
-      if (r.plan.tooLarge) return { title: t('plMeioTooLargeShort'), sub: '' };
+      const r = results.get(id), m = meioList.find(x => x.id === id), icon = m?.item ?? null;
+      if (r === undefined) return { title: '', sub: '', icon: null };
+      if (r === null) return { title: t('plMapCalc'), sub: '', icon };
+      if (r.plan.unbounded) return { title: t('plUnbounded'), sub: '', icon };
+      if (r.plan.tooLarge) return { title: t('plMeioTooLargeShort'), sub: '', icon };
       const lines = `${fmt(r.plan.src.lines.length, 0)} → ${fmt(r.plan.direct ? r.plan.src.lines.length : r.plan.dst.lines.length, 0)}`;
-      const m = meioList.find(x => x.id === id);
-      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = f.blocks.find(x => x.id === c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines };
+      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = f.blocks.find(x => x.id === c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines, icon };
       const key = chosenAlt(r.plan, f.alts?.[id]);
       const alt = r.plan.alternatives.find(a => a.key === key);
-      return { title: alt?.caseLabel ?? '', sub: lines };
+      return { title: alt?.caseLabel ?? '', sub: lines, icon };
     },
-  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang, ports, hoverPort, wire, lit]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang, ports, hoverPort, wire, lit, badges]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
   const latest = useRef({ scene, opts });
@@ -384,6 +396,13 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     openPicker(x, y);
   };
 
+  // Apaga o bloco (desfazível); o foco vai para o mapa, porque o botão da lista e o painel somem com ele.
+  const remove = (id: StageId) => {
+    dispatch({ type: 'removeBlock', id });
+    onSelect(null);
+    canvas.current?.focus();
+  };
+
   // Teclado no bloco (na lista do painel ou no canvas): setas movem 8 m, R gira, Enter abre a etapa, Delete ou
   // Backspace apaga (desfazível), Esc solta.
   const blockKey = (e: React.KeyboardEvent, id: StageId | null) => {
@@ -394,9 +413,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     if (e.key === 'Enter') { e.preventDefault(); onOpenStage(id); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
-      dispatch({ type: 'removeBlock', id });
-      onSelect(null);
-      canvas.current?.focus();   // o botão da lista some com o bloco
+      remove(id);
       return;
     }
     const next = e.key === 'r' || e.key === 'R' ? rotated(cur) : nudged(cur, e.key);
@@ -457,7 +474,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       </main>
       {selection?.kind === 'meio'
         ? inspector
-        : <MapPanel factory={f} data={data} meioList={meioList} scene={scene} places={places} selected={selStage}
+        : <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places} selected={selStage}
           onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
           onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />}
     </>

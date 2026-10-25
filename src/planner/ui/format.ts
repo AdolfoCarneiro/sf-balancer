@@ -1,6 +1,8 @@
 import { fmt, t } from '../../i18n/index.js';
 import type { Block, GameData, Item, ItemId } from '../model/types.ts';
 import { FOUNDATION } from '../model/map/sizes.ts';
+import type { Badge } from '../model/badges.ts';
+import { SPECIAL_ICON } from './icons.ts';
 
 // Taxa com a unidade do item: /min para sólido, m³/min para fluido.
 export const rateText = (item: Item | undefined, x: number): string =>
@@ -22,5 +24,30 @@ export function blockName(b: Block, d: GameData): string {
     case 'sink': return t('plSink');
     case 'container': return t('plContainer');
     default: return t('plExport');
+  }
+}
+
+// Texto de um aviso do bloco. unit: com a unidade (/min, m³/min) no painel; sem ela no canvas. Saída marcada para
+// coletar: a sobra vai para o Awesome Sink.
+export function badgeText(b: Badge, blk: Block, d: GameData, unit: boolean): string {
+  const it = b.item ? d.items[b.item] : undefined;
+  const n = b.amount === null ? '' : unit ? rateText(it, b.amount) : fmt(b.amount);
+  switch (b.kind) {
+    case 'deficit': return t('plDeficit', n);
+    case 'held': return t('plHeld', n);
+    case 'exit': return blk.kind === 'recipe' && b.item && blk.collect?.includes(b.item) ? `${t('plSink')} ${n}` : t('plExit', n);
+    case 'stalled': return t('plStalled', it?.name ?? b.item ?? '') + (b.amount === null ? '' : ` · ${t('plStalledWould', n)}`);
+    case 'unbounded': return t('plUnbounded');
+    default: return t('plDeadlockShort');
+  }
+}
+
+// Ícone do bloco: o produto principal da receita, ou o prédio da origem e da sobra.
+export function blockIcon(b: Block, d: GameData): string | null {
+  switch (b.kind) {
+    case 'recipe': return d.recipes[b.recipe]?.outs[0]?.item ?? null;
+    case 'miner': return SPECIAL_ICON.miner;
+    case 'extractor': return b.building;
+    default: return SPECIAL_ICON[b.kind];
   }
 }

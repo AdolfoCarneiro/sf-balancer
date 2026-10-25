@@ -1,25 +1,26 @@
-// Painel lateral do mapa: com um bloco selecionado, lado das entradas, giro, vãos e medida; sem seleção, a área,
+// Painel lateral do mapa: com um bloco selecionado, o painel do bloco (BlockPanel); sem seleção, a área,
 // "Propor de novo" e os avisos. A lista de blocos (acessível pelo teclado) fica nos dois casos.
 import { useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import type { Factory, GameData, MapPlace, Rot, StageId } from '../model/types.ts';
+import type { Factory, GameData, MapPlace, StageId } from '../model/types.ts';
+import type { FlowResult } from '../model/solve.ts';
+import type { Action } from '../model/factorystate.ts';
 import type { Rect } from '../model/map/geo.ts';
 import type { Scene } from '../model/map/scene.ts';
-import { rotated, warningRect } from '../model/map/edit.ts';
+import { warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
-import { NumField } from './Inspector.tsx';
+import { NumField } from './NumField.tsx';
 import { blockName, sizeText } from './format.ts';
+import { BlockPanel } from './BlockPanel.tsx';
 import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
 
 interface Props {
-  factory: Factory; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
+  factory: Factory; flow: FlowResult; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
+  dispatch: (a: Action) => void; onDelete: (id: StageId) => void;
   onPlace: (id: StageId, place: MapPlace) => void; onPropose: () => void; onFocus: (r: Rect) => void;
   onPick: (id: StageId) => void; onOpenStage: (id: StageId) => void; onBlockKey: (e: React.KeyboardEvent, id: StageId) => void;
   onGap: (gap: number) => void;   // vão entre peças do meio (a fábrica toda)
 }
-
-const SIDES = [[0, 'plMapSideLeft'], [1, 'plMapSideTop'], [2, 'plMapSideRight'], [3, 'plMapSideBottom']] as const;
-const GAP_MAX = 64;
 
 export function MapPanel(p: Props) {
   const { factory: f, data, meioList, scene, places, selected } = p;
@@ -27,7 +28,6 @@ export function MapPanel(p: Props) {
     const b = f.blocks.find(x => x.id === id);
     return b ? blockName(b, data) : id;
   };
-  const recipe = (id: StageId) => f.blocks.find(x => x.id === id)?.kind === 'recipe';
   // Nome de quem aparece num aviso: o bloco, ou o meio pelo item.
   const nameOf = (id: string) => {
     const m = meioList.find(x => x.id === id);
@@ -35,12 +35,14 @@ export function MapPanel(p: Props) {
   };
   const block = selected ? scene.blocks.find(b => b.stage === selected) : undefined;
   const place = selected ? places[selected] : undefined;
+  const selBlock = selected ? f.blocks.find(x => x.id === selected) : undefined;
   return (
     <aside className="pl-inspector" aria-label={t('plMapPanel')} id="pl-inspector">
       <div className="pl-insp">
-        {block && place
-          ? <BlockPanel key={block.stage} name={stageName(block.stage)} rect={block.rect} place={place}
-            onPlace={pl => p.onPlace(block.stage, pl)} onOpen={recipe(block.stage) ? () => p.onOpenStage(block.stage) : null} />
+        {block && place && selBlock
+          ? <BlockPanel key={block.stage} block={selBlock} flow={p.flow} factory={f} data={data} rect={block.rect} place={place}
+            onPlace={pl => p.onPlace(block.stage, pl)} onOpen={selBlock.kind === 'recipe' ? () => p.onOpenStage(block.stage) : null}
+            onDelete={() => p.onDelete(block.stage)} dispatch={p.dispatch} />
           : <Overview scene={scene} nameOf={nameOf} gap={pieceGap(f)} onGap={p.onGap} onPropose={p.onPropose} onFocus={p.onFocus} />}
         <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
         <p className="pl-note">{t('plMapListHint')}</p>
@@ -56,36 +58,6 @@ export function MapPanel(p: Props) {
         </ul>
       </div>
     </aside>
-  );
-}
-
-function BlockPanel({ name, rect, place, onPlace, onOpen }: {
-  name: string; rect: Rect; place: MapPlace; onPlace: (p: MapPlace) => void; onOpen: (() => void) | null;   // null: sem fileiras para abrir
-}) {
-  const gap = (label: string, k: 'gapRow' | 'gapMachine') => (
-    <NumField label={label} value={place[k] ?? 0} valid={n => n >= 0 && n <= GAP_MAX} bad={t('plMapGapBad')}
-      onCommit={n => onPlace({ ...place, [k]: n })} />
-  );
-  return (
-    <>
-      <h2 className="pl-insp-kicker">{t('plSelStage')}</h2>
-      <div className="pl-insp-title">{name}</div>
-      <div className="pl-insp-sub">{t('plMapBlockSize')}: {sizeText(rect)}</div>
-      <fieldset className="pl-map-sides">
-        <legend className="pl-insp-h">{t('plMapInSide')}</legend>
-        {SIDES.map(([rot, key]) => (
-          <label key={rot} className="pl-check">
-            <input type="radio" name="pl-map-side" value={rot} checked={place.rot === rot}
-              onChange={() => onPlace({ ...place, rot: rot as Rot })} />
-            <span>{t(key)}</span>
-          </label>
-        ))}
-      </fieldset>
-      <button type="button" className="pl-btn" onClick={() => onPlace(rotated(place))}>{t('plMapRotate')}</button>
-      {gap(t('plMapGapRow'), 'gapRow')}
-      {gap(t('plMapGapMachine'), 'gapMachine')}
-      {onOpen && <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>}
-    </>
   );
 }
 
