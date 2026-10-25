@@ -37,6 +37,8 @@ export function App() {
   const [picked, setSelection] = useState<Selection>(null);
   // Pedido de busca vindo do grafo (porta arrastada para o vazio).
   const [search, setSearch] = useState<SearchRequest | null>(null);
+  // Etapa aberta na vista de detalhe (a tela chega na próxima tarefa).
+  const [, setOpenStage] = useState<string | null>(null);
   const meioList = useMemo(() => meios(chain, data), [chain]);
   // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
@@ -68,7 +70,8 @@ export function App() {
           <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
             dispatch={dispatch} onOpenSearch={setSearch} />
         </main>
-        <Inspector selection={selection} />
+        <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList}
+          dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
       </div>
     </div>
   );

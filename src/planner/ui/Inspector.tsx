@@ -1,11 +1,118 @@
-import { t } from '../../i18n/index.js';
+import { useMemo, useState } from 'react';
+import { fmt, parseNum, t } from '../../i18n/index.js';
+import { meioPlan, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
+import type { Action } from '../model/persist.ts';
+import type { Chain, GameData, Stage } from '../model/types.ts';
+import type { Lang } from '../lang.ts';
 import type { Selection } from './selection.ts';
 
-// Casca: as tarefas seguintes preenchem o conteúdo de cada seleção.
-export function Inspector({ selection }: { selection: Selection }) {
+interface Props {
+  selection: Selection; chain: Chain; data: GameData; lang: Lang; meioList: Meio[];
+  dispatch: (a: Action) => void; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void;
+}
+
+const POLICIES = [['represar', 'policyHold'], ['sink', 'policySink'], ['extra', 'policyExtra']] as const;
+
+export function Inspector({ selection, chain, data, lang, meioList, dispatch, onSelect, onOpenStage }: Props) {
+  const meio = selection?.kind === 'meio' ? meioList.find(m => m.id === selection.id) : undefined;
+  const stage = selection?.kind === 'stage' ? chain.stages.find(s => s.id === selection.id) : undefined;
   return (
     <aside className="pl-inspector" aria-label={t('plInspector')} id="pl-inspector">
-      {!selection && <p className="pl-note">{t('plInspectorEmpty')}</p>}
+      {!meio && !stage && <p className="pl-note">{t('plInspectorEmpty')}</p>}
+      {meio && <MeioPanel meio={meio} chain={chain} data={data} lang={lang} dispatch={dispatch} />}
+      {stage && <StagePanel key={stage.id} stage={stage} data={data} dispatch={dispatch} onSelect={onSelect} onOpenStage={onOpenStage} />}
     </aside>
+  );
+}
+
+function MeioPanel({ meio, chain, data, lang, dispatch }: { meio: Meio; chain: Chain; data: GameData; lang: Lang; dispatch: (a: Action) => void }) {
+  // Só o meio selecionado é calculado aqui (o grafo calcula o resumo de todos).
+  const plan = useMemo(() => { try { return meioPlan(meio, chain, data); } catch { return null; } }, [meio, chain, data, lang]);
+  const names = (ids: string[]) => ids.map(id => {
+    const s = chain.stages.find(x => x.id === id);
+    return s ? data.recipes[s.recipe].name : id;
+  }).join(', ');
+  const item = data.items[meio.item];
+  const sum = plan ? meioSummary(plan) : null;
+  const warns = plan ? [...plan.warnings.map(w => w.text), ...(plan.alternatives[0]?.warnings ?? [])] : [];
+  return (
+    <div className="pl-insp">
+      <h2 className="pl-insp-kicker">{t('plSelMeio')}</h2>
+      <div className="pl-insp-title">{item?.name ?? meio.item}</div>
+      <div className="pl-insp-sub">{t('plFeeds', names(meio.producers), names(meio.consumers))}</div>
+      {sum && (
+        <>
+          <dl className="pl-nums">
+            <div><dt>{t('plSupply')}</dt><dd>{fmt(sum.supply)}</dd></div>
+            <div><dt>{t('plDemand')}</dt><dd>{fmt(sum.demand)}</dd></div>
+            {sum.short > 0
+              ? <div className="pl-short"><dt>{t('plShortage')}</dt><dd>{fmt(sum.short)}</dd></div>
+              : <div><dt>{t('plLeftover')}</dt><dd>{fmt(sum.leftover)}</dd></div>}
+          </dl>
+          <div className="pl-case">{sum.caseLabel}</div>
+          {warns.length > 0 && <ul className="pl-warns">{warns.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+          <h3 className="pl-insp-h">{t('plPieces')}</h3>
+          <ul className="pl-pieces">
+            <li><span>Splitter</span><b>{fmt(sum.pieces.splitters)}</b></li>
+            <li><span>Merger</span><b>{fmt(sum.pieces.mergers)}</b></li>
+            <li><span>Awesome Sink</span><b>{fmt(sum.pieces.sinks)}</b></li>
+          </ul>
+        </>
+      )}
+      <label className="pl-field">
+        <span>{t('policyTitle')}</span>
+        <select value={chain.policy} onChange={e => dispatch({ type: 'setPolicy', policy: e.target.value as Chain['policy'] })}>
+          {POLICIES.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
+        </select>
+      </label>
+      <a className="pl-btn pl-primary pl-link" href={meioUrl(meio, chain, data, lang)}>{t('plOpenMeio')}</a>
+      <p className="pl-note">{t('plMeioHint')}</p>
+    </div>
+  );
+}
+
+// Campo numérico com texto local: confirma no blur ou no Enter, uma ação por edição.
+function NumField({ label, value, valid, onCommit, bad }: {
+  label: string; value: number; valid: (n: number) => boolean; onCommit: (n: number) => void; bad: string;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  const shown = text ?? fmt(value);
+  const n = parseNum(shown);
+  const invalid = text !== null && !valid(n);
+  const commit = () => {
+    if (text === null) return;
+    if (valid(n)) { if (n !== value) onCommit(n); setText(null); }
+  };
+  return (
+    <label className="pl-field">
+      <span>{label}</span>
+      <input type="text" inputMode="decimal" value={shown} aria-invalid={invalid} aria-label={label}
+        onChange={e => setText(e.target.value)} onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setText(null); }} />
+      {invalid && <small className="pl-bad" role="alert">{bad}</small>}
+    </label>
+  );
+}
+
+function StagePanel({ stage, data, dispatch, onSelect, onOpenStage }: {
+  stage: Stage; data: GameData; dispatch: (a: Action) => void; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void;
+}) {
+  const r = data.recipes[stage.recipe];
+  return (
+    <div className="pl-insp">
+      <h2 className="pl-insp-kicker">{t('plSelStage')}</h2>
+      <div className="pl-insp-title">{r.name}</div>
+      <div className="pl-insp-sub">{t('plBuilding')}: {data.buildings[r.building]?.name ?? r.building}</div>
+      <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1}
+        onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad')} />
+      <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
+        onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
+      <label className="pl-check">
+        <input type="checkbox" checked={stage.locked} onChange={e => dispatch({ type: 'setLocked', id: stage.id, locked: e.target.checked })} />
+        <span>{t('plLock')}</span>
+      </label>
+      <button type="button" className="pl-btn" onClick={() => onOpenStage(stage.id)}>{t('plOpenStage')}</button>
+      <button type="button" className="pl-btn pl-danger" onClick={() => { dispatch({ type: 'removeStage', id: stage.id }); onSelect(null); }}>{t('plDeleteStage')}</button>
+    </div>
   );
 }
