@@ -1,5 +1,5 @@
 // O meio de cada ligação: as linhas dos produtores viram as linhas dos consumidores pelo computePlan da página.
-import { computePlan, encodeShare } from '../../logic/index.js';
+import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { SITE_PATH, type Lang } from '../lang.ts';
 import { capOf, perRowOf, portTier } from './stage.ts';
 import type { Chain, GameData, ItemId, Link, Stage, StageId } from './types.ts';
@@ -22,9 +22,12 @@ export interface Plan {
   cap: number; policy: Chain['policy']; fluid: boolean; supply: number; demand: number;
   src: { lines: PlanLine[] }; dst: { lines: PlanLine[] };
   alternatives: PlanAlt[]; warnings: { level: string; text: string }[];
+  // Presente quando algum lado passa de MEIO_MAX_LINES: o computePlan (cúbico nas linhas) não rodou.
+  tooLarge?: { src: number; dst: number };
 }
 
 export interface MeioSummary {
+  tooLarge: { src: number; dst: number } | null;
   caseLabel: string; supply: number; demand: number; leftover: number; short: number;
   pieces: { splitters: number; mergers: number; sinks: number };
 }
@@ -85,12 +88,27 @@ export function meioInput(meio: Meio, chain: Chain, data: GameData): MeioInput {
   };
 }
 
-export const meioPlan = (meio: Meio, chain: Chain, data: GameData): Plan =>
-  computePlan(meioInput(meio, chain, data)) as unknown as Plan;
+// Acima disso (linhas de origem ou de destino somadas) o computePlan fica lento demais (~cúbico).
+export const MEIO_MAX_LINES = 120;
+
+export function meioPlan(meio: Meio, chain: Chain, data: GameData): Plan {
+  const inp = meioInput(meio, chain, data);
+  const fluid = inp.medium === 'fluid';
+  // buildLines é barato (linear); só o computePlan explode com muitas linhas.
+  const src = buildLines(inp.srcGroups, inp.cap, '', fluid), dst = buildLines(inp.dstGroups, inp.cap, '', fluid, { balance: true, mix: false });
+  if (src.lines.length > MEIO_MAX_LINES || dst.lines.length > MEIO_MAX_LINES) {
+    return {
+      cap: inp.cap, policy: inp.policy, fluid, supply: src.total, demand: dst.total, src, dst,
+      alternatives: [], warnings: [], tooLarge: { src: src.lines.length, dst: dst.lines.length },
+    } as Plan;
+  }
+  return computePlan(inp) as unknown as Plan;
+}
 
 export function meioSummary(plan: Plan): MeioSummary {
   const a = plan.alternatives[0];
   return {
+    tooLarge: plan.tooLarge ?? null,
     caseLabel: a?.caseLabel ?? '', supply: plan.supply, demand: plan.demand,
     leftover: Math.max(0, plan.supply - plan.demand), short: Math.max(0, plan.demand - plan.supply),
     pieces: { splitters: a?.pieces.splitters ?? 0, mergers: a?.pieces.mergers ?? 0, sinks: a && a.sinkRate > E ? 1 : 0 },

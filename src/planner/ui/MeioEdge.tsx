@@ -24,8 +24,8 @@ function MeioEdgeImpl({ id, sourceX, sourceY, targetX, targetY, sourcePosition, 
             {sum.leftover > 1e-6 && <span className="pl-meio-note">{t('plLeft', fmt(sum.leftover))}</span>}
             {sum.short > 1e-6 && <span className="pl-meio-note pl-meio-short">{t('plShort', fmt(sum.short))}</span>}
             <button type="button" className={'pl-meio-btn' + (d.on ? ' on' : '')} aria-pressed={d.on}
-              aria-label={t('plMeioAria', d.itemName, sum.caseLabel)} onClick={() => d.onSelect?.(d.meioId!)}>
-              {sum.caseLabel}
+              aria-label={t('plMeioAria', d.itemName, sum.tooLarge ? t('plMeioTooLargeShort') : sum.caseLabel)} onClick={() => d.onSelect?.(d.meioId!)}>
+              {sum.tooLarge ? t('plMeioTooLargeShort') : sum.caseLabel}
             </button>
           </div>
         </EdgeLabelRenderer>

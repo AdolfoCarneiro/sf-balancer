@@ -347,6 +347,7 @@ export default {
   plGraph: 'Cadena', plInspector: 'Detalles', plInspectorEmpty: 'Selecciona una etapa o un medio para ver los detalles.',
   plSelMeio: 'Seleccionado · el medio', plSelStage: 'Seleccionado · la etapa', plFeeds: (a, b) => `${a} → ${b}`,
   plSupply: 'Oferta', plDemand: 'Demanda', plLeftover: 'Sobrante', plShortage: 'Falta', plPieces: 'Piezas',
+  plMeioTooLarge: (s, d) => `Demasiado grande para planificar aquí (${s} × ${d} líneas)`, plMeioTooLargeShort: 'Demasiado grande',
   plOpenMeio: 'Abrir el medio completo', plMeioHint: 'Abre la herramienta de logística con esta conexión ya rellenada, con el plan paso a paso y el balanceador.',
   plRecipe: 'Receta', plBuilding: 'Edificio', plMachines: 'Máquinas', plClock: 'Clock (%)', plLock: 'Bloquear', plOpenStage: 'Abrir etapa', plDeleteStage: 'Borrar etapa',
   plMachinesBad: max => `Indica un entero de 1 a ${max}.`, plClockBad: 'Indica un valor de 1 a 250.',

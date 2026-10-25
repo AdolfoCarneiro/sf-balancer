@@ -50,14 +50,20 @@ function MeioPanel({ meio, chain, data, lang, dispatch }: { meio: Meio; chain: C
               ? <div className="pl-short"><dt>{t('plShortage')}</dt><dd>{fmt(sum.short)}</dd></div>
               : <div><dt>{t('plLeftover')}</dt><dd>{fmt(sum.leftover)}</dd></div>}
           </dl>
-          <div className="pl-case">{sum.caseLabel}</div>
-          {warns.length > 0 && <ul className="pl-warns">{warns.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-          <h3 className="pl-insp-h">{t('plPieces')}</h3>
-          <ul className="pl-pieces">
-            <li><span>Splitter</span><b>{fmt(sum.pieces.splitters)}</b></li>
-            <li><span>Merger</span><b>{fmt(sum.pieces.mergers)}</b></li>
-            <li><span>Awesome Sink</span><b>{fmt(sum.pieces.sinks)}</b></li>
-          </ul>
+          {sum.tooLarge
+            ? <p className="pl-note pl-bad" role="status">{t('plMeioTooLarge', fmt(sum.tooLarge.src, 0), fmt(sum.tooLarge.dst, 0))}</p>
+            : (
+              <>
+                <div className="pl-case">{sum.caseLabel}</div>
+                {warns.length > 0 && <ul className="pl-warns">{warns.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+                <h3 className="pl-insp-h">{t('plPieces')}</h3>
+                <ul className="pl-pieces">
+                  <li><span>Splitter</span><b>{fmt(sum.pieces.splitters)}</b></li>
+                  <li><span>Merger</span><b>{fmt(sum.pieces.mergers)}</b></li>
+                  <li><span>Awesome Sink</span><b>{fmt(sum.pieces.sinks)}</b></li>
+                </ul>
+              </>
+            )}
         </>
       )}
       <label className="pl-field">

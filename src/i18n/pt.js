@@ -347,6 +347,7 @@ export default {
   plGraph: 'Cadeia', plInspector: 'Detalhes', plInspectorEmpty: 'Selecione uma etapa ou um meio para ver os detalhes.',
   plSelMeio: 'Selecionado · o meio', plSelStage: 'Selecionado · a etapa', plFeeds: (a, b) => `${a} → ${b}`,
   plSupply: 'Oferta', plDemand: 'Demanda', plLeftover: 'Sobra', plShortage: 'Falta', plPieces: 'Peças',
+  plMeioTooLarge: (s, d) => `Grande demais para planejar aqui (${s} × ${d} linhas)`, plMeioTooLargeShort: 'Grande demais',
   plOpenMeio: 'Abrir o meio completo', plMeioHint: 'Abre a ferramenta de logística com esta ligação já preenchida, com o plano passo a passo e o balancer.',
   plRecipe: 'Receita', plBuilding: 'Prédio', plMachines: 'Máquinas', plClock: 'Clock (%)', plLock: 'Travar', plOpenStage: 'Abrir etapa', plDeleteStage: 'Apagar etapa',
   plMachinesBad: max => `Informe um inteiro de 1 a ${max}.`, plClockBad: 'Informe um valor de 1 a 250.',

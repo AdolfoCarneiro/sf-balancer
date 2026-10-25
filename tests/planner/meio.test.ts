@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData } from '../../src/planner/model/types.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
-import { meios, meioFor, meioInput, meioPlan, meioSummary, lineOwner, meioHash, meioUrl } from '../../src/planner/model/meio.ts';
+import { meios, meioFor, meioInput, meioPlan, meioSummary, lineOwner, meioHash, meioUrl, MEIO_MAX_LINES } from '../../src/planner/model/meio.ts';
 import { computePlan, decodeShare } from '../../src/logic/index.js';
 import { getLang, setLang, parseNum } from '../../src/i18n/index.js';
 
@@ -69,4 +69,16 @@ test('meio: item fluido sai em modo fluido, cano, sem sink', () => {
   const share = decodeShare(meioHash(me, c, fake).slice(3))!;
   assert.equal(share.medium, 'fluid'); assert.equal(share.pipe, 'Mk2'); assert.equal(share.policy, 'represar');
   assert.equal(meioInput(me, c, fake).policy, 'represar');
+});
+
+test('meio: acima de MEIO_MAX_LINES não chama o computePlan e volta rápido, com os totais', () => {
+  const c0 = exampleChain(data);
+  const big: Chain = { ...c0, stages: c0.stages.map(s => (s.id === 's1' ? { ...s, machines: 3000, perRow: 7 } : s)) };
+  const me = meioFor(big, data, big.links[0].id);
+  const t0 = Date.now(); const p = meioPlan(me, big, data); const sum = meioSummary(p);
+  assert.ok(Date.now() - t0 < 1000);
+  assert.ok(p.tooLarge && p.tooLarge.src > MEIO_MAX_LINES); assert.equal(sum.tooLarge, p.tooLarge);
+  assert.equal(p.alternatives.length, 0); assert.ok(p.supply > 0 && p.demand === 2400);
+  const ex = meioPlan(meioFor(c0, data, c0.links[0].id), c0, data);
+  assert.equal(ex.tooLarge, undefined); assert.equal(meioSummary(ex).tooLarge, null);
 });
