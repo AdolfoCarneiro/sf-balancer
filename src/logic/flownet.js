@@ -95,8 +95,9 @@ export function flowNet(a) {
   }
 
   // Borboleta com loop (só ela chega aqui; os retornos voltam para as faixas, sem sink): a montagem de designFloors; taxas internas pela divisão ideal, repetida até estabilizar.
+  // Cada peça leva o andar (floor) e a posição na fachada (lane, 0..1) de designFloors.
   function expandFloors(n, blk) {
-    const fl = designFloors(v.bal.design), map = fl.nodes.map(q => (q.t === 's' || q.t === 'm' ? add(q.t, q.t === 's' ? { ways: q.ways, ...blk } : blk) : null));
+    const fl = designFloors(v.bal.design), map = fl.nodes.map(q => (q.t === 's' || q.t === 'm' ? add(q.t, { ...(q.t === 's' ? { ways: q.ways } : {}), floor: q.floor, lane: q.x, ...blk }) : null));
     const r = fl.edges.map(() => 0);
     const into = fl.nodes.map(q => fl.edges.flatMap((e, i) => (e.b === q.id ? [i] : [])));
     const from = fl.nodes.map(q => fl.edges.flatMap((e, i) => (e.a === q.id ? [i] : [])));

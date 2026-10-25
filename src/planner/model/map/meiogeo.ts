@@ -15,7 +15,7 @@ interface FullAlt {
   view: { bal?: { design: { kind: string } }; headers?: { inEdges: number[]; outEdges: number[] }[] };
   sim: { flow: number[] };
 }
-interface NetNode { id: number; t: string; line?: LineRef }
+interface NetNode { id: number; t: string; line?: LineRef; floor?: number; lane?: number }
 interface NetBelt { id: number; a: number; b: number; rate: number; role: BeltRole }
 interface Net { nodes: NetNode[]; belts: NetBelt[] }
 interface Layout { cols: number; nodes: Map<number, { col: number; row: number }>; belts: Map<number, { from: string; to: string }> }
@@ -40,7 +40,8 @@ export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item, gap 
   const a = alts.find(x => x.key === altKey) ?? alts[0];
   const design = a.view.bal?.design;
   const floors = design?.kind === 'butterfly-loop' ? (designFloors(design as never) as { floors: number } | null)?.floors ?? 1 : 1;
-  const geo = a.headers ? headerGeo(a, plan, item, owner, gap) : netGeo(a, plan.cap, item, owner, gap);
+  const geo = a.headers ? headerGeo(a, plan, item, owner, gap)
+    : (floors > 1 ? stackGeo(a, item, owner, gap) : null) ?? netGeo(a, plan.cap, item, owner, gap);
   return { ...geo, floors, tooLarge: false };
 }
 
@@ -174,6 +175,50 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner, gap: number):
     });
   }
   return finish(w, pieces, out, ins, outs, fluid);
+}
+
+// Borboleta com loop sozinha no meio (origens → torre → destinos): no chão, só o maior andar, numa coluna na ordem
+// da fachada; as peças dos outros andares ficam em cima delas (above: contam, não são desenhadas) e as esteiras entre
+// andares (lifts e retornos) não aparecem. Cada origem chega na peça da sua faixa; cada destino sai da peça da faixa
+// de onde sai de verdade. Outra forma de rede: null (fica o desenho achatado).
+function stackGeo(a: FullAlt, item: Item, owner: Owner, gap: number): Geo | null {
+  const net = flowNet(a as never) as Net | null;
+  if (!net) return null;
+  const tower = net.nodes.filter(q => q.t === 's' || q.t === 'm');
+  if (!tower.length || tower.some(q => q.floor === undefined || q.lane === undefined)) return null;
+  if (net.nodes.some(q => q.t !== 's' && q.t !== 'm' && q.t !== 'src' && q.t !== 'dst')) return null;
+  const CELL = PIECE + gap;
+  const count = new Map<number, number>();
+  for (const q of tower) count.set(q.floor!, (count.get(q.floor!) ?? 0) + 1);
+  const big = [...count].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0];
+  const lanes = [...new Set(tower.filter(q => q.floor === big).map(q => q.lane!))].sort((x, y) => x - y);
+  // Faixa do maior andar mais perto da posição na fachada.
+  const laneRow = (x: number) => lanes.reduce((b, l, i) => (Math.abs(l - x) < Math.abs(lanes[b] - x) ? i : b), 0);
+  const src = net.nodes.filter(q => q.t === 'src'), dst = net.nodes.filter(q => q.t === 'dst');
+  const rows = Math.max(lanes.length, src.length, dst.length), top = Math.floor((rows - lanes.length) / 2);
+  const x = CELL, w = 2 * CELL, mid = (r: number) => r * CELL + PIECE / 2;
+  const pieces: Piece[] = [], at = new Map<number, Piece>();
+  for (const q of tower) {
+    const p: Piece = { kind: KIND[q.t], x, y: (top + laneRow(q.lane!)) * CELL, w: PIECE, h: PIECE, ...(q.floor === big ? {} : { above: true }) };
+    pieces.push(p);
+    at.set(q.id, p);
+  }
+  const belts: BeltPath[] = [], ins: Anchor[] = [], outs: Anchor[] = [];
+  for (const q of src) {
+    const b = net.belts.find(e => e.a === q.id), p = b && at.get(b.b);
+    if (!b || !p) return null;
+    const y = p.y + PIECE / 2;
+    ins.push({ x: 0, y, item: item.id, row: q.line!.id, stage: owner('src', q.line!.id) });
+    belts.push({ pts: [[0, y], [x, y]], item: item.id, rate: b.rate, role: b.role, fluid: item.fluid });
+  }
+  for (const [k, q] of dst.entries()) {
+    const b = net.belts.find(e => e.b === q.id), p = b && at.get(b.a);
+    if (!b || !p) return null;
+    const y = mid(k);
+    outs.push({ x: w, y, item: item.id, row: q.line!.id, stage: owner('dst', q.line!.id) });
+    belts.push({ pts: route([x + PIECE, p.y + PIECE / 2], [w, y], 'x'), item: item.id, rate: b.rate, role: b.role, fluid: item.fluid });
+  }
+  return finish(w, pieces, belts, ins, outs, item.fluid);
 }
 
 // Fluido com cano coletor: uma Pipeline Junction por coletor, cano de cada origem até ela e dela a cada destino.

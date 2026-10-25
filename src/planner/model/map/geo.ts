@@ -3,7 +3,8 @@ import type { ItemId, StageId } from '../types.ts';
 export type Pt = [number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
 export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | 'junction' | 'bp';
-export interface Piece extends Rect { kind: PieceKind; label?: string }
+// above: num andar de cima (torre de vários andares); conta como peça, mas o mapa só desenha o chão.
+export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean }
 export type BeltRole = 'main' | 'donor' | 'loop' | 'sink' | 'extra' | 'over' | 'in' | 'out' | 'raw';
 export interface BeltPath { pts: Pt[]; item: ItemId; rate: number; role: BeltRole; fluid: boolean }
 export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean }  // extra: saída de linha extra do meio

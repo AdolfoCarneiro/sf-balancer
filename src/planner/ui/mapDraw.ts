@@ -101,6 +101,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     strokeBelts(geo.belts, false);
     ctx.lineWidth = px(1);
     for (const p of geo.pieces) {
+      if (p.above) continue;   // andar de cima: o mapa mostra o chão
       if (p.kind === 'bp') { ctx.strokeStyle = th.edge; ctx.strokeRect(p.x, p.y, p.w, p.h); continue; }
       ctx.fillStyle = pieceFill[p.kind];
       ctx.globalAlpha = p.kind === 'sink' ? 0.35 : 1;

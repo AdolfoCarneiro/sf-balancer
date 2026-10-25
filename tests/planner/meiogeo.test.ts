@@ -154,6 +154,22 @@ test('borboleta com loop: andares de designFloors', () => {
   assert.equal(g.floors, fl.floors);
   assertInside(g);
   assert.equal(meioGeo(meio, plan, 'direto', data.items[meio.item]).floors, 1);
+  // No chão, só a área do maior andar: os outros ficam empilhados em cima (contados, não desenhados).
+  const pieceFloors = fl.nodes.filter(q => q.t === 's' || q.t === 'm').map(q => q.floor);
+  const biggest = Math.max(...[...new Set(pieceFloors)].map(f => pieceFloors.filter(x => x === f).length));
+  const floor = g.pieces.filter(p => !p.above), above = g.pieces.filter(p => p.above);
+  assert.equal(floor.length, biggest);
+  assert.equal(floor.length + above.length, pieceFloors.length);
+  assert.equal(new Set(floor.map(p => p.x)).size, 1, 'uma coluna: a fachada do maior andar');
+  // Cada peça de cima fica sobre uma peça do chão.
+  assert.ok(above.every(p => floor.some(q => q.x === p.x && q.y === p.y)));
+  // Mais estreito que o desenho achatado (uma coluna por andar).
+  assert.ok(g.w < fl.floors * 6);
+  // Pontas: uma por linha de origem e de destino, e esteiras ligando cada uma a uma peça do chão.
+  assert.equal(g.ins.length, 2); assert.equal(g.outs.length, 5);
+  const at = (q: { x: number; y: number }) => (b: { pts: [number, number][] }) => b.pts.some(p => p[0] === q.x && p[1] === q.y);
+  assert.ok([...g.ins, ...g.outs].every(q => g.belts.some(at(q))));
+  assert.ok(g.belts.every(b => b.rate > 0 && b.role !== 'loop'));
 });
 
 test('peças não se sobrepõem', () => {
@@ -168,8 +184,9 @@ test('peças não se sobrepõem', () => {
   for (const m of cases) for (const a of m.plan.alternatives) {
     const g = geoOf(m, a.key);
     assertInside(g);
-    for (let i = 0; i < g.pieces.length; i++) for (let j = i + 1; j < g.pieces.length; j++) {
-      assert.ok(!overlap(g.pieces[i], g.pieces[j]), `${a.key}: ${JSON.stringify(g.pieces[i])} × ${JSON.stringify(g.pieces[j])}`);
+    const ps = g.pieces.filter(p => !p.above);   // as de cima ficam sobre as do chão
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+      assert.ok(!overlap(ps[i], ps[j]), `${a.key}: ${JSON.stringify(ps[i])} × ${JSON.stringify(ps[j])}`);
     }
     n++;
   }
