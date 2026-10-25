@@ -1290,7 +1290,8 @@ test('issue: URL do GitHub com título e corpo codificados', () => {
 });
 
 // Rede de peças do fluxo: cada peça do jeito do jogo e as contas batem com a alternativa.
-const checkNet = (p, a) => {
+// extraM: mergers a mais da cascata do retorno (loop com 3+ retornos), que a lógica conta como 1.
+const checkNet = (a, extraM = 0) => {
   const n = L.flowNet(a);
   const ins = id => n.belts.filter(b => b.b === id), outs = id => n.belts.filter(b => b.a === id);
   for (const q of n.nodes) {
@@ -1302,7 +1303,7 @@ const checkNet = (p, a) => {
   }
   const count = t => n.nodes.filter(q => q.t === t).length;
   assert.equal(count('s'), a.pieces.splitters, `splitters em ${a.key}`);
-  assert.equal(count('m'), a.pieces.mergers, `mergers em ${a.key}`);
+  assert.equal(count('m'), a.pieces.mergers + extraM, `mergers em ${a.key}`);
   assert.equal(count('ov'), a.pieces.smart, `smart em ${a.key}`);
   for (const q of n.nodes.filter(q => q.t === 'dst')) close(ins(q.id).reduce((s, b) => s + b.rate, 0), a.dests.get(q.line.id).got, `destino ${q.line.id}`);
   close(n.nodes.filter(q => q.t === 'sink').reduce((s, q) => s + ins(q.id)[0].rate, 0), a.sinkRate, 'sink');
@@ -1312,9 +1313,9 @@ const caso1 = () => L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount
 
 test('rede de peças: caso 1, todas as alternativas', () => {
   const p = caso1();
-  p.alternatives.forEach(a => checkNet(p, a));
+  p.alternatives.forEach(a => checkNet(a));
   const a = p.alternatives.find(x => x.groups.some(g => g.mode === 'sink' && g.n === 6));
-  const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'g0');
+  const n = L.flowNet(a), blk = n.blocks.find(b => b.key === 'g0');
   assert.equal(blk.kind, 'group');
   assert.equal(blk.nodes.filter(id => n.nodes[id].t === 's').length, 3);
   const sinks = n.nodes.filter(q => q.t === 'sink');
@@ -1330,14 +1331,14 @@ test('rede de peças: caso 2 e caso 3', () => {
   for (const p of [
     L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }),
     L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, srcPer: 6 }),
-  ]) p.alternatives.forEach(a => checkNet(p, a));
+  ]) p.alternatives.forEach(a => checkNet(a));
   const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' });
-  const n = checkNet(p, alt(p, 'direto-sink'));
+  const n = checkNet(alt(p, 'direto-sink'));
   assert.equal(n.nodes.filter(q => q.t === 'sink').length, 6, '4 overflows + 2 linhas que sobram, um sink cada');
   assert.ok(n.belts.filter(b => b.role === 'sink').length === 6);
   // Origem parada entra sem esteira.
   const held = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 });
-  const hn = checkNet(held, held.alternatives[0]);
+  const hn = checkNet(held.alternatives[0]);
   const srcs = hn.nodes.filter(q => q.t === 'src');
   assert.equal(srcs.length, 6);
   assert.equal(srcs.filter(q => !hn.belts.some(b => b.a === q.id)).length, 2);
@@ -1347,7 +1348,7 @@ test('rede de peças: loop de doadora', () => {
   const p = caso1();
   const a = alt(p, 'doadora-1-loop'), gr = a.groups[0], v = a.view.groups[0];
   assert.equal(gr.mode, 'loop');
-  const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'g0');
+  const n = checkNet(a), blk = n.blocks.find(b => b.key === 'g0');
   assert.equal(blk.nodes.filter(id => n.nodes[id].t === 'm').length, 1);
   assert.equal(blk.nodes.filter(id => n.nodes[id].t === 's').length, gr.tree.splitters);
   const x = a.sim.flow[v.donorEdge], loops = n.belts.filter(b => b.role === 'loop');
@@ -1366,7 +1367,7 @@ test('rede de peças: balancers', () => {
   const seen = new Set();
   for (const p of plans) {
     for (const a of p.alternatives.find(x => x.designAlts).designAlts) {
-      const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'plan');
+      const n = checkNet(a), blk = n.blocks.find(b => b.key === 'plan');
       assert.equal(blk.kind, 'bal');
       assert.equal(blk.nodes.length, a.pieces.splitters + a.pieces.mergers, 'todas as peças no bloco');
       seen.add(a.bal.design.kind);
@@ -1376,7 +1377,7 @@ test('rede de peças: balancers', () => {
   const bp = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
   const a = bp.alternatives[0];
   assert.equal(a.bal.design.kind, 'blueprint');
-  const n = checkNet(bp, a), blk = n.blocks.find(b => b.key === 'plan');
+  const n = checkNet(a), blk = n.blocks.find(b => b.key === 'plan');
   assert.deepEqual(blk.nodes.map(id => n.nodes[id].t), ['bp']);
   const b = blk.nodes[0];
   assert.equal(n.belts.filter(x => x.b === b).length, 6);
@@ -1387,8 +1388,8 @@ test('rede de peças: caso C com 5 linhas num destino', () => {
   const p = L.computePlan({ ...base, srcCount: 10, srcRate: 100, dstCount: 2, dstRate: 480, srcPer: 1, dstPer: 1 });
   const a = alt(p, 'juntar');
   assert.ok(a.view.feeds.every(f => f.f.mains.length === 5));
-  const n = checkNet(p, a);
-  p.alternatives.forEach(x => checkNet(p, x));
+  p.alternatives.forEach(x => checkNet(x));
+  const n = L.flowNet(a);
   // Cada destino recebe de uma cascata de 2 mergers (3 + 2), nenhum com mais de 3 entradas.
   assert.equal(n.nodes.filter(q => q.t === 'm').length, 4);
   for (const d of n.nodes.filter(q => q.t === 'dst')) {
@@ -1397,4 +1398,18 @@ test('rede de peças: caso C com 5 linhas num destino', () => {
     const prev = n.belts.filter(b => b.b === last).map(b => n.nodes[b.a].t);
     assert.deepEqual(prev.sort(), ['m', 'src', 'src']);
   }
+});
+
+test('rede de peças: retorno com 3+ esteiras vira cascata de mergers', () => {
+  // Doadora ÷13 → árvore de 16, 3 retornos: 4 entradas no retorno = 2 mergers (a lógica conta 1).
+  const p = L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 });
+  const a = alt(p, 'doadora-1-loop');
+  assert.deepEqual([a.groups[0].p, a.groups[0].n], [13, 16]);
+  const n = checkNet(a, 1), blk = n.blocks.find(b => b.key === 'g0');
+  assert.equal(blk.nodes.filter(id => n.nodes[id].t === 'm').length, 2);
+  assert.equal(n.belts.filter(b => b.role === 'loop').length, 3);
+  // Balancer 1→20 com loop dividido: 2 árvores de 24, 4 retornos cada = 1 merger a mais por árvore.
+  const q = L.computePlan({ ...base, srcCount: 1, srcRate: 480, srcPer: 1, dstCount: 20, dstRate: 23.52, dstPer: 1 });
+  const b = alt(q, 'balancer-matrix-split-loop');
+  checkNet(b, 2);
 });

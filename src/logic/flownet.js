@@ -28,7 +28,8 @@ export function flowNet(a) {
     return seen;
   };
 
-  // Blocos: divisões das doadoras e o balancer do plano. `owner`: nó do grafo → bloco.
+  // Blocos: divisões das doadoras e o balancer do plano. Grupo sem peças não tem bloco: achar pela `key`
+  // ('g0', 'plan'), não pelo índice do grupo. `owner`: nó do grafo → bloco.
   const owner = new Map(), loopTree = new Map(), donorEdges = new Set();
   v.groups.forEach((gv, gi) => {
     const src = g.nodes.find(n => n.type === 'source' && n.line.id === gv.gr.donor.id);
@@ -67,10 +68,15 @@ export function flowNet(a) {
     else if (n.type === 'merger') at.set(n.id, add('m', blk));
     else if (n.type === 'overflow') at.set(n.id, add('ov', blk));
     else if (n.type === 'balancer' && loopTree.has(n.id)) {
-      // Merger do retorno → árvore em k; p folhas saem, k − p voltam ao merger. Entra x, a árvore leva x·k/p.
-      const k = loopTree.get(n.id), p = n.outs.length, x = sum(n.ins), m = add('m', blk);
-      n.ins.forEach(e => inTo.set(e, m));
-      let level = [{ id: m, r: x * k / p }];
+      // Merger do retorno → árvore em k; p folhas saem, k − p voltam. Entra x, a árvore leva x·k/p.
+      // Mais de 2 retornos: cascata como no jogo (o primeiro pega 3, cada seguinte o anterior + 2).
+      const k = loopTree.get(n.id), p = n.outs.length, x = sum(n.ins), back = k - p, ms = [];
+      for (let i = 0; i < Math.ceil(back / 2); i++) {
+        ms.push(add('m', blk));
+        if (i) belt(ms[i - 1], ms[i], x + 2 * i * x / p, role);
+      }
+      n.ins.forEach(e => inTo.set(e, ms[0]));
+      let level = [{ id: ms[ms.length - 1], r: x * k / p }];
       splitTree(k).factors.forEach(f => {
         const next = [];
         level.forEach(q => {
@@ -80,7 +86,7 @@ export function flowNet(a) {
         });
         level = next;
       });
-      level.forEach((lf, j) => (j < p ? outFrom.set(n.outs[j], lf.id) : belt(lf.id, m, lf.r, 'loop')));
+      level.forEach((lf, j) => (j < p ? outFrom.set(n.outs[j], lf.id) : belt(lf.id, ms[(j - p) >> 1], lf.r, 'loop')));
     } else if (n.id === hub && v.bal.design.kind === 'blueprint') {
       const b = add('bp', blk);
       n.ins.forEach(e => inTo.set(e, b));
@@ -88,7 +94,7 @@ export function flowNet(a) {
     } else if (n.id === hub) expandFloors(n, blk);
   }
 
-  // Borboleta com loop: a montagem de designFloors; taxas internas pela divisão ideal, repetida até estabilizar.
+  // Borboleta com loop (só ela chega aqui; os retornos voltam para as faixas, sem sink): a montagem de designFloors; taxas internas pela divisão ideal, repetida até estabilizar.
   function expandFloors(n, blk) {
     const fl = designFloors(v.bal.design), map = fl.nodes.map(q => (q.t === 's' || q.t === 'm' ? add(q.t, q.t === 's' ? { ways: q.ways, ...blk } : blk) : null));
     const r = fl.edges.map(() => 0);
@@ -105,7 +111,6 @@ export function flowNet(a) {
       const A = fl.nodes[e.a], B = fl.nodes[e.b];
       if (A.t === 'in') inTo.set(v.bal.inEdges[A.inp], map[e.b]);
       else if (B.t === 'out') outFrom.set(v.bal.outEdges[fl.outs.indexOf(e.b)], map[e.a]);
-      else if (B.t === 'sink') belt(map[e.a], add('sink'), r[i], 'sink');
       else belt(map[e.a], map[e.b], r[i], e.kind === 'loop' ? 'loop' : 'main');
     });
   }
