@@ -19,7 +19,7 @@ export type Action =
   | { type: 'setRecipe'; id: StageId; recipe: RecipeId }
   | { type: 'setClock'; id: StageId; clock: number }
   | { type: 'setPerRow'; id: StageId; perRow: number | null }
-  | { type: 'setTier'; id: StageId; item: ItemId; tier: string }
+  | { type: 'setTier'; id: StageId; item: ItemId; tier: string | null }
   | { type: 'setLocked'; id: StageId; locked: boolean }
   | { type: 'moveStage'; id: StageId; pos: Pos }
   | { type: 'setPolicy'; policy: Chain['policy'] }

@@ -72,7 +72,7 @@ function MeioPanel({ meio, chain, data, lang, dispatch }: { meio: Meio; chain: C
 }
 
 // Campo numérico com texto local: confirma no blur ou no Enter, uma ação por edição.
-function NumField({ label, value, valid, onCommit, bad }: {
+export function NumField({ label, value, valid, onCommit, bad }: {
   label: string; value: number; valid: (n: number) => boolean; onCommit: (n: number) => void; bad: string;
 }) {
   const [text, setText] = useState<string | null>(null);

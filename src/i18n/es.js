@@ -359,4 +359,11 @@ export default {
   plNo_dup: 'Estas etapas ya están conectadas por este ítem.', plNo_cycle: 'Esta conexión cerraría un ciclo en la cadena.',
   plA11yNode: 'Enter o espacio selecciona la etapa; luego las flechas la mueven.', plA11yMoved: (x, y) => `Etapa movida a x ${x}, y ${y}`,
   plA11yEdge: 'Conexión entre etapas.', plA11yHandle: 'Puerto', plControls: 'Zoom', plZoomIn: 'Acercar', plZoomOut: 'Alejar', plFitView: 'Ver todo',
+  plStageView: 'Etapa abierta', plCrumbChain: 'Cadena', plBackChain: 'Volver a la cadena', plFoundation: 'Cimiento de 8 m · 1 m = 4 px',
+  plLegIn1: 'entrada principal', plLegInN: 'otra entrada', plLegOut: 'salida', plLegFluid: 'fluido', plLegSplit: 'uno por máquina que se conecta a la cinta de entrada', plLegMerge: 'uno por máquina que se conecta a la cinta de salida',
+  plRowAria: (n, k) => `Fila ${n}, ${k} ${k === '1' ? 'máquina' : 'máquinas'}`, plDrawAria: 'Dibujo de las filas de la etapa, a escala',
+  plPerRow: 'Por fila', plSuggested: n => `sugerido: ${n}`, plPerRowBad: 'Usa un entero de 1 a 500, o déjalo vacío para el sugerido.', plRowCount: 'Filas',
+  plRowBelts: 'Cintas de la fila', plTierAuto: 'automático', plTierOf: item => `Tier de ${item}`,
+  plWarnPort: (rate, cap, fixTier, fixPerRow) => fixTier ? `${rate}/min por fila supera ${cap}: usa ${fixTier} o ${fixPerRow} por fila.` : `${rate}/min por fila no cabe en ninguna cinta: reduce a ${fixPerRow} por fila.`,
+  plStagePieces: 'Piezas de la etapa', plAreaEst: (w, d) => `Área estimada: ${w} × ${d} m (estimación)`,
 };

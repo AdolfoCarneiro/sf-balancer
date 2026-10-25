@@ -163,7 +163,12 @@ export function setClock(c: Chain, d: GameData, id: StageId, clock: number): Cha
   return rebalance(edit(c, id, x => ({ ...x, clock: k })), d, id, k / s.clock);
 }
 export const setPerRow = (c: Chain, id: StageId, perRow: number | null): Chain => edit(c, id, s => ({ ...s, perRow }));
-export const setTier = (c: Chain, id: StageId, item: ItemId, tier: string): Chain => edit(c, id, s => ({ ...s, tiers: { ...s.tiers, [item]: tier } }));
+// `null` tira a escolha (volta ao automático).
+export const setTier = (c: Chain, id: StageId, item: ItemId, tier: string | null): Chain => edit(c, id, s => {
+  const tiers = { ...s.tiers };
+  if (tier === null) delete tiers[item]; else tiers[item] = tier;
+  return { ...s, tiers };
+});
 export const setLocked = (c: Chain, id: StageId, locked: boolean): Chain => edit(c, id, s => ({ ...s, locked }));
 export const moveStage = (c: Chain, id: StageId, pos: { x: number; y: number }): Chain => edit(c, id, s => ({ ...s, pos: { ...pos } }));
 export const setPolicy = (c: Chain, policy: Chain['policy']): Chain => ({ ...c, policy });

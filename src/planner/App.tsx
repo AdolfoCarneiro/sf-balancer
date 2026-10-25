@@ -12,6 +12,7 @@ import { Inspector } from './ui/Inspector.tsx';
 import type { SearchRequest, Selection } from './ui/selection.ts';
 import { Graph } from './ui/Graph.tsx';
 import { meios } from './model/meio.ts';
+import { StageView } from './ui/StageView.tsx';
 
 const data = game as unknown as GameData;
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
@@ -37,8 +38,9 @@ export function App() {
   const [picked, setSelection] = useState<Selection>(null);
   // Pedido de busca vindo do grafo (porta arrastada para o vazio).
   const [search, setSearch] = useState<SearchRequest | null>(null);
-  // Etapa aberta na vista de detalhe (a tela chega na próxima tarefa).
-  const [, setOpenStage] = useState<string | null>(null);
+  // Etapa aberta na vista de detalhe; some se a etapa deixar de existir (apagar, desfazer).
+  const [openId, setOpenStage] = useState<string | null>(null);
+  const openStage = openId ? chain.stages.find(s => s.id === openId) : undefined;
   const meioList = useMemo(() => meios(chain, data), [chain]);
   // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
@@ -63,16 +65,17 @@ export function App() {
     <div className="pl-app">
       <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
-      <div className="pl-body">
+      <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
           search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
         <main className="pl-center" id="pl-graph" aria-label={t('plGraph')}>
           <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
-            dispatch={dispatch} onOpenSearch={setSearch} />
+            dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
         </main>
         <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList}
           dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
       </div>
+      {openStage && <StageView key={openStage.id} stage={openStage} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
     </div>
   );
 }

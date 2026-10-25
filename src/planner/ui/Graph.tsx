@@ -22,10 +22,10 @@ type Pos = { x: number; y: number };
 interface Props {
   chain: Chain; data: GameData; lang: string; meioList: Meio[];
   selection: Selection; onSelect: (s: Selection) => void;
-  dispatch: (a: Action) => void; onOpenSearch: (r: SearchRequest) => void;
+  dispatch: (a: Action) => void; onOpenSearch: (r: SearchRequest) => void; onOpenStage: (id: string) => void;
 }
 
-export function Graph({ chain, data, lang, meioList, selection, onSelect, dispatch, onOpenSearch }: Props) {
+export function Graph({ chain, data, lang, meioList, selection, onSelect, dispatch, onOpenSearch, onOpenStage }: Props) {
   // O plano de cada meio é pesado: uma vez por mudança na cadeia (ou no idioma, que muda o caseLabel).
   const summaries = useMemo(() => {
     const m = new Map<string, MeioSummary | null>();
@@ -158,7 +158,7 @@ export function Graph({ chain, data, lang, meioList, selection, onSelect, dispat
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onConnect={onConnect} onConnectEnd={onConnectEnd}
-        onPaneClick={() => onSelect(null)}
+        onPaneClick={() => onSelect(null)} onNodeDoubleClick={(_, n) => { if (n.type === 'stage') onOpenStage(n.id); }}
         colorMode="dark" fitView fitViewOptions={{ padding: 0.12 }} minZoom={0.15} maxZoom={2.5}
         zoomOnScroll={false} preventScrolling={false} zoomActivationKeyCode={['Control', 'Meta']} zoomOnPinch
         deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} edgesFocusable={false} elementsSelectable

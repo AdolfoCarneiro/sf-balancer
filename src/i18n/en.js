@@ -359,4 +359,11 @@ export default {
   plNo_dup: 'These stages are already linked by this item.', plNo_cycle: 'This link would close a cycle in the chain.',
   plA11yNode: 'Press enter or space to select the stage; then the arrow keys move it.', plA11yMoved: (x, y) => `Stage moved to x ${x}, y ${y}`,
   plA11yEdge: 'Link between stages.', plA11yHandle: 'Port', plControls: 'Zoom', plZoomIn: 'Zoom in', plZoomOut: 'Zoom out', plFitView: 'Fit view',
+  plStageView: 'Open stage', plCrumbChain: 'Chain', plBackChain: 'Back to the chain', plFoundation: '8 m foundation · 1 m = 4 px',
+  plLegIn1: 'main input', plLegInN: 'other input', plLegOut: 'output', plLegFluid: 'fluid', plLegSplit: 'one per machine tapping the input belt', plLegMerge: 'one per machine joining the output belt',
+  plRowAria: (n, k) => `Row ${n}, ${k} ${k === '1' ? 'machine' : 'machines'}`, plDrawAria: 'Drawing of the stage rows, to scale',
+  plPerRow: 'Per row', plSuggested: n => `suggested: ${n}`, plPerRowBad: 'Use an integer from 1 to 500, or leave empty for the suggested value.', plRowCount: 'Rows',
+  plRowBelts: 'Row belts', plTierAuto: 'automatic', plTierOf: item => `Tier of ${item}`,
+  plWarnPort: (rate, cap, fixTier, fixPerRow) => fixTier ? `${rate}/min per row exceeds ${cap}: use ${fixTier} or ${fixPerRow} per row.` : `${rate}/min per row does not fit any belt: reduce to ${fixPerRow} per row.`,
+  plStagePieces: 'Stage pieces', plAreaEst: (w, d) => `Estimated area: ${w} × ${d} m (estimate)`,
 };
