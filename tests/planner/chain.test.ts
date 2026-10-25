@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData, StageId } from '../../src/planner/model/types.ts';
 import {
   nextStageId, nextLinkId, addStage, removeStage, canLink, link, unlink, setMachines, setRecipe, setLocked,
-  setPerRow, setPolicy, setClock, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow,
+  setPerRow, setPolicy, setClock, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow, MAX_MACHINES,
 } from '../../src/planner/model/chain.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
 
@@ -140,4 +140,16 @@ test('cadeia: oferta e demanda do item que entra e sai pela mesma receita', () =
   assert.equal(demandOf(c, data, 's1', 'Desc_SulfuricAcid_C'), 400);
   assert.deepEqual(products(c, data).find(p => p.item === 'Desc_SulfuricAcid_C')?.total, 100);
   assert.deepEqual(rawInputs(c, data).find(p => p.item === 'Desc_SulfuricAcid_C')?.total, 400);
+});
+
+test('cadeia: máquinas ficam em 1 a 10.000, também ao escalar descendentes e ancestrais', () => {
+  assert.equal(MAX_MACHINES, 10000);
+  const big = setMachines(ch, data, 's2', 100000);
+  assert.ok(big.stages.every(s => s.machines >= 1 && s.machines <= MAX_MACHINES), JSON.stringify(big.stages.map(s => s.machines)));
+  assert.equal(m(big, 's2'), 10000);
+  const down = setMachines(ch, data, 's1', 10000);
+  assert.ok(down.stages.every(s => s.machines <= MAX_MACHINES), JSON.stringify(down.stages.map(s => s.machines)));
+  const clk = setClock(setMachines(setLocked(ch, 's2', true), data, 's3', 10000), data, 's3', 1);
+  assert.ok(clk.stages.every(s => s.machines <= MAX_MACHINES), JSON.stringify(clk.stages.map(s => s.machines)));
+  assert.equal(m(addStage(ch, data, 'Recipe_SteelPipe_C', 1e9), 's5'), 10000);
 });

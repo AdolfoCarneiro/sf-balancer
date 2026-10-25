@@ -1,6 +1,6 @@
 import type { Chain, GameData, ItemId, Link, RecipeId, Side, Stage, StageId } from './types.ts';
 import { tierKey } from './stage.ts';
-import { addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
+import { MAX_MACHINES, addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
 import { placeNew, withLayout } from './autolayout.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
@@ -65,7 +65,7 @@ export function decodeChain(str: string, data: GameData): Chain | null {
     const pr = r.perRow;
     stages.push({
       id, recipe: r.recipe,
-      machines: clamp(Math.round(num(r.machines, 1)), 1, 10000),
+      machines: clamp(Math.round(num(r.machines, 1)), 1, MAX_MACHINES),
       clock: clamp(num(r.clock, 100), 1, 250),
       perRow: typeof pr === 'number' && Number.isInteger(pr) && pr >= 1 && pr <= 500 ? pr : null,
       locked: r.locked === true,

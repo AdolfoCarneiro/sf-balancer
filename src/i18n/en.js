@@ -349,7 +349,7 @@ export default {
   plSupply: 'Supply', plDemand: 'Demand', plLeftover: 'Surplus', plShortage: 'Short', plPieces: 'Pieces',
   plOpenMeio: 'Open the full middle', plMeioHint: 'Opens the logistics tool with this connection already filled in, with the step-by-step plan and the balancer.',
   plRecipe: 'Recipe', plBuilding: 'Building', plMachines: 'Machines', plClock: 'Clock (%)', plLock: 'Lock', plOpenStage: 'Open stage', plDeleteStage: 'Delete stage',
-  plMachinesBad: 'Enter a whole number, 1 or more.', plClockBad: 'Enter a value from 1 to 250.',
+  plMachinesBad: max => `Enter a whole number from 1 to ${max}.`, plClockBad: 'Enter a value from 1 to 250.',
   plEach: (b, n, r) => `${b} × ${n} · ${r} each`, plAlt: 'ALT', plPerMin: x => `${x}/min`, plPerMinFluid: x => `${x} m³/min`,
   plRowsOut: (n, rate, tier) => `Output: ${n} × ${rate} · ${tier}`, plRowsIn: (n, rate, tier) => `Input: ${n} × ${rate} · ${tier}`,
   plRowsPlus: (r) => ` + 1 × ${r}`, plRowsAria: (n, per, b) => `${n} ${n === '1' ? 'row' : 'rows'} of up to ${per} ${b}`,

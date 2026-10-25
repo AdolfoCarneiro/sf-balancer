@@ -349,7 +349,7 @@ export default {
   plSupply: 'Oferta', plDemand: 'Demanda', plLeftover: 'Sobrante', plShortage: 'Falta', plPieces: 'Piezas',
   plOpenMeio: 'Abrir el medio completo', plMeioHint: 'Abre la herramienta de logística con esta conexión ya rellenada, con el plan paso a paso y el balanceador.',
   plRecipe: 'Receta', plBuilding: 'Edificio', plMachines: 'Máquinas', plClock: 'Clock (%)', plLock: 'Bloquear', plOpenStage: 'Abrir etapa', plDeleteStage: 'Borrar etapa',
-  plMachinesBad: 'Indica un entero de 1 en adelante.', plClockBad: 'Indica un valor de 1 a 250.',
+  plMachinesBad: max => `Indica un entero de 1 a ${max}.`, plClockBad: 'Indica un valor de 1 a 250.',
   plEach: (b, n, r) => `${b} × ${n} · ${r} cada una`, plAlt: 'ALT', plPerMin: x => `${x}/min`, plPerMinFluid: x => `${x} m³/min`,
   plRowsOut: (n, rate, tier) => `Salida: ${n} × ${rate} · ${tier}`, plRowsIn: (n, rate, tier) => `Entrada: ${n} × ${rate} · ${tier}`,
   plRowsPlus: (r) => ` + 1 × ${r}`, plRowsAria: (n, per, b) => `${n} ${n === '1' ? 'fila' : 'filas'} de hasta ${per} ${b}`,

@@ -3,6 +3,7 @@ import { fmt, parseNum, t } from '../../i18n/index.js';
 import { BELTS, PIPES } from '../../logic/belts.js';
 import { stageDrawing, type Lane } from '../model/drawing.ts';
 import type { Action } from '../model/persist.ts';
+import { MAX_MACHINES } from '../model/chain.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
 import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
 import type { GameData, Stage } from '../model/types.ts';
@@ -146,8 +147,8 @@ function Side({ stage, data, dispatch }: Omit<Props, 'onClose'>) {
           </select>
         </label>
         <div className="pl-note">{recipeLine(r, data)}</div>
-        <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1}
-          onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad')} />
+        <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
+          onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
         <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
           onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
         <PerRowField stage={stage} data={data} dispatch={dispatch} />

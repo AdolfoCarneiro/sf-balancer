@@ -3,7 +3,9 @@ import { perMachine, tierKey } from './stage.ts';
 import { placeNew } from './autolayout.ts';
 
 const E = 1e-9;
-const whole = (n: number) => Math.max(1, Math.ceil(n - E));
+// Limite de máquinas por etapa: o mesmo no decodeChain, nos campos e no rebalance.
+export const MAX_MACHINES = 10000;
+const whole = (n: number) => Math.min(MAX_MACHINES, Math.max(1, Math.ceil(n - E)));
 const nextId = (ids: string[], p: string) => p + (Math.max(0, ...ids.map(id => (id.match(new RegExp(`^${p}(\\d+)$`)) ?? [])[1]).filter(Boolean).map(Number)) + 1);
 const get = (c: Chain, id: StageId) => c.stages.find(s => s.id === id);
 const edit = (c: Chain, id: StageId, f: (s: Stage) => Stage): Chain => ({ ...c, stages: c.stages.map(s => (s.id === id ? f(s) : s)) });

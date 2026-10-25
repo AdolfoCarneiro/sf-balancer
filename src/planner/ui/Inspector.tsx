@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
 import { meioPlan, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
 import type { Action } from '../model/persist.ts';
+import { MAX_MACHINES } from '../model/chain.ts';
 import type { Chain, GameData, Stage } from '../model/types.ts';
 import type { Lang } from '../lang.ts';
 import type { Selection } from './selection.ts';
@@ -103,8 +104,8 @@ function StagePanel({ stage, data, dispatch, onSelect, onOpenStage }: {
       <h2 className="pl-insp-kicker">{t('plSelStage')}</h2>
       <div className="pl-insp-title">{r.name}</div>
       <div className="pl-insp-sub">{t('plBuilding')}: {data.buildings[r.building]?.name ?? r.building}</div>
-      <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1}
-        onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad')} />
+      <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
+        onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
       <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
         onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
       <label className="pl-check">
