@@ -1,6 +1,6 @@
 import { t, fmt } from '../i18n/index.js';
 import { lineComp, designName, flowNet, flowLayout } from '../logic/index.js';
-import { SP_COLOR, MG_COLOR } from './balancerSvg.js';
+import { PIECE_ICON, SP_COLOR, MG_COLOR } from './balancerSvg.js';
 import { EPS } from '../logic/belts.js';
 import { Dn, O, esc } from './common.js';
 
@@ -23,6 +23,21 @@ const plateOf = (x, y, stroke, w, boxH) => `<polygon points="${x},${y} ${x + w -
 
 // Tem retorno de loop desenhado (legenda)? Sem montar a rede: loop de doadora ou design com loop.
 export const flowHasLoop = a => a.groups.some(g => g.mode === 'loop') || /loop/.test(a.bal?.design.kind || '');
+
+// Legenda do desenho do fluxo (a página Balancer e o modal da ligação do builder): fluido, ou esteiras e peças.
+export const flowLegend = (fluid, loop) => fluid
+    ? `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
+            <span><i class="held"></i>${t('lgHeld')}</span>
+            <span><i class="piece"></i>${t('lgJunction')}</span>`
+    : `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
+            <span><i style="background:var(--donor)"></i>${t('lgDonor')}</span>
+            <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
+            <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
+            <span><i class="held"></i>${t('lgHeld')}</span>
+            ${loop ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
+            <span>${PIECE_ICON.splitter('2/3')}${t('lgSplitter')}</span>
+            <span>${PIECE_ICON.merger}${t('lgMerger')}</span>
+            <span>${PIECE_ICON.smart}${t('lgSmart')}</span>`;
 
 export function flowSvg(p, a) {
   const net = p.fluid ? null : flowNet(a);

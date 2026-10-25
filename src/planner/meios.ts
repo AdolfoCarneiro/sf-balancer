@@ -1,5 +1,6 @@
 // Os meios da fábrica calculados fora do render: num Web Worker com cache; sem Worker, síncrono com o mesmo cache.
 import { useEffect, useMemo, useReducer } from 'react';
+import { flowView, type FlowView } from './model/ligacao.ts';
 import { cacheKey, evict, meioResult, splitCached, type MeioResult } from './model/meioresult.ts';
 import type { Meio } from './model/meio.ts';
 import type { FlowResult } from './model/solve.ts';
@@ -74,4 +75,45 @@ export function useMeioResults(f: Factory, flow: FlowResult, data: GameData, lan
   }, [keys, results, lang, f, flow]);
 
   return results;
+}
+
+// ---- O desenho do fluxo de uma ligação (o modal) ----
+// Cache por cacheKey + '|' + montagem; null no cache = deu erro.
+const FLOW_MAX = 32;
+const views = new Map<string, FlowView | null>();
+const viewsPending = new Set<string>();
+const viewListeners = new Set<() => void>();
+const keepView = (key: string, v: FlowView | null) => {
+  views.delete(key);
+  views.set(key, v);
+  for (const k of views.keys()) { if (views.size <= FLOW_MAX) break; views.delete(k); }
+};
+onWorkerMessage('flow', m => { viewsPending.delete(m.key); keepView(m.key, m.view); for (const f of viewListeners) f(); });
+onWorkerLost(() => { viewsPending.clear(); for (const f of viewListeners) f(); });
+
+export type FlowViewState = { kind: 'calc' } | { kind: 'failed' } | { kind: 'ready'; view: FlowView };
+
+// alt: a montagem escolhida ('' sem montagem). Fora do render: no worker; sem Worker, síncrono com o mesmo cache.
+export function useFlowView(meio: Meio, f: Factory, flow: FlowResult, data: GameData, lang: string, alt: string): FlowViewState {
+  const [version, bump] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => { viewListeners.add(bump); return () => { viewListeners.delete(bump); }; }, []);
+  const key = useMemo(() => {
+    try { return cacheKey(meio, f, flow, data, lang) + '|' + alt; } catch { return null; }
+  }, [meio, f, flow, data, lang, alt]);
+  const state = useMemo((): FlowViewState => {
+    if (key === null) return { kind: 'failed' };
+    if (views.has(key)) { const v = views.get(key)!; return v ? { kind: 'ready', view: v } : { kind: 'failed' }; }
+    if (getWorker()) return { kind: 'calc' };
+    let v: FlowView | null = null;
+    try { v = flowView(meio, f, flow, data, alt); } catch { /* fica null */ }
+    keepView(key, v);
+    return v ? { kind: 'ready', view: v } : { kind: 'failed' };
+  }, [key, meio, f, flow, data, alt, version]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const w = getWorker();
+    if (!w || key === null || state.kind !== 'calc' || viewsPending.has(key)) return;
+    viewsPending.add(key);
+    postToWorker(w, { type: 'flow', lang, factory: f, flow, meio: meio.id, alt, key });
+  }, [key, state, lang, f, flow, meio, alt]);
+  return state;
 }

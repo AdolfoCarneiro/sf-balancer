@@ -10,7 +10,7 @@ import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
-import { Inspector } from './ui/Inspector.tsx';
+import { LigacaoModal } from './ui/LigacaoModal.tsx';
 import type { Selection } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView } from './ui/MapView.tsx';
@@ -68,6 +68,18 @@ export function App() {
     (o && o.isConnected && o !== document.body ? o : document.getElementById('pl-graph'))?.focus();
   }, [isOpen]);
   const meioList = useMemo(() => meiosOf(f), [f.links]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Ligação aberta no modal; some se a ligação deixar de existir (desligar, desfazer). Ao fechar, o foco volta a quem
+  // abriu (o canvas, no clique) ou ao canvas.
+  const [ligId, setLigId] = useState<string | null>(null);
+  const ligOpener = useRef<HTMLElement | null>(null);
+  const openLig = (id: string) => { ligOpener.current = document.activeElement as HTMLElement | null; setLigId(id); };
+  const ligMeio = ligId ? meioList.find(m => m.id === ligId) : undefined;
+  const closeLig = () => {
+    setLigId(null);
+    const o = ligOpener.current;
+    (o && o.isConnected && o !== document.body ? o : document.querySelector<HTMLElement>('.pl-map-canvas'))?.focus();
+  };
+  useEffect(() => { if (ligId && !ligMeio) closeLig(); }, [ligId, ligMeio]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
   const meioResults = useMeioResults(f, flow, data, lang, meioList);
   // Depois de desfazer, o bloco ou o meio selecionado pode não existir mais: aí não há seleção.
@@ -95,21 +107,21 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [dispatch]);
 
-  // O painel do meio aparece com um meio selecionado (o resto fica no painel do mapa).
-  const inspector = (
-    <Inspector selection={selection} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} dispatch={dispatch} />
-  );
   return (
     <div className="pl-app">
       <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
-          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} inspector={inspector} />
+          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} />
       </div>
       {openStage && (
         <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
           data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />
+      )}
+      {ligMeio && (
+        <LigacaoModal key={ligMeio.id} meio={ligMeio} result={meioResults.get(ligMeio.id)} factory={f} flow={flow} data={data} lang={lang}
+          dispatch={dispatch} onClose={closeLig} />
       )}
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>

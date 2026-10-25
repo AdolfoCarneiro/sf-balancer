@@ -3,7 +3,7 @@
 // uma ligação o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista
 // os avisos. Montar como no Modeler: duplo clique ou botão direito no vazio abre o seletor ali; arrastar de uma porta
 // liga (soltando numa porta) ou cria o próximo bloco já ligado (soltando no vazio); Delete apaga o bloco.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
@@ -30,7 +30,7 @@ import type { Selection } from './selection.ts';
 interface Props {
   factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
-  inspector: ReactNode;   // o painel do meio, mostrado com um meio selecionado
+  onOpenLig: (id: string) => void;   // abre o modal da ligação
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
@@ -74,7 +74,7 @@ function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, st
   return out;
 }
 
-export function MapView({ factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, inspector }: Props) {
+export function MapView({ factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
   // A montagem escolhida de cada meio; null enquanto calcula, sem montagem, sem limite ou grande demais.
@@ -369,6 +369,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     if (!d.moved) {
       // Clique numa porta seleciona o bloco dela.
       if (d.button === 0) onSelect(d.port ? { kind: 'stage', id: d.port.block } : d.hit ? { kind: d.hit.kind === 'block' ? 'stage' : 'meio', id: d.hit.id } : null);
+      // Clique (sem arrastar) numa ligação abre o modal dela.
+      if (d.button === 0 && !d.port && d.hit?.kind === 'meio') onOpenLig(d.hit.id);
       return;
     }
     if (d.port) { dropPort(e, d.port); return; }
@@ -423,10 +425,12 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     place(id, next);
   };
 
-  // Teclado com a ligação selecionada: setas movem 8 m, R gira (a partir de onde ela está, posta ou colada), Esc solta.
+  // Teclado com a ligação selecionada: setas movem 8 m, R gira (a partir de onde ela está, posta ou colada), Enter abre
+  // o modal, Esc solta.
   const ligKey = (e: React.KeyboardEvent, id: string) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Escape') { e.preventDefault(); onSelect(null); return; }
+    if (e.key === 'Enter') { e.preventDefault(); onOpenLig(id); return; }
     const cur = ligAt(id);
     if (!cur) return;
     const next = e.key === 'r' || e.key === 'R' ? ligRotated(cur) : nudged(cur, e.key);
@@ -472,11 +476,9 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
           </div>
         </div>
       </main>
-      {selection?.kind === 'meio'
-        ? inspector
-        : <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places} selected={selStage}
-          onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
-          onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />}
+      <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places} selected={selStage}
+        onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
+        onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />
     </>
   );
 }

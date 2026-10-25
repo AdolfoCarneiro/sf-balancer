@@ -175,3 +175,19 @@ html, body { overflow-x: hidden; }
 .pl-limit.pl-calc .pl-limit-state { font-style: italic; }
 .pl-collect { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .pl-collect legend { padding: 0; margin-bottom: 4px; }
+
+/* Modal da ligação: lateral com números, montagens e ligações; à direita o desenho do fluxo ou o passo a passo */
+.pl-lig { width: min(1320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--ficsit); background: var(--paper); color: var(--ink); }
+.pl-lig::backdrop { background: rgba(4, 12, 22, .72); }
+.pl-lig-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.pl-lig-head h2 { margin: 0; font: 600 22px var(--display); }
+.pl-lig-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 18px; align-items: start; }
+.pl-lig-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pl-lig-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.pl-lig-pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-dim); }
+.pl-lig-sheet { border: 1px solid var(--line); background: rgba(13, 33, 54, .55); padding: 18px; overflow-x: auto; }
+.pl-lig-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pl-lig-links li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 8px; background: var(--plate); font-size: 13px; }
+.pl-lig-links .pl-btn { padding: 3px 8px; font-size: 12px; }
+@media (max-width: 900px) { .pl-lig-body { grid-template-columns: 1fr; } }
+.pl-lig-svg svg { max-width: 100%; height: auto; }

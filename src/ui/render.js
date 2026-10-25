@@ -5,8 +5,8 @@ import { $, Dn, O, esc } from './common.js';
 import { hideTip, tip } from './help.js';
 import { readInput, saveState, showEquivalences, syncMedium, tierLabel } from './input.js';
 import { shareLink } from './scenarios.js';
-import { PIECE_ICON, cap1 } from './balancerSvg.js';
-import { flowSvg, flowHasLoop, treeSvg } from './flow.js';
+import { cap1 } from './balancerSvg.js';
+import { flowSvg, flowHasLoop, flowLegend, treeSvg } from './flow.js';
 import { BPS } from './library.js';
 import { checksTable, whyText } from './workbench.js';
 
@@ -43,19 +43,7 @@ export function render() {
     link: shareLink(), item: input.item, medium: `${t(p.fluid ? 'tbPipe' : 'tbBelt')}: ${tierLabel(input, p.cap)}`,
     supply: fmt(p.supply), demand: fmt(p.demand), plan: alt.title, caseLabel: alt.caseLabel,
   }));
-  const legend = p.fluid
-    ? `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
-            <span><i class="held"></i>${t('lgHeld')}</span>
-            <span><i class="piece"></i>${t('lgJunction')}</span>`
-    : `<span><i style="background:var(--flow)"></i>${t('lgMain')}</span>
-            <span><i style="background:var(--donor)"></i>${t('lgDonor')}</span>
-            <span><i style="background:var(--ficsit)"></i>${t('lgExcess')}</span>
-            <span><i style="background:var(--sink)"></i>${t('lgSink')}</span>
-            <span><i class="held"></i>${t('lgHeld')}</span>
-            ${flowHasLoop(alt) ? `<span><i class="loopi"></i>${t('lgLoopBack')}</span>` : ''}
-            <span>${PIECE_ICON.splitter('2/3')}${t('lgSplitter')}</span>
-            <span>${PIECE_ICON.merger}${t('lgMerger')}</span>
-            <span>${PIECE_ICON.smart}${t('lgSmart')}</span>`;
+  const legend = flowLegend(p.fluid, flowHasLoop(alt));
 
   out.innerHTML = `
     <div class="work">
