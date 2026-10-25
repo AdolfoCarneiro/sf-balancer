@@ -1,0 +1,13 @@
+{
+  "Build_AssemblerMk1_C": { "w": 9, "l": 16 },
+  "Build_Blender_C": { "w": 18, "l": 16 },
+  "Build_ConstructorMk1_C": { "w": 8, "l": 10 },
+  "Build_Converter_C": { "w": 16, "l": 16 },
+  "Build_FoundryMk1_C": { "w": 10, "l": 10 },
+  "Build_HadronCollider_C": { "w": 24, "l": 38 },
+  "Build_ManufacturerMk1_C": { "w": 18, "l": 20 },
+  "Build_OilRefinery_C": { "w": 10, "l": 22 },
+  "Build_Packager_C": { "w": 8, "l": 8 },
+  "Build_QuantumEncoder_C": { "w": 22, "l": 50 },
+  "Build_SmelterMk1_C": { "w": 5, "l": 10 }
+}
