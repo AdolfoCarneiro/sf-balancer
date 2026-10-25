@@ -144,3 +144,8 @@ export function initialHistory(hash: string, saved: string | null, data: GameDat
   if (!r.saved) return newHistory(chain);
   return historyPush(newHistory(withLayout(r.saved, data)), chain);
 }
+
+// Só grava no localStorage depois da primeira edição: aberto por #p=, o link não apaga a cadeia salva.
+// Qualquer passo (push, desfazer, refazer) devolve um histórico novo; a abertura é o objeto inicial.
+export const shouldPersist = (initial: History<Chain>, hist: History<Chain>, fromLink: boolean): boolean =>
+  !fromLink || hist !== initial;

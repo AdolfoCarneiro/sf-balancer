@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type { Chain, GameData } from './model/types.ts';
-import { PLANNER_STORE, encodeChain, initialHistory, newHistory, reduce, type Action } from './model/persist.ts';
+import { PLANNER_STORE, encodeChain, initialHistory, newHistory, reduce, shouldPersist, type Action } from './model/persist.ts';
 import { PLANNER_PATH, type Lang } from './lang.ts';
 import { getLang } from '../i18n/index.js';
 
@@ -17,6 +17,8 @@ export function usePlanner(data: GameData) {
     },
   );
   const chain: Chain = hist.present;
+  // Aberto por #p=: a cadeia salva só é trocada na primeira edição (o hash ainda está lá neste primeiro render).
+  const opened = useRef({ hist, fromLink: /^#?p=/.test(location.hash) });
 
   // Abriu por #p=: o hash já foi lido, então limpa o endereço.
   useEffect(() => {
@@ -24,8 +26,9 @@ export function usePlanner(data: GameData) {
   }, []);
 
   useEffect(() => {
+    if (!shouldPersist(opened.current.hist, hist, opened.current.fromLink)) return;
     try { localStorage.setItem(PLANNER_STORE, encodeChain(chain)); } catch { /* sem storage */ }
-  }, [chain]);
+  }, [chain, hist]);
 
   const shareUrl = useCallback(() => location.origin + PLANNER_PATH[getLang() as Lang] + '#p=' + encodeChain(chain), [chain]);
   return useMemo(() => ({ chain, dispatch, canUndo: hist.past.length > 0, canRedo: hist.future.length > 0, shareUrl }),

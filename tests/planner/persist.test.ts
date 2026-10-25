@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData } from '../../src/planner/model/types.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
-import { encodeChain, decodeChain, reduce, initialChain, initialHistory, newHistory, PLANNER_STORE } from '../../src/planner/model/persist.ts';
+import { encodeChain, decodeChain, reduce, initialChain, initialHistory, newHistory, shouldPersist, PLANNER_STORE } from '../../src/planner/model/persist.ts';
 import { encodeShare } from '../../src/logic/index.js';
 import { withLayout } from '../../src/planner/model/autolayout.ts';
 
@@ -113,4 +113,15 @@ test('salvar: no máximo 2.000 ligações lidas do link', () => {
   const junk = Array.from({ length: 2000 }, () => ({ id: 'x', item: 'nada', from: 'a', to: 'b' }));
   const raw = { v: 1, policy: 'represar', stages, links: [...junk, { id: 'l9', item: 'Desc_IronIngot_C', from: 'a', to: 'b' }] };
   assert.equal(decodeChain(encodeShare(raw), data)!.links.length, 0);
+});
+
+test('salvar: aberto por #p=, só grava depois da primeira edição (passo, desfazer ou refazer)', () => {
+  const saved: Chain = { ...ex, policy: 'sink' };
+  const h0 = initialHistory('#p=' + encodeChain(ex), encodeChain(saved), data);
+  assert.equal(shouldPersist(h0, h0, true), false);
+  assert.equal(shouldPersist(h0, reduce(h0, { type: 'setPolicy', policy: 'extra' }, data), true), true);
+  const u = reduce(h0, { type: 'undo' }, data);
+  assert.equal(shouldPersist(h0, u, true), true);
+  assert.equal(shouldPersist(h0, reduce(u, { type: 'redo' }, data), true), true);
+  assert.equal(shouldPersist(h0, h0, false), true); // sem link: grava como sempre
 });
