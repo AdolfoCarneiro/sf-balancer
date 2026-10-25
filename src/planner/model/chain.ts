@@ -125,6 +125,7 @@ export function rebalance(c: Chain, d: GameData, changed: StageId, factor: numbe
       let dem = 0;
       for (const l of c.links) if (l.from === id && l.item === f.item) {
         const prods = c.links.filter(x => x.to === l.to && x.item === f.item).map(x => x.from);
+        // A etapa mudada entra com a oferta nova (já gravada em `c`).
         const before = prods.map(p => supplyOf(c, d, p, f.item)), tot = before.reduce((a, b) => a + b, 0);
         const part = tot > E ? supplyOf(c, d, id, f.item) / tot : 1 / prods.length;
         dem += demandOf(cur, d, l.to, f.item) * part;
@@ -145,6 +146,7 @@ export function setMachines(c: Chain, d: GameData, id: StageId, n: number): Chai
 
 export function setRecipe(c: Chain, d: GameData, id: StageId, recipe: RecipeId): Chain {
   const r = d.recipes[recipe];
+  if (!r) return c;
   const keep = (l: Link) => (l.from !== id || r.outs.some(f => f.item === l.item)) && (l.to !== id || r.ins.some(f => f.item === l.item));
   const items = new Set([...r.ins, ...r.outs].map(f => f.item));
   const c2 = edit({ ...c, links: c.links.filter(keep) }, id, s =>
@@ -152,7 +154,13 @@ export function setRecipe(c: Chain, d: GameData, id: StageId, recipe: RecipeId):
   return rebalance(c2, d, id, 1);
 }
 
-export const setClock = (c: Chain, id: StageId, clock: number): Chain => edit(c, id, s => ({ ...s, clock }));
+// Clock em [1, 250]; recalcula como setMachines.
+export function setClock(c: Chain, d: GameData, id: StageId, clock: number): Chain {
+  const s = get(c, id);
+  if (!s) return c;
+  const k = Math.min(250, Math.max(1, clock));
+  return rebalance(edit(c, id, x => ({ ...x, clock: k })), d, id, k / s.clock);
+}
 export const setPerRow = (c: Chain, id: StageId, perRow: number | null): Chain => edit(c, id, s => ({ ...s, perRow }));
 export const setTier = (c: Chain, id: StageId, item: ItemId, tier: string): Chain => edit(c, id, s => ({ ...s, tiers: { ...s.tiers, [item]: tier } }));
 export const setLocked = (c: Chain, id: StageId, locked: boolean): Chain => edit(c, id, s => ({ ...s, locked }));

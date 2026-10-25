@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData, StageId } from '../../src/planner/model/types.ts';
 import {
   nextStageId, nextLinkId, addStage, removeStage, canLink, link, unlink, setMachines, setRecipe, setLocked,
-  setPerRow, setPolicy, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow,
+  setPerRow, setPolicy, setClock, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow,
 } from '../../src/planner/model/chain.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
 
@@ -110,4 +110,25 @@ test('cadeia: ancestral por dois caminhos espera os dois consumidores (ordem top
   };
   const r = setMachines(c, fake, 'z', 4);
   assert.deepEqual(['p', 'y1', 'y2', 'z'].map(id => m(r, id)), [4, 2, 2, 4]);
+});
+test('cadeia: clock 200 na s2 dobra vigas e canos; ferro 60 × 80 = 4.800 ÷ 65 → 74 refinarias', () => {
+  const c = setClock(ch, data, 's2', 200);
+  assert.deepEqual(['s1', 's2', 's3', 's4'].map(id => m(c, id)), [74, 60, 60, 120]);
+  assert.deepEqual(ch, snap);
+});
+test('cadeia: clock fica entre 1 e 250', () => {
+  assert.equal(setClock(ch, data, 's2', 0).stages[1].clock, 1);
+  assert.equal(setClock(ch, data, 's2', 999).stages[1].clock, 250);
+});
+test('cadeia: na junção, o produtor mudado entra com a oferta nova (5.460 : 1.365 → 4.800 × 0,2 ÷ 65 → 15)', () => {
+  const two = link(addStage(ch, data, 'Recipe_Alternate_PureIronIngot_C', 21), data, 's5', 's2', 'Desc_IronIngot_C');
+  const c = setMachines(two, data, 's1', 84);
+  assert.deepEqual([m(c, 's1'), m(c, 's5'), m(c, 's2')], [84, 15, 120]);
+});
+test('cadeia: receita desconhecida devolve a mesma cadeia', () => {
+  assert.equal(setRecipe(ch, data, 's3', 'Recipe_NaoExiste_C'), ch);
+});
+test('cadeia: descendente travado não escala, o irmão sim', () => {
+  const c = setMachines(setLocked(ch, 's3', true), data, 's2', 70);
+  assert.deepEqual([m(c, 's3'), m(c, 's4')], [30, 70]);
 });
