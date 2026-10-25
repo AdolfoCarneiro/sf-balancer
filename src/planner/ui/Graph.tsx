@@ -137,7 +137,7 @@ export function Graph({ chain, data, lang, meioList, selection, onSelect, dispat
     else say(t('plNo_' + ok.reason));
   };
   const onConnectEnd = (_e: MouseEvent | TouchEvent, st: FinalConnectionState) => {
-    if (st.toHandle || st.isValid || !st.fromHandle?.id || !st.fromNode || st.fromNode.type !== 'stage') return;
+    if (st.toHandle || st.toNode || st.isValid || !st.fromHandle?.id || !st.fromNode || st.fromNode.type !== 'stage') return;
     onOpenSearch({ item: st.fromHandle.id, side: st.fromHandle.type === 'source' ? 'consumes' : 'produces', stage: st.fromNode.id });
   };
 

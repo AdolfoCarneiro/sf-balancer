@@ -1,5 +1,6 @@
 import type { Chain, GameData, ItemId, Link, RecipeId, Stage, StageId } from './types.ts';
-import { addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
+import { addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
+import { placeNew } from './autolayout.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
@@ -10,6 +11,7 @@ type Pos = { x: number; y: number };
 
 export type Action =
   | { type: 'addStage'; recipe: RecipeId; machines: number; pos?: Pos }
+  | { type: 'addLinkedStage'; recipe: RecipeId; at: { item: ItemId; side: 'consumes' | 'produces'; stage: StageId } }
   | { type: 'removeStage'; id: StageId }
   | { type: 'link'; from: StageId; to: StageId; item: ItemId }
   | { type: 'unlink'; linkId: string }
@@ -83,7 +85,13 @@ export function decodeChain(str: string, data: GameData): Chain | null {
 
 function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>, d: GameData): Chain {
   switch (a.type) {
-    case 'addStage': return addStage(c, d, a.recipe, a.machines, a.pos);
+    case 'addStage': {
+      const c2 = addStage(c, d, a.recipe, a.machines, a.pos);
+      if (a.pos) return c2;
+      const id = c2.stages[c2.stages.length - 1].id;
+      return { ...c2, stages: c2.stages.map(s => (s.id === id ? { ...s, pos: placeNew(c2, d, id) } : s)) };
+    }
+    case 'addLinkedStage': return addLinkedStage(c, d, a.recipe, a.at);
     case 'removeStage': return removeStage(c, d, a.id);
     case 'link': return link(c, d, a.from, a.to, a.item);
     case 'unlink': return unlink(c, a.linkId);

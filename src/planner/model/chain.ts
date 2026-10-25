@@ -1,5 +1,6 @@
 import type { Chain, GameData, ItemId, Link, RecipeId, Stage, StageId } from './types.ts';
 import { perMachine } from './stage.ts';
+import { placeNew } from './autolayout.ts';
 
 const E = 1e-9;
 const whole = (n: number) => Math.max(1, Math.ceil(n - E));
@@ -166,3 +167,21 @@ export const setTier = (c: Chain, id: StageId, item: ItemId, tier: string): Chai
 export const setLocked = (c: Chain, id: StageId, locked: boolean): Chain => edit(c, id, s => ({ ...s, locked }));
 export const moveStage = (c: Chain, id: StageId, pos: { x: number; y: number }): Chain => edit(c, id, s => ({ ...s, pos: { ...pos } }));
 export const setPolicy = (c: Chain, policy: Chain['policy']): Chain => ({ ...c, policy });
+
+// Etapa nova ligada a uma porta: consumidora leva a sobra do item na etapa, produtora cobre a falta.
+export function addLinkedStage(c: Chain, d: GameData, recipe: RecipeId, at: { item: ItemId; side: 'consumes' | 'produces'; stage: StageId }): Chain {
+  const r = d.recipes[recipe];
+  if (!r || !get(c, at.stage)) return c;
+  const consumes = at.side === 'consumes';
+  if (!(consumes ? r.ins : r.outs).some(f => f.item === at.item)) return c;
+  const id = nextStageId(c);
+  const mine: Stage = { id, recipe, machines: 1, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } };
+  // Sobra (ou falta) do item na etapa da porta, descontando as ligações que já existem.
+  const used = c.links.filter(l => l.item === at.item && (consumes ? l.from === at.stage : l.to === at.stage))
+    .reduce((n, l) => n + (consumes ? demandOf(c, d, l.to, at.item) : supplyOf(c, d, l.from, at.item)), 0);
+  const gap = consumes ? supplyOf(c, d, at.stage, at.item) - used : demandOf(c, d, at.stage, at.item) - used;
+  const sized = { ...mine, machines: whole(gap / perMachine(mine, d, at.item)) };
+  const linked: Chain = { ...c, stages: [...c.stages, sized] };
+  const l = consumes ? link(linked, d, at.stage, id, at.item) : link(linked, d, id, at.stage, at.item);
+  return { ...l, stages: l.stages.map(s => (s.id === id ? { ...s, pos: placeNew(l, d, id) } : s)) };
+}

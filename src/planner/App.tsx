@@ -35,8 +35,8 @@ export function App() {
 
   const { chain, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
   const [picked, setSelection] = useState<Selection>(null);
-  // Pedido de busca vindo do grafo (porta arrastada para o vazio); a Task 9 mostra a busca.
-  const [, setSearch] = useState<SearchRequest | null>(null);
+  // Pedido de busca vindo do grafo (porta arrastada para o vazio).
+  const [search, setSearch] = useState<SearchRequest | null>(null);
   const meioList = useMemo(() => meios(chain, data), [chain]);
   // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
@@ -62,7 +62,8 @@ export function App() {
       <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
       <div className="pl-body">
-        <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection} />
+        <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
+          search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
         <main className="pl-center" id="pl-graph" aria-label={t('plGraph')}>
           <Graph chain={chain} data={data} lang={lang} meioList={meioList} selection={selection} onSelect={setSelection}
             dispatch={dispatch} onOpenSearch={setSearch} />
