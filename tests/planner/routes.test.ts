@@ -22,6 +22,9 @@ test('link antigo #s= vai para o Balancer do mesmo idioma; #p= fica no builder',
   assert.equal(legacyTarget('/es/', '#s=abc'), '/es/balancer#s=abc');
   assert.equal(legacyTarget('/en', '#s=abc'), '/balancer#s=abc');
   assert.equal(legacyTarget('/index.html', '#s=abc'), '/balancer#s=abc');
+  assert.equal(legacyTarget('/pt', '#s=abc', '?lang=es'), '/pt/balancer?lang=es#s=abc');
+  assert.equal(legacyTarget('/', '#s=abc', '?lang=pt'), '/balancer?lang=pt#s=abc');
+  assert.equal(legacyTarget('/', '#p=abc', '?lang=pt'), null);
   assert.equal(legacyTarget('/', '#p=abc'), null); assert.equal(legacyTarget('/', ''), null);
   assert.equal(legacyTarget('/balancer', '#s=abc'), null); assert.equal(legacyTarget('/pt/balancer', '#s=abc'), null);
 });
@@ -33,19 +36,21 @@ test('index.html tem o redirecionamento inline espelhando legacyTarget', () => {
   assert.ok(m, 'script inline com o comentário legacyTarget');
   assert.ok(html.indexOf(m![0]) < html.indexOf('<script type="module"'), 'antes do app');
   assert.match(m![1], /location\.replace/);
-  for (const [path, hash] of [['/', '#s=abc'], ['/pt', '#s=abc'], ['/es/', '#s=x'], ['/en', '#s=y'], ['/index.html', '#s=z'], ['/', '#p=abc'], ['/balancer', '#s=abc'], ['/pt/balancer', '#s=abc']]) {
+  for (const [path, hash, search] of [['/', '#s=abc', ''], ['/pt', '#s=abc', ''], ['/es/', '#s=x', ''], ['/en', '#s=y', ''], ['/index.html', '#s=z', ''],
+    ['/', '#s=abc', '?lang=pt'], ['/es', '#s=abc', '?lang=en'], ['/', '#p=abc', ''], ['/balancer', '#s=abc', ''], ['/pt/balancer', '#s=abc', '']]) {
     let went: string | null = null;
-    const location = { pathname: path, hash, replace: (u: string) => { went = u; } };
+    const location = { pathname: path, hash, search, replace: (u: string) => { went = u; } };
     new Function('location', m![1])(location);
-    assert.equal(went, legacyTarget(path, hash), `${path}${hash}`);
+    assert.equal(went, legacyTarget(path, hash, search), `${path}${search}${hash}`);
   }
-  assert.match(html, /<link rel="canonical" href="https:\/\/sf-balancer\.vercel\.app\/">/);
+  // Sem canonical fixo: /pt e /es servem o mesmo arquivo; o app põe o canonical do idioma.
+  assert.ok(!html.includes('rel="canonical"'));
   assert.match(html, /hreflang="pt-BR" href="https:\/\/sf-balancer\.vercel\.app\/pt"/);
 });
 
-test('balancer.html: canonical, og:url e hreflang em /balancer; anti-piscada aceita o caminho novo', () => {
+test('balancer.html: sem canonical fixo, og:url e hreflang em /balancer; anti-piscada aceita o caminho novo', () => {
   const html = read('balancer.html');
-  assert.match(html, /<link rel="canonical" href="https:\/\/sf-balancer\.vercel\.app\/balancer">/);
+  assert.ok(!html.includes('rel="canonical"'));
   assert.match(html, /og:url" content="https:\/\/sf-balancer\.vercel\.app\/balancer"/);
   assert.match(html, /hreflang="es" href="https:\/\/sf-balancer\.vercel\.app\/es\/balancer"/);
   assert.match(html, /id="plLink" href="\/"/);
@@ -64,10 +69,10 @@ test('vercel.json e nginx.conf: /planner* redireciona para o builder e /balancer
   ]);
   assert.deepEqual(v.rewrites, [{ source: '/:lang(pt|es)', destination: '/' }, { source: '/:lang(pt|es)/balancer', destination: '/balancer' }]);
   const n = read('nginx.conf');
-  for (const s of ['location = /en { return 301 /; }', 'location = /en/balancer { return 301 /balancer; }', 'location = /planner { return 301 /; }',
+  for (const s of ['location = /en { return 301 /; }', 'location = /en/balancer { return 301 /balancer; }', 'location = /planner { return 301 /; }', 'location = /planner.html { return 301 /; }',
     'location = /en/planner { return 301 /; }', 'location ~ ^/(pt|es)/planner/?$ { return 301 /$1; }',
     'location ~ ^/(pt|es)/?$ { try_files /index.html =404; }', 'location ~ ^/(pt|es)/balancer/?$ { try_files /balancer.html =404; }']) assert.ok(n.includes(s), s);
-  assert.ok(!n.includes('planner.html'));
+  assert.ok(!n.includes('try_files /planner.html'));
   assert.match(read('vite.config.js'), /input: \{ main: 'index.html', balancer: 'balancer.html' \}/);
 });
 

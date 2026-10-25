@@ -22,11 +22,11 @@ export function builderLang(pathname: string, search: string, saved: string | nu
   return 'en';
 }
 
-// Link antigo da ferramenta (/#s=…, /pt#s=…) abre hoje o builder: manda para o Balancer do mesmo idioma.
+// Link antigo da ferramenta (/#s=…, /pt#s=…) abre hoje o builder: manda para o Balancer do mesmo idioma (com o ?lang=).
 // O script inline no <head> do index.html é o espelho desta função (o teste roda os dois com os mesmos casos).
-export function legacyTarget(pathname: string, hash: string): string | null {
+export function legacyTarget(pathname: string, hash: string, search = ''): string | null {
   if (!/^#s=/.test(hash)) return null;
   const m = pathname.match(/^\/(?:(pt|es|en)\/?|index\.html)?$/);
   if (!m) return null;
-  return BALANCER_PATH[(m[1] as Lang | undefined) ?? 'en'] + hash;
+  return BALANCER_PATH[(m[1] as Lang | undefined) ?? 'en'] + search + hash;
 }

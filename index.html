@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <!-- Espelho de legacyTarget (src/planner/lang.ts): link antigo da ferramenta (/#s=…, /pt#s=…) vai para o Balancer do mesmo idioma. Mudou um, muda o outro (tests/planner/routes.test.ts roda os dois). -->
-<script>/* legacyTarget */try{if(/^#s=/.test(location.hash)){var m=location.pathname.match(/^\/(?:(pt|es|en)\/?|index\.html)?$/);if(m)location.replace((m[1]==='pt'||m[1]==='es'?'/'+m[1]:'')+'/balancer'+location.hash)}}catch(e){}</script>
+<script>/* legacyTarget */try{if(/^#s=/.test(location.hash)){var m=location.pathname.match(/^\/(?:(pt|es|en)\/?|index\.html)?$/);if(m)location.replace((m[1]==='pt'||m[1]==='es'?'/'+m[1]:'')+'/balancer'+location.search+location.hash)}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Satisfactory Factory Planner &amp; Belt Balancer</title>
 <meta name="description" content="Free Satisfactory factory planner: chain recipe blocks on a map, see the belt flow between them and get the mergers, splitters and load balancers of each connection. No sign-up.">
-<link rel="canonical" href="https://sf-balancer.vercel.app/">
 <meta name="theme-color" content="#0d2136">
 <meta name="google-site-verification" content="2h-6PSSVAV2SRrTRHCR5VE-JYggT4UCPsifdsTf6jzI">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
