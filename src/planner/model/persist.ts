@@ -1,7 +1,7 @@
 import type { Chain, GameData, ItemId, Link, RecipeId, Side, Stage, StageId } from './types.ts';
 import { tierKey } from './stage.ts';
 import { addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
-import { placeNew } from './autolayout.ts';
+import { placeNew, withLayout } from './autolayout.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
@@ -120,12 +120,21 @@ export function reduce(hist: History<Chain>, action: Action, data: GameData): Hi
   }
 }
 
-export function initialChain(hash: string, saved: string | null, data: GameData): { chain: Chain; fromLink: boolean } {
+// `saved`: a cadeia salva válida, quando o link entra por cima dela.
+export function initialChain(hash: string, saved: string | null, data: GameData): { chain: Chain; fromLink: boolean; saved: Chain | null } {
   const m = hash.match(/^#?p=([^&]*)/);
   const fromHash = m ? decodeChain(m[1], data) : null;
-  if (fromHash) return { chain: fromHash, fromLink: true };
   const fromSaved = saved ? decodeChain(saved, data) : null;
-  return { chain: fromSaved ?? exampleChain(data), fromLink: false };
+  if (fromHash) return { chain: fromHash, fromLink: true, saved: fromSaved };
+  return { chain: fromSaved ?? exampleChain(data), fromLink: false, saved: null };
 }
 
 export const newHistory = (chain: Chain): History<Chain> => historyNew(chain);
+
+// Histórico da abertura, já arrumado. Link diferente da cadeia salva vira um passo por cima dela (um Desfazer volta).
+export function initialHistory(hash: string, saved: string | null, data: GameData): History<Chain> {
+  const r = initialChain(hash, saved, data);
+  const chain = withLayout(r.chain, data);
+  if (!r.saved) return newHistory(chain);
+  return historyPush(newHistory(withLayout(r.saved, data)), chain);
+}

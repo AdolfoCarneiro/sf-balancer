@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import type { Chain, GameData } from './model/types.ts';
-import { PLANNER_STORE, encodeChain, initialChain, newHistory, reduce, type Action } from './model/persist.ts';
+import { PLANNER_STORE, encodeChain, initialHistory, newHistory, reduce, type Action } from './model/persist.ts';
 import { PLANNER_PATH, type Lang } from './lang.ts';
 import { getLang } from '../i18n/index.js';
-import { withLayout } from './model/autolayout.ts';
 
 export function usePlanner(data: GameData) {
   const [hist, dispatch] = useReducer(
@@ -12,8 +11,9 @@ export function usePlanner(data: GameData) {
     () => {
       let saved: string | null = null;
       try { saved = localStorage.getItem(PLANNER_STORE); } catch { /* sem storage */ }
-      // Etapas empilhadas (o exemplo, ou um link sem posições) são arrumadas antes do primeiro passo do histórico.
-      return newHistory(withLayout(initialChain(location.hash, saved, data).chain, data));
+      // Etapas empilhadas (o exemplo, ou um link sem posições) são arrumadas antes do primeiro passo do histórico;
+      // link diferente da cadeia salva entra por cima dela (um Desfazer volta à salva).
+      return initialHistory(location.hash, saved, data);
     },
   );
   const chain: Chain = hist.present;

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData } from '../../src/planner/model/types.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
-import { encodeChain, decodeChain, reduce, initialChain, newHistory, PLANNER_STORE } from '../../src/planner/model/persist.ts';
+import { encodeChain, decodeChain, reduce, initialChain, initialHistory, newHistory, PLANNER_STORE } from '../../src/planner/model/persist.ts';
 import { encodeShare } from '../../src/logic/index.js';
+import { withLayout } from '../../src/planner/model/autolayout.ts';
 
 const data = game as GameData;
 const ex = exampleChain(data);
@@ -77,4 +78,20 @@ test('salvar: tier antigo (só o item) vai para o lado onde o item está; nos do
   const c = decodeChain(encodeShare(raw), data)!;
   assert.deepEqual(c.stages[0].tiers, { 'out:Desc_SulfuricAcid_C': 'Mk1', 'in:Desc_Cement_C': 'Mk3', 'out:Desc_UraniumCell_C': 'Mk2' });
   assert.deepEqual(c.stages[1].tiers, { 'in:Desc_SulfuricAcid_C': 'Mk2' });
+});
+
+test('abrir: link diferente da cadeia salva entra por cima dela; um Desfazer volta à salva', () => {
+  const saved: Chain = { ...ex, policy: 'sink' };
+  let h = initialHistory('#p=' + encodeChain(ex), encodeChain(saved), data);
+  assert.deepEqual(h.present, withLayout(ex, data));
+  assert.equal(h.past.length, 1);
+  h = reduce(h, { type: 'undo' }, data);
+  assert.deepEqual(h.present, withLayout(saved, data));
+});
+test('abrir: link igual ao salvo, sem salvo ou só salvo começam sem passo para trás', () => {
+  assert.equal(initialHistory('#p=' + encodeChain(ex), encodeChain(ex), data).past.length, 0);
+  assert.equal(initialHistory('#p=' + encodeChain(ex), null, data).past.length, 0);
+  assert.equal(initialHistory('#p=' + encodeChain(ex), 'quebrado', data).past.length, 0);
+  const s = initialHistory('', encodeChain({ ...ex, policy: 'sink' }), data);
+  assert.equal(s.past.length, 0); assert.equal(s.present.policy, 'sink');
 });
