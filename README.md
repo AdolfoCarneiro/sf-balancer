@@ -43,6 +43,10 @@ You can do that math by hand every time, or you can type the machine counts and 
 - **Explains itself.** Every field and result has a `?` with a short explanation, and there's a "How it works" section at the bottom.
 - **Three languages:** English, Português (Brasil) and Español.
 
+## Planner 2D (beta)
+
+A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. Phase 1 only; the map comes next. The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
+
 ## Game rules it follows
 
 | Piece | Behavior |
@@ -80,6 +84,8 @@ To try it as in production (nginx serving the build, with the `/pt`, `/es` route
 
 ```
 index.html            base HTML (in English, for search engines)
+planner.html         2D planner entry (React + TypeScript)
+src/planner/          planner: model/ (pure) and ui/
 src/main.js           entry point
 src/logic/            pure functions, no DOM (grouping, case classification, splitter trees, flow simulation)
 src/i18n/             texts in pt, en and es

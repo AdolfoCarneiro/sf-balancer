@@ -7,6 +7,7 @@ import { rows, syncGroups } from './groups.js';
 import { renderScenarios } from './scenarios.js';
 import { histCommit, histSnap } from './history.js';
 import { render } from './render.js';
+import { PLANNER_PATH } from '../planner/lang.ts';
 import { renderBps, renderCatalog, renderLib } from './library.js';
 
 // ---- Idioma ----
@@ -43,6 +44,8 @@ export function applyStatic() {
   canon.href = SITE + LANG_PATH[getLang()];
   // No site, o endereço acompanha o idioma; aberto direto do disco ou em outro servidor, fica como está.
   if (onVercel && location.pathname !== LANG_PATH[getLang()]) history.replaceState(null, '', LANG_PATH[getLang()] + location.hash);
+  const pl = document.getElementById('plLink');
+  if (pl) pl.href = PLANNER_PATH[getLang()];
   const roots = [document, $('grpTpl').content];
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });

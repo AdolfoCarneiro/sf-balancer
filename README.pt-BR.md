@@ -43,6 +43,10 @@ Dá para fazer essa conta na mão toda vez, ou digitar as máquinas e deixar o p
 - **Se explica.** Todo campo e resultado tem um `?` com uma explicação curta, e no fim da página tem a seção "Como funciona".
 - **Três idiomas:** English, Português (Brasil) e Español.
 
+## Planner 2D (beta)
+
+Uma página à parte, `/pt/planner`, encadeia várias etapas de receitas e mostra o meio de cada ligação (a mesma lógica da ferramenta), com um botão que abre a ferramenta já preenchida. Abrindo uma etapa, você vê as fileiras de máquinas em escala. Só a fase 1; o mapa vem a seguir. Os dados do jogo são gerados do Docs do jogo (`node scripts/gamedata.mjs <en-US.json>`).
+
 ## Regras do jogo que ele respeita
 
 | Peça | Comportamento |
@@ -80,6 +84,8 @@ Para testar como em produção (nginx servindo o build, com as rotas `/pt` e `/e
 
 ```
 index.html            HTML base (em inglês, para os buscadores)
+planner.html         entrada do planner 2D (React + TypeScript)
+src/planner/          planner: model/ (puro) e ui/
 src/main.js           ponto de entrada
 src/logic/            funções puras, sem DOM (agrupamento, classificação dos casos, árvores de splitter, simulação do fluxo)
 src/i18n/             textos em pt, en e es

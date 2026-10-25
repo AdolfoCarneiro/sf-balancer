@@ -36,8 +36,9 @@ function chromeOrExit() {
 
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}`;
 
-async function openPage(browser, viewport, url) {
+async function openPage(browser, viewport, url, clearStore) {
   const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce', deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', permissions: ['clipboard-read', 'clipboard-write'] });
+  if (clearStore) await ctx.addInitScript(k => { try { localStorage.removeItem(k); } catch { /* sem storage */ } }, clearStore);
   const pg = await ctx.newPage();
   const errs = [];
   pg.on('pageerror', e => errs.push('pageerror: ' + e.message));
@@ -89,7 +90,7 @@ if (flags.has('--routes')) for (const sc of routeScenarios) list.push({ sc, lang
 for (const { sc, lang, url } of list) {
   if (only && !sc.name.includes(only)) continue;
   const key = `${sc.name}-${lang}`;
-  const { ctx, pg, errs } = await openPage(browser, sc.viewport, url);
+  const { ctx, pg, errs } = await openPage(browser, sc.viewport, url, sc.clearStore);
   try {
     await sc.actions(pg);
     await pg.waitForLoadState('networkidle').catch(() => {});

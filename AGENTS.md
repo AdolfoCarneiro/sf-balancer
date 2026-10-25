@@ -28,6 +28,10 @@ Confirme comigo se tiver dúvida em alguma delas, não invente comportamento.
 - **Awesome Sink** recebe qualquer sobra de item. Não aceita fluido.
 - **Cano (fluido):** Pipeline Mk1 300, Mk2 600 m³/min. Não tem splitter nem balancer: a Pipeline Junction (4 portas) junta ou divide e o fluido vai para onde tem espaço, sem garantir partes iguais (Valve limita a vazão). No modo fluido o meio só liga direto ou passa por canos coletores dentro da capacidade; altura e bombas ficam fora.
 
+## Planner 2D (beta, em `/planner`)
+
+Página à parte (React + TypeScript, `planner.html`), ligada à ferramenta por um link no cabeçalho. Aqui há **receitas**: o planner encadeia etapas (receita, prédio, máquinas, clock), calcula o fluxo entre elas e mostra o **meio de cada ligação** com a lógica pura da ferramenta (`src/logic/`), com o botão que abre a ferramenta já preenchida. Fase 1 (cadeia em grafo, etapa aberta com as fileiras em escala) feita; as fases 2–4 (mapa, por meta etc.) estão fora. Spec: `docs/superpowers/specs/2026-10-25-planner-2d-design.md`. Os dados do jogo (`src/planner/data/game.json`) vêm do Docs do jogo na 1.1; o jogo está na 1.2 e, segundo a wiki, sem mudança de receita. Regerar: `node scripts/gamedata.mjs <en-US.json>` (usa `scripts/building-sizes.json` para os tamanhos).
+
 ## Entradas (no formato do meu planner)
 
 Eu digito os dados como vêm do planner, em máquinas e taxas:
@@ -80,9 +84,9 @@ Por trecho e no total:
 
 ## Interface
 
-- Página estática montada com **Vite** (JavaScript puro, módulos ES, sem framework). Dependências só `three` (npm, carregado por `import()` dinâmico na aba 3D) e `vite`/`playwright` de desenvolvimento.
-- Estrutura: `index.html` (HTML base em inglês), `src/main.js` (entrada), `src/logic/` (lógica pura, sem DOM; inclui `flownet.js`, `flowNet(alt)`: rede de peças de uma alternativa, e `flowlayout.js`, `flowLayout(net)`: colunas, linhas e lados das portas, que alimentam o diagrama do fluxo), `src/i18n/` (`pt.js`, `en.js`, `es.js`, `index.js`), `src/ui/` (interface), `src/view3d/` (cena 3D), `src/styles/main.css`, `public/` (estáticos copiados como estão para a raiz do site), `tests/` (testes e `tests/visual/`; `tests/fluxo-fluido.json` é a fixture que protege o desenho do modo fluido).
-- Comandos: `npm run dev` (servidor local), `npm test` (testes da lógica), `npm run build` (gera `dist/`), `npm run preview` (serve o build), `npm run visual:capture -- <url-base> <pasta> [--routes] [--only=<trecho>] [--fixtures] [--fixtures-check]` (captura as telas; ex.: `npm run visual:capture -- http://localhost:4173 /tmp/out`; `--routes` inclui `/pt` e `/es`, `--only=` limita os cenários, `--fixtures` grava `tests/visual/fixtures.json`, `--fixtures-check` confere `#s=` e `localStorage` antigos) e `npm run visual:compare -- <pasta-a> <pasta-b>` (compara duas capturas; sai com código != 0 se algo diferir).
+- Página estática montada com **Vite** (módulos ES; a ferramenta é JavaScript puro e o planner é React + TypeScript). Dependências: `three` (npm, carregado por `import()` dinâmico na aba 3D), `react`, `react-dom`, `@xyflow/react` e `@dagrejs/dagre` (planner); de desenvolvimento, `vite`, `@vitejs/plugin-react`, `typescript`, `@types/*` e `playwright`.
+- Estrutura: `index.html` (HTML base em inglês), `src/main.js` (entrada), `src/logic/` (lógica pura, sem DOM; inclui `flownet.js`, `flowNet(alt)`: rede de peças de uma alternativa, e `flowlayout.js`, `flowLayout(net)`: colunas, linhas e lados das portas, que alimentam o diagrama do fluxo), `src/i18n/` (`pt.js`, `en.js`, `es.js`, `index.js`), `src/ui/` (interface), `src/view3d/` (cena 3D), `src/styles/main.css`, `public/` (estáticos copiados como estão para a raiz do site), `tests/` (testes e `tests/visual/`; `tests/fluxo-fluido.json` é a fixture que protege o desenho do modo fluido). Planner: `planner.html` (entrada própria do Vite), `src/planner/` (`model/` puro, sem DOM nem React, e `ui/` com os componentes; `lang.ts` tem os caminhos `/planner`, `/pt/planner`, `/es/planner`), `scripts/gamedata.mjs` + `scripts/building-sizes.json` (geram `src/planner/data/game.json`) e `tests/planner/*.test.ts`.
+- Comandos: `npm run dev` (servidor local), `npm test` (testes da lógica), `npm run build` (gera `dist/`), `npm run preview` (serve o build), `npm run visual:capture -- <url-base> <pasta> [--routes] [--only=<trecho>] [--fixtures] [--fixtures-check]` (captura as telas; ex.: `npm run visual:capture -- http://localhost:4173 /tmp/out`; `--routes` inclui `/pt` e `/es`, `--only=` limita os cenários, `--fixtures` grava `tests/visual/fixtures.json`, `--fixtures-check` confere `#s=` e `localStorage` antigos) e `npm run visual:compare -- <pasta-a> <pasta-b>` (compara duas capturas; sai com código != 0 se algo diferir). `npm run typecheck` (`tsc --noEmit`, só o planner); regerar os dados do jogo: `node scripts/gamedata.mjs <en-US.json>`. A captura visual ganhou os cenários `planner` e `planner-etapa` (`--only=planner`), em `/planner.html` porque o `vite preview` não serve `/planner` sem a extensão.
 - **Três idiomas: português (pt-BR), inglês e espanhol.** Ver a seção "Idiomas" abaixo.
 - Dark mode (vou usar do lado do jogo).
 - Resultado atualiza ao vivo enquanto digito.
@@ -115,13 +119,13 @@ Por trecho e no total:
 ## Deploy e analytics
 
 - Repositório público (MIT) `AdolfoCarneiro/sf-balancer`, com README em inglês, português e espanhol (`README.md`, `README.pt-BR.md`, `README.es.md`): mudança de comportamento visível atualiza os três; cada push no `master` publica na Vercel (https://sf-balancer.vercel.app).
-- O deploy roda `npm run build` e publica `dist/`. Estáticos do site ficam em `public/`: `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo estático novo do site vai em `public/`. O `.vercelignore` só deixa de fora docs e testes do upload. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá.
+- O deploy roda `npm run build` e publica `dist/`. Estáticos do site ficam em `public/`: `favicon.svg`, `og.png` (imagem de compartilhamento 1200×630), `robots.txt`, `sitemap.xml`. Arquivo estático novo do site vai em `public/`. O `.vercelignore` só deixa de fora docs e testes do upload. As rotas `/pt` e `/es` são rewrites no `vercel.json`. Headers de segurança e CSP ficam no `vercel.json`: qualquer script, fonte ou serviço externo novo precisa ser liberado lá. O planner tem as rotas `/planner`, `/pt/planner` e `/es/planner` (rewrite no `vercel.json`, `location` no `nginx.conf`, `/en/planner` redireciona para `/planner`) e entram no `sitemap.xml`.
 - Testar como em produção: `docker compose up --build` e abrir http://localhost:8080 (nginx servindo `dist/`, com `/pt`, `/es` e `/en` → `/` como no `vercel.json`). `docker compose down --rmi local` limpa. O `nginx.conf` precisa espelhar as rotas do `vercel.json` (rewrites e redirects): mudou um, muda o outro. `Dockerfile`, `nginx.conf`, `docker-compose.yml` e `.dockerignore` não vão para a Vercel (estão no `.vercelignore`).
 - Vercel Web Analytics via `<script defer src="/_vercel/insights/script.js">`, sem cookies. Localmente esse script dá 404, é esperado.
 
 ## Fora do escopo (v1)
 
-Receitas, cadeia completa, layout físico/posicionamento das máquinas, importação do planner, múltiplos itens ao mesmo tempo.
+A **ferramenta de meio** (a página `/`) continua sem receitas, sem cadeia completa e com um item por vez. O que o planner 2D cobre e o que ainda fica de fora (fases 2–4: mapa, posicionamento, por meta) está no spec `docs/superpowers/specs/2026-10-25-planner-2d-design.md`. Importação do planner de terceiros segue fora.
 
 ## Ideias para depois
 

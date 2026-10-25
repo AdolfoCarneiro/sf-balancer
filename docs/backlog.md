@@ -9,7 +9,10 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 - Vai surgindo jogando. Cada caso esquisito vira um teste em `tests/logic.test.js`, partindo do link do cenário (`#s=`) ou do botão de reportar no GitHub.
 - **Smart / Programmable Splitter (Overflow, Any):** em alguns cenários pode resolver com menos peças que um balancer exato. Confirmar a mecânica antes de implementar.
 
-### 2. Planta 2D definitiva
+### 2. Planner 2D: fase 1 feita; fase 2 (mapa) a seguir
+
+- Spec: [`docs/superpowers/specs/2026-10-25-planner-2d-design.md`](superpowers/specs/2026-10-25-planner-2d-design.md). A fase 1 (cadeia em grafo, meio nas ligações, etapa aberta) está em `/planner`; a fase 2 é o mapa.
+- Ideia original da planta:
 
 - A "planta vista de cima": cada linha vira uma fileira de máquinas no tamanho real, com o comprimento do manifold, as fundações ocupadas e onde ficam o meio e o balancer. Sem receitas, partindo das linhas e grupos que a ferramenta já calcula. Não é editor livre da fábrica nem ligação de etapas em cadeia.
 

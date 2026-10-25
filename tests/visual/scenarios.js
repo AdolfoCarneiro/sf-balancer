@@ -77,6 +77,17 @@ export const scenarios = [
       await pg.waitForTimeout(2500);
     },
   },
+  // Planner 2D (/planner.html: o vite preview não serve /planner sem a extensão). localStorage limpo = exemplo carregado.
+  { name: 'planner', path: '/planner.html', viewport: DESKTOP, clearStore: 'sf-balancer:planner', actions: async pg => { await pg.waitForSelector('.react-flow__node-stage'); } },
+  {
+    name: 'planner-etapa', path: '/planner.html', viewport: DESKTOP, clearStore: 'sf-balancer:planner',
+    actions: async pg => {
+      await pg.waitForSelector('.react-flow__node-stage');
+      const f = pg.locator('.react-flow__node-stage', { hasText: 'Foundry' });
+      await (await f.count() ? f.first() : pg.locator('.react-flow__node-stage').last()).dblclick();
+      await pg.waitForTimeout(500);
+    },
+  },
 ];
 
 // Rotas reais (/pt e /es): só existem com o servidor aplicando as rewrites do vercel.json.

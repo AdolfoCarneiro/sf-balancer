@@ -15,6 +15,7 @@ import { meios } from './model/meio.ts';
 import { StageView } from './ui/StageView.tsx';
 
 const data = game as unknown as GameData;
+const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 
 export function App() {
@@ -24,6 +25,10 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = t('htmlLang');
     document.title = t('plPageTitle');
+    document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', t('plMetaDesc'));
+    let canon = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
+    if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
+    canon.href = SITE + PLANNER_PATH[lang];
     // No site, o endereço acompanha o idioma; aberto do disco, fica como está.
     if (onVercel && location.pathname !== PLANNER_PATH[lang]) history.replaceState(null, '', PLANNER_PATH[lang] + location.hash);
   }, [lang]);

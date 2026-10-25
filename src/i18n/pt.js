@@ -334,6 +334,7 @@ export default {
   loading3d: 'Carregando a vista 3D…', no3d: 'A vista 3D precisa de WebGL e de baixar o Three.js, e não deu aqui. Segue o passo a passo 2D.',
   lbBfTitle: 'Borboleta e montagem vertical',
   lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
+  plOpen: 'Planner (beta)', plMetaDesc: 'Planner 2D de esteiras: encadeie várias etapas de receitas e veja o meio de cada ligação.',
   plPageTitle: 'Planner 2D de Esteiras para Satisfactory', plBack: '← Balancer', plBrand: 'SF BALANCER / PLANNER',
   plTabChain: 'Cadeia', plTabMap: 'Mapa', plViews: 'Vistas', plPhase2: 'fase 2', plPhase3: 'fase 3',
   plModeNode: 'Nó a nó', plModeGoal: 'Pelo objetivo', plModeLabel: 'Como montar a cadeia',
