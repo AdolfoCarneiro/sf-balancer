@@ -42,7 +42,10 @@ Sucesso: monto a cadeia de exemplo (ferro puro → aço → vigas e canos → Ve
 - **Ligar:** arrastar de uma porta e soltar **no vazio** abre o seletor já filtrado (quem consome o item, se puxei de uma saída; quem produz, se puxei de uma entrada) e o bloco escolhido nasce ligado. Soltar **numa porta** compatível só liga. Uma porta aceita várias ligações (a ligação resolve a divisão e a junção, como hoje).
 - **Trocar a receita** de um bloco no próprio bloco (o Modeler não tem; o nosso já tem).
 - Desfazer/refazer em tudo, como hoje. Atalhos, copiar e colar, seleção múltipla: ficam para quem constrói, desde que não deixem montar mais lento.
-- Entradas brutas (minério, água) continuam como entradas da cadeia; um bloco de **Recurso** (mineradora, extrator) é decisão de quem constrói, desde que o limite de recurso possa ser digitado (é o caso típico de "só tenho X de minério aqui").
+- **Origens, como no Modeler (decisão do dono).** Recurso bruto entra por um bloco de origem, sem configuração pesada:
+  - **Mineradora:** eu ponho o bloco e anoto quanto sai dela (itens/min). Não pergunta Mk, pureza nem overclock. Várias mineradoras do mesmo minério são vários blocos, ou um bloco com a soma, como eu preferir.
+  - **Extrator** (Water Extractor, Oil Extractor, Resource Well…): a ferramenta diz **quantos precisa** para atender o que é pedido, pela vazão de um extrator. A vazão vem dos dados do jogo (Docs); se não vier, é pergunta ao dono, não chute. Dá para fixar a quantidade de extratores, e aí vale a regra de falta.
+  - Entrada bruta sem bloco de origem continua aparecendo como hoje (entrada da cadeia, sem limite).
 
 ## Números (decisões do dono)
 
