@@ -66,8 +66,22 @@ test('meioSummary usa a montagem escolhida', () => {
   const a = plan.alternatives[i > 0 ? i : 1];
   const sum = meioSummary(plan, a.key);
   assert.equal(sum.caseLabel, a.caseLabel);
-  assert.deepEqual(sum.pieces, { splitters: a.pieces.splitters, mergers: a.pieces.mergers, sinks: a.sinkRate > 1e-6 ? 1 : 0 });
+  // Sem geometria (meio grande demais, por exemplo): as contas do plano.
+  assert.deepEqual(sum.pieces, { splitters: a.pieces.splitters, mergers: a.pieces.mergers, smart: a.pieces.smart, sinks: a.sinkRate > 1e-6 ? 1 : 0, junctions: a.pieces.junctions });
   assert.deepEqual(meioSummary(plan, 'sumiu'), meioSummary(plan));
+});
+
+test('meioSummary conta as peças da geometria que o mapa desenha (com a cascata e os sinks)', () => {
+  const ch: Chain = { ...ex, policy: 'sink' };
+  const r = meioResult(meioDoExemplo('l1', ch), ch, data);
+  const key = 'doadora-1-sink-sem-represa', a = r.plan.alternatives.find(x => x.key === key)!;
+  const g = r.geos[key], n = (k: string) => g.pieces.filter(p => p.kind === k).length;
+  const sum = meioSummary(r.plan, key, r.geos);
+  assert.deepEqual(sum.pieces, { splitters: n('splitter'), mergers: n('merger'), smart: n('smart'), sinks: n('sink'), junctions: n('junction') });
+  // A cascata de Mergers da sobra entra na conta (o plano não a conta).
+  assert.equal(sum.pieces.mergers, a.pieces.mergers + 3);
+  // Montagem sem geometria no resultado: volta para as contas do plano.
+  assert.deepEqual(meioSummary(r.plan, key, {}).pieces.mergers, a.pieces.mergers);
 });
 
 test('idioma novo: rótulo do caso vem traduzido', () => {

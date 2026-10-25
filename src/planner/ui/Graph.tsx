@@ -31,7 +31,7 @@ export function Graph({ chain, data, lang, meioList, results, selection, onSelec
   const alts = chain.alts;
   const summaries = useMemo(() => {
     const m = new Map<string, MeioSummary | null>();
-    for (const [id, r] of results) m.set(id, r ? meioSummary(r.plan, alts?.[id]) : null);
+    for (const [id, r] of results) m.set(id, r ? meioSummary(r.plan, alts?.[id], r.geos) : null);
     return m;
   }, [results, alts]);
 

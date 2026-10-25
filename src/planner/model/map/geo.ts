@@ -10,6 +10,20 @@ export interface Anchor { x: number; y: number; item: ItemId; row: number; stage
 export interface BlockGeo { w: number; h: number; pieces: Piece[]; belts: BeltPath[]; ins: Anchor[]; outs: Anchor[]; estimate: boolean }
 export interface MeioGeo extends BlockGeo { floors: number; tooLarge: boolean }
 
+export interface PieceCount { splitters: number; mergers: number; smart: number; sinks: number; junctions: number }
+// As peças que o mapa desenha.
+export function countPieces(geo: BlockGeo): PieceCount {
+  const n: PieceCount = { splitters: 0, mergers: 0, smart: 0, sinks: 0, junctions: 0 };
+  for (const p of geo.pieces) {
+    if (p.kind === 'splitter') n.splitters++;
+    else if (p.kind === 'merger') n.mergers++;
+    else if (p.kind === 'smart') n.smart++;
+    else if (p.kind === 'sink') n.sinks++;
+    else if (p.kind === 'junction') n.junctions++;
+  }
+  return n;
+}
+
 // Tira pontos repetidos e intermediários colineares.
 export function clean(pts: Pt[]): Pt[] {
   const out: Pt[] = [];

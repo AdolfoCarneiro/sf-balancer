@@ -3,6 +3,7 @@ import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { SITE_PATH, type Lang } from '../lang.ts';
 import { capOf, perRowOf, portTier } from './stage.ts';
 import type { Chain, GameData, ItemId, Link, Stage, StageId } from './types.ts';
+import { countPieces, type MeioGeo, type PieceCount } from './map/geo.ts';
 
 export interface Meio { id: string; item: ItemId; producers: StageId[]; consumers: StageId[]; links: string[] }
 
@@ -29,7 +30,7 @@ export interface Plan {
 export interface MeioSummary {
   tooLarge: { src: number; dst: number } | null;
   caseLabel: string; supply: number; demand: number; leftover: number; short: number;
-  pieces: { splitters: number; mergers: number; sinks: number };
+  pieces: PieceCount;
 }
 
 const E = 1e-6;
@@ -111,14 +112,25 @@ export function chosenAlt(plan: Plan, chosen: string | undefined): string | null
   return plan.alternatives[0]?.key ?? null;
 }
 
-export function meioSummary(plan: Plan, key?: string): MeioSummary {
+// Peças de uma montagem: as da geometria (o que o mapa desenha, com a cascata e os sinks da sobra); sem geometria,
+// as contas do plano.
+export function altPieces(a: PlanAlt | undefined, geo?: MeioGeo | null): PieceCount {
+  if (geo && !geo.tooLarge) return countPieces(geo);
+  return {
+    splitters: a?.pieces.splitters ?? 0, mergers: a?.pieces.mergers ?? 0, smart: a?.pieces.smart ?? 0,
+    sinks: a && a.sinkRate > E ? 1 : 0, junctions: a?.pieces.junctions ?? 0,
+  };
+}
+
+// geos: a geometria de cada montagem (MeioResult.geos), quando já existe.
+export function meioSummary(plan: Plan, key?: string, geos?: Record<string, MeioGeo>): MeioSummary {
   const k = chosenAlt(plan, key);
   const a = plan.alternatives.find(x => x.key === k);
   return {
     tooLarge: plan.tooLarge ?? null,
     caseLabel: a?.caseLabel ?? '', supply: plan.supply, demand: plan.demand,
     leftover: Math.max(0, plan.supply - plan.demand), short: Math.max(0, plan.demand - plan.supply),
-    pieces: { splitters: a?.pieces.splitters ?? 0, mergers: a?.pieces.mergers ?? 0, sinks: a && a.sinkRate > E ? 1 : 0 },
+    pieces: altPieces(a, k && geos && Object.hasOwn(geos, k) ? geos[k] : null),
   };
 }
 

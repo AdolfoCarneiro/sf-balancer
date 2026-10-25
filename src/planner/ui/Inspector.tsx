@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
-import { meioSummary, meioUrl, type Meio } from '../model/meio.ts';
+import { altPieces, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
 import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
 import type { Action } from '../model/persist.ts';
+import type { PieceCount } from '../model/map/geo.ts';
 import { MAX_MACHINES } from '../model/chain.ts';
 import type { Chain, GameData, Stage } from '../model/types.ts';
 import type { Lang } from '../lang.ts';
@@ -27,6 +28,8 @@ export function Inspector({ selection, chain, data, lang, meioList, results, dis
   );
 }
 
+const altText = (n: PieceCount) => t('plMeioAltPieces', fmt(n.splitters, 0), fmt(n.mergers, 0), fmt(n.sinks, 0));
+
 // result: null = calculando; undefined = o meio não pôde ser calculado.
 function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
   meio: Meio; result: MeioResult | null | undefined; chain: Chain; data: GameData; lang: Lang; dispatch: (a: Action) => void;
@@ -40,7 +43,7 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
   // Resumo, peças e avisos são da montagem escolhida (a primeira, se a escolhida sumiu).
   const altKey = plan ? chosenAlt(plan, chain.alts?.[meio.id]) : null;
   const alt = plan?.alternatives.find(a => a.key === altKey);
-  const sum = plan ? meioSummary(plan, altKey ?? undefined) : null;
+  const sum = plan ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
   const warns = plan ? [...plan.warnings.map(w => w.text), ...(alt?.warnings ?? [])] : [];
   return (
     <div className="pl-insp">
@@ -71,7 +74,7 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
                           onChange={() => dispatch({ type: 'setMeioAlt', meio: meio.id, key: a.key })} />
                         <span>
                           <span>{a.title}</span>
-                          <small>{a.caseLabel} · {t('plMeioAltPieces', fmt(a.pieces.splitters, 0), fmt(a.pieces.mergers, 0), fmt(a.sinkRate > 1e-6 ? 1 : 0, 0))}</small>
+                          <small>{a.caseLabel} · {altText(altPieces(a, result?.geos[a.key]))}</small>
                         </span>
                       </label>
                     ))}
@@ -83,6 +86,8 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
                   <li><span>Splitter</span><b>{fmt(sum.pieces.splitters)}</b></li>
                   <li><span>Merger</span><b>{fmt(sum.pieces.mergers)}</b></li>
                   <li><span>Awesome Sink</span><b>{fmt(sum.pieces.sinks)}</b></li>
+                  {sum.pieces.smart > 0 && <li><span>Smart Splitter</span><b>{fmt(sum.pieces.smart)}</b></li>}
+                  {sum.pieces.junctions > 0 && <li><span>Pipeline Junction</span><b>{fmt(sum.pieces.junctions)}</b></li>}
                 </ul>
               </>
             )}
