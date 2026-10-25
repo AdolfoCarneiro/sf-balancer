@@ -377,6 +377,7 @@ export default {
   plMapHint: 'Scroll pans the map · Ctrl + wheel or pinch zooms · drag a block to move it, the background to pan',
   plMapInSide: 'Inputs come in from', plMapSideLeft: 'left', plMapSideTop: 'top', plMapSideRight: 'right', plMapSideBottom: 'bottom',
   plMapRotate: 'Rotate 90°', plMapGapRow: 'Gap between rows (m)', plMapGapMachine: 'Gap between machines (m)', plMapGapBad: 'From 0 to 64 m.',
+  plMapPieceGap: 'Gap between middle pieces (m)', plMapPieceGapBad: 'Whole meters from 1 to 8.',
   plMapArea: 'Total area', plMapPropose: 'Propose again', plMapOverlap: (a, b) => `${a} overlaps ${b}`,
   plMapCrossings: n => `${n} belt ${n === '1' ? 'crossing' : 'crossings'}`, plMapBlocks: 'Blocks', plMapNoWarnings: 'No overlaps or crossings.',
   plMapWarnings: 'Warnings', plMapPanel: 'Map', plMapBlockSize: 'Block size', plMapMeioSize: 'Middle size', plMapMeioName: item => `${item} middle`,

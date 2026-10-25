@@ -377,6 +377,7 @@ export default {
   plMapHint: 'Desplazar mueve el mapa · Ctrl + rueda o pellizco hace zoom · arrastra un bloque para moverlo, el fondo para mover el mapa',
   plMapInSide: 'Las entradas llegan por', plMapSideLeft: 'izquierda', plMapSideTop: 'arriba', plMapSideRight: 'derecha', plMapSideBottom: 'abajo',
   plMapRotate: 'Girar 90°', plMapGapRow: 'Espacio entre filas (m)', plMapGapMachine: 'Espacio entre máquinas (m)', plMapGapBad: 'De 0 a 64 m.',
+  plMapPieceGap: 'Espacio entre piezas del medio (m)', plMapPieceGapBad: 'De 1 a 8 m, entero.',
   plMapArea: 'Área total', plMapPropose: 'Proponer de nuevo', plMapOverlap: (a, b) => `${a} se superpone con ${b}`,
   plMapCrossings: n => `${n} ${n === '1' ? 'cruce' : 'cruces'} de cinta`, plMapBlocks: 'Bloques', plMapNoWarnings: 'Sin superposiciones ni cruces.',
   plMapWarnings: 'Avisos', plMapPanel: 'Mapa', plMapBlockSize: 'Medida del bloque', plMapMeioSize: 'Medida del medio', plMapMeioName: item => `medio de ${item}`,

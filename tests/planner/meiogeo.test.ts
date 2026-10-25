@@ -203,3 +203,17 @@ test('sobra em sinks: nenhuma esteira de sobra nem saída da cascata passa da es
   }
   assert.ok(checked > 0);
 });
+
+test('vão entre peças ligadas: padrão 2 m, editável', () => {
+  const m = meioDoExemplo('l1');
+  const key = m.plan.alternatives[0].key, item = data.items[m.meio.item];
+  const g2 = meioGeo(m.meio, m.plan, key, item), g5 = meioGeo(m.meio, m.plan, key, item, 5);
+  assert.deepEqual(g2, geoOf(m));
+  // Colunas e linhas da grade a 4 + vão uma da outra.
+  const steps = (g: MeioGeo) => [...new Set(g.pieces.filter(p => p.kind !== 'sink').map(p => p.x))].sort((a, b) => a - b);
+  const d2 = steps(g2), d5 = steps(g5);
+  assert.ok(d2.every((x, i) => i === 0 || (x - d2[i - 1]) % 6 === 0));
+  assert.ok(d5.every((x, i) => i === 0 || (x - d5[i - 1]) % 9 === 0));
+  assert.ok(g5.w > g2.w && g5.h > g2.h);
+  assertInside(g5);
+});

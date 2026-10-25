@@ -12,6 +12,10 @@ export interface Link { id: string; item: ItemId; from: StageId; to: StageId }
 export type Rot = 0 | 1 | 2 | 3;
 // Metros, canto superior esquerdo do bloco já girado, no mundo; x/y múltiplos de 8.
 export interface MapPlace { x: number; y: number; rot: Rot; gapRow?: number; gapMachine?: number }
-// map: posição de cada etapa no mapa; alts: id do meio -> `key` da montagem escolhida.
-export interface Chain { v: 1; stages: Stage[]; links: Link[]; policy: 'represar' | 'sink' | 'extra'; map?: Record<StageId, MapPlace>; alts?: Record<string, string> }
+// map: posição de cada etapa no mapa; alts: id do meio -> `key` da montagem escolhida;
+// mapGap: vão entre peças ligadas dos meios no mapa (m, inteiro de 1 a 8; sem ele, 2).
+export interface Chain {
+  v: 1; stages: Stage[]; links: Link[]; policy: 'represar' | 'sink' | 'extra';
+  map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number;
+}
 export interface PortWarning { item: ItemId; side: Side; rowRate: number; tier: string; cap: number; fixTier: string | null; fixPerRow: number }

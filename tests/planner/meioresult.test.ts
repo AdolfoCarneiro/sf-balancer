@@ -90,3 +90,13 @@ test('idioma novo: rótulo do caso vem traduzido', () => {
   assert.notEqual(en.plan.alternatives[0].caseLabel, pt.plan.alternatives[0].caseLabel);
   assert.ok(en.key.startsWith('en|'));
 });
+
+test('cacheKey muda com o vão entre peças do meio; o resultado usa o vão da cadeia', () => {
+  const me = meioDoExemplo('l1');
+  const k = cacheKey(me, ex, data, 'pt'), wide: Chain = { ...ex, mapGap: 6 };
+  assert.notEqual(cacheKey(me, wide, data, 'pt'), k);
+  assert.equal(cacheKey(me, { ...ex, mapGap: 2 }, data, 'pt'), k);   // 2 é o padrão
+  const a = meioResult(me, ex, data), b = meioResult(me, wide, data);
+  const key = a.plan.alternatives[0].key;
+  assert.ok(b.geos[key].w > a.geos[key].w);
+});

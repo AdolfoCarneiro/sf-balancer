@@ -9,11 +9,13 @@ import { rotated, warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
 import { NumField } from './Inspector.tsx';
 import { sizeText } from './format.ts';
+import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
 
 interface Props {
   chain: Chain; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
   onPlace: (id: StageId, place: MapPlace) => void; onPropose: () => void; onFocus: (r: Rect) => void;
   onPick: (id: StageId) => void; onOpenStage: (id: StageId) => void; onBlockKey: (e: React.KeyboardEvent, id: StageId) => void;
+  onGap: (gap: number) => void;   // vão entre peças do meio (a cadeia toda)
 }
 
 const SIDES = [[0, 'plMapSideLeft'], [1, 'plMapSideTop'], [2, 'plMapSideRight'], [3, 'plMapSideBottom']] as const;
@@ -38,7 +40,7 @@ export function MapPanel(p: Props) {
         {block && place
           ? <BlockPanel key={block.stage} name={stageName(block.stage)} rect={block.rect} place={place}
             onPlace={pl => p.onPlace(block.stage, pl)} onOpen={() => p.onOpenStage(block.stage)} />
-          : <Overview scene={scene} nameOf={nameOf} onPropose={p.onPropose} onFocus={p.onFocus} />}
+          : <Overview scene={scene} nameOf={nameOf} gap={pieceGap(chain)} onGap={p.onGap} onPropose={p.onPropose} onFocus={p.onFocus} />}
         <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
         <p className="pl-note">{t('plMapListHint')}</p>
         <ul className="pl-map-blocks" aria-labelledby="pl-map-blocks">
@@ -86,8 +88,8 @@ function BlockPanel({ name, rect, place, onPlace, onOpen }: {
   );
 }
 
-function Overview({ scene, nameOf, onPropose, onFocus }: {
-  scene: Scene; nameOf: (id: string) => string; onPropose: () => void; onFocus: (r: Rect) => void;
+function Overview({ scene, nameOf, gap, onGap, onPropose, onFocus }: {
+  scene: Scene; nameOf: (id: string) => string; gap: number; onGap: (gap: number) => void; onPropose: () => void; onFocus: (r: Rect) => void;
 }) {
   // Cada clique no aviso de cruzamentos leva ao próximo cruzamento.
   const [next, setNext] = useState(0);
@@ -102,6 +104,7 @@ function Overview({ scene, nameOf, onPropose, onFocus }: {
       <h2 className="pl-insp-kicker">{t('plMapArea')}</h2>
       <div className="pl-insp-title">{sizeText(scene.bounds)}</div>
       <button type="button" className="pl-btn" onClick={onPropose}>{t('plMapPropose')}</button>
+      <NumField label={t('plMapPieceGap')} value={gap} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={onGap} />
       <h3 className="pl-insp-h">{t('plMapWarnings')}</h3>
       {scene.overlaps.length || n
         ? (

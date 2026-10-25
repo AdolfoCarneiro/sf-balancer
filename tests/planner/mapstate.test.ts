@@ -80,3 +80,19 @@ test('cadeia salva antes da fase 2 (sem map/alts) continua lendo', () => {
   assert.equal('map' in c, false);
   assert.equal('alts' in c, false);
 });
+
+test('mapGap: vão entre peças do meio, inteiro de 1 a 8 m; null ou o padrão (2) tiram da cadeia', () => {
+  let h = reduce(newHistory(ex), { type: 'setMapGap', gap: 4 }, data);
+  assert.equal(h.present.mapGap, 4);
+  for (const bad of [0, 9, 2.5, NaN, -1]) assert.equal(reduce(h, { type: 'setMapGap', gap: bad }, data).present.mapGap, 4, String(bad));
+  assert.equal('mapGap' in reduce(h, { type: 'setMapGap', gap: null }, data).present, false);
+  assert.equal('mapGap' in reduce(h, { type: 'setMapGap', gap: 2 }, data).present, false);
+  h = reduce(h, { type: 'undo' }, data);
+  assert.equal(h.present.mapGap, undefined);
+});
+
+test('decodeChain: mapGap só inteiro de 1 a 8', () => {
+  assert.equal(rt({ ...ex, mapGap: 3 }).mapGap, 3);
+  assert.equal(rt({ ...ex, mapGap: 8 }).mapGap, 8);
+  for (const bad of [0, 9, 1.5, '3', null, -2, 1e9]) assert.equal('mapGap' in rt({ ...ex, mapGap: bad }), false, String(bad));
+});

@@ -3,6 +3,7 @@ import { getLang } from '../../i18n/index.js';
 import { meioHash, meioPlan, type Meio, type Plan, type PlanAlt, type PlanLine } from './meio.ts';
 import { meioGeo } from './map/meiogeo.ts';
 import type { MeioGeo } from './map/geo.ts';
+import { PIECE_GAP, pieceGap } from './map/sizes.ts';
 import type { Chain, GameData } from './types.ts';
 
 export { chosenAlt } from './meio.ts';
@@ -11,7 +12,11 @@ export interface MeioResult { id: string; key: string; plan: Plan; geos: Record<
 
 // O caseLabel e os avisos vêm no idioma do cálculo; a posição no mapa não entra (o meioHash só lê a etapa).
 // O id do meio entra também: dois meios iguais em etapas diferentes têm o mesmo hash, mas âncoras de etapas diferentes.
-export const cacheKey = (meio: Meio, chain: Chain, data: GameData, lang: string): string => lang + '|' + meio.id + '|' + meioHash(meio, chain, data);
+// O vão entre peças do meio entra quando não é o padrão (muda a geometria).
+export const cacheKey = (meio: Meio, chain: Chain, data: GameData, lang: string): string => {
+  const gap = pieceGap(chain);
+  return lang + '|' + meio.id + '|' + meioHash(meio, chain, data) + (gap !== PIECE_GAP ? `|gap${gap}` : '');
+};
 
 const liteLine = (l: PlanLine): PlanLine => ({
   machines: l.machines, rate: l.rate, partial: l.partial,
@@ -39,7 +44,7 @@ export function litePlan(plan: Plan): Plan {
 export function meioResult(meio: Meio, chain: Chain, data: GameData): MeioResult {
   const full = meioPlan(meio, chain, data), item = data.items[meio.item];
   const geos: Record<string, MeioGeo> = {};
-  for (const a of full.alternatives) geos[a.key] = meioGeo(meio, full, a.key, item);
+  for (const a of full.alternatives) geos[a.key] = meioGeo(meio, full, a.key, item, pieceGap(chain));
   return { id: meio.id, key: cacheKey(meio, chain, data, getLang()), plan: litePlan(full), geos };
 }
 

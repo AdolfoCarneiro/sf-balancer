@@ -277,7 +277,7 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
         ? inspector
         : <MapPanel chain={chain} data={data} meioList={meioList} scene={scene} places={places} selected={selStage}
           onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
-          onOpenStage={onOpenStage} onBlockKey={blockKey} />}
+          onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />}
     </>
   );
 }

@@ -20,7 +20,6 @@ interface NetBelt { id: number; a: number; b: number; rate: number; role: BeltRo
 interface Net { nodes: NetNode[]; belts: NetBelt[] }
 interface Layout { cols: number; nodes: Map<number, { col: number; row: number }>; belts: Map<number, { from: string; to: string }> }
 
-const CELL = PIECE + PIECE_GAP;
 const E = 1e-9;
 const KIND: Record<string, PieceKind> = { s: 'splitter', m: 'merger', ov: 'smart', bp: 'bp' };
 
@@ -32,7 +31,8 @@ function path(a: End, b: End): Pt[] {
   return clean(a.dir === 'x' ? [a.p, [b.p[0], a.p[1]], b.p] : [a.p, [a.p[0], b.p[1]], b.p]);
 }
 
-export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item): MeioGeo {
+// gap: vão entre peças ligadas (Chain.mapGap); a grade anda de PIECE + gap.
+export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item, gap = PIECE_GAP): MeioGeo {
   const fluid = item.fluid;
   const owner = (side: 'src' | 'dst', id: number) => lineOwner(meio, side, (side === 'src' ? plan.src : plan.dst).lines[id] as PlanLine);
   if (plan.tooLarge) return { w: 16, h: 8, pieces: [], belts: [], ins: [], outs: [], estimate: fluid, floors: 1, tooLarge: true };
@@ -40,7 +40,7 @@ export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item): Mei
   const a = alts.find(x => x.key === altKey) ?? alts[0];
   const design = a.view.bal?.design;
   const floors = design?.kind === 'butterfly-loop' ? (designFloors(design as never) as { floors: number } | null)?.floors ?? 1 : 1;
-  const geo = a.headers ? headerGeo(a, plan, item, owner) : netGeo(a, plan.cap, item, owner);
+  const geo = a.headers ? headerGeo(a, plan, item, owner, gap) : netGeo(a, plan.cap, item, owner, gap);
   return { ...geo, floors, tooLarge: false };
 }
 
@@ -60,8 +60,9 @@ function finish(w: number, pieces: Piece[], belts: BeltPath[], ins: Anchor[], ou
   return { w, h, pieces, belts, ins, outs, estimate };
 }
 
-// Peças do flowNet na grade do flowLayout: coluna c em x = c · 6, linha r em y = r · 6 (a menor linha em 0).
-function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
+// Peças do flowNet na grade do flowLayout: coluna c em x = c · (4 + vão), linha r em y = r · (4 + vão) (a menor linha em 0).
+function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner, gap: number): Geo {
+  const CELL = PIECE + gap;
   const net = flowNet(a as never) as Net;
   const lay = flowLayout(net as never) as Layout;
   const fluid = item.fluid;
@@ -102,7 +103,7 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
     g.belts.push(b);
     g.load += b.rate;
   });
-  const bandY = gridBottom + PIECE_GAP;
+  const bandY = gridBottom + gap;
   let cursor = CELL;
   const band = groups.map(g => {
     g.belts.sort((x, y) => colOf(x.a) - colOf(y.a) || rowOf(x.a) - rowOf(y.a));
@@ -110,10 +111,10 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
     const ms = Array.from({ length: mc }, (_, j) => ({ kind: 'merger' as const, x: cursor + j * CELL, y: bandY + (SINK.l - PIECE) / 2, w: PIECE, h: PIECE }));
     const sink: Piece = { kind: 'sink', x: cursor + mc * CELL, y: bandY, w: SINK.w, h: SINK.l };
     pieces.push(...ms, sink);
-    cursor = sink.x + sink.w + PIECE_GAP;
+    cursor = sink.x + sink.w + gap;
     return { ...g, ms, sink };
   });
-  if (band.length) w = Math.max(w, cursor - PIECE_GAP);
+  if (band.length) w = Math.max(w, cursor - gap);
 
   // Pontas: origem em x = 0, destino e linha extra em x = w; peças pelos lados do flowLayout
   // (na tela a esquerda da peça é para cima e a direita para baixo).
@@ -151,7 +152,7 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
   for (const b of belts) {
     if (nodes[b.b].t === 'sink') continue;
     if (b.role === 'loop') {
-      const ra = rect.get(b.a)!, rb = rect.get(b.b)!, ly = -PIECE_GAP * ++loops;
+      const ra = rect.get(b.a)!, rb = rect.get(b.b)!, ly = -gap * ++loops;
       const ax = ra.x + ra.w / 2, bx = rb.x + rb.w / 2;
       push(clean([[ax, ra.y], [ax, ly], [bx, ly], [bx, rb.y]]), b.rate, 'loop');
       continue;
@@ -176,7 +177,8 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
 }
 
 // Fluido com cano coletor: uma Pipeline Junction por coletor, cano de cada origem até ela e dela a cada destino.
-function headerGeo(a: FullAlt, plan: Plan, item: Item, owner: Owner): Geo {
+function headerGeo(a: FullAlt, plan: Plan, item: Item, owner: Owner, gap: number): Geo {
+  const CELL = PIECE + gap;
   const headers = a.headers!, flow = a.sim.flow, hv = a.view.headers ?? [];
   const nSrc = plan.src.lines.length, nDst = plan.dst.lines.length;
   const yOf = (r: number) => r * CELL + PIECE / 2, w = 2 * CELL;
@@ -189,7 +191,7 @@ function headerGeo(a: FullAlt, plan: Plan, item: Item, owner: Owner): Geo {
     const y = Math.max(ys.reduce((s, v) => s + v, 0) / ys.length - JUNCTION / 2, free);
     const jn: Piece = { kind: 'junction', x: CELL + (PIECE - JUNCTION) / 2, y, w: JUNCTION, h: JUNCTION };
     pieces.push(jn);
-    free = y + JUNCTION + PIECE_GAP;
+    free = y + JUNCTION + gap;
     const cy = y + JUNCTION / 2;
     const rate = (edges: number[] | undefined, k: number) => (edges ? flow[edges[k]] ?? 0 : 0);
     h.inputs.forEach((l, k) => belts.push({ pts: route([0, ins[l.id].y], [jn.x, cy], 'x'), item: item.id, rate: rate(hv[hi]?.inEdges, k), role: 'main', fluid: true }));

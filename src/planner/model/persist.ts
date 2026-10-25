@@ -3,6 +3,7 @@ import { tierKey } from './stage.ts';
 import { MAX_MACHINES, addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
 import { meios } from './meio.ts';
 import { placeNew, withLayout } from './autolayout.ts';
+import { PIECE_GAP, validPieceGap } from './map/sizes.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
@@ -28,6 +29,7 @@ export type Action =
   | { type: 'placeBlock'; id: StageId; place: MapPlace }
   | { type: 'setPlaces'; places: Record<StageId, MapPlace> }
   | { type: 'setMeioAlt'; meio: string; key: string | null }
+  | { type: 'setMapGap'; gap: number | null }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'load'; chain: Chain };
@@ -127,6 +129,7 @@ export function decodeChain(str: string, data: GameData): Chain | null {
     }
     if (Object.keys(alts).length) chain = { ...chain, alts };
   }
+  if (validPieceGap(raw.mapGap) && raw.mapGap !== PIECE_GAP) chain = { ...chain, mapGap: raw.mapGap };
   return chain;
 }
 
@@ -173,6 +176,12 @@ function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>,
       const { [a.meio]: _old, ...rest } = c.alts ?? {};
       if (a.key === null) return Object.keys(rest).length ? { ...c, alts: rest } : omitAlts(c);
       return { ...c, alts: { ...rest, [a.meio]: a.key } };
+    }
+    case 'setMapGap': {
+      // null ou o padrão: sem o campo; valor inválido: nada muda.
+      if (a.gap !== null && !validPieceGap(a.gap)) return c;
+      const { mapGap: _old, ...rest } = c;
+      return a.gap === null || a.gap === PIECE_GAP ? rest : { ...rest, mapGap: a.gap };
     }
   }
 }
