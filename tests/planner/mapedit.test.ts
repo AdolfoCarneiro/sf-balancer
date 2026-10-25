@@ -70,3 +70,9 @@ test('centerOn: centraliza mantendo o zoom; se não cabe nesse zoom, enquadra', 
   assert.ok(f.zoom < 2);
   assert.ok(500 * f.zoom <= 400);
 });
+
+test('medida em metros e fundações: um texto só para bloco, meio e área', async () => {
+  const { sizeText, foundations } = await import('../../src/planner/ui/format.ts');
+  assert.equal(foundations(16), 2); assert.equal(foundations(16.5), 3); assert.equal(foundations(0), 0);
+  assert.equal(sizeText({ w: 40, h: 13 }), '40 × 13 m · 5 × 2 fundações');
+});

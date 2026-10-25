@@ -6,9 +6,9 @@ import type { Chain, GameData, MapPlace, Rot, StageId } from '../model/types.ts'
 import type { Rect } from '../model/map/geo.ts';
 import type { Scene } from '../model/map/scene.ts';
 import { rotated, warningRect } from '../model/map/edit.ts';
-import { FOUNDATION } from '../model/map/sizes.ts';
 import type { Meio } from '../model/meio.ts';
 import { NumField } from './Inspector.tsx';
+import { sizeText } from './format.ts';
 
 interface Props {
   chain: Chain; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
@@ -18,8 +18,6 @@ interface Props {
 
 const SIDES = [[0, 'plMapSideLeft'], [1, 'plMapSideTop'], [2, 'plMapSideRight'], [3, 'plMapSideBottom']] as const;
 const GAP_MAX = 64;
-const foundations = (m: number) => Math.ceil(m / FOUNDATION - 1e-9);
-const sizeText = (r: Rect) => t('plMapSize', fmt(r.w, 0), fmt(r.h, 0), fmt(foundations(r.w), 0), fmt(foundations(r.h), 0));
 
 export function MapPanel(p: Props) {
   const { chain, data, meioList, scene, places, selected } = p;

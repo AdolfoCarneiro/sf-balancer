@@ -6,6 +6,7 @@ import type { BeltPath, BlockGeo, Piece, Pt, Rect } from '../model/map/geo.ts';
 import { toWorld, type Scene } from '../model/map/scene.ts';
 import { BELT, FOUNDATION } from '../model/map/sizes.ts';
 import type { ItemId, Rot, StageId } from '../model/types.ts';
+import { sizeText } from './format.ts';
 
 // Cores e fontes lidas dos tokens CSS (o canvas não entende var()).
 export interface MapTheme {
@@ -192,8 +193,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     const x = sx(b.rect.x), y = sy(b.rect.y), w = b.rect.w * z, h = b.rect.h * z;
     if (w < 24) continue;
     const on = o.selected === b.stage, txt = o.blockText(b.stage);
-    const fw = Math.ceil(b.rect.w / FOUNDATION - 1e-9), fh = Math.ceil(b.rect.h / FOUNDATION - 1e-9);
-    const size = t('plMapSize', fmt(b.rect.w, 0), fmt(b.rect.h, 0), fmt(fw, 0), fmt(fh, 0)) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
+    const size = sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
     if (detail) {
       // De perto as máquinas ocupam o bloco: nome em cima, medida embaixo.
       text(txt.title, x, y - 22, title, on ? th.ficsit : th.ink, 'left', plate);
@@ -217,7 +217,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     if (w < 24 || h < 16) continue;
     const txt = o.meioText(m.meio), cx = x + w / 2;
     const extra = m.geo && !m.geo.tooLarge
-      ? [m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ')
+      ? [sizeText(m.rect), m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ')
       : '';
     if (detail) {
       // De perto as peças ocupam o meio: o rótulo vai para cima dele.

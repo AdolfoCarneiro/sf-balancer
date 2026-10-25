@@ -4,6 +4,8 @@ import { altPieces, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
 import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
 import type { Action } from '../model/persist.ts';
 import type { PieceCount } from '../model/map/geo.ts';
+import { rotSize } from '../model/map/scene.ts';
+import { sizeText } from './format.ts';
 import { MAX_MACHINES } from '../model/chain.ts';
 import type { Chain, GameData, Stage } from '../model/types.ts';
 import type { Lang } from '../lang.ts';
@@ -44,6 +46,8 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
   const altKey = plan ? chosenAlt(plan, chain.alts?.[meio.id]) : null;
   const alt = plan?.alternatives.find(a => a.key === altKey);
   const sum = plan ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
+  // A geometria da montagem escolhida, girada com a primeira produtora (o meio anda com ela no mapa).
+  const geo = altKey && result && Object.hasOwn(result.geos, altKey) && !result.geos[altKey].tooLarge ? result.geos[altKey] : null;
   const warns = plan ? [...plan.warnings.map(w => w.text), ...(alt?.warnings ?? [])] : [];
   return (
     <div className="pl-insp">
@@ -51,6 +55,7 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
       <div className="pl-insp-title">{item?.name ?? meio.item}</div>
       <div className="pl-insp-sub">{t('plFeeds', names(meio.producers), names(meio.consumers))}</div>
       {result === null && <p className="pl-note" role="status">{t('plMeioCalc')}</p>}
+      {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, chain.map?.[meio.producers[0]]?.rot ?? 0))}</div>}
       {sum && (
         <>
           <dl className="pl-nums">

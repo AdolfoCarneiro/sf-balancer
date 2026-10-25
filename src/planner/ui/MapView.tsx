@@ -12,9 +12,9 @@ import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model
 import type { MeioGeo, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
 import { dragged, nudged, rotated, withPlace } from '../model/map/edit.ts';
-import { FOUNDATION } from '../model/map/sizes.ts';
 import { drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
+import { sizeText } from './format.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
@@ -254,8 +254,7 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
   const zoomCenter = (f: number) => { const c = cam.current; if (c) moveCam(zoomAt(c, f, size.current.w / 2, size.current.h / 2)); };
   const showAll = () => { if (size.current.w) moveCam(fit(scene.bounds, size.current.w, size.current.h)); };
 
-  const b = scene.bounds;
-  const area = t('plMapSize', fmt(b.w, 0), fmt(b.h, 0), fmt(Math.ceil(b.w / FOUNDATION - 1e-9), 0), fmt(Math.ceil(b.h / FOUNDATION - 1e-9), 0));
+  const area = sizeText(scene.bounds);
   return (
     <>
       <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plViewMap')}>

@@ -379,7 +379,7 @@ export default {
   plMapRotate: 'Girar 90°', plMapGapRow: 'Espacio entre filas (m)', plMapGapMachine: 'Espacio entre máquinas (m)', plMapGapBad: 'De 0 a 64 m.',
   plMapArea: 'Área total', plMapPropose: 'Proponer de nuevo', plMapOverlap: (a, b) => `${a} se superpone con ${b}`,
   plMapCrossings: n => `${n} ${n === '1' ? 'cruce' : 'cruces'} de cinta`, plMapBlocks: 'Bloques', plMapNoWarnings: 'Sin superposiciones ni cruces.',
-  plMapWarnings: 'Avisos', plMapPanel: 'Mapa', plMapBlockSize: 'Medida del bloque', plMapMeioName: item => `medio de ${item}`,
+  plMapWarnings: 'Avisos', plMapPanel: 'Mapa', plMapBlockSize: 'Medida del bloque', plMapMeioSize: 'Medida del medio', plMapMeioName: item => `medio de ${item}`,
   plMapListHint: 'Las flechas mueven 8 m · R gira · Enter abre la etapa',
   plStagePieces: 'Piezas de la etapa', plAreaEst: (w, d) => `Área estimada: ${w} × ${d} m (estimación)`,
 };

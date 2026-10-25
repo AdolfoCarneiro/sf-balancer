@@ -379,7 +379,7 @@ export default {
   plMapRotate: 'Rotate 90°', plMapGapRow: 'Gap between rows (m)', plMapGapMachine: 'Gap between machines (m)', plMapGapBad: 'From 0 to 64 m.',
   plMapArea: 'Total area', plMapPropose: 'Propose again', plMapOverlap: (a, b) => `${a} overlaps ${b}`,
   plMapCrossings: n => `${n} belt ${n === '1' ? 'crossing' : 'crossings'}`, plMapBlocks: 'Blocks', plMapNoWarnings: 'No overlaps or crossings.',
-  plMapWarnings: 'Warnings', plMapPanel: 'Map', plMapBlockSize: 'Block size', plMapMeioName: item => `${item} middle`,
+  plMapWarnings: 'Warnings', plMapPanel: 'Map', plMapBlockSize: 'Block size', plMapMeioSize: 'Middle size', plMapMeioName: item => `${item} middle`,
   plMapListHint: 'Arrows move 8 m · R rotates · Enter opens the stage',
   plStagePieces: 'Stage pieces', plAreaEst: (w, d) => `Estimated area: ${w} × ${d} m (estimate)`,
 };
