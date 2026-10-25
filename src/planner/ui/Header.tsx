@@ -8,9 +8,12 @@ interface Props {
   stages: number; machines: number;
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   shareUrl: () => string;
+  view: View; onView: (v: View) => void;
 }
 
-export function Header({ lang, onLang, stages, machines, canUndo, canRedo, onUndo, onRedo, shareUrl }: Props) {
+export type View = 'graph' | 'map';
+
+export function Header({ lang, onLang, stages, machines, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -32,10 +35,21 @@ export function Header({ lang, onLang, stages, machines, canUndo, canRedo, onUnd
   return (
     <header className="pl-top">
       <div className="pl-brand">{t('plBrand')}</div>
-      <nav className="pl-seg" aria-label={t('plViews')}>
-        <button type="button" aria-current="page" className="on">{t('plTabChain')}</button>
-        <button type="button" disabled>{t('plTabMap')} <span className="pl-phase">{t('plPhase2')}</span></button>
-      </nav>
+      <div className="pl-seg" role="tablist" aria-label={t('plViews')}>
+        {(['graph', 'map'] as View[]).map(v => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} aria-controls="pl-graph" className={view === v ? 'on' : undefined}
+            tabIndex={view === v ? 0 : -1} onClick={() => onView(v)}
+            onKeyDown={e => {
+              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+              e.preventDefault();
+              const next: View = v === 'graph' ? 'map' : 'graph';
+              onView(next);
+              (e.currentTarget.parentElement?.querySelector(`[data-view=${next}]`) as HTMLElement | null)?.focus();
+            }} data-view={v}>
+            {t(v === 'graph' ? 'plViewGraph' : 'plViewMap')}
+          </button>
+        ))}
+      </div>
       <div className="pl-seg" role="group" aria-label={t('plModeLabel')}>
         <button type="button" aria-pressed="true" className="on">{t('plModeNode')}</button>
         <button type="button" disabled>{t('plModeGoal')} <span className="pl-phase">{t('plPhase3')}</span></button>

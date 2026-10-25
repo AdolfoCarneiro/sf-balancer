@@ -6,7 +6,7 @@ import game from './data/game.json';
 import type { GameData } from './model/types.ts';
 import { chainTotals } from './model/totals.ts';
 import { usePlanner } from './store.ts';
-import { Header } from './ui/Header.tsx';
+import { Header, type View } from './ui/Header.tsx';
 import { Sidebar } from './ui/Sidebar.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import type { SearchRequest, Selection } from './ui/selection.ts';
@@ -14,10 +14,13 @@ import { Graph } from './ui/Graph.tsx';
 import { meios } from './model/meio.ts';
 import { useMeioResults } from './meios.ts';
 import { StageView } from './ui/StageView.tsx';
+import { MapView } from './ui/MapView.tsx';
 
 const data = game as unknown as GameData;
 const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
+const VIEW_STORE = 'sf-balancer:planner-view';
+const savedView = (): View => { try { return localStorage.getItem(VIEW_STORE) === 'map' ? 'map' : 'graph'; } catch { return 'graph'; } };
 
 export function App() {
   // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
@@ -41,6 +44,12 @@ export function App() {
   };
 
   const { chain, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
+  // Cadeia ou mapa: lembrado entre as visitas.
+  const [view, setViewState] = useState<View>(savedView);
+  const setView = (v: View) => {
+    setViewState(v);
+    try { localStorage.setItem(VIEW_STORE, v); } catch { /* sem storage */ }
+  };
   const [picked, setSelection] = useState<Selection>(null);
   // Pedido de busca vindo do grafo (porta arrastada para o vazio).
   const [search, setSearch] = useState<SearchRequest | null>(null);
@@ -89,13 +98,15 @@ export function App() {
   return (
     <div className="pl-app">
       <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
-        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
+        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} view={view} onView={setView} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
           search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
-        <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plGraph')}>
-          <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
-            dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
+        <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t(view === 'map' ? 'plViewMap' : 'plGraph')}>
+          {view === 'map'
+            ? <MapView chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selected={selection?.id ?? null} />
+            : <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
+              dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />}
         </main>
         <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults}
           dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />

@@ -180,3 +180,11 @@ html, body { overflow-x: hidden; }
 .pl-crumb-h { display: inline; margin: 0; font: inherit; }
 .pl-crumb-h:focus { outline: none; }
 .pl-crumb-h:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+
+/* Mapa (canvas): ocupa a área central inteira, como o grafo */
+.pl-map { position: absolute; inset: 0; overflow: hidden; background: var(--bp-floor); }
+.pl-map-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.pl-map-canvas.grabbing { cursor: grabbing; }
+.pl-map-hint { position: absolute; top: 10px; left: 12px; margin: 0; padding: 3px 8px; font-size: 12px; color: var(--ink-dim); background: rgba(10, 27, 45, .8); pointer-events: none; }
+.pl-map-ctrl { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
+.pl-map-ctrl .pl-btn { min-width: 34px; background: var(--bench); }
