@@ -374,7 +374,7 @@ export default {
   plMapFit: 'Fit all', plMapZoomIn: 'Zoom the map in', plMapZoomOut: 'Zoom the map out', plMapControls: 'Map navigation',
   plMapAria: (n, area) => `Factory map to scale: ${n} ${n === '1' ? 'stage' : 'stages'}, ${area}`,
   plMapEstimate: 'estimate', plMapFloors: n => `${n} floors`, plMapCalc: 'calculating…',
-  plMapHint: 'Scroll pans the map · Ctrl + wheel or pinch zooms · drag a block to move it, the background to pan',
+  plMapHint: 'Scroll pans the map · Ctrl + wheel or pinch zooms · drag a block to move it, the background to pan', plMapHintClose: 'Close the tip',
   plMapInSide: 'Inputs come in from', plMapSideLeft: 'left', plMapSideTop: 'top', plMapSideRight: 'right', plMapSideBottom: 'bottom',
   plMapRotate: 'Rotate 90°', plMapGapRow: 'Gap between rows (m)', plMapGapMachine: 'Gap between machines (m)', plMapGapBad: 'From 0 to 64 m.',
   plMapPieceGap: 'Gap between middle pieces (m)', plMapPieceGapBad: 'Whole meters from 1 to 8.',

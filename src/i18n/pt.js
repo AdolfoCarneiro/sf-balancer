@@ -374,7 +374,7 @@ export default {
   plMapFit: 'Mostrar tudo', plMapZoomIn: 'Aproximar o mapa', plMapZoomOut: 'Afastar o mapa', plMapControls: 'Navegação do mapa',
   plMapAria: (n, area) => `Mapa da fábrica em escala: ${n} ${n === '1' ? 'etapa' : 'etapas'}, ${area}`,
   plMapEstimate: 'estimativa', plMapFloors: n => `${n} andares`, plMapCalc: 'calculando…',
-  plMapHint: 'Rolar move o mapa · Ctrl + rodinha ou pinça dá zoom · arraste um bloco para mudar de lugar, o fundo para mover o mapa',
+  plMapHint: 'Rolar move o mapa · Ctrl + rodinha ou pinça dá zoom · arraste um bloco para mudar de lugar, o fundo para mover o mapa', plMapHintClose: 'Fechar a dica',
   plMapInSide: 'Entradas chegam por', plMapSideLeft: 'esquerda', plMapSideTop: 'cima', plMapSideRight: 'direita', plMapSideBottom: 'baixo',
   plMapRotate: 'Girar 90°', plMapGapRow: 'Vão entre fileiras (m)', plMapGapMachine: 'Vão entre máquinas (m)', plMapGapBad: 'De 0 a 64 m.',
   plMapPieceGap: 'Vão entre peças do meio (m)', plMapPieceGapBad: 'De 1 a 8 m, inteiro.',

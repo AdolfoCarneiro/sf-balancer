@@ -90,7 +90,7 @@ export const scenarios = [
   },
   {
     // O mapa abre pela aba do cabeçalho; limpa também a vista lembrada. Espera o canvas e um quadro desenhado.
-    name: 'planner-mapa', path: '/planner.html', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view'],
+    name: 'planner-mapa', path: '/planner.html', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view', 'sf-balancer:planner-map-hint'],
     actions: async pg => {
       await pg.waitForSelector('.react-flow__node-stage');
       await pg.locator('[role=tablist] [data-view=map]').click();

@@ -31,7 +31,8 @@ let camMoved = false, refitted = false;
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
-const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
+const CLICK_PX = 4;
+const HINT_STORE = 'sf-balancer:planner-map-hint';   // até aqui o ponteiro só clicou; passou disso, arrasta
 
 // Cor de cada item como na tela da etapa: fluido em holo; o item como entrada principal de quem consome em flow,
 // como entrada secundária em held; produto que ninguém consome (saída final) em ficsit.
@@ -69,6 +70,10 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
   const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(chain, data, geos) });
+
+  // A dica de navegação fica até ser fechada (lembrado neste navegador).
+  const [hint, setHint] = useState(() => { try { return localStorage.getItem(HINT_STORE) !== '0'; } catch { return true; } });
+  const hideHint = () => { setHint(false); try { localStorage.setItem(HINT_STORE, '0'); } catch { /* sem storage */ } };
 
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -265,7 +270,12 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
             onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} onDoubleClick={onDoubleClick}
             onKeyDown={e => blockKey(e, selStage)} />
-          <p className="pl-map-hint">{t('plMapHint')}</p>
+          {hint && (
+            <p className="pl-map-hint">
+              <span>{t('plMapHint')}</span>
+              <button type="button" onClick={hideHint} aria-label={t('plMapHintClose')} title={t('plMapHintClose')}>×</button>
+            </p>
+          )}
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>

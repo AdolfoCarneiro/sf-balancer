@@ -172,23 +172,37 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
   ctx.textBaseline = 'alphabetic';
   // plate: chapa escura atrás do texto (legível sobre as máquinas); optional: some se encostar num rótulo já posto.
   const placed: Rect[] = [];
+  const hit = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  // Blocos e meios na tela: um rótulo de fora (avoid = o dono) não pode cair em cima de outro.
+  const boxes: { id: string; r: Rect }[] = [];
+  for (const b of blocks) boxes.push({ id: b.stage, r: { x: sx(b.rect.x), y: sy(b.rect.y), w: b.rect.w * z, h: b.rect.h * z } });
+  for (const m of meios) boxes.push({ id: m.meio, r: { x: sx(m.rect.x), y: sy(m.rect.y), w: m.rect.w * z, h: m.rect.h * z } });
+  // Retângulo do texto na tela (com a margem da chapa).
+  const labelRect = (s: string, x: number, y: number, font: string, align: CanvasTextAlign = 'left'): Rect => {
+    ctx.font = font;
+    const w = ctx.measureText(s).width, fs = Number(/(\d+)px/.exec(font)?.[1] ?? 11);
+    return { x: (align === 'center' ? x - w / 2 : x) - 3, y: y - fs, w: w + 6, h: fs + 4 };
+  };
+  // Não encosta em bloco ou meio que não seja o dono.
+  const clear = (r: Rect, own: string) => !boxes.some(b => b.id !== own && hit(b.r, r));
+  // Devolve se desenhou.
   const text = (s: string, x: number, y: number, font: string, color: string, align: CanvasTextAlign = 'left',
-    f: { plate?: boolean; optional?: boolean; max?: number } = {}) => {
+    f: { plate?: boolean; optional?: boolean; max?: number; avoid?: string } = {}): boolean => {
     ctx.font = font;
     if (f.max !== undefined) {
-      if (f.max < 12) return;
+      if (f.max < 12) return false;
       while (s.length > 1 && ctx.measureText(s).width > f.max) s = s.slice(0, s.endsWith('…') ? -2 : -1) + '…';
     }
-    if (f.plate || f.optional) {
-      const w = ctx.measureText(s).width, fs = Number(/(\d+)px/.exec(font)?.[1] ?? 11);
-      const r = { x: (align === 'center' ? x - w / 2 : x) - 3, y: y - fs, w: w + 6, h: fs + 4 };
-      if (f.optional && placed.some(p => p.x < r.x + r.w && r.x < p.x + p.w && p.y < r.y + r.h && r.y < p.y + p.h)) return;
+    if (f.plate || f.optional || f.avoid !== undefined) {
+      const r = labelRect(s, x, y, font, align);
+      if (f.optional && placed.some(p => hit(p, r))) return false;
+      if (f.avoid !== undefined && !clear(r, f.avoid)) return false;
       placed.push(r);
       if (f.plate) { ctx.globalAlpha = 0.8; ctx.fillStyle = th.bench; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = 1; }
     }
     ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(s, x, y);
+    return true;
   };
-  const plate = { plate: true };
   const title = `600 13px ${th.display}`, small = `11px ${th.body}`;
   for (const b of blocks) {
     const x = sx(b.rect.x), y = sy(b.rect.y), w = b.rect.w * z, h = b.rect.h * z;
@@ -196,10 +210,19 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     const on = o.selected === b.stage, txt = o.blockText(b.stage);
     const size = sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
     if (detail) {
-      // De perto as máquinas ocupam o bloco: nome em cima, medida embaixo.
-      text(txt.title, x, y - 22, title, on ? th.ficsit : th.ink, 'left', plate);
-      text(txt.sub, x, y - 6, small, th.inkDim, 'left', { plate: true, optional: true });
-      text(size, x, y + h + 14, small, on ? th.ficsit : th.inkDim, 'left', { plate: true, optional: true });
+      // De perto as máquinas ocupam o bloco: nome e fileiras em cima dele, medida embaixo. Se ali tem outro bloco ou
+      // meio (vizinho empilhado a 8 m, por exemplo), vão por dentro, numa chapa na faixa de cima e na de baixo.
+      const max = w - 12, tc = on ? th.ficsit : th.ink;
+      if (clear(labelRect(txt.title, x, y - 22, title), b.stage) && clear(labelRect(txt.sub, x, y - 6, small), b.stage)) {
+        text(txt.title, x, y - 22, title, tc, 'left', { plate: true });
+        text(txt.sub, x, y - 6, small, th.inkDim, 'left', { plate: true, optional: true });
+      } else {
+        text(txt.title, x + 6, y + 18, title, tc, 'left', { plate: true, max });
+        if (h >= 56) text(txt.sub, x + 6, y + 34, small, th.inkDim, 'left', { plate: true, optional: true, max });
+      }
+      if (!text(size, x, y + h + 14, small, on ? th.ficsit : th.inkDim, 'left', { plate: true, optional: true, avoid: b.stage }) && h >= 80) {
+        text(size, x + 6, y + h - 7, small, on ? th.ficsit : th.inkDim, 'left', { plate: true, optional: true, max });
+      }
       continue;
     }
     // De longe o bloco é uma chapa: os rótulos vão dentro, cortados na largura dele.
@@ -221,9 +244,16 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
       ? [sizeText(m.rect), m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ')
       : '';
     if (detail) {
-      // De perto as peças ocupam o meio: o rótulo vai para cima dele.
-      text(txt.title + (txt.sub ? ` · ${txt.sub}` : ''), x, y - 6, `700 12px ${th.display}`, th.ficsit, 'left', plate);
-      if (extra) text(extra, x, y + h + 14, small, th.inkDim, 'left', plate);
+      // De perto as peças ocupam o meio: o rótulo vai para cima dele e a medida para baixo; se ali tem outro bloco
+      // ou meio, por dentro, numa chapa.
+      const head = txt.title + (txt.sub ? ` · ${txt.sub}` : ''), font = `700 12px ${th.display}`;
+      if (!text(head, x, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })
+        && !text(txt.title, x, y - 6, font, th.ficsit, 'left', { plate: true, avoid: m.meio })) {
+        text(head, x + 4, y + 16, font, th.ficsit, 'left', { plate: true, max: w - 8 });
+      }
+      if (extra && !text(extra, x, y + h + 14, small, th.inkDim, 'left', { plate: true, avoid: m.meio })) {
+        text(extra, x + 4, y + h - 6, small, th.inkDim, 'left', { plate: true, optional: true, max: w - 8 });
+      }
     } else if (h >= 34) {
       text(txt.title, cx, y + h / 2 - (txt.sub ? 2 : -4), `700 12px ${th.display}`, th.ficsit, 'center', { max: w - 6 });
       if (txt.sub) text(txt.sub, cx, y + h / 2 + 12, small, th.inkDim, 'center', { max: w - 6 });
