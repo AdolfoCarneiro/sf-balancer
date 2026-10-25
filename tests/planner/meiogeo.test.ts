@@ -138,6 +138,7 @@ test('meio grande demais: faixa 16 × 8 sem peças', () => {
   assert.equal(g.tooLarge, true);
   assert.equal(g.w, 16); assert.equal(g.h, 8);
   assert.equal(g.pieces.length, 0); assert.equal(g.belts.length, 0);
+  assert.equal(g.ins.length, 0); assert.equal(g.outs.length, 0);
 });
 
 test('borboleta com loop: andares de designFloors', () => {
@@ -183,4 +184,22 @@ test('linha extra vira saída a mais com a esteira extra', () => {
   const ex = g.outs.filter(o => o.extra);
   assert.equal(g.belts.filter(b => b.role === 'extra').length, ex.length);
   assert.ok(ex.every(o => o.x === g.w));
+});
+
+test('sobra em sinks: nenhuma esteira de sobra nem saída da cascata passa da esteira (3×330 → 1×60, Mk4)', () => {
+  const meio: Meio = { id: 'x', item: 'Desc_IronIngot_C', producers: ['a'], consumers: ['b'], links: ['l1'] };
+  const plan = computePlan({ cap: 480, policy: 'sink', excess: 'sink', conv: 'k-1', medium: 'item',
+    srcGroups: [{ driver: 'clock', count: 3, clock: 100, nominal: 330, per: 1 }],
+    dstGroups: [{ driver: 'clock', count: 1, clock: 100, nominal: 60, per: 1 }] }) as unknown as Plan;
+  let checked = 0;
+  for (const a of plan.alternatives as FullAlt[]) {
+    const g = meioGeo(meio, plan, a.key, data.items[meio.item]);
+    assertInside(g);
+    const sinks = count(g, 'sink');
+    if (!sinks) continue;
+    checked++;
+    assert.ok(g.belts.filter(b => b.role === 'sink').every(b => b.rate <= plan.cap + 1e-6), `${a.key}: esteira de sobra acima de ${plan.cap}`);
+    assert.ok(sinks >= Math.ceil(a.sinkRate / plan.cap - 1e-9));
+  }
+  assert.ok(checked > 0);
 });

@@ -46,14 +46,7 @@ function path(a: End, b: End): Pt[] {
 export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item): MeioGeo {
   const fluid = item.fluid;
   const owner = (side: 'src' | 'dst', id: number) => lineOwner(meio, side, (side === 'src' ? plan.src : plan.dst).lines[id] as PlanLine);
-  if (plan.tooLarge) {
-    const w = 16, h = 8;
-    return {
-      w, h, pieces: [], belts: [], estimate: fluid, floors: 1, tooLarge: true,
-      ins: meio.producers.map(stage => ({ x: 0, y: h / 2, item: item.id, row: 0, stage })),
-      outs: meio.consumers.map(stage => ({ x: w, y: h / 2, item: item.id, row: 0, stage })),
-    };
-  }
+  if (plan.tooLarge) return { w: 16, h: 8, pieces: [], belts: [], ins: [], outs: [], estimate: fluid, floors: 1, tooLarge: true };
   const alts = plan.alternatives as unknown as FullAlt[];
   const a = alts.find(x => x.key === altKey) ?? alts[0];
   const design = a.view.bal?.design;
@@ -108,14 +101,15 @@ function netGeo(a: FullAlt, cap: number, item: Item, owner: Owner): Geo {
     rect.set(q.id, p);
   }
 
-  // Sobra num sink só: as esteiras de sobra em k grupos (k = esteiras cheias), cada grupo numa cascata de Mergers
+  // Sobra num sink só: as esteiras de sobra em grupos que cabem numa esteira (first-fit decreasing: abre outro sink
+  // quando a esteira não cabe em nenhum; no mínimo ceil(sobra / cap)), cada grupo numa cascata de Mergers
   // (3 entradas; cada seguinte pega o anterior e mais 2) e num Awesome Sink, numa faixa abaixo da grade.
+  // Grupo ≤ cap e taxas positivas: toda saída de Merger da cascata também fica ≤ cap.
   const sinkBelts = belts.filter(b => nodes[b.b].t === 'sink');
-  const total = sinkBelts.reduce((s, b) => s + b.rate, 0);
-  const k = sinkBelts.length ? Math.max(1, Math.ceil(total / cap - E)) : 0;
-  const groups = Array.from({ length: k }, () => ({ load: 0, belts: [] as NetBelt[] }));
+  const groups: { load: number; belts: NetBelt[] }[] = [];
   [...sinkBelts].sort((x, y) => y.rate - x.rate || x.id - y.id).forEach(b => {
-    const g = groups.reduce((m, x) => (x.load < m.load ? x : m));
+    let g = groups.find(x => x.load + b.rate <= cap + E);
+    if (!g) groups.push(g = { load: 0, belts: [] });
     g.belts.push(b);
     g.load += b.rate;
   });
