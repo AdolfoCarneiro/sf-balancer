@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
 import { PLANNER_PATH, type Lang } from './lang.ts';
@@ -10,13 +10,14 @@ import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
-import { LigacaoModal } from './ui/LigacaoModal.tsx';
 import type { Selection } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView } from './ui/MapView.tsx';
 import { blockName } from './ui/format.ts';
 
 const data = game as unknown as GameData;
+// O modal da ligação traz a bancada da página Balancer (passo a passo, 3D): só baixa na primeira vez que abre.
+const LigacaoModal = lazy(() => import('./ui/LigacaoModal.tsx').then(m => ({ default: m.LigacaoModal })));
 const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 
@@ -79,7 +80,18 @@ export function App() {
     const o = ligOpener.current;
     (o && o.isConnected && o !== document.body ? o : document.querySelector<HTMLElement>('.pl-map-canvas'))?.focus();
   };
-  useEffect(() => { if (ligId && !ligMeio) closeLig(); }, [ligId, ligMeio]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Desligar uma das esteiras do grupo: o modal segue para a ligação que ficou com as outras (o id do grupo muda).
+  const ligFollow = useRef<string | null>(null);
+  const unlinkIn = (linkId: string) => {
+    ligFollow.current = ligMeio?.links.find(id => id !== linkId) ?? null;
+    dispatch({ type: 'disconnect', linkId });
+  };
+  useEffect(() => {
+    if (!ligId || ligMeio) return;
+    const next = ligFollow.current ? meioList.find(m => m.links.includes(ligFollow.current!)) : undefined;
+    ligFollow.current = null;
+    if (next) setLigId(next.id); else closeLig();
+  }, [ligId, ligMeio]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
   const meioResults = useMeioResults(f, flow, data, lang, meioList);
   // Depois de desfazer, o bloco ou o meio selecionado pode não existir mais: aí não há seleção.
@@ -120,8 +132,10 @@ export function App() {
           data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />
       )}
       {ligMeio && (
-        <LigacaoModal key={ligMeio.id} meio={ligMeio} result={meioResults.get(ligMeio.id)} factory={f} flow={flow} data={data} lang={lang}
-          dispatch={dispatch} onClose={closeLig} />
+        <Suspense fallback={null}>
+          <LigacaoModal key={ligMeio.id} meio={ligMeio} result={meioResults.get(ligMeio.id)} factory={f} flow={flow} data={data} lang={lang}
+            dispatch={dispatch} onClose={closeLig} onUnlink={unlinkIn} />
+        </Suspense>
       )}
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>

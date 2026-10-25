@@ -191,8 +191,9 @@ export function meioSummary(plan: Plan, key?: string, geos?: Record<string, Meio
 export const lineOwner = (meio: Meio, side: 'src' | 'dst', line: PlanLine): StageId =>
   (side === 'src' ? meio.producers : meio.consumers)[line.comp[0].gi];
 
-// Link da página atual com este meio; números em inglês (a página converte ao abrir).
-export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData): string {
+// Link da página atual com este meio; números em inglês (a página converte ao abrir). selectedKey: a montagem que a
+// página abre escolhida (a mesma chave do computePlan; se não existir lá, ela abre a primeira).
+export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData, selectedKey?: string | null): string {
   const inp = meioInput(meio, f, flow, d);
   const row = (g: MeioGroup) => ({ driver: g.driver, count: String(g.count), clock: String(g.clock), nominal: String(g.nominal), total: '', per: String(g.per) });
   const fluid = inp.medium === 'fluid';
@@ -200,8 +201,9 @@ export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData):
     item: d.items[meio.item].name, src: inp.srcGroups.map(row), dst: inp.dstGroups.map(row),
     medium: inp.medium, ...(fluid ? { pipe: inp.tier } : { belt: inp.tier }),
     policy: inp.policy, excess: inp.excess, conv: inp.conv, lang: 'en',
+    ...(selectedKey ? { selectedKey } : {}),
   });
 }
 
-export const meioUrl = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: Lang): string =>
-  SITE_PATH[lang] + meioHash(meio, f, flow, d);
+export const meioUrl = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: Lang, selectedKey?: string | null): string =>
+  SITE_PATH[lang] + meioHash(meio, f, flow, d, selectedKey);

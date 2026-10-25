@@ -1,6 +1,6 @@
 // Os meios da fábrica calculados fora do render: num Web Worker com cache; sem Worker, síncrono com o mesmo cache.
 import { useEffect, useMemo, useReducer } from 'react';
-import { flowView, type FlowView } from './model/ligacao.ts';
+import type { FlowView } from './model/ligacao.ts';
 import { cacheKey, evict, meioResult, splitCached, type MeioResult } from './model/meioresult.ts';
 import type { Meio } from './model/meio.ts';
 import type { FlowResult } from './model/solve.ts';
@@ -103,17 +103,19 @@ export function useFlowView(meio: Meio, f: Factory, flow: FlowResult, data: Game
   const state = useMemo((): FlowViewState => {
     if (key === null) return { kind: 'failed' };
     if (views.has(key)) { const v = views.get(key)!; return v ? { kind: 'ready', view: v } : { kind: 'failed' }; }
-    if (getWorker()) return { kind: 'calc' };
-    let v: FlowView | null = null;
-    try { v = flowView(meio, f, flow, data, alt); } catch { /* fica null */ }
-    keepView(key, v);
-    return v ? { kind: 'ready', view: v } : { kind: 'failed' };
-  }, [key, meio, f, flow, data, alt, version]);   // eslint-disable-line react-hooks/exhaustive-deps
+    return { kind: 'calc' };
+  }, [key, version]);
+  // No worker; sem Worker, aqui mesmo, num efeito (o desenho do fluxo só carrega quando o modal pede).
   useEffect(() => {
-    const w = getWorker();
-    if (!w || key === null || state.kind !== 'calc' || viewsPending.has(key)) return;
+    if (key === null || state.kind !== 'calc' || viewsPending.has(key)) return;
     viewsPending.add(key);
-    postToWorker(w, { type: 'flow', lang, factory: f, flow, meio: meio.id, alt, key });
-  }, [key, state, lang, f, flow, meio, alt]);
+    const w = getWorker();
+    if (w) { postToWorker(w, { type: 'flow', lang, factory: f, flow, meio: meio.id, alt, key }); return; }
+    import('./model/ligacao.ts').then(m => {
+      let v: FlowView | null = null;
+      try { v = m.flowView(meio, f, flow, data, alt); } catch { /* fica null */ }
+      return v;
+    }, () => null).then(v => { viewsPending.delete(key); keepView(key, v); for (const fn of viewListeners) fn(); });
+  }, [key, state, lang, f, flow, data, meio, alt]);
   return state;
 }

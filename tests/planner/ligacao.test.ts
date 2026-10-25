@@ -8,6 +8,7 @@ import { solveFactory } from '../../src/planner/model/solve.ts';
 import { meioFor, meioPlan, meioUrl } from '../../src/planner/model/meio.ts';
 import { balancerUrl, flowView } from '../../src/planner/model/ligacao.ts';
 import { setLang, t } from '../../src/i18n/index.js';
+import { decodeShare } from '../../src/logic/index.js';
 
 const data = game as GameData;
 // O exemplo com a sobra de ferro coletada (refinaria cheia, caso 1 com sink).
@@ -95,4 +96,9 @@ test('balancerUrl: o link do Balancer com esta ligação', () => {
   const me = meioDoExemplo('l1');
   assert.equal(balancerUrl(me, f, flow, data, 'es'), meioUrl(me, f, flow, data, 'es'));
   assert.match(balancerUrl(me, f, flow, data, 'en'), /^\/#s=/);
+  // A montagem escolhida vai no link como selectedKey (a página Balancer abre com ela escolhida).
+  const url = balancerUrl(me, f, flow, data, 'en', altComBalancer);
+  const st = decodeShare(url.slice(url.indexOf('#s=') + 3))!;
+  assert.equal(st.selectedKey, altComBalancer);
+  assert.equal(decodeShare(balancerUrl(me, f, flow, data, 'en').split('#s=')[1])!.selectedKey, null);
 });

@@ -22,6 +22,7 @@ import { blockName, sizeText } from './format.ts';
 interface Props {
   meio: Meio; result: MeioResult | null | undefined; factory: Factory; flow: FlowResult; data: GameData; lang: Lang;
   dispatch: (a: Action) => void; onClose: () => void;
+  onUnlink: (linkId: string) => void;   // desliga uma esteira do grupo (quem abriu decide para onde o modal vai)
 }
 
 // O estado do balão da ajuda da página Balancer (o mesmo help.js).
@@ -34,7 +35,7 @@ const dropTip = () => {
 const altText = (n: PieceCount) => t('plMeioAltPieces', fmt(n.splitters, 0), fmt(n.mergers, 0), fmt(n.sinks, 0));
 
 // result: null = calculando; undefined = a ligação não pôde ser calculada.
-export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispatch, onClose }: Props) {
+export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispatch, onClose, onUnlink }: Props) {
   const dlg = useRef<HTMLDialogElement>(null);
   const benchEl = useRef<HTMLDivElement>(null);
   const plan = result?.plan ?? null;
@@ -156,7 +157,7 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
             {links.map(l => (
               <li key={l.id}>
                 <span>{nameOf(l.from)} → {nameOf(l.to)}</span>
-                <button type="button" className="pl-btn" onClick={() => dispatch({ type: 'disconnect', linkId: l.id })}>{t('plLigUnlink')}</button>
+                <button type="button" className="pl-btn" onClick={() => onUnlink(l.id)}>{t('plLigUnlink')}</button>
               </li>
             ))}
           </ul>
@@ -165,7 +166,7 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
           {lig && <button type="button" className="pl-btn" onClick={() => dispatch({ type: 'placeLig', meio: meio.id, place: null })}>{t('plLigReset')}</button>}
           {canOpen && (
             <>
-              <a className="pl-btn pl-link" href={balancerUrl(meio, f, flow, data, lang)} target="_blank" rel="noopener">{t('plLigOpenBalancer')}</a>
+              <a className="pl-btn pl-link" href={balancerUrl(meio, f, flow, data, lang, altKey)} target="_blank" rel="noopener">{t('plLigOpenBalancer')}</a>
               <p className="pl-note">{t('plMeioHint')}</p>
             </>
           )}
