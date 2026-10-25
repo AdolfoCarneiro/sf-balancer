@@ -175,10 +175,18 @@ export function placesOf(chain: Chain, data: GameData, geos: Geos): Record<Stage
     const placed = chain.stages.filter(x => out[x.id]);
     const { blocks, meios } = layout(chain, data, out, geos, placed);
     const rects = [...blocks.map(b => b.rect), ...meios.map(m => m.rect)];
-    const cand = prop[s.id], geo = blockGeo(s, data, cand);
-    const rect = { x: cand.x, y: cand.y, ...rotSize(geo, cand.rot) };
-    if (!rects.some(r => intersects(rect, r))) out[s.id] = cand;
-    else { const b = boundsOf(rects); out[s.id] = { x: 0, y: snap(b.y + b.h + FOUNDATION), rot: 0 }; }
+    // O bloco da etapa nova e os meios colados nela, numa posição de teste.
+    const mine = (place: MapPlace): Rect[] => {
+      const t = layout(chain, data, { ...out, [s.id]: place }, geos, [...placed, s]);
+      return [t.byId.get(s.id)!.rect, ...t.meios.filter((_, i) => t.list[i].producers[0] === s.id).map(m => m.rect)];
+    };
+    const cand = prop[s.id];
+    if (!mine(cand).some(r => rects.some(q => intersects(r, q)))) { out[s.id] = cand; continue; }
+    // Embaixo de tudo, em x = 0; um meio mais alto que o bloco sobe acima dele: desce o que faltar.
+    const bottom = boundsOf(rects).y + boundsOf(rects).h + FOUNDATION;
+    const at: MapPlace = { x: 0, y: snap(bottom), rot: 0 };
+    const top = Math.min(...mine(at).map(r => r.y));
+    out[s.id] = { ...at, y: snap(at.y + Math.max(0, bottom - top)) };
   }
   return out;
 }

@@ -22,12 +22,13 @@ export function overlaps(rects: { id: string; rect: Rect }[]): [string, string][
   return out.sort((p, q) => p[0] - q[0] || p[1] - q[1]).map(([i, j]) => [rects[i].id, rects[j].id]);
 }
 
-const CELL = 64;
 interface Seg { belt: number; a: number; b: number; at: number }   // a..b ao longo do eixo; at = a outra coordenada
 
 // Pontos onde um trecho horizontal de uma esteira cruza um vertical de outra, por dentro dos dois trechos.
 // Encostar numa ponta (fim de esteira ou curva, como as esteiras de um meio que chegam juntas) não conta.
-// Trechos verticais indexados numa grade de 64 m: cada horizontal só olha as células por onde passa.
+// Varredura em x: as horizontais abertas ficam ordenadas por y e cada vertical pega só as do seu intervalo. O custo
+// depende do número de trechos e de cruzamentos, não do comprimento deles (coordenadas enormes não pesam).
+// Saída em ordem de x, depois y.
 export function crossings(belts: BeltPath[]): Pt[] {
   const hs: Seg[] = [], vs: Seg[] = [];
   belts.forEach((bl, k) => {
@@ -37,21 +38,27 @@ export function crossings(belts: BeltPath[]): Pt[] {
       else if (x0 === x1 && y0 !== y1) vs.push({ belt: k, a: Math.min(y0, y1), b: Math.max(y0, y1), at: x0 });
     }
   });
-  const cell = (v: number) => Math.floor(v / CELL);
-  const grid = new Map<string, Seg[]>();
-  for (const s of vs) {
-    for (let cy = cell(s.a); cy <= cell(s.b); cy++) {
-      const key = `${cell(s.at)},${cy}`;
-      const l = grid.get(key);
-      if (l) l.push(s); else grid.set(key, [s]);
-    }
-  }
+  // Na mesma x: fecha as horizontais que terminam, consulta as verticais, abre as que começam (por dentro, estrito).
+  type Ev = { x: number; kind: 0 | 1 | 2; s: Seg };
+  const evs: Ev[] = [];
+  for (const h of hs) evs.push({ x: h.a, kind: 2, s: h }, { x: h.b, kind: 0, s: h });
+  for (const v of vs) evs.push({ x: v.at, kind: 1, s: v });
+  evs.sort((p, q) => p.x - q.x || p.kind - q.kind);
+  const open: Seg[] = [];   // ordenadas por y (at)
+  // Primeira aberta com at > y (ou ≥ y, com orEq).
+  const first = (y: number, orEq = false) => {
+    let lo = 0, hi = open.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (open[m].at < y || (!orEq && open[m].at === y)) lo = m + 1; else hi = m; }
+    return lo;
+  };
   const out: Pt[] = [];
-  for (const h of hs) {
-    const cy = cell(h.at);
-    for (let cx = cell(h.a); cx <= cell(h.b); cx++) {
-      for (const v of grid.get(`${cx},${cy}`) ?? []) {
-        if (v.belt !== h.belt && h.a < v.at && v.at < h.b && v.a < h.at && h.at < v.b) out.push([v.at, h.at]);
+  for (const e of evs) {
+    if (e.kind === 2) open.splice(first(e.s.at), 0, e.s);
+    else if (e.kind === 0) open.splice(open.indexOf(e.s, first(e.s.at, true)), 1);
+    else {
+      const v = e.s;
+      for (let i = first(v.a); i < open.length && open[i].at < v.b; i++) {
+        if (open[i].belt !== v.belt && open[i].at > v.a) out.push([v.at, open[i].at]);
       }
     }
   }

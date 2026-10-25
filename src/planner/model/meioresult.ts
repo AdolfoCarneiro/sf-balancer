@@ -57,3 +57,12 @@ export function splitCached(keys: Map<string, string>, cache: Map<string, MeioRe
   }
   return { ready, missing };
 }
+
+// Cache acima de `max`: sai primeiro o mais antigo que ninguém mostra (`keep`). O que está na tela fica, mesmo acima
+// do limite: tirar faria o meio ser pedido de novo, sem fim.
+export function evict(cache: Map<string, MeioResult>, max: number, keep: Set<string>): void {
+  for (const k of cache.keys()) {
+    if (cache.size <= max) return;
+    if (!keep.has(k)) cache.delete(k);
+  }
+}

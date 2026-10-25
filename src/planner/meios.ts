@@ -1,12 +1,12 @@
 // Os meios da cadeia calculados fora do render: num Web Worker com cache; sem Worker, síncrono com o mesmo cache.
 import { useEffect, useMemo, useReducer } from 'react';
-import { cacheKey, meioResult, splitCached, type MeioResult } from './model/meioresult.ts';
+import { cacheKey, evict, meioResult, splitCached, type MeioResult } from './model/meioresult.ts';
 import type { Meio } from './model/meio.ts';
 import type { Chain, GameData } from './model/types.ts';
 import type { MeioDone, MeioJobs } from './worker/meio.worker.ts';
 
 const CACHE_MAX = 256;
-// Ordem de inserção = do mais antigo ao mais novo; passando do limite, o mais antigo sai.
+// Ordem de inserção = do mais antigo ao mais novo; passando do limite, sai o mais antigo que não está na tela.
 const cache = new Map<string, MeioResult>();
 const pending = new Set<string>(), failed = new Set<string>();
 // Keys que algum componente montado ainda mostra: só elas pedem re-render quando chegam.
@@ -16,7 +16,7 @@ const listeners = new Set<() => void>();
 function remember(r: MeioResult) {
   cache.delete(r.key);
   cache.set(r.key, r);
-  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
+  evict(cache, CACHE_MAX, wanted);
 }
 const notify = () => { for (const f of listeners) f(); };
 

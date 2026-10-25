@@ -163,6 +163,19 @@ test('cruzamento: duas esteiras em cruz contam 1; as do mesmo meio que se tocam 
   assert.deepEqual(crossings([b([[0, 0], [10, 0]]), b([[20, -5], [20, 5]])]), []);
 });
 
+test('cruzamentos com coordenadas hostis (±100 km): custo não depende do tamanho das esteiras', () => {
+  const b = (pts: [number, number][]) => ({ pts, item: 'x', rate: 1, role: 'main' as const, fluid: false });
+  const belts = [];
+  // 3.000 horizontais à esquerda e 3.000 verticais à direita, todas de 100 a 200 km: nenhuma se cruza.
+  for (let i = 0; i < 3000; i++) belts.push(b([[-100000, i * 0.01], [-1, i * 0.01]]), b([[1 + i * 0.01, -100000], [1 + i * 0.01, 100000]]));
+  const t0 = performance.now();
+  assert.deepEqual(crossings(belts), []);
+  const dt = performance.now() - t0;
+  assert.ok(dt < 150, `${dt.toFixed(0)} ms`);
+  // E as que se cruzam continuam contadas, em ordem de x.
+  assert.deepEqual(crossings([b([[-100000, 0], [100000, 0]]), b([[99999, -100000], [99999, 100000]]), b([[-5, -1], [-5, 1]])]), [[-5, 0], [99999, 0]]);
+});
+
 test('sobreposição: só interseção de área', () => {
   const r = (id: string, x: number, y: number, w = 10, h = 10) => ({ id, rect: { x, y, w, h } });
   assert.deepEqual(overlaps([r('a', 0, 0), r('b', 10, 0), r('c', 0, 10)]), []);
@@ -240,4 +253,19 @@ test('proposta do exemplo com os meios de verdade: nenhum cruzamento e nada sobr
   const m = meioOf(s, 'Desc_IronIngot_C:s1>s2').rect;
   const out = s.belts.filter(b => b.item === 'Desc_IronIngot_C' && b.pts[0][0] === m.x + m.w && b.pts.length > 2);
   assert.ok(out.length > 0 && out.every(b => b.pts[1][0] === m.x + m.w + 1));
+});
+
+test('etapa nova: o meio colado nela também não pode cair em cima de algo já posicionado', () => {
+  const geos = geosDoExemplo();
+  const p = proposeMap(ex, data, geos);
+  const steel = meioOf(buildScene(ex, data, p, geos), STEEL_MEIO).rect;
+  // s3 em cima do meio de aço de s2, mas sem tocar o bloco de s2; s2 sem posição.
+  const s3 = { x: Math.ceil(steel.x / 8) * 8, y: Math.floor(steel.y / 8) * 8, rot: 0 as const };
+  const ch: Chain = { ...ex, map: { s1: p.s1, s3, s4: { ...p.s4, y: 1000 } } };
+  const s2rect = blockOf(buildScene(ex, data, p, geos), 's2').rect;
+  assert.ok(s3.x >= s2rect.x + s2rect.w, 's3 não encosta no bloco de s2');
+  const q = placesOf(ch, data, geos);
+  assert.notDeepEqual(q.s2, p.s2);
+  assert.equal(q.s2.x, 0);
+  assert.ok(!buildScene(ch, data, q, geos).overlaps.some(pair => pair.includes('s2') || pair.includes(STEEL_MEIO)));
 });

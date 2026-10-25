@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData } from '../../src/planner/model/types.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
 import { meioFor, meioHash, meios, meioSummary } from '../../src/planner/model/meio.ts';
-import { cacheKey, chosenAlt, litePlan, meioResult, splitCached, type MeioResult } from '../../src/planner/model/meioresult.ts';
+import { cacheKey, chosenAlt, evict, litePlan, meioResult, splitCached, type MeioResult } from '../../src/planner/model/meioresult.ts';
 import { setLang } from '../../src/i18n/index.js';
 
 const data = game as GameData;
@@ -99,4 +99,19 @@ test('cacheKey muda com o vão entre peças do meio; o resultado usa o vão da c
   const a = meioResult(me, ex, data), b = meioResult(me, wide, data);
   const key = a.plan.alternatives[0].key;
   assert.ok(b.geos[key].w > a.geos[key].w);
+});
+
+test('cache cheio: sai primeiro o que ninguém mostra; o que está na tela nunca sai', () => {
+  const r = (key: string) => ({ id: key, key } as unknown as MeioResult);
+  const cache = new Map<string, MeioResult>();
+  for (const k of ['a', 'b', 'c', 'd']) cache.set(k, r(k));
+  evict(cache, 2, new Set(['a', 'b']));
+  assert.deepEqual([...cache.keys()], ['a', 'b']);
+  // Tudo na tela e acima do limite: fica tudo (tirar um faria recalcular sem fim).
+  cache.set('e', r('e'));
+  evict(cache, 2, new Set(['a', 'b', 'e']));
+  assert.deepEqual([...cache.keys()], ['a', 'b', 'e']);
+  // Sem nada na tela: os mais antigos saem.
+  evict(cache, 1, new Set());
+  assert.deepEqual([...cache.keys()], ['e']);
 });
