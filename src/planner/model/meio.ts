@@ -80,7 +80,8 @@ export function meioInput(meio: Meio, chain: Chain, data: GameData): MeioInput {
   }
   return {
     srcGroups: meio.producers.map(id => group(id, 'outs')), dstGroups: meio.consumers.map(id => group(id, 'ins')),
-    cap, tier, medium: it.fluid ? 'fluid' : 'item', policy: chain.policy, excess: 'represar', conv: 'k-1',
+    // Fluido não vai pro sink: a sobra represa.
+    cap, tier, medium: it.fluid ? 'fluid' : 'item', policy: it.fluid && chain.policy === 'sink' ? 'represar' : chain.policy, excess: 'represar', conv: 'k-1',
   };
 }
 

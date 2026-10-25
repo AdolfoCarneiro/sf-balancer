@@ -5,7 +5,8 @@ import { perMachine, perRowOf, portTier, portWarnings, stageRows } from '../mode
 import type { GameData, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
 
-export type StageNodeData = { stage: Stage; game: GameData; lang: string };
+// fluidOut: saídas fluidas sem ligação (aviso: o Awesome Sink não aceita fluido).
+export type StageNodeData = { stage: Stage; game: GameData; lang: string; fluidOut: { item: string; total: number }[] };
 export type StageNodeType = Node<StageNodeData, 'stage'>;
 
 const GAP = 2, ROW_GAP = 8, MIN = 4;
@@ -13,7 +14,7 @@ export const PORT_TOP = 22, PORT_STEP = 26;
 
 // Uma etapa: cabeçalho, fileiras em escala (1 px = 1 m) com a esteira embaixo, rodapé com as portas.
 function StageNodeImpl({ data, selected }: NodeProps<StageNodeType>) {
-  const { stage, game } = data;
+  const { stage, game, fluidOut } = data;
   const r = game.recipes[stage.recipe];
   const b = game.buildings[r.building];
   const rows = stageRows(stage, game);
@@ -74,7 +75,10 @@ function StageNodeImpl({ data, selected }: NodeProps<StageNodeType>) {
           <span key={'t' + f.item} className="pl-dim">{game.items[f.item]?.name ?? f.item} {rateText(game.items[f.item], perMachine(stage, game, f.item, 'outs') * stage.machines)}</span>
         ))}
         {warns.map(w => (
-          <span key={'w' + w.side + w.item} className="pl-warn">{t('plPortWarn', game.items[w.item]?.name ?? w.item, fmt(w.rowRate), w.tier, fmt(w.cap))}</span>
+          <span key={'w' + w.side + w.item} className="pl-warn">{t('plPortWarn', game.items[w.item]?.name ?? w.item, rateText(game.items[w.item], w.rowRate), w.tier, fmt(w.cap))}</span>
+        ))}
+        {fluidOut.map(f => (
+          <span key={'f' + f.item} className="pl-warn" role="status">{t('plFluidOut', game.items[f.item]?.name ?? f.item, rateText(game.items[f.item], f.total))}</span>
         ))}
       </div>
     </div>

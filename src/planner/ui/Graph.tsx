@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { t } from '../../i18n/index.js';
-import { canLink, rawInputs } from '../model/chain.ts';
+import { canLink, rawInputs, unlinkedFluids } from '../model/chain.ts';
 import { meioPlan, meioSummary, type Meio, type MeioSummary } from '../model/meio.ts';
 import { nodeSize } from '../model/autolayout.ts';
 import type { Action } from '../model/persist.ts';
@@ -44,7 +44,7 @@ export function Graph({ chain, data, lang, meioList, selection, onSelect, dispat
     const out: Node[] = [];
     for (const s of chain.stages) {
       const n: StageNodeType = {
-        id: s.id, type: 'stage', position: posOf(s.id, s.pos), data: { stage: s, game: data, lang },
+        id: s.id, type: 'stage', position: posOf(s.id, s.pos), data: { stage: s, game: data, lang, fluidOut: unlinkedFluids(chain, data, s.id) },
         selected: selection?.kind === 'stage' && selection.id === s.id,
         ...(sizes[s.id] ? { measured: sizes[s.id] } : {}),
       };

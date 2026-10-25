@@ -97,7 +97,7 @@ export function App() {
         <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList}
           dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
       </div>
-      {openStage && <StageView key={openStage.id} stage={openStage} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
+      {openStage && <StageView key={openStage.id} stage={openStage} chain={chain} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
     </div>
   );
 }

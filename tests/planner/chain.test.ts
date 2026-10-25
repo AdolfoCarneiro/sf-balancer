@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Chain, GameData, StageId } from '../../src/planner/model/types.ts';
 import {
   nextStageId, nextLinkId, addStage, removeStage, canLink, link, unlink, setMachines, setRecipe, setLocked,
-  setPerRow, setPolicy, setClock, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow, MAX_MACHINES,
+  setPerRow, setPolicy, setClock, moveStage, demandOf, supplyOf, rawInputs, products, linkFlow, MAX_MACHINES, unlinkedFluids,
 } from '../../src/planner/model/chain.ts';
 import { exampleChain } from '../../src/planner/model/example.ts';
 
@@ -152,4 +152,12 @@ test('cadeia: máquinas ficam em 1 a 10.000, também ao escalar descendentes e a
   const clk = setClock(setMachines(setLocked(ch, 's2', true), data, 's3', 10000), data, 's3', 1);
   assert.ok(clk.stages.every(s => s.machines <= MAX_MACHINES), JSON.stringify(clk.stages.map(s => s.machines)));
   assert.equal(m(addStage(ch, data, 'Recipe_SteelPipe_C', 1e9), 's5'), 10000);
+});
+
+test('cadeia: saída fluida sem ligação vira aviso; sólida não; ligada some', () => {
+  const st = (id: string, recipe: string, machines = 1) => ({ id, recipe, machines, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } });
+  const c: Chain = { v: 1, stages: [st('p', 'Recipe_Plastic_C', 3), st('f', 'Recipe_ResidualFuel_C')], links: [], policy: 'represar' };
+  assert.deepEqual(unlinkedFluids(c, data, 'p'), [{ stage: 'p', item: 'Desc_HeavyOilResidue_C', total: 30 }]);
+  assert.deepEqual(unlinkedFluids(link(c, data, 'p', 'f', 'Desc_HeavyOilResidue_C'), data, 'p'), []);
+  assert.deepEqual(unlinkedFluids(ch, data, 's3'), []);
 });

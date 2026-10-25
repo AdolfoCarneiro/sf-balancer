@@ -67,5 +67,6 @@ test('meio: item fluido sai em modo fluido, cano, sem sink', () => {
   const me = meioFor(c, fake, 'l1');
   assert.equal(meioInput(me, c, fake).medium, 'fluid'); assert.equal(meioPlan(me, c, fake).policy, 'represar');
   const share = decodeShare(meioHash(me, c, fake).slice(3))!;
-  assert.equal(share.medium, 'fluid'); assert.equal(share.pipe, 'Mk2');
+  assert.equal(share.medium, 'fluid'); assert.equal(share.pipe, 'Mk2'); assert.equal(share.policy, 'represar');
+  assert.equal(meioInput(me, c, fake).policy, 'represar');
 });

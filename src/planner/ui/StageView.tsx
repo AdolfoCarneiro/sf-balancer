@@ -6,7 +6,9 @@ import type { Action } from '../model/persist.ts';
 import { MAX_MACHINES } from '../model/chain.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
 import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
-import type { GameData, Stage } from '../model/types.ts';
+import type { Chain, GameData, Stage } from '../model/types.ts';
+import { unlinkedFluids } from '../model/chain.ts';
+import { rateText } from './format.ts';
 import { NumField } from './Inspector.tsx';
 
 const PX = 4;        // 1 m = 4 px
@@ -16,9 +18,9 @@ const GUTTER = CELL; // coluna da etiqueta L{n}
 const ROW_GAP = 16;
 const MARK = 6;
 
-interface Props { stage: Stage; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
+interface Props { stage: Stage; chain: Chain; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
 
-export function StageView({ stage, data, dispatch, onClose }: Props) {
+export function StageView({ stage, chain, data, dispatch, onClose }: Props) {
   const r = data.recipes[stage.recipe];
   const b = data.buildings[r.building];
   const draw = useMemo(() => stageDrawing(stage, data), [stage, data]);
@@ -74,8 +76,8 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
             <li><i style={{ background: 'var(--held)' }} />{t('plLegInN')}</li>
             <li><i style={{ background: 'var(--ficsit)' }} />{t('plLegOut')}</li>
             <li><i style={{ background: 'var(--holo)' }} />{t('plLegFluid')}</li>
-            <li><i className="pl-sq" />Splitter</li>
-            <li><i className="pl-sq" />Merger</li>
+            <li><i className="pl-sq" style={{ background: 'var(--flow)' }} />Splitter</li>
+            <li><i className="pl-sq" style={{ background: 'var(--ficsit)' }} />Merger</li>
             <li className="pl-dim">{t('plFoundation')}</li>
           </ul>
           <div className="pl-draw-scroll" tabIndex={0} role="group" aria-label={t('plDrawAria')}>
@@ -96,7 +98,7 @@ export function StageView({ stage, data, dispatch, onClose }: Props) {
             </div>
           </div>
         </div>
-        <Side stage={stage} data={data} dispatch={dispatch} />
+        <Side stage={stage} chain={chain} data={data} dispatch={dispatch} />
       </div>
     </div>
   );
@@ -127,12 +129,13 @@ function PerRowField({ stage, data, dispatch }: { stage: Stage; data: GameData; 
   );
 }
 
-function Side({ stage, data, dispatch }: Omit<Props, 'onClose'>) {
+function Side({ stage, chain, data, dispatch }: Omit<Props, 'onClose'>) {
   const r = data.recipes[stage.recipe];
   const main = (r.outs[0] ?? r.ins[0]).item;
   const options = recipesFor(data, main);
   if (!options.some(o => o.id === r.id)) options.unshift(r);
   const warns = portWarnings(stage, data);
+  const fluidOut = unlinkedFluids(chain, data, stage.id);
   const pieces = stagePieces(stage, data);
   const area = stageArea(stage, data);
   const nrows = stageRows(stage, data).length;
@@ -169,7 +172,10 @@ function Side({ stage, data, dispatch }: Omit<Props, 'onClose'>) {
                   {tiers.map(x => <option key={x.id} value={x.id}>{x.id} ({fmt(x.cap)})</option>)}
                 </select>
               </label>
-              {w && <div className="pl-warn-box" role="status">{t('plWarnPort', fmt(w.rowRate), fmt(w.cap), w.fixTier, fmt(w.fixPerRow))}</div>}
+              {w && <div className="pl-warn-box" role="status">{t('plWarnPort', rateText(it, w.rowRate), fmt(w.cap), w.fixTier, fmt(w.fixPerRow), !!it?.fluid)}</div>}
+              {f.side === 'outs' && fluidOut.some(x => x.item === f.item) && (
+                <div className="pl-warn-box" role="status">{t('plFluidOut', it?.name ?? f.item, rateText(it, fluidOut.find(x => x.item === f.item)!.total))}</div>
+              )}
             </div>
           );
         })}

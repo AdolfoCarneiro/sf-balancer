@@ -69,6 +69,10 @@ export function products(c: Chain, d: GameData) {
     .map(f => ({ stage: s.id, item: f.item, total: perMachine(s, d, f.item, 'outs') * s.machines })));
 }
 
+// Saídas fluidas sem ligação da etapa: geram aviso, porque o Awesome Sink não aceita fluido.
+export const unlinkedFluids = (c: Chain, d: GameData, id: StageId) =>
+  products(c, d).filter(p => p.stage === id && d.items[p.item]?.fluid);
+
 // Ligações do mesmo item que se tocam (produtor ou consumidor em comum).
 function group(c: Chain, l0: Link): Link[] {
   const g = new Set([l0]);
