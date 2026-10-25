@@ -40,7 +40,7 @@ test('salvar: limpa machines, perRow, pos, tiers, policy e id longo', () => {
   assert.equal(c.stages[0].machines, 10000); assert.equal(c.stages[1].machines, 1);
   assert.equal(c.stages[0].perRow, null); assert.equal(c.stages[1].perRow, null);
   assert.deepEqual(c.stages[2].pos, { x: 0, y: 0 });
-  assert.deepEqual(c.stages[0].tiers, { Desc_IronIngot_C: 'Mk4' });
+  assert.deepEqual(c.stages[0].tiers, { 'out:Desc_IronIngot_C': 'Mk4' });
   assert.equal(c.policy, 'represar');
   assert.equal(c.stages[3].id.length, 40);
 });
@@ -67,4 +67,14 @@ test('abrir: #p= válido ganha do salvo; salvo quebrado cai no exemplo', () => {
   const e = initialChain('#p=zz', 'quebrado', data);
   assert.deepEqual(e.chain, ex); assert.equal(e.fromLink, false);
   assert.equal(PLANNER_STORE, 'sf-balancer:planner');
+});
+
+test('salvar: tier antigo (só o item) vai para o lado onde o item está; nos dois lados, para a saída', () => {
+  const raw = { v: 1, policy: 'represar', links: [], stages: [
+    { id: 's1', recipe: 'Recipe_UraniumCell_C', machines: 1, clock: 100, tiers: { Desc_SulfuricAcid_C: 'Mk1', Desc_Cement_C: 'Mk3', Desc_UraniumCell_C: 'Mk2' } },
+    { id: 's2', recipe: 'Recipe_UraniumCell_C', machines: 1, clock: 100, tiers: { 'in:Desc_SulfuricAcid_C': 'Mk2', 'out:Desc_Cement_C': 'Mk3', 'in:X': 'Mk1' } },
+  ] };
+  const c = decodeChain(encodeShare(raw), data)!;
+  assert.deepEqual(c.stages[0].tiers, { 'out:Desc_SulfuricAcid_C': 'Mk1', 'in:Desc_Cement_C': 'Mk3', 'out:Desc_UraniumCell_C': 'Mk2' });
+  assert.deepEqual(c.stages[1].tiers, { 'in:Desc_SulfuricAcid_C': 'Mk2' });
 });

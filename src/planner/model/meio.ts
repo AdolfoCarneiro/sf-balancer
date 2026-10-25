@@ -73,8 +73,9 @@ export function meioInput(meio: Meio, chain: Chain, data: GameData): MeioInput {
   };
   // A esteira (ou cano) do meio é a maior entre as portas que ele liga.
   let tier = '', cap = 0;
-  for (const id of [...meio.producers, ...meio.consumers]) {
-    const tr = portTier(stageOf(chain, id), data, meio.item), c = capOf(it, tr);
+  const sides = [...meio.producers.map(id => [id, 'outs'] as const), ...meio.consumers.map(id => [id, 'ins'] as const)];
+  for (const [id, side] of sides) {
+    const tr = portTier(stageOf(chain, id), data, meio.item, side), c = capOf(it, tr);
     if (c > cap) { cap = c; tier = tr; }
   }
   return {

@@ -1,5 +1,5 @@
-import type { Chain, GameData, ItemId, Link, RecipeId, Stage, StageId } from './types.ts';
-import { perMachine } from './stage.ts';
+import type { Chain, GameData, ItemId, Link, RecipeId, Side, Stage, StageId } from './types.ts';
+import { perMachine, tierKey } from './stage.ts';
 import { placeNew } from './autolayout.ts';
 
 const E = 1e-9;
@@ -51,20 +51,20 @@ export const unlink = (c: Chain, linkId: string): Chain => ({ ...c, links: c.lin
 
 export function demandOf(c: Chain, d: GameData, id: StageId, item: ItemId): number {
   const s = get(c, id);
-  return s && ins(s, d).some(f => f.item === item) ? perMachine(s, d, item) * s.machines : 0;
+  return s && ins(s, d).some(f => f.item === item) ? perMachine(s, d, item, 'ins') * s.machines : 0;
 }
 export function supplyOf(c: Chain, d: GameData, id: StageId, item: ItemId): number {
   const s = get(c, id);
-  return s && outs(s, d).some(f => f.item === item) ? perMachine(s, d, item) * s.machines : 0;
+  return s && outs(s, d).some(f => f.item === item) ? perMachine(s, d, item, 'outs') * s.machines : 0;
 }
 
 export function rawInputs(c: Chain, d: GameData) {
   return c.stages.flatMap(s => ins(s, d).filter(f => !c.links.some(l => l.to === s.id && l.item === f.item))
-    .map(f => ({ stage: s.id, item: f.item, total: perMachine(s, d, f.item) * s.machines })));
+    .map(f => ({ stage: s.id, item: f.item, total: perMachine(s, d, f.item, 'ins') * s.machines })));
 }
 export function products(c: Chain, d: GameData) {
   return c.stages.flatMap(s => outs(s, d).filter(f => !c.links.some(l => l.from === s.id && l.item === f.item))
-    .map(f => ({ stage: s.id, item: f.item, total: perMachine(s, d, f.item) * s.machines })));
+    .map(f => ({ stage: s.id, item: f.item, total: perMachine(s, d, f.item, 'outs') * s.machines })));
 }
 
 // Ligações do mesmo item que se tocam (produtor ou consumidor em comum).
@@ -131,7 +131,7 @@ export function rebalance(c: Chain, d: GameData, changed: StageId, factor: numbe
         const part = tot > E ? supplyOf(c, d, id, f.item) / tot : 1 / prods.length;
         dem += demandOf(cur, d, l.to, f.item) * part;
       }
-      need = Math.max(need, dem / perMachine(s, d, f.item));
+      need = Math.max(need, dem / perMachine(s, d, f.item, 'outs'));
     }
     cur = edit(cur, id, x => ({ ...x, machines: whole(need) }));
   }
@@ -149,9 +149,9 @@ export function setRecipe(c: Chain, d: GameData, id: StageId, recipe: RecipeId):
   const r = d.recipes[recipe];
   if (!r) return c;
   const keep = (l: Link) => (l.from !== id || r.outs.some(f => f.item === l.item)) && (l.to !== id || r.ins.some(f => f.item === l.item));
-  const items = new Set([...r.ins, ...r.outs].map(f => f.item));
+  const keys = new Set([...r.ins.map(f => tierKey('ins', f.item)), ...r.outs.map(f => tierKey('outs', f.item))]);
   const c2 = edit({ ...c, links: c.links.filter(keep) }, id, s =>
-    ({ ...s, recipe, tiers: Object.fromEntries(Object.entries(s.tiers).filter(([k]) => items.has(k))) }));
+    ({ ...s, recipe, tiers: Object.fromEntries(Object.entries(s.tiers).filter(([k]) => keys.has(k))) }));
   return rebalance(c2, d, id, 1);
 }
 
@@ -164,9 +164,9 @@ export function setClock(c: Chain, d: GameData, id: StageId, clock: number): Cha
 }
 export const setPerRow = (c: Chain, id: StageId, perRow: number | null): Chain => edit(c, id, s => ({ ...s, perRow }));
 // `null` tira a escolha (volta ao automático).
-export const setTier = (c: Chain, id: StageId, item: ItemId, tier: string | null): Chain => edit(c, id, s => {
-  const tiers = { ...s.tiers };
-  if (tier === null) delete tiers[item]; else tiers[item] = tier;
+export const setTier = (c: Chain, id: StageId, side: Side, item: ItemId, tier: string | null): Chain => edit(c, id, s => {
+  const tiers = { ...s.tiers }, k = tierKey(side, item);
+  if (tier === null) delete tiers[k]; else tiers[k] = tier;
   return { ...s, tiers };
 });
 export const setLocked = (c: Chain, id: StageId, locked: boolean): Chain => edit(c, id, s => ({ ...s, locked }));
@@ -185,7 +185,7 @@ export function addLinkedStage(c: Chain, d: GameData, recipe: RecipeId, at: { it
   const used = c.links.filter(l => l.item === at.item && (consumes ? l.from === at.stage : l.to === at.stage))
     .reduce((n, l) => n + (consumes ? demandOf(c, d, l.to, at.item) : supplyOf(c, d, l.from, at.item)), 0);
   const gap = consumes ? supplyOf(c, d, at.stage, at.item) - used : demandOf(c, d, at.stage, at.item) - used;
-  const sized = { ...mine, machines: whole(gap / perMachine(mine, d, at.item)) };
+  const sized = { ...mine, machines: whole(gap / perMachine(mine, d, at.item, consumes ? 'ins' : 'outs')) };
   const linked: Chain = { ...c, stages: [...c.stages, sized] };
   const l = consumes ? link(linked, d, at.stage, id, at.item) : link(linked, d, id, at.stage, at.item);
   return { ...l, stages: l.stages.map(s => (s.id === id ? { ...s, pos: placeNew(l, d, id) } : s)) };

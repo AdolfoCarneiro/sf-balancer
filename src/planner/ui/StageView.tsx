@@ -4,7 +4,7 @@ import { BELTS, PIPES } from '../../logic/belts.js';
 import { stageDrawing, type Lane } from '../model/drawing.ts';
 import type { Action } from '../model/persist.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
-import { perRowOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow } from '../model/stage.ts';
+import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
 import type { GameData, Stage } from '../model/types.ts';
 import { NumField } from './Inspector.tsx';
 
@@ -135,7 +135,7 @@ function Side({ stage, data, dispatch }: Omit<Props, 'onClose'>) {
   const pieces = stagePieces(stage, data);
   const area = stageArea(stage, data);
   const nrows = stageRows(stage, data).length;
-  const ports = [...r.ins, ...r.outs];
+  const ports = portsOf(stage, data);
   return (
     <aside className="pl-inspector pl-sv-side" aria-label={t('plInspector')}>
       <div className="pl-insp">
@@ -156,14 +156,15 @@ function Side({ stage, data, dispatch }: Omit<Props, 'onClose'>) {
         {ports.map(f => {
           const it = data.items[f.item];
           const tiers = (it?.fluid ? PIPES : BELTS) as { id: string; cap: number }[];
-          const w = warns.find(x => x.item === f.item);
+          const w = warns.find(x => x.item === f.item && x.side === f.side);
+          const label = t(f.side === 'ins' ? 'plPortIn' : 'plPortOut', it?.name ?? f.item);
           return (
-            <div key={f.item} className="pl-port-set">
+            <div key={f.side + f.item} className="pl-port-set">
               <label className="pl-field">
-                <span>{it?.name ?? f.item}</span>
-                <select value={stage.tiers[f.item] ?? ''} aria-label={t('plTierOf', it?.name ?? f.item)}
-                  onChange={e => dispatch({ type: 'setTier', id: stage.id, item: f.item, tier: e.target.value || null })}>
-                  <option value="">{t('plTierAuto')} · {portTier(stage, data, f.item)}</option>
+                <span>{label}</span>
+                <select value={stage.tiers[tierKey(f.side, f.item)] ?? ''} aria-label={t('plTierOf', label)}
+                  onChange={e => dispatch({ type: 'setTier', id: stage.id, side: f.side, item: f.item, tier: e.target.value || null })}>
+                  <option value="">{t('plTierAuto')} · {portTier(stage, data, f.item, f.side)}</option>
                   {tiers.map(x => <option key={x.id} value={x.id}>{x.id} ({fmt(x.cap)})</option>)}
                 </select>
               </label>

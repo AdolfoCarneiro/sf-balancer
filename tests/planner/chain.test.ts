@@ -132,3 +132,12 @@ test('cadeia: descendente travado não escala, o irmão sim', () => {
   const c = setMachines(setLocked(ch, 's3', true), data, 's2', 70);
   assert.deepEqual([m(c, 's3'), m(c, 's4')], [30, 70]);
 });
+
+test('cadeia: oferta e demanda do item que entra e sai pela mesma receita', () => {
+  const st = { id: 's1', recipe: 'Recipe_UraniumCell_C', machines: 10, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } };
+  const c: Chain = { v: 1, stages: [st], links: [], policy: 'represar' };
+  assert.equal(supplyOf(c, data, 's1', 'Desc_SulfuricAcid_C'), 100);
+  assert.equal(demandOf(c, data, 's1', 'Desc_SulfuricAcid_C'), 400);
+  assert.deepEqual(products(c, data).find(p => p.item === 'Desc_SulfuricAcid_C')?.total, 100);
+  assert.deepEqual(rawInputs(c, data).find(p => p.item === 'Desc_SulfuricAcid_C')?.total, 400);
+});

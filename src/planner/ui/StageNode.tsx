@@ -19,13 +19,13 @@ function StageNodeImpl({ data, selected }: NodeProps<StageNodeType>) {
   const rows = stageRows(stage, game);
   const per = perRowOf(stage, game);
   const mw = Math.max(MIN, b.w), ml = Math.max(MIN, b.l);
-  const main = r.outs[0] ?? r.ins[0];
+  const main = r.outs[0] ? { item: r.outs[0].item, side: 'outs' as const } : r.ins[0] ? { item: r.ins[0].item, side: 'ins' as const } : null;
   const warns = portWarnings(stage, game);
   const allFluid = r.outs.length > 0 && r.outs.every(f => game.items[f.item]?.fluid);
 
   const svgW = per * (mw + GAP) - GAP, svgH = rows.length * (ml + ROW_GAP);
   const rowsLine = (side: 'ins' | 'outs', item: string) => {
-    const pm = perMachine(stage, game, item), tier = portTier(stage, game, item);
+    const pm = perMachine(stage, game, item, side), tier = portTier(stage, game, item, side);
     const full = rows.filter(k => k === per).length, last = rows.length > full ? rows[rows.length - 1] : 0;
     const key = side === 'outs' ? 'plRowsOut' : 'plRowsIn';
     // Só a fileira incompleta: mostra ela como a única.
@@ -49,7 +49,7 @@ function StageNodeImpl({ data, selected }: NodeProps<StageNodeType>) {
       {r.outs.map((f, i) => port('outs', f, i))}
       <div className="pl-node-head">
         <div className="pl-node-name">{r.name}{r.alt && <span className="pl-alt">{t('plAlt')}</span>}</div>
-        <div className="pl-node-sub">{t('plEach', b.name, fmt(stage.machines, 0), main ? rateText(game.items[main.item], perMachine(stage, game, main.item)) : '')}</div>
+        <div className="pl-node-sub">{t('plEach', b.name, fmt(stage.machines, 0), main ? rateText(game.items[main.item], perMachine(stage, game, main.item, main.side)) : '')}</div>
       </div>
       <div className="pl-node-body">
         <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} role="img"
@@ -71,10 +71,10 @@ function StageNodeImpl({ data, selected }: NodeProps<StageNodeType>) {
         {r.ins.map(f => <span key={'i' + f.item}>{rowsLine('ins', f.item)} <span className="pl-dim">{game.items[f.item]?.name ?? f.item}</span></span>)}
         {r.outs.map(f => <span key={'o' + f.item}>{rowsLine('outs', f.item)}</span>)}
         {r.outs.map(f => (
-          <span key={'t' + f.item} className="pl-dim">{game.items[f.item]?.name ?? f.item} {rateText(game.items[f.item], perMachine(stage, game, f.item) * stage.machines)}</span>
+          <span key={'t' + f.item} className="pl-dim">{game.items[f.item]?.name ?? f.item} {rateText(game.items[f.item], perMachine(stage, game, f.item, 'outs') * stage.machines)}</span>
         ))}
         {warns.map(w => (
-          <span key={'w' + w.item} className="pl-warn">{t('plPortWarn', game.items[w.item]?.name ?? w.item, fmt(w.rowRate), w.tier, fmt(w.cap))}</span>
+          <span key={'w' + w.side + w.item} className="pl-warn">{t('plPortWarn', game.items[w.item]?.name ?? w.item, fmt(w.rowRate), w.tier, fmt(w.cap))}</span>
         ))}
       </div>
     </div>

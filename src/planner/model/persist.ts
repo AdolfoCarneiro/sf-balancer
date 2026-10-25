@@ -1,4 +1,5 @@
-import type { Chain, GameData, ItemId, Link, RecipeId, Stage, StageId } from './types.ts';
+import type { Chain, GameData, ItemId, Link, RecipeId, Side, Stage, StageId } from './types.ts';
+import { tierKey } from './stage.ts';
 import { addLinkedStage, addStage, canLink, link, moveStage, nextLinkId, removeStage, setClock, setLocked, setMachines, setPerRow, setPolicy, setRecipe, setTier, unlink } from './chain.ts';
 import { placeNew } from './autolayout.ts';
 import { exampleChain } from './example.ts';
@@ -19,7 +20,7 @@ export type Action =
   | { type: 'setRecipe'; id: StageId; recipe: RecipeId }
   | { type: 'setClock'; id: StageId; clock: number }
   | { type: 'setPerRow'; id: StageId; perRow: number | null }
-  | { type: 'setTier'; id: StageId; item: ItemId; tier: string | null }
+  | { type: 'setTier'; id: StageId; side: Side; item: ItemId; tier: string | null }
   | { type: 'setLocked'; id: StageId; locked: boolean }
   | { type: 'moveStage'; id: StageId; pos: Pos }
   | { type: 'setPolicy'; policy: Chain['policy'] }
@@ -50,12 +51,16 @@ export function decodeChain(str: string, data: GameData): Chain | null {
     const id = r.id.slice(0, 40);
     if (!recipe || seen.has(id)) continue;
     seen.add(id);
-    const items = new Set([...recipe.ins, ...recipe.outs].map(f => f.item));
-    const tiers: Record<ItemId, string> = {};
-    if (isObj(r.tiers)) for (const [item, tier] of Object.entries(r.tiers)) {
-      if (!items.has(item) || typeof tier !== 'string') continue;
+    // Chave `in:`/`out:` + item; a antiga (só o item) vai para a saída se o item sai, senão para a entrada.
+    const has = (side: Side, item: string) => recipe[side].some(f => f.item === item);
+    const tiers: Record<string, string> = {};
+    if (isObj(r.tiers)) for (const [key, tier] of Object.entries(r.tiers)) {
+      const m = key.match(/^(in|out):(.*)$/);
+      const item = m ? m[2] : key;
+      const side: Side = m ? (m[1] === 'in' ? 'ins' : 'outs') : has('outs', item) ? 'outs' : 'ins';
+      if (!has(side, item) || typeof tier !== 'string') continue;
       const ok = (data.items[item]?.fluid ? PIPES : BELTS).some((b: { id: string }) => b.id === tier);
-      if (ok) tiers[item] = tier;
+      if (ok) tiers[tierKey(side, item)] = tier;
     }
     const pr = r.perRow;
     stages.push({
@@ -99,7 +104,7 @@ function apply(c: Chain, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>,
     case 'setRecipe': return setRecipe(c, d, a.id, a.recipe);
     case 'setClock': return setClock(c, d, a.id, a.clock);
     case 'setPerRow': return setPerRow(c, a.id, a.perRow);
-    case 'setTier': return setTier(c, a.id, a.item, a.tier);
+    case 'setTier': return setTier(c, a.id, a.side, a.item, a.tier);
     case 'setLocked': return setLocked(c, a.id, a.locked);
     case 'moveStage': return moveStage(c, a.id, a.pos);
     case 'setPolicy': return setPolicy(c, a.policy);
