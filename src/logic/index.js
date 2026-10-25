@@ -8,3 +8,4 @@ export { waterfill, makeGraph, addNode, addEdge, simulate, buildBalancer } from 
 export { evaluatePlan, generatePlans, headerGroups, computePlan } from './plan.js';
 export { historyNew, historyPush, historyUndo, historyRedo, historyReplace } from './history.js';
 export { encodeShare, decodeShare, issueUrl } from './share.js';
+export { flowNet } from './flownet.js';

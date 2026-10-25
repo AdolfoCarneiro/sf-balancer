@@ -1288,3 +1288,113 @@ test('issue: URL do GitHub com título e corpo codificados', () => {
     for (const x of ['L', 'I', 'M', 'P', 'C']) assert.ok(body.includes(x), `${l}: ${x}`);
   });
 });
+
+// Rede de peças do fluxo: cada peça do jeito do jogo e as contas batem com a alternativa.
+const checkNet = (p, a) => {
+  const n = L.flowNet(a);
+  const ins = id => n.belts.filter(b => b.b === id), outs = id => n.belts.filter(b => b.a === id);
+  for (const q of n.nodes) {
+    if (q.t === 'm') { assert.ok(ins(q.id).length >= 2 && ins(q.id).length <= 3, `merger ${q.id} entradas`); assert.equal(outs(q.id).length, 1); }
+    if (q.t === 's') { assert.equal(ins(q.id).length, 1, `splitter ${q.id} entrada`); assert.equal(outs(q.id).length, q.ways); assert.ok(q.ways === 2 || q.ways === 3); }
+    if (q.t === 'ov') { assert.equal(ins(q.id).length, 1); assert.ok(outs(q.id).length >= 1 && outs(q.id).length <= 3); }
+    if (q.t === 'sink' || q.t === 'extra') assert.equal(ins(q.id).length, 1);
+    if (['s', 'm', 'ov'].includes(q.t)) close(ins(q.id).reduce((s, b) => s + b.rate, 0), outs(q.id).reduce((s, b) => s + b.rate, 0), `conserva em ${q.t}${q.id}`);
+  }
+  const count = t => n.nodes.filter(q => q.t === t).length;
+  assert.equal(count('s'), a.pieces.splitters, `splitters em ${a.key}`);
+  assert.equal(count('m'), a.pieces.mergers, `mergers em ${a.key}`);
+  assert.equal(count('ov'), a.pieces.smart, `smart em ${a.key}`);
+  for (const q of n.nodes.filter(q => q.t === 'dst')) close(ins(q.id).reduce((s, b) => s + b.rate, 0), a.dests.get(q.line.id).got, `destino ${q.line.id}`);
+  close(n.nodes.filter(q => q.t === 'sink').reduce((s, q) => s + ins(q.id)[0].rate, 0), a.sinkRate, 'sink');
+  return n;
+};
+const caso1 = () => L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40 });
+
+test('rede de peças: caso 1, todas as alternativas', () => {
+  const p = caso1();
+  p.alternatives.forEach(a => checkNet(p, a));
+  const a = p.alternatives.find(x => x.groups.some(g => g.mode === 'sink' && g.n === 6));
+  const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'g0');
+  assert.equal(blk.kind, 'group');
+  assert.equal(blk.nodes.filter(id => n.nodes[id].t === 's').length, 3);
+  const sinks = n.nodes.filter(q => q.t === 'sink');
+  assert.equal(sinks.length, 1);
+  assert.ok(blk.nodes.includes(n.belts.find(b => b.b === sinks[0].id).a), 'o sink sai de uma folha da árvore');
+  assert.equal(n.belts.filter(b => b.role === 'donor').length, 1 + 2 + 5, 'doadora, dentro da árvore e as 5 partes');
+  // Uma origem por linha de origem e um destino por linha de destino.
+  assert.equal(n.nodes.filter(q => q.t === 'src').length, p.src.lines.length);
+  assert.equal(n.nodes.filter(q => q.t === 'dst').length, p.dst.lines.length);
+});
+
+test('rede de peças: caso 2 e caso 3', () => {
+  for (const p of [
+    L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }),
+    L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, srcPer: 6 }),
+  ]) p.alternatives.forEach(a => checkNet(p, a));
+  const p = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' });
+  const n = checkNet(p, alt(p, 'direto-sink'));
+  assert.equal(n.nodes.filter(q => q.t === 'sink').length, 6, '4 overflows + 2 linhas que sobram, um sink cada');
+  assert.ok(n.belts.filter(b => b.role === 'sink').length === 6);
+  // Origem parada entra sem esteira.
+  const held = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 });
+  const hn = checkNet(held, held.alternatives[0]);
+  const srcs = hn.nodes.filter(q => q.t === 'src');
+  assert.equal(srcs.length, 6);
+  assert.equal(srcs.filter(q => !hn.belts.some(b => b.a === q.id)).length, 2);
+});
+
+test('rede de peças: loop de doadora', () => {
+  const p = caso1();
+  const a = alt(p, 'doadora-1-loop'), gr = a.groups[0], v = a.view.groups[0];
+  assert.equal(gr.mode, 'loop');
+  const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'g0');
+  assert.equal(blk.nodes.filter(id => n.nodes[id].t === 'm').length, 1);
+  assert.equal(blk.nodes.filter(id => n.nodes[id].t === 's').length, gr.tree.splitters);
+  const x = a.sim.flow[v.donorEdge], loops = n.belts.filter(b => b.role === 'loop');
+  assert.equal(loops.length, gr.n - gr.p);
+  loops.forEach(b => close(b.rate, x / gr.p, 'retorno'));
+  const m = blk.nodes.find(id => n.nodes[id].t === 'm');
+  close(n.belts.find(b => b.a === m).rate, x * gr.n / gr.p, 'entrada da árvore');
+});
+
+test('rede de peças: balancers', () => {
+  const plans = [
+    caso1(),
+    L.computePlan({ ...base, srcGroups: [{ driver: 'total', total: 1440 }, { driver: 'total', total: 300 }], dstCount: 4, dstRate: 430, dstPer: 1 }),
+    L.computePlan({ ...base, srcCount: 2, srcRate: 480, srcPer: 1, dstCount: 5, dstRate: 192, dstPer: 1 }),
+  ];
+  const seen = new Set();
+  for (const p of plans) {
+    for (const a of p.alternatives.find(x => x.designAlts).designAlts) {
+      const n = checkNet(p, a), blk = n.blocks.find(b => b.key === 'plan');
+      assert.equal(blk.kind, 'bal');
+      assert.equal(blk.nodes.length, a.pieces.splitters + a.pieces.mergers, 'todas as peças no bloco');
+      seen.add(a.bal.design.kind);
+    }
+  }
+  for (const k of [...L.DESIGN_KINDS, 'butterfly', 'butterfly-loop', 'butterfly-sink']) assert.ok(seen.has(k), `design ${k} testado`);
+  const bp = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
+  const a = bp.alternatives[0];
+  assert.equal(a.bal.design.kind, 'blueprint');
+  const n = checkNet(bp, a), blk = n.blocks.find(b => b.key === 'plan');
+  assert.deepEqual(blk.nodes.map(id => n.nodes[id].t), ['bp']);
+  const b = blk.nodes[0];
+  assert.equal(n.belts.filter(x => x.b === b).length, 6);
+  assert.equal(n.belts.filter(x => x.a === b).length, 5);
+});
+
+test('rede de peças: caso C com 5 linhas num destino', () => {
+  const p = L.computePlan({ ...base, srcCount: 10, srcRate: 100, dstCount: 2, dstRate: 480, srcPer: 1, dstPer: 1 });
+  const a = alt(p, 'juntar');
+  assert.ok(a.view.feeds.every(f => f.f.mains.length === 5));
+  const n = checkNet(p, a);
+  p.alternatives.forEach(x => checkNet(p, x));
+  // Cada destino recebe de uma cascata de 2 mergers (3 + 2), nenhum com mais de 3 entradas.
+  assert.equal(n.nodes.filter(q => q.t === 'm').length, 4);
+  for (const d of n.nodes.filter(q => q.t === 'dst')) {
+    const last = n.belts.find(b => b.b === d.id).a;
+    assert.equal(n.nodes[last].t, 'm');
+    const prev = n.belts.filter(b => b.b === last).map(b => n.nodes[b.a].t);
+    assert.deepEqual(prev.sort(), ['m', 'src', 'src']);
+  }
+});
