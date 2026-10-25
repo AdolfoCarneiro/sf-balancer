@@ -1413,3 +1413,50 @@ test('rede de peças: retorno com 3+ esteiras vira cascata de mergers', () => {
   const b = alt(q, 'balancer-matrix-split-loop');
   checkNet(b, 2);
 });
+
+// Layout do fluxo: colunas pela profundidade, linhas sem empilhar e portas como no jogo.
+const checkLayout = a => {
+  const n = L.flowNet(a), lay = L.flowLayout(n), pos = id => lay.nodes.get(id);
+  const ins = id => n.belts.filter(b => b.b === id), outs = id => n.belts.filter(b => b.a === id);
+  n.belts.filter(b => b.role !== 'loop').forEach(b => assert.ok(pos(b.b).col > pos(b.a).col, `esteira ${b.id} anda para a direita em ${a.key}`));
+  const dsts = n.nodes.filter(q => q.t === 'dst');
+  dsts.forEach(q => assert.equal(pos(q.id).col, lay.cols - 1, 'destino na última coluna'));
+  n.nodes.filter(q => q.t !== 'dst').forEach(q => assert.ok(pos(q.id).col <= lay.cols - 1));
+  const byLine = dsts.slice().sort((x, y) => x.line.id - y.line.id);
+  byLine.forEach((q, i) => i && assert.ok(pos(q.id).row > pos(byLine[i - 1].id).row, 'destinos pela ordem das linhas'));
+  n.nodes.filter(q => q.t === 'src').forEach(q => assert.equal(pos(q.id).col, 0));
+  const seen = new Set();
+  for (const q of n.nodes) {
+    const k = `${pos(q.id).col}:${pos(q.id).row}`;
+    assert.ok(!seen.has(k), `duas peças em ${k} em ${a.key}`);
+    seen.add(k);
+    const fs = outs(q.id).map(b => lay.belts.get(b.id).from), ts = ins(q.id).map(b => lay.belts.get(b.id).to);
+    fs.forEach(s => assert.ok(['front', 'left', 'right'].includes(s)));
+    ts.forEach(s => assert.ok(['back', 'left', 'right'].includes(s)));
+    if (q.t === 'bp') continue;
+    assert.equal(new Set(fs).size, fs.length, `lados de saída distintos em ${q.t}${q.id}`);
+    assert.equal(new Set(ts).size, ts.length, `lados de entrada distintos em ${q.t}${q.id}`);
+    if (q.t === 's' || q.t === 'ov') assert.deepEqual(ts, ['back']);
+    if (q.t === 'm') assert.deepEqual(fs, ['front']);
+    if (['dst', 'sink', 'extra'].includes(q.t)) assert.ok(ts.length <= 1);
+  }
+  return { n, lay };
+};
+
+test('layout do fluxo: colunas e portas', () => {
+  caso1().alternatives.forEach(checkLayout);
+  for (const p of [
+    caso1(),
+    L.computePlan({ ...base, srcGroups: [{ driver: 'total', total: 1440 }, { driver: 'total', total: 300 }], dstCount: 4, dstRate: 430, dstPer: 1 }),
+    L.computePlan({ ...base, srcCount: 2, srcRate: 480, srcPer: 1, dstCount: 5, dstRate: 192, dstPer: 1 }),
+  ]) p.alternatives.find(x => x.designAlts).designAlts.forEach(checkLayout);
+  checkLayout(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] }).alternatives[0]);
+  checkLayout(alt(L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 }), 'doadora-1-loop'));
+  checkLayout(alt(L.computePlan({ ...base, srcCount: 1, srcRate: 480, srcPer: 1, dstCount: 20, dstRate: 23.52, dstPer: 1 }), 'balancer-matrix-split-loop'));
+  L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }).alternatives.forEach(checkLayout);
+  L.computePlan({ ...base, srcCount: 10, srcRate: 100, dstCount: 2, dstRate: 480, srcPer: 1, dstPer: 1 }).alternatives.forEach(checkLayout);
+  // Caso A direto: cada origem na linha do destino que alimenta, 2 colunas.
+  const { n, lay } = checkLayout(alt(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1 }), 'direto'));
+  assert.equal(lay.cols, 2);
+  n.belts.filter(b => n.nodes[b.b].t === 'dst').forEach(b => assert.equal(lay.nodes.get(b.a).row, lay.nodes.get(b.b).row));
+});

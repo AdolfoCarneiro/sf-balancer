@@ -9,3 +9,4 @@ export { evaluatePlan, generatePlans, headerGroups, computePlan } from './plan.j
 export { historyNew, historyPush, historyUndo, historyRedo, historyReplace } from './history.js';
 export { encodeShare, decodeShare, issueUrl } from './share.js';
 export { flowNet } from './flownet.js';
+export { flowLayout } from './flowlayout.js';
