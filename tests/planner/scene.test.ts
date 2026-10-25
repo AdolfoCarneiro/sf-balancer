@@ -197,7 +197,7 @@ test('desempenho: cadeia de ~2.000 máquinas monta a cena em menos de 200 ms', (
   const items: GameData['items'] = {}, recipes: GameData['recipes'] = {};
   for (let i = 0; i <= 10; i++) items[`A${i}`] = { id: `A${i}`, name: `A${i}`, fluid: false, raw: i === 0 };
   for (let i = 0; i < 10; i++) recipes[`R${i}`] = { id: `R${i}`, name: `R${i}`, alt: false, building: 'B', ins: [{ item: `A${i}`, perMin: 30 }], outs: [{ item: `A${i + 1}`, perMin: 30 }] };
-  const syn: GameData = { items, recipes, buildings: { B: { id: 'B', name: 'B', w: 10, l: 20 } } };
+  const syn: GameData = { items, recipes, extractors: {}, buildings: { B: { id: 'B', name: 'B', w: 10, l: 20 } } };
   const stages: Stage[] = Array.from({ length: 10 }, (_, i) => ({ id: `s${i + 1}`, recipe: `R${i}`, machines: 200, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } }));
   const ch: Chain = { v: 1, stages, links: stages.slice(1).map((s, i) => ({ id: `l${i + 1}`, item: `A${i + 1}`, from: stages[i].id, to: s.id })), policy: 'represar' };
   const rows = blockGeo(stages[0], syn).outs.length;

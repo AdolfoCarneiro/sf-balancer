@@ -383,4 +383,5 @@ export default {
   plMapWarnings: 'Warnings', plMapPanel: 'Map', plMapBlockSize: 'Block size', plMapMeioSize: 'Middle size', plMapMeioName: item => `${item} middle`,
   plMapListHint: 'Arrows move 8 m · R rotates · Enter opens the stage',
   plStagePieces: 'Stage pieces', plAreaEst: (w, d) => `Estimated area: ${w} × ${d} m (estimate)`,
+  plCredit: 'Satisfactory icons and game data © Coffee Stain Studios. SF Balancer is an unofficial fan tool.',
 };

@@ -3,7 +3,8 @@ export interface Item { id: ItemId; name: string; fluid: boolean; raw: boolean }
 export interface Flow { item: ItemId; perMin: number }            // por máquina, clock 100%; fluido em m³/min
 export interface Recipe { id: RecipeId; name: string; alt: boolean; building: BuildingId; ins: Flow[]; outs: Flow[] }
 export interface Building { id: BuildingId; name: string; w: number; l: number }   // metros
-export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building> }
+export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean }   // perMin em m³/min, pureza normal
+export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building>; extractors: Record<BuildingId, Extractor> }
 export type Side = 'ins' | 'outs';
 // tiers: chave `in:<item>` ou `out:<item>` (o mesmo item pode entrar e sair da receita).
 export interface Stage { id: StageId; recipe: RecipeId; machines: number; clock: number; perRow: number | null; locked: boolean; tiers: Record<string, string>; pos: { x: number; y: number } }

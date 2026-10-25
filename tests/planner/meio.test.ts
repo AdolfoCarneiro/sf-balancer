@@ -59,7 +59,7 @@ test('meio: item fluido sai em modo fluido, cano, sem sink', () => {
       RP: { id: 'RP', name: 'Make F', alt: false, building: 'B', ins: [], outs: [{ item: 'F', perMin: 100 }] },
       RC: { id: 'RC', name: 'Use F', alt: false, building: 'B', ins: [{ item: 'F', perMin: 50 }], outs: [{ item: 'X', perMin: 10 }] },
     },
-    buildings: { B: { id: 'B', name: 'Box', w: 10, l: 10 } },
+    extractors: {}, buildings: { B: { id: 'B', name: 'Box', w: 10, l: 10 } },
   };
   const st = (id: string, recipe: string, machines: number) =>
     ({ id, recipe, machines, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } });

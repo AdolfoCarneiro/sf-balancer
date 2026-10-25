@@ -383,4 +383,5 @@ export default {
   plMapWarnings: 'Avisos', plMapPanel: 'Mapa', plMapBlockSize: 'Medida do bloco', plMapMeioSize: 'Medida do meio', plMapMeioName: item => `meio de ${item}`,
   plMapListHint: 'Setas movem 8 m · R gira · Enter abre a etapa',
   plStagePieces: 'Peças da etapa', plAreaEst: (w, d) => `Área estimada: ${w} × ${d} m (estimativa)`,
+  plCredit: 'Ícones e dados do Satisfactory © Coffee Stain Studios. O SF Balancer é uma ferramenta de fã, não oficial.',
 };

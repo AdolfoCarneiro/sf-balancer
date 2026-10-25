@@ -40,3 +40,13 @@ test('dados: só receitas das 11 máquinas de produção, e todo prédio tem tam
   assert.equal(data.buildings['Build_FoundryMk1_C'].w, 10); assert.equal(data.buildings['Build_OilRefinery_C'].l, 22);
   assert.equal(R['Recipe_Beam_Connector_C'], undefined);
 });
+
+test('extratores: vazão do Docs, itens e pureza', () => {
+  assert.deepEqual(data.extractors.Build_WaterPump_C, { id: 'Build_WaterPump_C', name: 'Water Extractor', perMin: 120, items: ['Desc_Water_C'], purity: false });
+  assert.equal(data.extractors.Build_OilPump_C.perMin, 120);
+  assert.deepEqual(data.extractors.Build_OilPump_C.items, ['Desc_LiquidOil_C']);
+  assert.equal(data.extractors.Build_OilPump_C.purity, true);
+  assert.equal(data.extractors.Build_FrackingExtractor_C.perMin, 60);
+  assert.deepEqual(data.extractors.Build_FrackingExtractor_C.items, ['Desc_LiquidOil_C', 'Desc_NitrogenGas_C', 'Desc_Water_C']);
+  assert.ok(!Object.keys(data.extractors).some(id => id.startsWith('Build_Miner')));
+});

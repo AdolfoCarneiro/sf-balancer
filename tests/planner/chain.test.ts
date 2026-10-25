@@ -42,7 +42,7 @@ const fake: GameData = {
     rAB: { id: 'rAB', name: 'A→B', alt: false, building: 'b', ins: [{ item: 'A', perMin: 30 }], outs: [{ item: 'B', perMin: 30 }] },
     rBA: { id: 'rBA', name: 'B→A', alt: false, building: 'b', ins: [{ item: 'B', perMin: 30 }], outs: [{ item: 'A', perMin: 30 }] },
   },
-  buildings: { b: { id: 'b', name: 'b', w: 10, l: 10 } },
+  extractors: {}, buildings: { b: { id: 'b', name: 'b', w: 10, l: 10 } },
 };
 test('cadeia: ligação que fecha ciclo é recusada e a cadeia fica igual', () => {
   const st = (id: string, recipe: string) => ({ id, recipe, machines: 1, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } });

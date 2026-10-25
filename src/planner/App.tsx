@@ -121,6 +121,7 @@ export function App() {
           )}
       </div>
       {openStage && <StageView key={openStage.id} stage={openStage} chain={chain} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
+      <footer className="pl-foot">{t('plCredit')}</footer>
     </div>
   );
 }

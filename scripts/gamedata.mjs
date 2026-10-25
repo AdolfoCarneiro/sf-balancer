@@ -1,4 +1,4 @@
-// Gera src/planner/data/game.json (itens, receitas e prédios de produção) a partir do Docs do jogo.
+// Gera src/planner/data/game.json (itens, receitas, prédios de produção e extratores de fluido) a partir do Docs do jogo.
 //
 // Uso: node scripts/gamedata.mjs <en-US.json> [saida]
 //
@@ -56,6 +56,24 @@ for (const c of [...(porClasse.FGBuildableManufacturer ?? []), ...(porClasse.FGB
   predios[c.ClassName] = { id: c.ClassName, name: c.mDisplayName, w: t.w, l: t.l };
 }
 
+// Extratores de fluido/gás: Water Extractor, Oil Extractor (e outros ResourceExtractor só de
+// líquido/gás com recurso fixo) e Resource Well Extractor. A Miner fica de fora (sólido).
+// Pureza (impura 0,5 / normal 1 / pura 2) só vale para o Oil e o Resource Well: decisão do dono,
+// o Water Extractor não tem pureza.
+const PUREZA = { Build_OilPump_C: true, Build_FrackingExtractor_C: true };
+const fluidoApenas = c => /^\(?(RF_LIQUID|RF_GAS)(,(RF_LIQUID|RF_GAS))*\)?$/.test(c.mAllowedResourceForms ?? '');
+const extratores = {};
+for (const c of [...(porClasse.FGBuildableWaterPump ?? []), ...(porClasse.FGBuildableFrackingExtractor ?? []),
+  ...(porClasse.FGBuildableResourceExtractor ?? []).filter(c => c.mOnlyAllowCertainResources === 'True' && fluidoApenas(c))]) {
+  extratores[c.ClassName] = {
+    id: c.ClassName,
+    name: c.mDisplayName,
+    perMin: arred(Number(c.mItemsPerCycle) / Number(c.mExtractCycleTime) * 60 / 1000),
+    items: [...c.mAllowedResources.matchAll(/\.(Desc_\w+)'/g)].map(m => m[1]).sort(),
+    purity: PUREZA[c.ClassName] ?? false,
+  };
+}
+
 // Texto ((ItemClass="…Desc_X.Desc_X_C'",Amount=7),…) → [{ id, amount }]
 const lerFluxos = s => [...s.matchAll(/\.(\w+)'"\s*,\s*Amount=(\d+(?:\.\d+)?)/g)].map(m => ({ id: m[1], amount: Number(m[2]) }));
 
@@ -88,8 +106,8 @@ for (const c of porClasse.FGRecipe ?? []) {
 const itens = {};
 for (const id of [...usados]) itens[id] = todosItens[id];
 
-const out = { buildings: ordenar(predios), items: ordenar(itens), recipes: ordenar(receitas) };
+const out = { buildings: ordenar(predios), extractors: ordenar(extratores), items: ordenar(itens), recipes: ordenar(receitas) };
 // Chaves ordenadas também dentro de cada objeto, para saída determinística.
 const estavel = (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? ordenar(v) : v);
 writeFileSync(saida, JSON.stringify(out, estavel, 1) + '\n');
-console.log(`${Object.keys(itens).length} itens, ${Object.keys(receitas).length} receitas, ${Object.keys(predios).length} prédios → ${saida}`);
+console.log(`${Object.keys(itens).length} itens, ${Object.keys(receitas).length} receitas, ${Object.keys(predios).length} prédios, ${Object.keys(extratores).length} extratores → ${saida}`);

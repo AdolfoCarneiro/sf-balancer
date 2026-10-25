@@ -203,3 +203,4 @@ html, body { overflow-x: hidden; }
 .pl-map-block.on { background: var(--plate); color: var(--ficsit); border-color: var(--ficsit); }
 .pl-map-warns button { color: var(--sink); }
 .pl-map-block:focus-visible, .pl-map-warns button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
+.pl-foot { padding: 3px 16px; font: 11px var(--body); color: var(--ink-dim); background: var(--plate); border-top: 1px solid var(--line); text-align: center; }

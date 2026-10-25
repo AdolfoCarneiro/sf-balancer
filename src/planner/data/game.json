@@ -67,6 +67,37 @@
    "w": 5
   }
  },
+ "extractors": {
+  "Build_FrackingExtractor_C": {
+   "id": "Build_FrackingExtractor_C",
+   "items": [
+    "Desc_LiquidOil_C",
+    "Desc_NitrogenGas_C",
+    "Desc_Water_C"
+   ],
+   "name": "Resource Well Extractor",
+   "perMin": 60,
+   "purity": true
+  },
+  "Build_OilPump_C": {
+   "id": "Build_OilPump_C",
+   "items": [
+    "Desc_LiquidOil_C"
+   ],
+   "name": "Oil Extractor",
+   "perMin": 120,
+   "purity": true
+  },
+  "Build_WaterPump_C": {
+   "id": "Build_WaterPump_C",
+   "items": [
+    "Desc_Water_C"
+   ],
+   "name": "Water Extractor",
+   "perMin": 120,
+   "purity": false
+  }
+ },
  "items": {
   "BP_ItemDescriptorPortableMiner_C": {
    "fluid": false,
