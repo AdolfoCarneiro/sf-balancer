@@ -1,5 +1,6 @@
 // Layout 3D das peças do balancer (sem Three.js).
 import { t } from '../i18n/index.js';
+import { mergersFor } from './splitters.js';
 
 // Montagem vertical: cada camada de peças num andar, ligados por lifts.
 // Andar = profundidade da peça a partir das entradas (o retorno do loop não conta). Um lift por ligação
@@ -57,12 +58,16 @@ export function designFloors(d) {
       });
       return leaves.map(l => l.id);
     };
+    // Retorno do loop: entrada + n − M retornos numa cascata de mergers, um por andar (o primeiro pega a
+    // entrada e 2 retornos, cada seguinte o anterior e mais 2), como em flowNet.
+    const back = loop ? mergersFor(1 + n - M) : 0;
     const splitAt = (from, f0, inp, x0, w) => {
-      let start = from, first = f0, lm = null;
-      if (loop) { lm = node('m', f0, x0 + w / 2); edge(from, lm, inp); start = lm; first = f0 + 1; }
-      const leaves = tree(start, first, inp, x0, w);
+      let start = from;
+      const lm = [];
+      for (let i = 0; i < back; i++) { lm.push(node('m', f0 + i, x0 + w / 2)); edge(start, lm[i], inp); start = lm[i]; }
+      const first = f0 + back, leaves = tree(start, first, inp, x0, w);
       leaves.forEach((s, j) => {
-        if (j >= M && loop) edge(s, lm, inp, 'loop');
+        if (j >= M && loop) edge(s, lm[(j - M) >> 1], inp, 'loop');
         if (j >= M && sink) edge(s, node('sink', nodes[s].floor, nodes[s].x), inp, 'sink');
       });
       return { leaves: leaves.slice(0, M), top: first + L - 1 };

@@ -87,7 +87,7 @@ function buildGraph(plan, cap) {
       v.donorEdge = addEdge(g, donor, v.root);
       slots = Array(p).fill(v.root);
       v.splitters = gr.tree.splitters;
-      v.extraMergers = 1;
+      v.extraMergers = gr.division.loop.mergers;
     } else {
       const tr = buildTree(g, gr.tree);
       v.root = tr.root;

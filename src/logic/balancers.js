@@ -1,6 +1,6 @@
 // Biblioteca de load balancers N→M (matriz, funil, butterfly).
 import { EPS } from './belts.js';
-import { isDirect, nextDirect, splitTree, chainSizes } from './splitters.js';
+import { isDirect, nextDirect, splitTree, chainSizes, mergersFor } from './splitters.js';
 
 // Matriz: cada entrada vira M partes numa árvore de splitters e cada saída junta uma parte de cada entrada.
 // Funil: junta tudo numa esteira e divide em M. Quando M não é produto de 2 e 3, divide em n (o próximo
@@ -25,6 +25,8 @@ export function balancerDesign(kind, N, M, rates, cap) {
   const tree = splitTree(n);
   const extra = n - M;
   const chain = chainSizes(V);
+  // Merger do retorno de cada árvore com loop: entrada + n − M retornos (3+ retornos = cascata).
+  const back = loop ? mergersFor(1 + extra) : 0;
   const segments = [];
   const add = (key, rate, arg) => segments.push({ key, rate, arg, ok: rate <= cap + EPS });
   add('in', rMax);
@@ -38,7 +40,7 @@ export function balancerDesign(kind, N, M, rates, cap) {
     perOut = loop ? Math.min(total, cap * M / n) / M : sink ? fed / n : fed / M;
     if (sink) sinkRate = fed * extra / n;
     splitters = tree.splitters;
-    mergers = chain.length + (loop ? 1 : 0);
+    mergers = chain.length + back;
   } else {
     // Com metades, cada árvore recebe meia entrada.
     const part = halves ? 2 : 1;
@@ -47,7 +49,7 @@ export function balancerDesign(kind, N, M, rates, cap) {
     perOut = Math.min(cap, loop ? r.reduce((a, x) => a + part * Math.min(x / part, cap * M / n), 0) / M : sink ? total / n : total / M);
     if (sink) sinkRate = total * extra / n;
     splitters = V * tree.splitters + (halves ? N : 0);
-    mergers = M * chain.length + (loop ? V : 0);
+    mergers = M * chain.length + V * back;
   }
   if (loop) add('loop', treeIn);
   let prod = 1;

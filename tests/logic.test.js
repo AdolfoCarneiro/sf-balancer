@@ -1291,8 +1291,7 @@ test('issue: URL do GitHub com título e corpo codificados', () => {
 });
 
 // Rede de peças do fluxo: cada peça do jeito do jogo e as contas batem com a alternativa.
-// extraM: mergers a mais da cascata do retorno (loop com 3+ retornos), que a lógica conta como 1.
-const checkNet = (a, extraM = 0) => {
+const checkNet = a => {
   const n = L.flowNet(a);
   const ins = id => n.belts.filter(b => b.b === id), outs = id => n.belts.filter(b => b.a === id);
   for (const q of n.nodes) {
@@ -1304,7 +1303,7 @@ const checkNet = (a, extraM = 0) => {
   }
   const count = t => n.nodes.filter(q => q.t === t).length;
   assert.equal(count('s'), a.pieces.splitters, `splitters em ${a.key}`);
-  assert.equal(count('m'), a.pieces.mergers + extraM, `mergers em ${a.key}`);
+  assert.equal(count('m'), a.pieces.mergers, `mergers em ${a.key}`);
   assert.equal(count('ov'), a.pieces.smart, `smart em ${a.key}`);
   for (const q of n.nodes.filter(q => q.t === 'dst')) close(ins(q.id).reduce((s, b) => s + b.rate, 0), a.dests.get(q.line.id).got, `destino ${q.line.id}`);
   close(n.nodes.filter(q => q.t === 'sink').reduce((s, q) => s + ins(q.id)[0].rate, 0), a.sinkRate, 'sink');
@@ -1402,17 +1401,56 @@ test('rede de peças: caso C com 5 linhas num destino', () => {
 });
 
 test('rede de peças: retorno com 3+ esteiras vira cascata de mergers', () => {
-  // Doadora ÷13 → árvore de 16, 3 retornos: 4 entradas no retorno = 2 mergers (a lógica conta 1).
+  // Doadora ÷13 → árvore de 16, 3 retornos: 4 entradas no retorno = 2 mergers.
   const p = L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 });
   const a = alt(p, 'doadora-1-loop');
   assert.deepEqual([a.groups[0].p, a.groups[0].n], [13, 16]);
-  const n = checkNet(a, 1), blk = n.blocks.find(b => b.key === 'g0');
+  const n = checkNet(a), blk = n.blocks.find(b => b.key === 'g0');
   assert.equal(blk.nodes.filter(id => n.nodes[id].t === 'm').length, 2);
   assert.equal(n.belts.filter(b => b.role === 'loop').length, 3);
-  // Balancer 1→20 com loop dividido: 2 árvores de 24, 4 retornos cada = 1 merger a mais por árvore.
+  // Balancer 1→20 com loop dividido: 2 árvores de 24, 4 retornos cada = 2 mergers por árvore.
   const q = L.computePlan({ ...base, srcCount: 1, srcRate: 480, srcPer: 1, dstCount: 20, dstRate: 23.52, dstPer: 1 });
   const b = alt(q, 'balancer-matrix-split-loop');
-  checkNet(b, 2);
+  checkNet(b);
+});
+
+test('loop: retorno com 3+ partes conta a cascata de mergers', () => {
+  // r = n − p retornos + a entrada = r + 1 entradas no merger do retorno.
+  assert.equal(L.divisionOptions(470, 13, 10, 480).loop.mergers, 2, '÷13 → 16, 3 retornos');
+  assert.equal(L.divisionOptions(470, 5, 10, 480).loop.mergers, 1, '÷5 → 6, 1 retorno');
+  assert.equal(L.divisionOptions(470, 7, 10, 480).loop.mergers, 1, '÷7 → 8, 1 retorno');
+  assert.equal(L.divisionOptions(470, 10, 10, 480).loop.mergers, 1, '÷10 → 12, 2 retornos');
+  const p = L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 });
+  assert.equal(alt(p, 'doadora-1-loop').view.groups[0].extraMergers, 2);
+  // 1→20 com loop dividido: 20 mergers de saída + 2 árvores × mergersFor(5).
+  const d = L.balancerDesign('matrix-split-loop', 1, 20, [480], 480);
+  assert.equal(d.pieces.mergers, 20 + 2 * 2);
+  assert.equal(L.balancerDesign('matrix-loop', 2, 13, [100], 480).pieces.mergers, 13 + 2 * 2);
+  assert.equal(L.balancerDesign('funnel-loop', 2, 13, [100], 480).pieces.mergers, 1 + 2);
+  assert.equal(L.balancerDesign('matrix-loop', 2, 5, [100], 480).pieces.mergers, 5 + 2, 'r ≤ 2 não muda');
+  // A vertical desenha a cascata: nenhum merger com mais de 3 entradas, contagens iguais às peças.
+  for (const x of [d, L.balancerDesign('matrix-loop', 2, 13, [100], 480), L.balancerDesign('funnel-loop', 2, 13, [100], 480)]) {
+    const fl = L.designFloors(x), at = x.kind;
+    fl.nodes.filter(q => q.t === 'm').forEach(q => assert.ok(fl.edges.filter(e => e.b === q.id).length <= 3, `${at}: merger ${q.id}`));
+    assert.equal(fl.nodes.filter(q => q.t === 'm').length, x.pieces.mergers, at);
+    assert.equal(fl.nodes.filter(q => q.t === 's').length, x.pieces.splitters, at);
+    assert.equal(fl.edges.filter(e => e.kind === 'loop').length, (x.kind === 'matrix-split-loop' ? 2 : x.kind === 'funnel-loop' ? 1 : x.N) * x.extra, at);
+    for (const mode of ['flat', 'floors', 'towers']) {
+      const lay = L.layout3d(x, mode);
+      assert.equal(lay.pieces.filter(q => q.t === 'm').length, x.pieces.mergers, `${at} ${mode}`);
+      assert.ok(lay.belts.every(b => b.fromSide && b.toSide), `${at} ${mode}: portas`);
+      fl.nodes.filter(q => q.t === 'm').forEach(q => {
+        const sides = lay.belts.filter(b => b.b === q.id).map(b => b.toSide);
+        assert.equal(new Set(sides).size, sides.length, `${at} ${mode}: merger ${q.id} com uma esteira por porta`);
+      });
+    }
+  }
+  for (const l of ['pt', 'en', 'es']) inLang(l, () => {
+    assert.ok(L.t('lbLoopPieces', 15, 2).includes('2 mergers'), l);
+    assert.ok(L.t('lbLoopPieces', 3, 1).includes('1 merger.'), l);
+    assert.ok(/cascat|cascad/.test(L.t('lbLoopTree', 'x', 3)) && !/cascat|cascad/.test(L.t('lbLoopTree', 'x', 2)), l);
+    assert.ok(/cascat|cascad/.test(L.t('stepDonorLoop', 'O1', 13, 'x', 3, 'y')), l);
+  });
 });
 
 // Layout do fluxo: colunas pela profundidade, linhas sem empilhar e portas como no jogo.

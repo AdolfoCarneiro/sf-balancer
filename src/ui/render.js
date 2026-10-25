@@ -279,7 +279,7 @@ function balancerSection(p, a) {
       html += `<div class="bal">
         <div class="opt ${gr.mode === 'loop' ? 'on' : ''}"><h4>${t('lbLoopTitle')}</h4><ul>
           <li>${t('lbLoopTree', tree, d.loop.recirculate)}</li>
-          <li>${t('lbLoopPieces', d.tree.splitters)}</li>
+          <li>${t('lbLoopPieces', d.tree.splitters, d.loop.mergers)}</li>
           <li>${t('lbLoopPart', fmt(d.loop.part), fmt(gr.maxDeficit))} ${d.loop.ok ? ok : '<span class="bad">✗</span>'}</li>
           <li>${t('lbTreeIn', fmt(d.loop.beltLoad))} ${d.loop.beltOk ? `<span class="ok">${t('lbFits')}</span>` : `<span class="bad">${t('lbOver', p.input.belt)}</span>`}</li>
         </ul>${treeSvg(d.tree, gr.p, 'loop')}</div>

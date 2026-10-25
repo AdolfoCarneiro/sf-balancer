@@ -31,6 +31,7 @@ export function describeTree(tree) {
 }
 
 // Opções para dividir uma doadora de taxa s em p partes iguais, cada uma cobrindo maxDeficit.
+// Loop: os n − p retornos entram com a doadora no merger da entrada (3+ retornos = cascata).
 export function divisionOptions(s, p, maxDeficit, cap) {
   if (isDirect(p)) {
     const tree = splitTree(p);
@@ -43,7 +44,7 @@ export function divisionOptions(s, p, maxDeficit, cap) {
     direct: false, p, n, tree,
     loop: {
       part: s / p, ok: s / p + EPS >= maxDeficit,
-      recirculate: n - p, mergers: 1, beltLoad: loopLoad, beltOk: loopLoad <= cap + EPS,
+      recirculate: n - p, mergers: mergersFor(1 + n - p), beltLoad: loopLoad, beltOk: loopLoad <= cap + EPS,
     },
     sink: { part: s / n, ok: s / n + EPS >= maxDeficit, sinkParts: n - p, sinkRate: s * (n - p) / n },
   };
