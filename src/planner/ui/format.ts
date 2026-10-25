@@ -1,5 +1,5 @@
 import { fmt, t } from '../../i18n/index.js';
-import type { Item } from '../model/types.ts';
+import type { Block, GameData, Item, ItemId } from '../model/types.ts';
 import { FOUNDATION } from '../model/map/sizes.ts';
 
 // Taxa com a unidade do item: /min para sólido, m³/min para fluido.
@@ -11,3 +11,16 @@ export const foundations = (m: number): number => Math.ceil(m / FOUNDATION - 1e-
 // Medida de um bloco, meio ou área: metros e fundações.
 export const sizeText = (r: { w: number; h: number }): string =>
   t('plMapSize', fmt(r.w, 0), fmt(r.h, 0), fmt(foundations(r.w), 0), fmt(foundations(r.h), 0));
+
+// Nome do bloco na tela: a receita; a origem com o item (Miner · Iron Ore, Water Extractor · Water); a sobra pelo tipo.
+export function blockName(b: Block, d: GameData): string {
+  const item = (id: ItemId) => d.items[id]?.name ?? id;
+  switch (b.kind) {
+    case 'recipe': return d.recipes[b.recipe]?.name ?? b.recipe;
+    case 'miner': return `${t('plMiner')} · ${item(b.item)}`;
+    case 'extractor': return `${d.extractors[b.building]?.name ?? b.building} · ${item(b.item)}`;
+    case 'sink': return t('plSink');
+    case 'container': return t('plContainer');
+    default: return t('plExport');
+  }
+}

@@ -5,15 +5,13 @@ import { SITE_PATH, type Lang } from '../lang.ts';
 
 interface Props {
   lang: Lang; onLang: (l: Lang) => void;
-  stages: number; machines: number;
+  blocks: number; machines: number;
+  status: string[];   // o que o fluxo tem a dizer (calculando, não estabilizou, loop travado)
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   shareUrl: () => string;
-  view: View; onView: (v: View) => void;
 }
 
-export type View = 'graph' | 'map';
-
-export function Header({ lang, onLang, stages, machines, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
+export function Header({ lang, onLang, blocks, machines, status, canUndo, canRedo, onUndo, onRedo, shareUrl }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -35,27 +33,9 @@ export function Header({ lang, onLang, stages, machines, canUndo, canRedo, onUnd
   return (
     <header className="pl-top">
       <div className="pl-brand">{t('plBrand')}</div>
-      <div className="pl-seg" role="tablist" aria-label={t('plViews')}>
-        {(['graph', 'map'] as View[]).map(v => (
-          <button key={v} type="button" role="tab" aria-selected={view === v} aria-controls="pl-graph" className={view === v ? 'on' : undefined}
-            tabIndex={view === v ? 0 : -1} onClick={() => onView(v)}
-            onKeyDown={e => {
-              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-              e.preventDefault();
-              const next: View = v === 'graph' ? 'map' : 'graph';
-              onView(next);
-              (e.currentTarget.parentElement?.querySelector(`[data-view=${next}]`) as HTMLElement | null)?.focus();
-            }} data-view={v}>
-            {t(v === 'graph' ? 'plViewGraph' : 'plViewMap')}
-          </button>
-        ))}
-      </div>
-      <div className="pl-seg" role="group" aria-label={t('plModeLabel')}>
-        <button type="button" aria-pressed="true" className="on">{t('plModeNode')}</button>
-        <button type="button" disabled>{t('plModeGoal')} <span className="pl-phase">{t('plPhase3')}</span></button>
-      </div>
       <div className="pl-grow" />
-      <div className="pl-totals">{t('plTotals', fmt(stages, 0), fmt(machines, 0))}</div>
+      <div className="pl-status" role="status">{status.join(' · ')}</div>
+      <div className="pl-totals">{t('plTotals', fmt(blocks, 0), fmt(machines, 0))}</div>
       <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{t('plUndo')}</button>
       <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{t('plRedo')}</button>
       <button type="button" className="pl-btn pl-primary" onClick={share}>{t('plShare')}</button>

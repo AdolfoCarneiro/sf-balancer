@@ -2,32 +2,33 @@
 // "Propor de novo" e os avisos. A lista de blocos (acessível pelo teclado) fica nos dois casos.
 import { useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import type { Chain, GameData, MapPlace, Rot, StageId } from '../model/types.ts';
+import type { Factory, GameData, MapPlace, Rot, StageId } from '../model/types.ts';
 import type { Rect } from '../model/map/geo.ts';
 import type { Scene } from '../model/map/scene.ts';
 import { rotated, warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
 import { NumField } from './Inspector.tsx';
-import { sizeText } from './format.ts';
+import { blockName, sizeText } from './format.ts';
 import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
 
 interface Props {
-  chain: Chain; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
+  factory: Factory; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>; selected: StageId | null;
   onPlace: (id: StageId, place: MapPlace) => void; onPropose: () => void; onFocus: (r: Rect) => void;
   onPick: (id: StageId) => void; onOpenStage: (id: StageId) => void; onBlockKey: (e: React.KeyboardEvent, id: StageId) => void;
-  onGap: (gap: number) => void;   // vão entre peças do meio (a cadeia toda)
+  onGap: (gap: number) => void;   // vão entre peças do meio (a fábrica toda)
 }
 
 const SIDES = [[0, 'plMapSideLeft'], [1, 'plMapSideTop'], [2, 'plMapSideRight'], [3, 'plMapSideBottom']] as const;
 const GAP_MAX = 64;
 
 export function MapPanel(p: Props) {
-  const { chain, data, meioList, scene, places, selected } = p;
+  const { factory: f, data, meioList, scene, places, selected } = p;
   const stageName = (id: StageId) => {
-    const s = chain.stages.find(x => x.id === id);
-    return s ? data.recipes[s.recipe]?.name ?? s.recipe : id;
+    const b = f.blocks.find(x => x.id === id);
+    return b ? blockName(b, data) : id;
   };
-  // Nome de quem aparece num aviso: a etapa, ou o meio pelo item.
+  const recipe = (id: StageId) => f.blocks.find(x => x.id === id)?.kind === 'recipe';
+  // Nome de quem aparece num aviso: o bloco, ou o meio pelo item.
   const nameOf = (id: string) => {
     const m = meioList.find(x => x.id === id);
     return m ? t('plMapMeioName', data.items[m.item]?.name ?? m.item) : stageName(id);
@@ -39,12 +40,12 @@ export function MapPanel(p: Props) {
       <div className="pl-insp">
         {block && place
           ? <BlockPanel key={block.stage} name={stageName(block.stage)} rect={block.rect} place={place}
-            onPlace={pl => p.onPlace(block.stage, pl)} onOpen={() => p.onOpenStage(block.stage)} />
-          : <Overview scene={scene} nameOf={nameOf} gap={pieceGap(chain)} onGap={p.onGap} onPropose={p.onPropose} onFocus={p.onFocus} />}
+            onPlace={pl => p.onPlace(block.stage, pl)} onOpen={recipe(block.stage) ? () => p.onOpenStage(block.stage) : null} />
+          : <Overview scene={scene} nameOf={nameOf} gap={pieceGap(f)} onGap={p.onGap} onPropose={p.onPropose} onFocus={p.onFocus} />}
         <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
         <p className="pl-note">{t('plMapListHint')}</p>
         <ul className="pl-map-blocks" aria-labelledby="pl-map-blocks">
-          {chain.stages.map(s => (
+          {f.blocks.map(s => (
             <li key={s.id}>
               <button type="button" className={'pl-map-block' + (s.id === selected ? ' on' : '')} aria-pressed={s.id === selected}
                 onClick={() => p.onPick(s.id)} onDoubleClick={() => p.onOpenStage(s.id)} onKeyDown={e => p.onBlockKey(e, s.id)}>
@@ -59,7 +60,7 @@ export function MapPanel(p: Props) {
 }
 
 function BlockPanel({ name, rect, place, onPlace, onOpen }: {
-  name: string; rect: Rect; place: MapPlace; onPlace: (p: MapPlace) => void; onOpen: () => void;
+  name: string; rect: Rect; place: MapPlace; onPlace: (p: MapPlace) => void; onOpen: (() => void) | null;   // null: sem fileiras para abrir
 }) {
   const gap = (label: string, k: 'gapRow' | 'gapMachine') => (
     <NumField label={label} value={place[k] ?? 0} valid={n => n >= 0 && n <= GAP_MAX} bad={t('plMapGapBad')}
@@ -83,7 +84,7 @@ function BlockPanel({ name, rect, place, onPlace, onOpen }: {
       <button type="button" className="pl-btn" onClick={() => onPlace(rotated(place))}>{t('plMapRotate')}</button>
       {gap(t('plMapGapRow'), 'gapRow')}
       {gap(t('plMapGapMachine'), 'gapMachine')}
-      <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>
+      {onOpen && <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>}
     </>
   );
 }

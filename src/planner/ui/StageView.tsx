@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
 import { BELTS, PIPES } from '../../logic/belts.js';
 import { stageDrawing, type Lane } from '../model/drawing.ts';
-import type { Action } from '../model/persist.ts';
-import { MAX_MACHINES } from '../model/chain.ts';
+import type { Action } from '../model/factorystate.ts';
+import { MAX_MACHINES } from '../model/factory.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
 import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
-import type { Chain, GameData, Stage } from '../model/types.ts';
-import { unlinkedFluids } from '../model/chain.ts';
+import type { FlowResult } from '../model/solve.ts';
+import type { Factory, GameData, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
 import { NumField } from './Inspector.tsx';
 
@@ -18,9 +18,10 @@ const GUTTER = CELL; // coluna da etiqueta L{n}
 const ROW_GAP = 16;
 const MARK = 6;
 
-interface Props { stage: Stage; chain: Chain; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
+// stage: o bloco resolvido (solvedStage); block: o bloco salvo, com os limites.
+interface Props { block: RecipeBlock; stage: Stage; factory: Factory; flow: FlowResult; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
 
-export function StageView({ stage, chain, data, dispatch, onClose }: Props) {
+export function StageView({ block, stage, factory, flow, data, dispatch, onClose }: Props) {
   const r = data.recipes[stage.recipe];
   const b = data.buildings[r.building];
   const draw = useMemo(() => stageDrawing(stage, data), [stage, data]);
@@ -98,7 +99,7 @@ export function StageView({ stage, chain, data, dispatch, onClose }: Props) {
             </div>
           </div>
         </div>
-        <Side stage={stage} chain={chain} data={data} dispatch={dispatch} />
+        <Side block={block} stage={stage} factory={factory} flow={flow} data={data} dispatch={dispatch} />
       </div>
     </div>
   );
@@ -129,13 +130,17 @@ function PerRowField({ stage, data, dispatch }: { stage: Stage; data: GameData; 
   );
 }
 
-function Side({ stage, chain, data, dispatch }: Omit<Props, 'onClose'>) {
+function Side({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onClose'>) {
   const r = data.recipes[stage.recipe];
   const main = (r.outs[0] ?? r.ins[0]).item;
   const options = recipesFor(data, main);
   if (!options.some(o => o.id === r.id)) options.unshift(r);
   const warns = portWarnings(stage, data);
-  const fluidOut = unlinkedFluids(chain, data, stage.id);
+  // Saídas fluidas sem ligação, com o que sai delas: o Awesome Sink não aceita fluido.
+  const bf = flow.blocks[stage.id];
+  const fluidOut = r.outs
+    .filter(x => data.items[x.item]?.fluid && !factory.links.some(l => l.from === stage.id && l.item === x.item))
+    .map(x => ({ item: x.item, total: bf?.outs.find(p => p.item === x.item)?.rate ?? 0 }));
   const pieces = stagePieces(stage, data);
   const area = stageArea(stage, data);
   const nrows = stageRows(stage, data).length;
@@ -151,7 +156,7 @@ function Side({ stage, chain, data, dispatch }: Omit<Props, 'onClose'>) {
         </label>
         <div className="pl-note">{recipeLine(r, data)}</div>
         <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
-          onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
+          onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
         <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
           onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
         <PerRowField stage={stage} data={data} dispatch={dispatch} />

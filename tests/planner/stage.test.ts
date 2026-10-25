@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { GameData } from '../../src/planner/model/types.ts';
+import type { GameData, RecipeBlock } from '../../src/planner/model/types.ts';
 import { perMachine, stageTotals, suggestedPerRow, stageRows, portTier, portWarnings, stagePieces, stageArea, tierKey } from '../../src/planner/model/stage.ts';
-import { exampleChain } from '../../src/planner/model/example.ts';
+import { exampleFactory } from '../../src/planner/model/factorystate.ts';
+import { solveFactory } from '../../src/planner/model/solve.ts';
+import { solvedStage } from '../../src/planner/model/solved.ts';
 
 const data = game as GameData;
-const ch = exampleChain(data); const [s1, s2, s3, s4] = ch.stages;
+const ex = exampleFactory(data), flow = solveFactory(ex, data);
+const [s1, s2, s3, s4] = ex.blocks.map(b => solvedStage(b as RecipeBlock, flow.blocks[b.id]));
 
 test('etapa: Pure Iron 42 → 1.470 ore, 840 water, 2.730 ingot; sugere 7 por linha', () => {
   assert.deepEqual(stageTotals(s1, data).outs, [{ item: 'Desc_IronIngot_C', total: 2730 }]);
@@ -40,7 +43,7 @@ test('etapa: fileiras incompletas e clock', () => {
 test('etapa: área da Foundry 120 × 96 m', () => assert.deepEqual(stageArea(s2, data), { w: 120, d: 96 }));
 
 // Recipe_UraniumCell_C: Sulfuric Acid entra 40 e sai 10 por máquina.
-const cell = { id: 'u1', recipe: 'Recipe_UraniumCell_C', machines: 10, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } };
+const cell = { id: 'u1', recipe: 'Recipe_UraniumCell_C', machines: 10, clock: 100, perRow: null, tiers: {} };
 const ACID = 'Desc_SulfuricAcid_C';
 test('etapa: mesmo item na entrada e na saída lê o lado certo', () => {
   assert.equal(perMachine(cell, data, ACID, 'ins'), 40);

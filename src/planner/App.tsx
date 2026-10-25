@@ -4,23 +4,22 @@ import { LANG_STORE } from '../ui/common.js';
 import { PLANNER_PATH, type Lang } from './lang.ts';
 import game from './data/game.json';
 import type { GameData } from './model/types.ts';
-import { chainTotals } from './model/totals.ts';
+import { meiosOf } from './model/factory.ts';
+import { factoryTotals, solvedStage } from './model/solved.ts';
 import { usePlanner } from './store.ts';
-import { Header, type View } from './ui/Header.tsx';
+import { useFlowState } from './solver.ts';
+import { useMeioResults } from './meios.ts';
+import { Header } from './ui/Header.tsx';
 import { Sidebar } from './ui/Sidebar.tsx';
 import { Inspector } from './ui/Inspector.tsx';
-import type { SearchRequest, Selection } from './ui/selection.ts';
-import { Graph } from './ui/Graph.tsx';
-import { meios } from './model/meio.ts';
-import { useMeioResults } from './meios.ts';
+import type { Selection } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView } from './ui/MapView.tsx';
+import { blockName } from './ui/format.ts';
 
 const data = game as unknown as GameData;
 const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
-const VIEW_STORE = 'sf-balancer:planner-view';
-const savedView = (): View => { try { return localStorage.getItem(VIEW_STORE) === 'map' ? 'map' : 'graph'; } catch { return 'graph'; } };
 
 export function App() {
   // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
@@ -43,27 +42,23 @@ export function App() {
     setLangState(l);
   };
 
-  const { chain, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
-  // Cadeia ou mapa: lembrado entre as visitas.
-  const [view, setViewState] = useState<View>(savedView);
-  const setView = (v: View) => {
-    setViewState(v);
-    try { localStorage.setItem(VIEW_STORE, v); } catch { /* sem storage */ }
-  };
+  const { factory: f, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
+  // O fluxo: no worker, com cache por componente; enquanto calcula, o último pronto.
+  const { flow, pending } = useFlowState(f, data);
   const [picked, setSelection] = useState<Selection>(null);
-  // Pedido de busca vindo do grafo (porta arrastada para o vazio).
-  const [search, setSearch] = useState<SearchRequest | null>(null);
-  // Etapa aberta na vista de detalhe; some se a etapa deixar de existir (apagar, desfazer).
+  // Bloco de receita aberto na vista de detalhe; some se o bloco deixar de existir (apagar, desfazer).
   const [openId, setOpenId] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const setOpenStage = (id: string | null) => {
+    if (id && f.blocks.find(b => b.id === id)?.kind !== 'recipe') return;   // origem e sobra não têm fileiras
     if (id) openerRef.current = document.activeElement as HTMLElement | null;
     setOpenId(id);
   };
-  const openStage = openId ? chain.stages.find(s => s.id === openId) : undefined;
-  // Etapa que sumiu (apagar, desfazer): fecha de vez, para não reabrir se o id voltar.
+  const openBlock = openId ? f.blocks.find(b => b.id === openId) : undefined;
+  const openStage = openBlock?.kind === 'recipe' ? openBlock : undefined;
+  // Bloco que sumiu (apagar, desfazer): fecha de vez, para não reabrir se o id voltar.
   useEffect(() => { if (openId && !openStage) setOpenId(null); }, [openId, openStage]);
-  // Ao fechar, o foco volta a quem abriu (se ainda existe) ou ao grafo.
+  // Ao fechar, o foco volta a quem abriu (se ainda existe) ou ao mapa.
   const wasOpen = useRef(false);
   const isOpen = !!openStage;
   useEffect(() => {
@@ -73,14 +68,20 @@ export function App() {
     const o = openerRef.current;
     (o && o.isConnected && o !== document.body ? o : document.getElementById('pl-graph'))?.focus();
   }, [isOpen]);
-  const meioList = useMemo(() => meios(chain, data), [chain]);
+  const meioList = useMemo(() => meiosOf(f), [f.links]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
-  const meioResults = useMeioResults(chain, data, lang, meioList);
-  // Depois de desfazer, a etapa ou o meio selecionado pode não existir mais: aí não há seleção.
+  const meioResults = useMeioResults(f, flow, data, lang, meioList);
+  // Depois de desfazer, o bloco ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
-    : picked.kind === 'stage' ? (chain.stages.some(s => s.id === picked.id) ? picked : null)
+    : picked.kind === 'stage' ? (f.blocks.some(b => b.id === picked.id) ? picked : null)
     : (meioList.some(m => m.id === picked.id) ? picked : null);
-  const { stages, machines } = chainTotals(chain, data);
+  const { blocks, machines } = factoryTotals(f, flow);
+  // O que o fluxo tem a dizer: calculando, não estabilizou, loop travado.
+  const status = [
+    ...(pending ? [t('plFlowCalc')] : []),
+    ...(flow.converged ? [] : [t('plNotConverged')]),
+    ...flow.deadlock.map(ids => t('plDeadlock', ids.map(id => { const b = f.blocks.find(x => x.id === id); return b ? blockName(b, data) : id; }).join(', '))),
+  ];
 
   // Ctrl/Cmd+Z desfaz, +Shift refaz; ignora quando o foco está num campo.
   useEffect(() => {
@@ -95,32 +96,23 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [dispatch]);
 
-  // No mapa, o painel da cadeia aparece só com um meio selecionado (o resto fica no painel do mapa).
+  // O painel do meio aparece com um meio selecionado (o resto fica no painel do mapa).
   const inspector = (
-    <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults}
-      dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
+    <Inspector selection={selection} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} dispatch={dispatch} />
   );
   return (
     <div className="pl-app">
-      <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
-        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} view={view} onView={setView} />
+      <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
+        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
-        <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
-          search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
-        {view === 'map'
-          ? <MapView chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
-            onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} inspector={inspector} />
-          : (
-            <>
-              <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plGraph')}>
-                <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
-                  dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
-              </main>
-              {inspector}
-            </>
-          )}
+        <Sidebar factory={f} flow={flow} data={data} selection={selection} onSelect={setSelection} dispatch={dispatch} />
+        <MapView factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
+          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} inspector={inspector} />
       </div>
-      {openStage && <StageView key={openStage.id} stage={openStage} chain={chain} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
+      {openStage && (
+        <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
+          data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />
+      )}
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>
   );

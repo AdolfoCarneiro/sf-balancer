@@ -1,32 +1,41 @@
 // Vista do mapa: a cena em escala num canvas, com a navegação do Figma (rolar move, Ctrl/⌘ + rodinha ou pinça
 // dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo. Clicar seleciona, arrastar um bloco
-// o muda de lugar (preso na grade), duplo clique abre a etapa; o painel ao lado gira, ajusta vãos e lista os avisos.
+// o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista os avisos.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
+import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
 import { perRowOf, stageRows } from '../model/stage.ts';
-import type { Chain, GameData, MapPlace, StageId } from '../model/types.ts';
-import type { Action } from '../model/persist.ts';
+import { solvedStage } from '../model/solved.ts';
+import type { FlowResult } from '../model/solve.ts';
+import type { Factory, GameData, MapPlace, StageId } from '../model/types.ts';
+import type { Action } from '../model/factorystate.ts';
 import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
 import { dragged, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
-import { sizeText } from './format.ts';
+import { blockName, rateText, sizeText } from './format.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
-  chain: Chain; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
+  factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
-  inspector: ReactNode;   // o painel da cadeia, mostrado com um meio selecionado
+  inspector: ReactNode;   // o painel do meio, mostrado com um meio selecionado
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
 // camMoved: o usuário já mexeu na câmera (aí ela não reenquadra sozinha quando os meios chegam).
 let sessionCam: Camera | null = null;
 let camMoved = false, refitted = false;
+let sessionSize = { w: 0, h: 0 };
+
+// O centro da vista no mundo (m): onde nasce o bloco criado pela busca lateral.
+export function mapCenter(): [number, number] {
+  const c = sessionCam;
+  return c ? screenToWorld(c, sessionSize.w / 2, sessionSize.h / 2) : [0, 0];
+}
 
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
@@ -35,41 +44,44 @@ const CLICK_PX = 4;
 const HINT_STORE = 'sf-balancer:planner-map-hint';   // até aqui o ponteiro só clicou; passou disso, arrasta
 
 // Cor de cada item como na tela da etapa: fluido em holo; o item como entrada principal de quem consome em flow,
-// como entrada secundária em held; produto que ninguém consome (saída final) em ficsit.
-function itemColors(chain: Chain, data: GameData, th: MapTheme): Record<string, string> {
+// como entrada secundária em held; produto que ninguém consome (saída final) e o que sai das origens em ficsit.
+function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const s of chain.stages) {
-    const r = data.recipes[s.recipe];
+  const fluid = (item: string) => !!data.items[item]?.fluid;
+  for (const b of f.blocks) {
+    if (b.kind !== 'recipe') continue;
+    const r = data.recipes[b.recipe];
     if (!r) continue;
-    r.ins.forEach((f, i) => { if (!out[f.item] || i === 0) out[f.item] = data.items[f.item]?.fluid ? th.holo : i === 0 ? th.flow : th.held; });
+    r.ins.forEach((x, i) => { if (!out[x.item] || i === 0) out[x.item] = fluid(x.item) ? th.holo : i === 0 ? th.flow : th.held; });
   }
-  for (const s of chain.stages) {
-    for (const f of data.recipes[s.recipe]?.outs ?? []) out[f.item] ??= data.items[f.item]?.fluid ? th.holo : th.ficsit;
+  for (const b of f.blocks) {
+    const outs = b.kind === 'recipe' ? (data.recipes[b.recipe]?.outs ?? []).map(x => x.item) : b.kind === 'miner' || b.kind === 'extractor' ? [b.item] : [];
+    for (const item of outs) out[item] ??= fluid(item) ? th.holo : th.ficsit;
   }
   return out;
 }
 
-export function MapView({ chain, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, inspector }: Props) {
+export function MapView({ factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, inspector }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
-  // A montagem escolhida de cada meio; null enquanto calcula, sem montagem ou grande demais.
+  // A montagem escolhida de cada meio; null enquanto calcula, sem montagem, sem limite ou grande demais.
   const geos = useMemo(() => {
     const g: Record<string, MeioGeo | null> = {};
     for (const m of meioList) {
       const r = results.get(m.id);
-      g[m.id] = r ? r.geos[chosenAlt(r.plan, chain.alts?.[m.id]) ?? ''] ?? null : null;
+      g[m.id] = r ? chosenGeo(r, f.alts?.[m.id]) : null;
     }
     return g;
-  }, [meioList, results, chain.alts]);
+  }, [meioList, results, f.alts]);
   // Posições mostradas: as salvas e, para quem não tem, a derivada (que pode mudar quando os meios chegam). Arrastando,
-  // o bloco usa a posição provisória (a cena é refeita sem recalcular meio).
-  const basePlaces = useMemo(() => placesOf(chain, data, geos), [chain, data, geos]);
+  // o bloco usa a posição provisória (a cena é refeita sem recalcular meio nem fluxo).
+  const basePlaces = useMemo(() => placesOf(f, data, geos, flow), [f, data, geos, flow]);
   const [moving, setMoving] = useState<{ id: StageId; place: MapPlace } | null>(null);
   const places = useMemo(() => (moving ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
-  const scene = useMemo(() => buildScene(chain, data, places, geos), [chain, data, places, geos]);
+  const scene = useMemo(() => buildScene(f, data, places, geos, flow), [f, data, places, geos, flow]);
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
-  const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(chain, data, geos) });
+  const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(f, data, geos, flow) });
 
   // A dica de navegação fica até ser fechada (lembrado neste navegador).
   const [hint, setHint] = useState(() => { try { return localStorage.getItem(HINT_STORE) !== '0'; } catch { return true; } });
@@ -82,25 +94,39 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
   const [hover, setHover] = useState<string | null>(null);
   const [theme, setTheme] = useState<MapTheme | null>(null);
 
-  const colors = useMemo(() => (theme ? itemColors(chain, data, theme) : {}), [chain, data, theme]);
+  const colors = useMemo(() => (theme ? itemColors(f, data, theme) : {}), [f, data, theme]);
   const opts = useMemo((): DrawOpts | null => theme && {
     // lang nas dependências: os rótulos mudam com o idioma.
     selected, hover, colors, theme,
     names: item => data.items[item]?.name ?? item,
     blockText: id => {
-      const s = chain.stages.find(x => x.id === id)!, r = data.recipes[s.recipe], b = data.buildings[r.building];
-      return { title: `${r.name} · ${fmt(s.machines, 0)}`, sub: t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), b.name) };
+      const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id];
+      if (b.kind !== 'recipe') {
+        // Origem: o que sai; sobra: o que chega, por item.
+        const n = b.kind === 'extractor' ? bf?.extractors : undefined;
+        const title = blockName(b, data) + (typeof n === 'number' ? ` × ${fmt(n, 0)}` : '');
+        const ports = (b.kind === 'miner' || b.kind === 'extractor' ? bf?.outs : bf?.ins) ?? [];
+        const sub = ports.map(p => (p.rate === null ? t('plUnbounded') : rateText(data.items[p.item], p.rate))).join(' · ');
+        return { title: bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title, sub };
+      }
+      const s = solvedStage(b, bf), r = data.recipes[s.recipe], bd = data.buildings[r.building];
+      const count = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
+      return { title: `${r.name} · ${count}`, sub: t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name) };
     },
     meioText: id => {
       const r = results.get(id);
       if (r === undefined) return { title: '', sub: '' };
       if (r === null) return { title: t('plMapCalc'), sub: '' };
+      if (r.plan.unbounded) return { title: t('plUnbounded'), sub: '' };
       if (r.plan.tooLarge) return { title: t('plMeioTooLargeShort'), sub: '' };
-      const key = chosenAlt(r.plan, chain.alts?.[id]);
+      const lines = `${fmt(r.plan.src.lines.length, 0)} → ${fmt(r.plan.direct ? r.plan.src.lines.length : r.plan.dst.lines.length, 0)}`;
+      const m = meioList.find(x => x.id === id);
+      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = f.blocks.find(x => x.id === c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines };
+      const key = chosenAlt(r.plan, f.alts?.[id]);
       const alt = r.plan.alternatives.find(a => a.key === key);
-      return { title: alt?.caseLabel ?? '', sub: `${fmt(r.plan.src.lines.length, 0)} → ${fmt(r.plan.dst.lines.length, 0)}` };
+      return { title: alt?.caseLabel ?? '', sub: lines };
     },
-  }, [selected, hover, colors, theme, chain, data, results, lang]);
+  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang]);
 
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
   const latest = useRef({ scene, opts });
@@ -137,6 +163,7 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
     const resize = () => {
       const w = box.clientWidth, h = box.clientHeight, dpr = window.devicePixelRatio || 1;
       size.current = { w, h };
+      sessionSize = { w, h };
       el.width = Math.max(1, Math.round(w * dpr)); el.height = Math.max(1, Math.round(h * dpr));
       if (!cam.current && w && h) setCam(fit(boundsRef.current, w, h));
       request();
@@ -266,7 +293,7 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
         <div className="pl-map" ref={wrap}>
           <canvas ref={canvas} tabIndex={0} role="img"
             className={'pl-map-canvas' + (dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : hover ? ' over' : '')}
-            aria-label={t('plMapAria', fmt(chain.stages.length, 0), area)}
+            aria-label={t('plMapAria', fmt(f.blocks.length, 0), area)}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
             onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} onDoubleClick={onDoubleClick}
             onKeyDown={e => blockKey(e, selStage)} />
@@ -285,7 +312,7 @@ export function MapView({ chain, data, lang, meioList, results, selection, onSel
       </main>
       {selection?.kind === 'meio'
         ? inspector
-        : <MapPanel chain={chain} data={data} meioList={meioList} scene={scene} places={places} selected={selStage}
+        : <MapPanel factory={f} data={data} meioList={meioList} scene={scene} places={places} selected={selStage}
           onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
           onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />}
     </>

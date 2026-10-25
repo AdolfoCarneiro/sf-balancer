@@ -4,17 +4,41 @@ import type {
 } from './types.ts';
 import { tierKey } from './stage.ts';
 import {
-  PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect,
+  MAX_MACHINES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect,
   extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, setClock, setCollect, setExtractor, setLimits,
   setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
-import { ALT_KEY_MAX, MAX_LINKS, MAX_STAGES, clamp, cleanChain, isObj, num, parseShare, safeId } from './persist.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
 import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
-export { PLANNER_STORE } from './persist.ts';
+export const PLANNER_STORE = 'sf-balancer:planner';
+export const MAX_STAGES = 200, MAX_LINKS = 2000, ALT_KEY_MAX = 40;
+// Id seguro para chave de objeto.
+export const safeId = (v: unknown): string | null => {
+  if (typeof v !== 'string') return null;
+  const id = v.slice(0, 40);
+  return /^[A-Za-z0-9_-]+$/.test(id) && !(id in Object.prototype) ? id : null;
+};
+export const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
+const num = (v: unknown, def: number) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+// O JSON de um link `#p=` (base64url), ou undefined se não abre.
+export function parseShare(str: string): unknown {
+  try {
+    const bin = atob(String(str).replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+  } catch { return undefined; }
+}
+
+// Formato bruto da v1 (fase 1 e 2), só para a migração e o exemplo. locked e pos (do grafo) existiam e são ignorados.
+export interface StageV1 { id: StageId; recipe: RecipeId; machines: number; clock: number; perRow: number | null; tiers: Record<string, string> }
+export interface ChainV1 {
+  v: 1; stages: StageV1[]; links: Link[]; policy: 'represar' | 'sink' | 'extra';
+  map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number;
+}
 
 export interface History<T> { past: T[]; present: T; future: T[]; limit: number }
 
@@ -50,22 +74,42 @@ export function decodeFactory(str: string, data: GameData): Factory | null {
   return cleanFactory(raw, data);
 }
 
+// Etapas da v1 como blocos de receita v2, com as máquinas fixadas. Tier na chave `in:`/`out:` + item; a antiga (só o
+// item) vai para a saída se o item sai, senão para a entrada.
+function stagesV1(raw: unknown, data: GameData): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const r of (Array.isArray(raw) ? raw : []).slice(0, MAX_STAGES)) {
+    if (!isObj(r) || typeof r.recipe !== 'string' || !Object.hasOwn(data.recipes, r.recipe)) continue;
+    const recipe = data.recipes[r.recipe];
+    const has = (side: Side, item: string) => recipe[side].some(f => f.item === item);
+    const tiers: Record<string, string> = {};
+    if (isObj(r.tiers)) for (const [key, tier] of Object.entries(r.tiers)) {
+      const m = key.match(/^(in|out):(.*)$/);
+      const item = m ? m[2] : key;
+      const side: Side = m ? (m[1] === 'in' ? 'ins' : 'outs') : has('outs', item) ? 'outs' : 'ins';
+      if (has(side, item)) tiers[tierKey(side, item)] = tier;
+    }
+    out.push({
+      id: r.id, kind: 'recipe', recipe: r.recipe, clock: r.clock, perRow: r.perRow, tiers,
+      limits: { machines: clamp(Math.round(num(r.machines, 1)), 1, MAX_MACHINES) },
+    });
+  }
+  return out;
+}
+
 // v1 → v2: as máquinas viram fixadas; cadeado e posição do grafo somem; a política sink/extra vira coleta
-// em toda saída sólida ligada (a sobra agora é por porta).
+// em toda saída sólida ligada (a sobra agora é por porta). O resto passa pela mesma leitura da v2.
 export function migrateV1(raw: unknown, data: GameData): Factory | null {
-  const c = cleanChain(raw, data);
-  if (!c) return null;
-  const collects = c.policy === 'sink' || c.policy === 'extra';
-  const blocks: Block[] = c.stages.map(s => {
-    const r = data.recipes[s.recipe];
-    const collect = collects
-      ? cleanCollect(r.outs.map(f => f.item).filter(item => c.links.some(l => l.from === s.id && l.item === item)), r, data)
-      : undefined;
-    return { id: s.id, kind: 'recipe', recipe: s.recipe, clock: s.clock, perRow: s.perRow, tiers: s.tiers, limits: { machines: s.machines }, ...(collect ? { collect } : {}) };
-  });
+  if (!isObj(raw) || raw.v !== 1) return null;
+  const f = cleanFactory({ v: 2, blocks: stagesV1(raw.stages, data), links: raw.links, map: raw.map, alts: raw.alts, mapGap: raw.mapGap }, data);
+  if (!f || !(raw.policy === 'sink' || raw.policy === 'extra')) return f;
   return {
-    v: 2, blocks, links: c.links,
-    ...(c.map ? { map: c.map } : {}), ...(c.alts ? { alts: c.alts } : {}), ...(c.mapGap !== undefined ? { mapGap: c.mapGap } : {}),
+    ...f,
+    blocks: f.blocks.map(b => {
+      if (b.kind !== 'recipe') return b;
+      const collect = cleanCollect(f.links.filter(l => l.from === b.id).map(l => l.item), data.recipes[b.recipe], data);
+      return collect ? { ...b, collect } : b;
+    }),
   };
 }
 
@@ -163,7 +207,12 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     case 'connect': return connect(f, d, a.from, a.to, a.item);
     case 'disconnect': return disconnect(f, a.linkId);
     case 'setRecipe': return setRecipe(f, d, a.id, a.recipe);
-    case 'setLimits': return setLimits(f, a.id, a.limits);
+    case 'setLimits': {
+      // Só as entradas da receita do bloco.
+      const b = f.blocks.find(x => x.id === a.id);
+      if (b?.kind !== 'recipe') return f;
+      return setLimits(f, a.id, cleanLimits(a.limits, d.recipes[b.recipe].ins.map(x => x.item)) ?? null);
+    }
     case 'setClock': return setClock(f, a.id, a.clock);
     case 'setPerRow': return setPerRow(f, a.id, a.perRow);
     case 'setTier': return setTier(f, a.id, a.side, a.item, a.tier);
@@ -184,6 +233,8 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
       return { ...f, map };
     }
     case 'setMeioAlt': {
+      // Como na leitura: só meio que existe e chave curta.
+      if (!meiosOf(f).some(m => m.id === a.meio) || (a.key !== null && (typeof a.key !== 'string' || a.key.length > ALT_KEY_MAX))) return f;
       const { [a.meio]: _old, ...rest } = f.alts ?? {};
       if (a.key === null) return Object.keys(rest).length ? { ...f, alts: rest } : omitAlts(f);
       return { ...f, alts: { ...rest, [a.meio]: a.key } };

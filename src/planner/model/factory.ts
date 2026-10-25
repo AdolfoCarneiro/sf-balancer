@@ -5,7 +5,6 @@ import type {
   RecipeBlock, RecipeId, Side, Stage, StageId,
 } from './types.ts';
 import { suggestedPerRow, tierKey } from './stage.ts';
-import { MAX_MACHINES } from './chain.ts';
 import { groupLinks, type Meio } from './meio.ts';
 import { cleanPlace } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
@@ -13,6 +12,8 @@ import type { Pt } from './map/geo.ts';
 export const PURITY: Record<Purity, number> = { impure: 0.5, normal: 1, pure: 2 };
 export const MINER_DEFAULT = 60;   // Miner Mk.1 em nó normal (Docs) = padrão do Modeler
 export const MAX_EXTRACTORS = 1000, MAX_RATE = 1e6;
+// Limite de máquinas por bloco: o mesmo na leitura, nos campos e na etapa derivada.
+export const MAX_MACHINES = 10000;
 
 export type BlockSpec =
   | { kind: 'recipe'; recipe: RecipeId }
@@ -21,7 +22,7 @@ export type BlockSpec =
   | { kind: 'sink' | 'container' | 'export' };
 
 const nextId = (ids: string[], p: string) => p + (Math.max(0, ...ids.map(id => (id.match(new RegExp(`^${p}(\\d+)$`)) ?? [])[1]).filter(Boolean).map(Number)) + 1);
-const nextBlockId = (f: Factory): StageId => nextId(f.blocks.map(b => b.id), 's');
+export const nextBlockId = (f: Factory): StageId => nextId(f.blocks.map(b => b.id), 's');
 export const nextLinkId = (f: Factory): string => nextId(f.links.map(l => l.id), 'l');
 const get = (f: Factory, id: StageId) => f.blocks.find(b => b.id === id);
 const editRecipe = (f: Factory, id: StageId, fn: (b: RecipeBlock) => RecipeBlock): Factory =>
@@ -37,9 +38,8 @@ export const extractable = (d: GameData, building: unknown, item: unknown): bool
   typeof building === 'string' && typeof item === 'string' && own(d.extractors, building) && own(d.items, item) && d.extractors[building].items.includes(item);
 const isFluid = (d: GameData, item: ItemId) => own(d.items, item) && d.items[item].fluid;
 
-// A receita do bloco vista como etapa da fase 1, para reaproveitar as contas de fileira.
-const asStage = (b: RecipeBlock): Stage =>
-  ({ id: b.id, recipe: b.recipe, machines: 1, clock: b.clock, perRow: b.perRow, locked: false, tiers: b.tiers, pos: { x: 0, y: 0 } });
+// A receita do bloco vista como etapa, para reaproveitar as contas de fileira.
+const asStage = (b: RecipeBlock): Stage => ({ id: b.id, recipe: b.recipe, machines: 1, clock: b.clock, perRow: b.perRow, tiers: b.tiers });
 
 // Limites saneados: máquinas inteiras 1..MAX_MACHINES; entradas em (0, MAX_RATE], só dos itens `items`
 // (sem a lista, qualquer chave de item que não seja de Object.prototype). Nada = undefined.

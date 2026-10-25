@@ -7,7 +7,7 @@ import { route } from '../../src/planner/model/map/geo.ts';
 
 const data = game as GameData;
 const st = (recipe: string, machines: number, perRow: number | null = null): Stage =>
-  ({ id: 's', recipe, machines, clock: 100, perRow, locked: false, tiers: {}, pos: { x: 0, y: 0 } });
+  ({ id: 's', recipe, machines, clock: 100, perRow, tiers: {} });
 const STEEL = 'Recipe_Alternate_IngotSteel_1_C';
 
 test('Foundry de Solid Steel, 60 máquinas, 12 por linha: 5 fileiras de 120 × 22', () => {

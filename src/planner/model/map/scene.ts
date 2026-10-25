@@ -1,20 +1,24 @@
-// A cena do mapa, no mundo (metros): blocos das etapas, meios colados na primeira produtora, esteiras entre eles,
-// sobreposições e cruzamentos. Puro: o canvas só desenha o que sai daqui.
-import type { Chain, GameData, MapPlace, Rot, Stage, StageId } from '../types.ts';
-import { meios as meiosOf, type Meio } from '../meio.ts';
+// A cena do mapa, no mundo (metros): blocos da fábrica (receitas em escala, origens e sobras como marcadores), meios
+// colados na primeira produtora, esteiras entre eles, sobreposições e cruzamentos. Puro: o canvas só desenha o que sai
+// daqui.
+import type { Block, Factory, GameData, MapPlace, Rot, StageId } from '../types.ts';
+import { groupLinks, type Meio } from '../meio.ts';
+import type { FlowResult } from '../solve.ts';
+import { markerGeo, solvedStage } from '../solved.ts';
 import { blockGeo } from './block.ts';
 import { clean, cutsRect, route, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
 import { crossings, intersects, overlaps } from './checks.ts';
 
-export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo }
+// marker: origem ou sobra, desenhada fora de escala.
+export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean }
 export interface SceneMeio { meio: string; rect: Rect; rot: Rot; geo: MeioGeo | null }   // null = calculando (faixa 16 × 8)
 export interface Scene {
   blocks: SceneBlock[]; meios: SceneMeio[]; belts: BeltPath[]; bounds: Rect;
   overlaps: [string, string][]; crossings: Pt[];
 }
 
-type Geos = Record<string, MeioGeo | null>;
+export type Geos = Record<string, MeioGeo | null>;
 interface Size { w: number; h: number }
 // Meio calculando ou grande demais: faixa sem peças nem pontas.
 const STRIP: Size = { w: 16, h: 8 };
@@ -84,53 +88,59 @@ function attach(list: Meio[], geos: Geos, sizeOf: (id: StageId) => Size): Map<st
   return out;
 }
 
-// Posto de cada etapa: a maior distância desde uma etapa sem produtor.
-function ranks(chain: Chain): Map<StageId, number> {
+// Geometria do bloco: receita em escala (máquinas resolvidas), o resto como marcador.
+function geoOf(b: Block, d: GameData, flow: FlowResult, place?: MapPlace): BlockGeo {
+  return b.kind === 'recipe' ? blockGeo(solvedStage(b, flow.blocks[b.id]), d, place) : markerGeo(b, flow.blocks[b.id], d);
+}
+
+// Posto de cada bloco: a maior distância desde um bloco sem produtor (num loop, o ciclo é cortado).
+function ranks(f: Factory): Map<StageId, number> {
   const memo = new Map<StageId, number>(), busy = new Set<StageId>();
   const rank = (id: StageId): number => {
     const known = memo.get(id);
     if (known !== undefined) return known;
-    if (busy.has(id)) return 0;   // ciclo (não deveria existir): corta
+    if (busy.has(id)) return 0;   // ciclo: corta
     busy.add(id);
-    const r = Math.max(0, ...chain.links.filter(l => l.to === id).map(l => rank(l.from) + 1));
+    const r = Math.max(0, ...f.links.filter(l => l.to === id).map(l => rank(l.from) + 1));
     busy.delete(id);
     memo.set(id, r);
     return r;
   };
-  for (const s of chain.stages) rank(s.id);
+  for (const b of f.blocks) rank(b.id);
   return memo;
 }
 
 const gapsOf = (p?: MapPlace): Pick<MapPlace, 'gapRow' | 'gapMachine'> =>
   ({ ...(p?.gapRow !== undefined ? { gapRow: p.gapRow } : {}), ...(p?.gapMachine !== undefined ? { gapMachine: p.gapMachine } : {}) });
 
-export function proposeMap(chain: Chain, data: GameData, geos: Geos): Record<StageId, MapPlace> {
-  const size = new Map(chain.stages.map(s => [s.id, blockGeo(s, data, chain.map?.[s.id]) as Size]));
-  const att = attach(meiosOf(chain, data), geos, id => size.get(id)!);
-  // Faixa vertical (no referencial da etapa) e largura do maior meio colado em cada etapa.
+export function proposeMap(f: Factory, data: GameData, geos: Geos, flow: FlowResult): Record<StageId, MapPlace> {
+  const size = new Map(f.blocks.map(b => [b.id, geoOf(b, data, flow, f.map?.[b.id]) as Size]));
+  const att = attach(groupLinks(f.links), geos, id => size.get(id)!);
+  // Faixa vertical (no referencial do bloco) e largura do maior meio colado em cada bloco.
   const ext = new Map<StageId, { top: number; bottom: number; meioW: number }>();
-  for (const s of chain.stages) { const b = size.get(s.id)!; ext.set(s.id, { top: 0, bottom: b.h, meioW: 0 }); }
+  for (const b of f.blocks) { const z = size.get(b.id)!; ext.set(b.id, { top: 0, bottom: z.h, meioW: 0 }); }
   for (const a of att.values()) {
     const e = ext.get(a.owner)!;
     e.top = Math.min(e.top, a.at[1]); e.bottom = Math.max(e.bottom, a.at[1] + a.size.h); e.meioW = Math.max(e.meioW, a.size.w);
   }
-  const rk = ranks(chain), cols = new Map<number, Stage[]>();
-  for (const s of chain.stages) { const r = rk.get(s.id)!; const l = cols.get(r); if (l) l.push(s); else cols.set(r, [s]); }
+  const rk = ranks(f), cols = new Map<number, Block[]>();
+  for (const b of f.blocks) { const r = rk.get(b.id)!; const l = cols.get(r); if (l) l.push(b); else cols.set(r, [b]); }
   // Coluna com entrada sem ligação: os tocos de RAW_STUB chegam pela esquerda e precisam de lugar antes dela.
-  const hasRaw = (s: Stage) => {
-    const linked = new Set(chain.links.filter(l => l.to === s.id).map(l => l.item));
-    return (data.recipes[s.recipe]?.ins ?? []).some(f => !linked.has(f.item));
+  const hasRaw = (b: Block) => {
+    if (b.kind !== 'recipe') return false;
+    const linked = new Set(f.links.filter(l => l.to === b.id).map(l => l.item));
+    return (data.recipes[b.recipe]?.ins ?? []).some(x => !linked.has(x.item));
   };
   const out: Record<StageId, MapPlace> = {};
   let x = 0;
   for (const r of [...cols.keys()].sort((a, b) => a - b)) {
     if (x > 0 && cols.get(r)!.some(hasRaw)) x = snap(x + RAW_STUB);
     let cursor = 0, blockW = 0, meioW = 0;
-    for (const s of cols.get(r)!) {
-      const e = ext.get(s.id)!, y = snap(cursor - e.top);
-      out[s.id] = { x, y, rot: 0, ...gapsOf(chain.map?.[s.id]) };
+    for (const b of cols.get(r)!) {
+      const e = ext.get(b.id)!, y = snap(cursor - e.top);
+      out[b.id] = { x, y, rot: 0, ...gapsOf(f.map?.[b.id]) };
       cursor = y + e.bottom + FOUNDATION;
-      blockW = Math.max(blockW, size.get(s.id)!.w); meioW = Math.max(meioW, e.meioW);
+      blockW = Math.max(blockW, size.get(b.id)!.w); meioW = Math.max(meioW, e.meioW);
     }
     x = snap(x + blockW + MEIO_GAP + meioW + MEIO_GAP);
   }
@@ -138,13 +148,13 @@ export function proposeMap(chain: Chain, data: GameData, geos: Geos): Record<Sta
 }
 
 // Blocos e meios no mundo, sem esteiras.
-function layout(chain: Chain, data: GameData, places: Record<StageId, MapPlace>, geos: Geos, stages = chain.stages) {
-  const blocks: SceneBlock[] = stages.map(s => {
-    const place = places[s.id] ?? ORIGIN, geo = blockGeo(s, data, place);
-    return { stage: s.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) } };
+function layout(f: Factory, data: GameData, places: Record<StageId, MapPlace>, geos: Geos, flow: FlowResult, list0 = f.blocks) {
+  const blocks: SceneBlock[] = list0.map(b => {
+    const place = places[b.id] ?? ORIGIN, geo = geoOf(b, data, flow, place);
+    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe' };
   });
   const byId = new Map(blocks.map(b => [b.stage, b]));
-  const list = meiosOf(chain, data).filter(m => byId.has(m.producers[0]));
+  const list = groupLinks(f.links).filter(m => byId.has(m.producers[0]));
   const att = attach(list, geos, id => byId.get(id)!.geo);
   const meios: SceneMeio[] = list.map(m => {
     const a = att.get(m.id)!, owner = byId.get(a.owner)!;
@@ -162,23 +172,23 @@ function boundsOf(rects: Rect[], belts: BeltPath[] = []): Rect {
   return x0 === Infinity ? { x: 0, y: 0, w: 0, h: 0 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-// Posições usadas pelo mapa: as salvas; etapa sem posição recebe a proposta se ela não sobrepuser nada já
+// Posições usadas pelo mapa: as salvas; bloco sem posição recebe a proposta se ela não sobrepuser nada já
 // posicionado (blocos e seus meios), senão vai para baixo de tudo, em x = 0. Derivado: não grava nada.
-export function placesOf(chain: Chain, data: GameData, geos: Geos): Record<StageId, MapPlace> {
-  const saved = chain.map ?? {};
+export function placesOf(f: Factory, data: GameData, geos: Geos, flow: FlowResult): Record<StageId, MapPlace> {
+  const saved = f.map ?? {};
   const out: Record<StageId, MapPlace> = {};
-  for (const s of chain.stages) if (Object.hasOwn(saved, s.id)) out[s.id] = saved[s.id];
-  const missing = chain.stages.filter(s => !out[s.id]);
+  for (const b of f.blocks) if (Object.hasOwn(saved, b.id)) out[b.id] = saved[b.id];
+  const missing = f.blocks.filter(b => !out[b.id]);
   if (!missing.length) return out;
-  const prop = proposeMap(chain, data, geos);
-  if (missing.length === chain.stages.length) return prop;   // cadeia sem mapa: a proposta inteira
+  const prop = proposeMap(f, data, geos, flow);
+  if (missing.length === f.blocks.length) return prop;   // fábrica sem mapa: a proposta inteira
   for (const s of missing) {
-    const placed = chain.stages.filter(x => out[x.id]);
-    const { blocks, meios } = layout(chain, data, out, geos, placed);
+    const placed = f.blocks.filter(x => out[x.id]);
+    const { blocks, meios } = layout(f, data, out, geos, flow, placed);
     const rects = [...blocks.map(b => b.rect), ...meios.map(m => m.rect)];
-    // O bloco da etapa nova e os meios colados nela, numa posição de teste.
+    // O bloco novo e os meios colados nele, numa posição de teste.
     const mine = (place: MapPlace): Rect[] => {
-      const t = layout(chain, data, { ...out, [s.id]: place }, geos, [...placed, s]);
+      const t = layout(f, data, { ...out, [s.id]: place }, geos, flow, [...placed, s]);
       return [t.byId.get(s.id)!.rect, ...t.meios.filter((_, i) => t.list[i].producers[0] === s.id).map(m => m.rect)];
     };
     const cand = prop[s.id];
@@ -192,15 +202,17 @@ export function placesOf(chain: Chain, data: GameData, geos: Geos): Record<Stage
   return out;
 }
 
-export function buildScene(chain: Chain, data: GameData, places: Record<StageId, MapPlace>, geos: Geos): Scene {
-  const { blocks, byId, list, meios } = layout(chain, data, places, geos);
+export function buildScene(f: Factory, data: GameData, places: Record<StageId, MapPlace>, geos: Geos, flow: FlowResult): Scene {
+  const { blocks, byId, list, meios } = layout(f, data, places, geos, flow);
   const belts: BeltPath[] = [];
   const world = (b: SceneBlock, p: { x: number; y: number }): Pt => toWorld([p.x, p.y], b.geo, b.place);
-  // Portas da etapa para o item, na ordem das fileiras, com a taxa da faixa da fileira.
+  // Portas do bloco para o item, na ordem das fileiras, com a taxa da faixa da fileira.
   const ports = (b: SceneBlock, side: 'ins' | 'outs', item: string) => {
     const lanes = b.geo.belts.filter(x => x.role === (side === 'ins' ? 'in' : 'out') && x.item === item);
     return b.geo[side].filter(a => a.item === item).map((a, k) => ({ at: world(b, a), rate: lanes[k]?.rate ?? 0 }));
   };
+  // Marcador tem uma porta por item: todas as linhas do meio saem (ou chegam) nela.
+  const nth = <T>(xs: T[], k: number, marker: boolean) => (marker ? xs[Math.min(k, xs.length - 1)] : xs[k]);
   const fluid = (item: string) => data.items[item]?.fluid ?? false;
 
   list.forEach((m, i) => {
@@ -212,14 +224,29 @@ export function buildScene(chain: Chain, data: GameData, places: Record<StageId,
       const b = byId.get(id);
       if (!b) continue;
       const from = ports(b, 'outs', m.item), to = byRow(geo.ins, id);
-      for (let k = 0; k < Math.min(from.length, to.length); k++) {
-        const pts = link(from[k].at, DIR[b.place.rot], mw(to[k]), DIR[sm.rot], [b.rect, sm.rect]);
-        belts.push({ pts, item: m.item, rate: from[k].rate, role: 'main', fluid: fluid(m.item) });
+      const n = b.marker && from.length ? to.length : Math.min(from.length, to.length);
+      for (let k = 0; k < n; k++) {
+        const src = nth(from, k, b.marker);
+        const pts = link(src.at, DIR[b.place.rot], mw(to[k]), DIR[sm.rot], [b.rect, sm.rect]);
+        belts.push({ pts, item: m.item, rate: b.marker ? src.rate / n : src.rate, role: 'main', fluid: fluid(m.item) });
       }
     }
+    // Blocos de sobra recebem as linhas extras, repartidas entre eles.
+    const outlets = m.consumers.map(id => byId.get(id)).filter((b): b is SceneBlock => !!b && b.marker);
+    const extras = geo.outs.filter(a => a.extra).sort((a, b) => a.row - b.row);
     for (const id of m.consumers) {
       const b = byId.get(id);
       if (!b) continue;
+      if (b.marker) {
+        const to = ports(b, 'ins', m.item)[0];
+        if (!to) continue;
+        const mine = extras.filter((_, k) => k % outlets.length === outlets.indexOf(b));
+        for (const a of mine) {
+          const pts = link(mw(a), DIR[sm.rot], to.at, DIR[b.place.rot], [sm.rect, b.rect], RAW_STUB + LEAD);
+          belts.push({ pts, item: m.item, rate: to.rate / Math.max(1, mine.length), role: 'main', fluid: fluid(m.item) });
+        }
+        continue;
+      }
       const from = byRow(geo.outs, id), to = ports(b, 'ins', m.item);
       for (let k = 0; k < Math.min(from.length, to.length); k++) {
         const pts = link(mw(from[k]), DIR[sm.rot], to[k].at, DIR[b.place.rot], [sm.rect, b.rect], RAW_STUB + LEAD);
@@ -229,7 +256,7 @@ export function buildScene(chain: Chain, data: GameData, places: Record<StageId,
   });
   // Entradas sem ligação: toco de RAW_STUB chegando pela borda de entrada.
   for (const b of blocks) {
-    const linked = new Set(chain.links.filter(l => l.to === b.stage).map(l => l.item));
+    const linked = new Set(f.links.filter(l => l.to === b.stage).map(l => l.item));
     const [dx, dy] = DIR[b.place.rot];
     for (const item of new Set(b.geo.ins.map(a => a.item))) {
       if (linked.has(item)) continue;

@@ -1,31 +1,28 @@
 import { useState } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
 import { altPieces, meioSummary, meioUrl, type Meio } from '../model/meio.ts';
-import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
-import type { Action } from '../model/persist.ts';
+import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
+import type { Action } from '../model/factorystate.ts';
 import type { PieceCount } from '../model/map/geo.ts';
 import { rotSize } from '../model/map/scene.ts';
-import { sizeText } from './format.ts';
-import { MAX_MACHINES } from '../model/chain.ts';
-import type { Chain, GameData, Stage } from '../model/types.ts';
+import type { FlowResult } from '../model/solve.ts';
+import { blockName, sizeText } from './format.ts';
+import type { Factory, GameData } from '../model/types.ts';
 import type { Lang } from '../lang.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
-  selection: Selection; chain: Chain; data: GameData; lang: Lang; meioList: Meio[]; results: Map<string, MeioResult | null>;
-  dispatch: (a: Action) => void; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void;
+  selection: Selection; factory: Factory; flow: FlowResult; data: GameData; lang: Lang; meioList: Meio[]; results: Map<string, MeioResult | null>;
+  dispatch: (a: Action) => void;
 }
 
-const POLICIES = [['represar', 'policyHold'], ['sink', 'policySink'], ['extra', 'policyExtra']] as const;
-
-export function Inspector({ selection, chain, data, lang, meioList, results, dispatch, onSelect, onOpenStage }: Props) {
+// O painel do meio selecionado (o do bloco fica no painel do mapa).
+export function Inspector({ selection, factory, flow, data, lang, meioList, results, dispatch }: Props) {
   const meio = selection?.kind === 'meio' ? meioList.find(m => m.id === selection.id) : undefined;
-  const stage = selection?.kind === 'stage' ? chain.stages.find(s => s.id === selection.id) : undefined;
   return (
     <aside className="pl-inspector" aria-label={t('plInspector')} id="pl-inspector">
-      {!meio && !stage && <p className="pl-note">{t('plInspectorEmpty')}</p>}
-      {meio && <MeioPanel meio={meio} result={results.get(meio.id)} chain={chain} data={data} lang={lang} dispatch={dispatch} />}
-      {stage && <StagePanel key={stage.id} stage={stage} data={data} dispatch={dispatch} onSelect={onSelect} onOpenStage={onOpenStage} />}
+      {!meio && <p className="pl-note">{t('plInspectorEmpty')}</p>}
+      {meio && <MeioPanel meio={meio} result={results.get(meio.id)} factory={factory} flow={flow} data={data} lang={lang} dispatch={dispatch} />}
     </aside>
   );
 }
@@ -33,21 +30,21 @@ export function Inspector({ selection, chain, data, lang, meioList, results, dis
 const altText = (n: PieceCount) => t('plMeioAltPieces', fmt(n.splitters, 0), fmt(n.mergers, 0), fmt(n.sinks, 0));
 
 // result: null = calculando; undefined = o meio não pôde ser calculado.
-function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
-  meio: Meio; result: MeioResult | null | undefined; chain: Chain; data: GameData; lang: Lang; dispatch: (a: Action) => void;
+function MeioPanel({ meio, result, factory: f, flow, data, lang, dispatch }: {
+  meio: Meio; result: MeioResult | null | undefined; factory: Factory; flow: FlowResult; data: GameData; lang: Lang; dispatch: (a: Action) => void;
 }) {
   const plan = result?.plan ?? null;
   const names = (ids: string[]) => ids.map(id => {
-    const s = chain.stages.find(x => x.id === id);
-    return s ? data.recipes[s.recipe].name : id;
+    const b = f.blocks.find(x => x.id === id);
+    return b ? blockName(b, data) : id;
   }).join(', ');
   const item = data.items[meio.item];
-  // Resumo, peças e avisos são da montagem escolhida (a primeira, se a escolhida sumiu).
-  const altKey = plan ? chosenAlt(plan, chain.alts?.[meio.id]) : null;
+  // Resumo, peças e avisos são da montagem escolhida (a primeira, se a escolhida sumiu). Sem limite: sem números.
+  const altKey = plan ? chosenAlt(plan, f.alts?.[meio.id]) : null;
   const alt = plan?.alternatives.find(a => a.key === altKey);
-  const sum = plan ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
+  const sum = plan && !plan.unbounded ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
   // A geometria da montagem escolhida, girada com a primeira produtora (o meio anda com ela no mapa).
-  const geo = altKey && result && Object.hasOwn(result.geos, altKey) && !result.geos[altKey].tooLarge ? result.geos[altKey] : null;
+  const geo = result ? chosenGeo(result, f.alts?.[meio.id]) : null;
   const warns = plan ? [...plan.warnings.map(w => w.text), ...(alt?.warnings ?? [])] : [];
   return (
     <div className="pl-insp">
@@ -55,7 +52,8 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
       <div className="pl-insp-title">{item?.name ?? meio.item}</div>
       <div className="pl-insp-sub">{t('plFeeds', names(meio.producers), names(meio.consumers))}</div>
       {result === null && <p className="pl-note" role="status">{t('plMeioCalc')}</p>}
-      {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, chain.map?.[meio.producers[0]]?.rot ?? 0))}</div>}
+      {plan?.unbounded && <p className="pl-note" role="status">{t('plUnbounded')}</p>}
+      {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, f.map?.[meio.producers[0]]?.rot ?? 0))}</div>}
       {sum && (
         <>
           <dl className="pl-nums">
@@ -98,13 +96,7 @@ function MeioPanel({ meio, result, chain, data, lang, dispatch }: {
             )}
         </>
       )}
-      <label className="pl-field">
-        <span>{t('policyTitle')}</span>
-        <select value={chain.policy} onChange={e => dispatch({ type: 'setPolicy', policy: e.target.value as Chain['policy'] })}>
-          {POLICIES.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
-        </select>
-      </label>
-      <a className="pl-btn pl-primary pl-link" href={meioUrl(meio, chain, data, lang)}>{t('plOpenMeio')}</a>
+      <a className="pl-btn pl-primary pl-link" href={meioUrl(meio, f, flow, data, lang)}>{t('plOpenMeio')}</a>
       <p className="pl-note">{t('plMeioHint')}</p>
     </div>
   );
@@ -130,28 +122,5 @@ export function NumField({ label, value, valid, onCommit, bad }: {
         onKeyDown={e => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setText(null); }} />
       {invalid && <small className="pl-bad" role="alert">{bad}</small>}
     </label>
-  );
-}
-
-function StagePanel({ stage, data, dispatch, onSelect, onOpenStage }: {
-  stage: Stage; data: GameData; dispatch: (a: Action) => void; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void;
-}) {
-  const r = data.recipes[stage.recipe];
-  return (
-    <div className="pl-insp">
-      <h2 className="pl-insp-kicker">{t('plSelStage')}</h2>
-      <div className="pl-insp-title">{r.name}</div>
-      <div className="pl-insp-sub">{t('plBuilding')}: {data.buildings[r.building]?.name ?? r.building}</div>
-      <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
-        onCommit={n => dispatch({ type: 'setMachines', id: stage.id, n })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
-      <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
-        onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
-      <label className="pl-check">
-        <input type="checkbox" checked={stage.locked} onChange={e => dispatch({ type: 'setLocked', id: stage.id, locked: e.target.checked })} />
-        <span>{t('plLock')}</span>
-      </label>
-      <button type="button" className="pl-btn" onClick={() => onOpenStage(stage.id)}>{t('plOpenStage')}</button>
-      <button type="button" className="pl-btn pl-danger" onClick={() => { dispatch({ type: 'removeStage', id: stage.id }); onSelect(null); }}>{t('plDeleteStage')}</button>
-    </div>
   );
 }

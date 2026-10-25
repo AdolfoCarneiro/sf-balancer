@@ -45,6 +45,19 @@ export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item, gap 
   return { ...geo, floors, tooLarge: false };
 }
 
+// Meio direto (o grupo só leva a blocos de sobra): cada linha de origem passa reta e sai como linha extra.
+export function directGeo(meio: Meio, plan: Plan, item: Item, gap = PIECE_GAP): MeioGeo {
+  const CELL = PIECE + gap, w = 2 * CELL;
+  const ins: Anchor[] = [], outs: Anchor[] = [], belts: BeltPath[] = [];
+  plan.src.lines.forEach((line, k) => {
+    const y = k * CELL + PIECE / 2;
+    ins.push({ x: 0, y, item: item.id, row: k, stage: lineOwner(meio, 'src', line) });
+    outs.push({ x: w, y, item: item.id, row: k, extra: true });
+    belts.push({ pts: [[0, y], [w, y]], item: item.id, rate: line.rate, role: 'extra', fluid: item.fluid });
+  });
+  return { ...finish(w, [], belts, ins, outs, item.fluid), floors: 1, tooLarge: false };
+}
+
 type Owner = (side: 'src' | 'dst', id: number) => string;
 type Geo = Omit<MeioGeo, 'floors' | 'tooLarge'>;
 

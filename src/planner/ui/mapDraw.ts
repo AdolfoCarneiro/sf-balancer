@@ -121,7 +121,10 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     if (detail) { ctx.save(); enterLocal(ctx, b.place, b.geo); drawPieces(b.geo); ctx.restore(); }
     ctx.strokeStyle = on ? th.ficsit : hov ? th.ink : th.inkDim;
     ctx.lineWidth = px(on ? 2 : 1);
+    // Origem e sobra: marcador fora de escala, tracejado.
+    if (b.marker) ctx.setLineDash([px(4), px(3)]);
     ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.setLineDash([]);
   }
   // Esteiras entre blocos e meios (e as entradas brutas).
   strokeBelts(scene.belts, true);
@@ -208,7 +211,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     const x = sx(b.rect.x), y = sy(b.rect.y), w = b.rect.w * z, h = b.rect.h * z;
     if (w < 24) continue;
     const on = o.selected === b.stage, txt = o.blockText(b.stage);
-    const size = sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
+    const size = b.marker ? t('plNotToScale') : sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
     if (detail) {
       // De perto as máquinas ocupam o bloco: nome e fileiras em cima dele, medida embaixo. Se ali tem outro bloco ou
       // meio (vizinho empilhado a 8 m, por exemplo), vão por dentro, numa chapa na faixa de cima e na de baixo.

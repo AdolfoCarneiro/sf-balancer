@@ -1,24 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Chain, GameData, MapPlace, Stage, StageId } from '../../src/planner/model/types.ts';
-import { exampleChain } from '../../src/planner/model/example.ts';
-import { addStage, link, setMachines } from '../../src/planner/model/chain.ts';
-import { meioPlan, meios } from '../../src/planner/model/meio.ts';
+import type { Factory, GameData, MapPlace, RecipeBlock, StageId } from '../../src/planner/model/types.ts';
+import { exampleFactory } from '../../src/planner/model/factorystate.ts';
+import { connect, meiosOf, nextBlockId, setLimits } from '../../src/planner/model/factory.ts';
+import { solveFactory, type FlowResult } from '../../src/planner/model/solve.ts';
+import { solvedStage } from '../../src/planner/model/solved.ts';
+import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import { blockGeo } from '../../src/planner/model/map/block.ts';
 import type { MeioGeo, Rect } from '../../src/planner/model/map/geo.ts';
-import { buildScene, hitTest, placesOf, proposeMap, rotSize, toWorld } from '../../src/planner/model/map/scene.ts';
+import { buildScene as build, hitTest, placesOf as places0, proposeMap as propose0, rotSize, toWorld, type Geos } from '../../src/planner/model/map/scene.ts';
 import { crossings, overlaps } from '../../src/planner/model/map/checks.ts';
+import { vf } from './fixtures.ts';
 
 const data = game as GameData;
-const ex = exampleChain(data);
+const ex = exampleFactory(data);
 const STEEL_MEIO = 'Desc_SteelIngot_C:s2>s3,s4';
+// As funções da cena com o fluxo da própria fábrica (resolvido aqui; no app vem do worker).
+const flows = new WeakMap<Factory, FlowResult>();
+const flowOf = (f: Factory, d: GameData = data) => { let r = flows.get(f); if (!r) flows.set(f, r = solveFactory(f, d)); return r; };
+const proposeMap = (f: Factory, d: GameData, geos: Geos) => propose0(f, d, geos, flowOf(f, d));
+const placesOf = (f: Factory, d: GameData, geos: Geos) => places0(f, d, geos, flowOf(f, d));
+const buildScene = (f: Factory, d: GameData, p: Record<StageId, MapPlace>, geos: Geos) => build(f, d, p, geos, flowOf(f, d));
+// Bloco de receita fixado, sem posição no mapa.
+const withBlock = (f: Factory, recipe: string, machines: number): Factory => ({
+  ...f, blocks: [...f.blocks, { id: nextBlockId(f), kind: 'recipe', recipe, clock: 100, perRow: null, tiers: {}, limits: { machines } }],
+});
 
 // Geometria de cada meio na primeira montagem (ou a faixa de grande demais).
-function geosOf(chain: Chain): Record<string, MeioGeo | null> {
-  return Object.fromEntries(meios(chain, data).map(m => {
-    const plan = meioPlan(m, chain, data);
+function geosOf(f: Factory): Record<string, MeioGeo | null> {
+  return Object.fromEntries(meiosOf(f).map(m => {
+    const plan = meioPlan(m, f, flowOf(f), data);
     return [m.id, meioGeo(m, plan, plan.alternatives[0]?.key ?? '', data.items[m.item])];
   }));
 }
@@ -40,7 +53,7 @@ test('proposta do exemplo: colunas da esquerda para a direita, tudo na grade, na
 });
 
 test('giro: rot 1 troca largura e comprimento, e as entradas passam para cima', () => {
-  const g = blockGeo(ex.stages[1], data);
+  const g = blockGeo(solvedStage(ex.blocks[1] as RecipeBlock, flowOf(ex).blocks.s2), data);
   assert.deepEqual(rotSize(g, 1), { w: g.h, h: g.w });
   assert.deepEqual(rotSize(g, 2), { w: g.w, h: g.h });
   const at = (rot: 0 | 1 | 2 | 3) => toWorld([0, g.h / 2], g, { x: 16, y: 8, rot });
@@ -95,7 +108,7 @@ test('esteiras do mundo: cada fileira da produtora liga à linha do meio e o mei
 
 test('etapa editada depois de posicionada: bloco cresce mantendo o canto e a sobreposição vira aviso', () => {
   const p = proposeMap(ex, data, geosDoExemplo());
-  const ch = { ...setMachines(ex, data, 's3', 120), map: p };
+  const ch = { ...setLimits(ex, 's3', { machines: 120 }), map: p };
   const geos = geosOf(ch);
   const q = placesOf(ch, data, geos);
   for (const id of ['s1', 's2', 's3', 's4']) assert.deepEqual(q[id], p[id]);
@@ -106,14 +119,14 @@ test('etapa editada depois de posicionada: bloco cresce mantendo o canto e a sob
 
 test('etapa nova sem posição vai para a proposta ou para baixo de tudo, sem sobrepor', () => {
   const p = proposeMap(ex, data, geosDoExemplo());
-  const ch = { ...addStage(ex, data, 'Recipe_IronPlate_C', 10), map: p };
+  const ch = { ...withBlock(ex, 'Recipe_IronPlate_C', 10), map: p };
   const geos = geosOf(ch);
   const q = placesOf(ch, data, geos);
   assert.deepEqual(q.s5, proposeMap(ch, data, geos).s5);
   assert.deepEqual(buildScene(ch, data, q, geos).overlaps, []);
   // A proposta cai em cima de um bloco posicionado: vai para baixo de tudo, em x = 0.
   const prop = proposeMap(ch, data, geos).s5;
-  const ch2: Chain = { ...ch, map: { ...p, s4: { x: prop.x, y: prop.y, rot: 0 } } };
+  const ch2: Factory = { ...ch, map: { ...p, s4: { x: prop.x, y: prop.y, rot: 0 } } };
   const q2 = placesOf(ch2, data, geos);
   const s2 = buildScene(ch2, data, q2, geos);
   assert.equal(q2.s5.x, 0); assert.equal(q2.s5.y % 8, 0);
@@ -125,16 +138,16 @@ test('etapa nova sem posição vai para a proposta ou para baixo de tudo, sem so
 });
 
 test('cena monta com etapa solta, meio fluido, meio grande demais e meio calculando', () => {
-  let ch = addStage(ex, data, 'Recipe_IronPlate_C', 10);                       // s5 solta
-  ch = addStage(ch, data, 'Recipe_Plastic_C', 10);                              // s6
-  ch = addStage(ch, data, 'Recipe_ResidualFuel_C', 2);                          // s7
-  ch = link(ch, data, 's6', 's7', 'Desc_HeavyOilResidue_C');
-  ch = addStage(ch, data, 'Recipe_IngotIron_C', 5000);                          // s8
-  ch = addStage(ch, data, 'Recipe_IronPlate_C', 5000);                          // s9
-  ch = link(ch, data, 's8', 's9', 'Desc_IronIngot_C');
+  let ch = withBlock(ex, 'Recipe_IronPlate_C', 10);                             // s5 solta
+  ch = withBlock(ch, 'Recipe_Plastic_C', 10);                                    // s6
+  ch = withBlock(ch, 'Recipe_ResidualFuel_C', 2);                                // s7
+  ch = connect(ch, data, 's6', 's7', 'Desc_HeavyOilResidue_C');
+  ch = withBlock(ch, 'Recipe_IngotIron_C', 5000);                                // s8
+  ch = withBlock(ch, 'Recipe_IronPlate_C', 5000);                                // s9
+  ch = connect(ch, data, 's8', 's9', 'Desc_IronIngot_C');
   assert.equal(ch.links.length, 5);
   const geos: Record<string, MeioGeo | null> = { ...geosOf(ch), 'Desc_IronIngot_C:s1>s2': null };
-  const big = meios(ch, data).find(m => m.producers[0] === 's8')!;
+  const big = meiosOf(ch).find(m => m.producers[0] === 's8')!;
   assert.equal(geos[big.id]!.tooLarge, true);
   const s = buildScene(ch, data, placesOf(ch, data, geos), geos);
   assert.equal(s.blocks.length, 9); assert.equal(s.meios.length, 4);
@@ -198,10 +211,10 @@ test('desempenho: cadeia de ~2.000 máquinas monta a cena em menos de 200 ms', (
   for (let i = 0; i <= 10; i++) items[`A${i}`] = { id: `A${i}`, name: `A${i}`, fluid: false, raw: i === 0 };
   for (let i = 0; i < 10; i++) recipes[`R${i}`] = { id: `R${i}`, name: `R${i}`, alt: false, building: 'B', ins: [{ item: `A${i}`, perMin: 30 }], outs: [{ item: `A${i + 1}`, perMin: 30 }] };
   const syn: GameData = { items, recipes, extractors: {}, buildings: { B: { id: 'B', name: 'B', w: 10, l: 20 } } };
-  const stages: Stage[] = Array.from({ length: 10 }, (_, i) => ({ id: `s${i + 1}`, recipe: `R${i}`, machines: 200, clock: 100, perRow: null, locked: false, tiers: {}, pos: { x: 0, y: 0 } }));
-  const ch: Chain = { v: 1, stages, links: stages.slice(1).map((s, i) => ({ id: `l${i + 1}`, item: `A${i + 1}`, from: stages[i].id, to: s.id })), policy: 'represar' };
-  const rows = blockGeo(stages[0], syn).outs.length;
-  const geos: Record<string, MeioGeo> = Object.fromEntries(meios(ch, syn).map(m => {
+  const blocks: RecipeBlock[] = Array.from({ length: 10 }, (_, i) => ({ id: `s${i + 1}`, kind: 'recipe', recipe: `R${i}`, clock: 100, perRow: null, tiers: {}, limits: { machines: 200 } }));
+  const ch: Factory = { v: 2, blocks, links: blocks.slice(1).map((s, i) => ({ id: `l${i + 1}`, item: `A${i + 1}`, from: blocks[i].id, to: s.id })) };
+  const rows = blockGeo(solvedStage(blocks[0], flowOf(ch, syn).blocks.s1), syn).outs.length;
+  const geos: Record<string, MeioGeo> = Object.fromEntries(meiosOf(ch).map(m => {
     const a = (stage: string, x: number) => Array.from({ length: rows }, (_, k) => ({ x, y: 6 * k + 2, item: m.item, row: k, stage }));
     return [m.id, { w: 40, h: 6 * rows, pieces: [], belts: [], ins: a(m.producers[0], 0), outs: a(m.consumers[0], 40), estimate: false, floors: 1, tooLarge: false }];
   }));
@@ -263,11 +276,26 @@ test('etapa nova: o meio colado nela também não pode cair em cima de algo já 
   const steel = meioOf(buildScene(ex, data, p, geos), STEEL_MEIO).rect;
   // s3 em cima do meio de aço de s2, mas sem tocar o bloco de s2; s2 sem posição.
   const s3 = { x: Math.ceil(steel.x / 8) * 8, y: Math.floor(steel.y / 8) * 8, rot: 0 as const };
-  const ch: Chain = { ...ex, map: { s1: p.s1, s3, s4: { ...p.s4, y: 1000 } } };
+  const ch: Factory = { ...ex, map: { s1: p.s1, s3, s4: { ...p.s4, y: 1000 } } };
   const s2rect = blockOf(buildScene(ex, data, p, geos), 's2').rect;
   assert.ok(s3.x >= s2rect.x + s2rect.w, 's3 não encosta no bloco de s2');
   const q = placesOf(ch, data, geos);
   assert.notDeepEqual(q.s2, p.s2);
   assert.equal(q.s2.x, 0);
   assert.ok(!buildScene(ch, data, q, geos).overlaps.some(pair => pair.includes('s2') || pair.includes(STEEL_MEIO)));
+});
+
+test('origem e sobra entram como marcadores fora de escala, ligados às linhas do meio', () => {
+  const f = vf(), geos = geosOf(f);
+  const s = buildScene(f, data, placesOf(f, data, geos), geos);
+  const m1 = blockOf(s, 'm1');
+  assert.equal(m1.marker, true); assert.equal(blockOf(s, 's1').marker, false);
+  assert.deepEqual([m1.rect.w, m1.rect.h, m1.geo.estimate], [8, 8, true]);
+  // 280 de minério em Mk4: uma linha só, saindo da borda direita do marcador.
+  const ore = s.belts.filter(b => b.item === 'Desc_OreIron_C' && b.role === 'main');
+  const fromM1 = ore.filter(b => b.pts[0][0] === m1.rect.x + 8 && b.pts[0][1] === m1.rect.y + 4);
+  assert.ok(fromM1.length >= 1);
+  assert.equal(geos['Desc_OreIron_C:m1>s1']!.ins.length, fromM1.length);
+  // Nenhum toco de entrada bruta no minério (vem da mineradora).
+  assert.ok(!s.belts.some(b => b.role === 'raw' && b.item === 'Desc_OreIron_C'));
 });

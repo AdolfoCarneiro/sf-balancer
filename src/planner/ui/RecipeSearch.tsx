@@ -73,7 +73,6 @@ export function RecipeSearch({ data, request, onClearRequest, onPick }: Props) {
         ))}
       </ul>
       {(query.trim() || request) && !results.length && <p className="pl-note" role="status">{t('plSearchNone')}</p>}
-      <p className="pl-note">{t('plSearchHint')}</p>
     </div>
   );
 }

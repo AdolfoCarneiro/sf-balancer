@@ -1,22 +1,32 @@
 // O resultado de um meio pronto para o mapa e para o cache: plano leve (clonável pelo postMessage) e a geometria de cada montagem.
 import { getLang } from '../../i18n/index.js';
-import { meioHash, meioPlan, type Meio, type Plan, type PlanAlt, type PlanLine } from './meio.ts';
-import { meioGeo } from './map/meiogeo.ts';
+import { chosenAlt, meioHash, meioPlan, meioUnbounded, planMeio, type Meio, type Plan, type PlanAlt, type PlanLine } from './meio.ts';
+import { directGeo, meioGeo } from './map/meiogeo.ts';
 import type { MeioGeo } from './map/geo.ts';
 import { PIECE_GAP, pieceGap } from './map/sizes.ts';
-import type { Chain, GameData } from './types.ts';
+import type { FlowResult } from './solve.ts';
+import type { Factory, GameData } from './types.ts';
 
 export { chosenAlt } from './meio.ts';
 
 export interface MeioResult { id: string; key: string; plan: Plan; geos: Record<string, MeioGeo> }
 
-// O caseLabel e os avisos vêm no idioma do cálculo; a posição no mapa não entra (o meioHash só lê a etapa).
-// O id do meio entra também: dois meios iguais em etapas diferentes têm o mesmo hash, mas âncoras de etapas diferentes.
-// O vão entre peças do meio entra quando não é o padrão (muda a geometria).
-export const cacheKey = (meio: Meio, chain: Chain, data: GameData, lang: string): string => {
-  const gap = pieceGap(chain);
-  return lang + '|' + meio.id + '|' + meioHash(meio, chain, data) + (gap !== PIECE_GAP ? `|gap${gap}` : '');
+// O caseLabel e os avisos vêm no idioma do cálculo; a posição no mapa não entra (o meioHash só lê os blocos do grupo
+// e o fluxo deles). O id do meio entra também: dois meios iguais em blocos diferentes têm o mesmo hash, mas âncoras
+// de blocos diferentes. O vão entre peças do meio entra quando não é o padrão (muda a geometria); sem limite, um `|u`.
+export const cacheKey = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: string): string => {
+  const gap = pieceGap(f);
+  return lang + '|' + meio.id + '|' + meioHash(meio, f, flow, d) + (gap !== PIECE_GAP ? `|gap${gap}` : '') + (meioUnbounded(meio, flow) ? '|u' : '');
 };
+
+// Chave da geometria de um meio direto (sem montagens).
+export const DIRECT_KEY = 'direct';
+
+// A geometria da montagem escolhida (ou a do meio direto); null sem montagem, sem limite ou grande demais.
+export function chosenGeo(r: MeioResult, chosen: string | undefined): MeioGeo | null {
+  const k = r.plan.direct ? DIRECT_KEY : chosenAlt(r.plan, chosen);
+  return k !== null && Object.hasOwn(r.geos, k) && !r.geos[k].tooLarge ? r.geos[k] : null;
+}
 
 const liteLine = (l: PlanLine): PlanLine => ({
   machines: l.machines, rate: l.rate, partial: l.partial,
@@ -37,15 +47,18 @@ export function litePlan(plan: Plan): Plan {
     src: { lines: plan.src.lines.map(liteLine) }, dst: { lines: plan.dst.lines.map(liteLine) },
     alternatives: plan.alternatives.map(liteAlt), warnings: plan.warnings.map(w => ({ level: w.level, text: w.text })),
     ...(plan.tooLarge ? { tooLarge: { src: plan.tooLarge.src, dst: plan.tooLarge.dst } } : {}),
+    ...(plan.direct ? { direct: true } : {}), ...(plan.unbounded ? { unbounded: true } : {}),
   };
 }
 
-// Tudo de um meio no idioma atual: o computePlan roda uma vez e serve a todas as montagens.
-export function meioResult(meio: Meio, chain: Chain, data: GameData): MeioResult {
-  const full = meioPlan(meio, chain, data), item = data.items[meio.item];
+// Tudo de um meio no idioma atual: o computePlan roda uma vez e serve a todas as montagens. As linhas de destino são
+// só das receitas (planMeio); direto: uma geometria só; sem limite: nenhuma (o mapa mostra a faixa).
+export function meioResult(meio: Meio, f: Factory, flow: FlowResult, d: GameData): MeioResult {
+  const full = meioPlan(meio, f, flow, d), item = d.items[meio.item], pm = planMeio(meio, f), gap = pieceGap(f);
   const geos: Record<string, MeioGeo> = {};
-  for (const a of full.alternatives) geos[a.key] = meioGeo(meio, full, a.key, item, pieceGap(chain));
-  return { id: meio.id, key: cacheKey(meio, chain, data, getLang()), plan: litePlan(full), geos };
+  if (full.direct) geos[DIRECT_KEY] = directGeo(pm, full, item, gap);
+  for (const a of full.alternatives) geos[a.key] = meioGeo(pm, full, a.key, item, gap);
+  return { id: meio.id, key: cacheKey(meio, f, flow, d, getLang()), plan: litePlan(full), geos };
 }
 
 // keys: id do meio -> cacheKey. O que já está no cache fica pronto; o resto vai para o cálculo.

@@ -167,3 +167,26 @@ test('estado v2: aberto por #p=, só grava depois da primeira edição', () => {
   assert.equal(h.past.length, 1);
   assert.deepEqual(h.present, ex);
 });
+
+test('estado v2: migração da v1 lê tier na chave antiga, limita máquinas e passa a política extra como coleta', () => {
+  const v1 = {
+    ...exampleChain(data), policy: 'extra',
+    stages: exampleChain(data).stages.map(s => (s.id === 's2' ? { ...s, machines: 1e9, tiers: { Desc_SteelIngot_C: 'Mk5', Desc_Coal_C: 'Mk9', 'in:Desc_IronIngot_C': 'Mk3' }, locked: true, pos: { x: 1, y: 2 } } : s)),
+  };
+  const f = migrateV1(v1, data)!;
+  assert.deepEqual(rb(f, 's2').tiers, { 'out:Desc_SteelIngot_C': 'Mk5', 'in:Desc_IronIngot_C': 'Mk3' });
+  assert.deepEqual(rb(f, 's2').limits, { machines: 10000 });
+  assert.deepEqual(rb(f, 's2').collect, ['Desc_SteelIngot_C']);
+  assert.equal('locked' in rb(f, 's2'), false);
+});
+
+test('estado v2: setMeioAlt só em ligação que existe e com chave curta; setLimits só com entradas da receita', () => {
+  let h: History<Factory> = historyNew(ex);
+  h = reduce(h, { type: 'setMeioAlt', meio: 'nao:existe>x', key: 'k' }, data);
+  h = reduce(h, { type: 'setMeioAlt', meio: 'Desc_IronIngot_C:s1>s2', key: 'k'.repeat(41) }, data);
+  assert.equal(h.present.alts, undefined);
+  h = reduce(h, { type: 'setLimits', id: 's2', limits: { machines: 50, inputs: { Desc_IronIngot_C: 100, Desc_Water_C: 5 } } }, data);
+  assert.deepEqual(rb(h.present, 's2').limits, { machines: 50, inputs: { Desc_IronIngot_C: 100 } });
+  h = reduce(h, { type: 'setLimits', id: 's2', limits: { inputs: { Desc_Water_C: 5 } } }, data);
+  assert.equal(rb(h.present, 's2').limits, undefined);
+});

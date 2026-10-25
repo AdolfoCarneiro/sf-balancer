@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Chain, GameData, Stage } from '../../src/planner/model/types.ts';
-import { exampleChain } from '../../src/planner/model/example.ts';
-import { meioFor, meioInput, meioPlan, type Meio, type Plan } from '../../src/planner/model/meio.ts';
+import type { Factory, GameData, RecipeBlock } from '../../src/planner/model/types.ts';
+import { exampleFactory } from '../../src/planner/model/factorystate.ts';
+import { setLimits, setPerRow } from '../../src/planner/model/factory.ts';
+import { solveFactory } from '../../src/planner/model/solve.ts';
+import { meioFor, meioInput, meioPlan, type Meio, type Plan, type Policy } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import type { MeioGeo, Piece } from '../../src/planner/model/map/geo.ts';
 import { computePlan } from '../../src/logic/index.js';
@@ -12,16 +14,18 @@ import { designFloors } from '../../src/logic/layout3d.js';
 const data = game as GameData;
 type FullAlt = Plan['alternatives'][number] & { sinkRate: number; view: { bal?: { design: { kind: string } } } };
 
-const st = (id: string, recipe: string, machines: number, perRow: number | null = null): Stage =>
-  ({ id, recipe, machines, clock: 100, perRow, locked: false, tiers: {}, pos: { x: 0, y: 0 } });
+const rb = (id: string, recipe: string, machines: number): RecipeBlock =>
+  ({ id, kind: 'recipe', recipe, clock: 100, perRow: null, tiers: {}, limits: { machines } });
 
-// O plano completo do computePlan (com g, view e sim nas alternativas), não o lite do meioPlan.
-function meioDe(ch: Chain, linkId: string) {
-  const meio = meioFor(ch, data, linkId);
-  const plan = computePlan(meioInput(meio, ch, data)) as unknown as Plan;
-  return { meio, plan, ch };
+// O plano completo do computePlan (com g, view e sim nas alternativas), não o lite do meioPlan, com as máquinas fixadas
+// rodando cheias (como na fase 1) e a política pedida: a geometria é testada com os números do caso 1.
+function meioDe(f: Factory, linkId: string, policy: Policy = 'represar') {
+  const meio = meioFor(f, linkId), inp = meioInput(meio, f, solveFactory(f, data), data);
+  const full = (gs: typeof inp.srcGroups) => gs.map(g => ({ ...g, clock: 100 }));
+  const plan = computePlan({ ...inp, srcGroups: full(inp.srcGroups), dstGroups: full(inp.dstGroups), policy }) as unknown as Plan;
+  return { meio, plan, f };
 }
-const meioDoExemplo = (linkId: string, policy: Chain['policy'] = 'represar') => meioDe({ ...exampleChain(data), policy }, linkId);
+const meioDoExemplo = (linkId: string, policy: Policy = 'represar') => meioDe(exampleFactory(data), linkId, policy);
 const geoOf = (m: { meio: Meio; plan: Plan }, key = m.plan.alternatives[0].key) => meioGeo(m.meio, m.plan, key, data.items[m.meio.item]);
 const count = (g: MeioGeo, k: Piece['kind']) => g.pieces.filter(p => p.kind === k).length;
 const alt = (plan: Plan, key: string) => plan.alternatives.find(a => a.key === key) as FullAlt;
@@ -87,8 +91,7 @@ test('sobra de várias esteiras vira 1 Merger em cascata + 1 sink (política sin
 });
 
 test('sobra acima da esteira abre mais um sink por esteira cheia', () => {
-  const c0 = { ...exampleChain(data), policy: 'sink' as const };
-  const m = meioDe({ ...c0, stages: c0.stages.map(s => (s.id === 's1' ? { ...s, machines: 56 } : s)) }, 'l1');
+  const m = meioDe(setLimits(exampleFactory(data), 's1', { machines: 56 }), 'l1', 'sink');
   const a = alt(m.plan, 'doadora-1-sink');
   assert.ok(a.sinkRate > 960 && a.sinkRate < 1000);
   const g = geoOf(m, a.key);
@@ -103,12 +106,12 @@ test('sobra acima da esteira abre mais um sink por esteira cheia', () => {
 });
 
 test('meio fluido: canos de 1 m e estimativa', () => {
-  const ch: Chain = {
-    v: 1, policy: 'sink',
-    stages: [st('a', 'Recipe_Alternate_ElectroAluminumScrap_C', 12), st('b', 'Recipe_Alternate_DilutedFuel_C', 10)],
+  const f: Factory = {
+    v: 2,
+    blocks: [rb('a', 'Recipe_Alternate_ElectroAluminumScrap_C', 12), rb('b', 'Recipe_Alternate_DilutedFuel_C', 10)],
     links: [{ id: 'l1', item: 'Desc_Water_C', from: 'a', to: 'b' }],
   };
-  const m = meioDe(ch, 'l1');
+  const m = meioDe(f, 'l1');
   const head = m.plan.alternatives.find(a => (a as { headers?: unknown }).headers) as FullAlt & { headers: { inputs: unknown[]; members: unknown[] }[] };
   assert.ok(head, 'tem alternativa com cano coletor');
   const g = geoOf(m, head.key);
@@ -129,10 +132,9 @@ test('meio fluido: canos de 1 m e estimativa', () => {
 });
 
 test('meio grande demais: faixa 16 × 8 sem peças', () => {
-  const c0 = exampleChain(data);
-  const ch = { ...c0, stages: c0.stages.map(s => (s.id === 's1' ? { ...s, machines: 3000 } : s)) };
-  const meio = meioFor(ch, data, 'l1');
-  const plan = meioPlan(meio, ch, data);
+  const f = setLimits(exampleFactory(data), 's1', { machines: 3000 });
+  const meio = meioFor(f, 'l1');
+  const plan = meioPlan(meio, f, solveFactory(f, data), data);
   assert.ok(plan.tooLarge);
   const g = meioGeo(meio, plan, '', data.items[meio.item]);
   assert.equal(g.tooLarge, true);
@@ -174,11 +176,11 @@ test('borboleta com loop: andares de designFloors', () => {
 
 test('peças não se sobrepõem', () => {
   const overlap = (p: Piece, q: Piece) => Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x) > 1e-9 && Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y) > 1e-9;
-  const c0 = exampleChain(data);
+  const f0 = exampleFactory(data);
   const cases = [
     meioDoExemplo('l1'), meioDoExemplo('l2'), meioDoExemplo('l1', 'sink'), meioDoExemplo('l2', 'sink'), meioDoExemplo('l1', 'extra'),
-    meioDe({ ...c0, policy: 'sink', stages: c0.stages.map(s => (s.id === 's1' ? { ...s, machines: 56 } : s)) }, 'l1'),
-    meioDe({ ...c0, stages: c0.stages.map(s => (s.id === 's1' ? { ...s, perRow: 6 } : s)) }, 'l1'),
+    meioDe(setLimits(f0, 's1', { machines: 56 }), 'l1', 'sink'),
+    meioDe(setPerRow(f0, 's1', 6), 'l1'),
   ];
   let n = 0;
   for (const m of cases) for (const a of m.plan.alternatives) {

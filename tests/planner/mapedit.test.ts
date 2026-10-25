@@ -2,15 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { GameData } from '../../src/planner/model/types.ts';
-import { exampleChain } from '../../src/planner/model/example.ts';
-import { meioPlan, meios } from '../../src/planner/model/meio.ts';
+import { exampleFactory } from '../../src/planner/model/factorystate.ts';
+import { meiosOf } from '../../src/planner/model/factory.ts';
+import { solveFactory } from '../../src/planner/model/solve.ts';
+import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
 import { centerOn } from '../../src/planner/model/map/camera.ts';
 import { dragged, nudged, rotated, warningRect, withPlace } from '../../src/planner/model/map/edit.ts';
 
 const data = game as GameData;
-const ex = exampleChain(data);
+const ex = exampleFactory(data), flow = solveFactory(ex, data);
 
 test('arrastar prende na grade de 8 m (arredonda), mantendo giro e vãos', () => {
   const p = { x: 16, y: 8, rot: 1 as const, gapRow: 4 };
@@ -43,11 +45,11 @@ test('withPlace: todas as posições mais a mudança, sem mexer no original', ()
 });
 
 test('warningRect: união dos dois retângulos (bloco e meio); id desconhecido = null', () => {
-  const geos = Object.fromEntries(meios(ex, data).map(m => {
-    const plan = meioPlan(m, ex, data);
+  const geos = Object.fromEntries(meiosOf(ex).map(m => {
+    const plan = meioPlan(m, ex, flow, data);
     return [m.id, meioGeo(m, plan, plan.alternatives[0]?.key ?? '', data.items[m.item])];
   }));
-  const scene = buildScene(ex, data, placesOf(ex, data, geos), geos);
+  const scene = buildScene(ex, data, placesOf(ex, data, geos, flow), geos, flow);
   const a = scene.blocks[0], m = scene.meios[0];
   const r = warningRect(scene, [a.stage, m.meio])!;
   const x0 = Math.min(a.rect.x, m.rect.x), y0 = Math.min(a.rect.y, m.rect.y);
