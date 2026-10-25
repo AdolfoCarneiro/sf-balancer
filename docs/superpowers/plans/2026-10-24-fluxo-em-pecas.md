@@ -159,3 +159,25 @@ Requisitos do desenho:
 - [ ] **Step 1:** Atualizar a menção ao diagrama do fluxo nos três READMEs (peça por peça, como no jogo) e a lista de módulos de `src/logic` no `AGENTS.md`.
 - [ ] **Step 2:** `npm test` passa.
 - [ ] **Step 3: Commit** — `git commit -m "Docs: fluxo em peças"`
+
+### Task 5: Contagem do merger do retorno do loop (pedido do Adolfo)
+
+Quando um loop devolve `r = n − p` partes (ou `n − M` num balancer), o retorno entra com a esteira de entrada num
+merger: são `r + 1` entradas. Com `r ≥ 3` o jogo pede uma cascata (`mergersFor(r + 1)` mergers), mas a lógica conta 1.
+O Adolfo pediu para corrigir a contagem (mudança de lógica autorizada só neste ponto).
+
+**Files:**
+- Modify: `src/logic/splitters.js` (`divisionOptions`: `loop.mergers = mergersFor(1 + (n − p))`)
+- Modify: `src/logic/plan.js` (`extraMergers` do grupo em loop = `d.loop.mergers`)
+- Modify: `src/logic/balancers.js` (`balancerDesign`: o `+1` por árvore com loop vira `mergersFor(1 + extra)`; funil e matriz)
+- Modify: `src/logic/layout3d.js` (`designFloors` → `splitAt` com loop: cascata de mergers no lugar de um `lm` só, para o 3D e a planta da biblioteca)
+- Modify: textos que digam "1 merger" para o loop, se houver (três idiomas)
+- Modify: `tests/logic.test.js` (os testes de `flowNet` com `extraM` passam a esperar contagem igual a `alt.pieces`, sem extra)
+
+**Interfaces:** nenhuma nova. Contagens de `alt.pieces`, `d.pieces`, `designPieces` e `designFloors` passam a bater com `flowNet`.
+
+- [ ] **Step 1:** Testes que falham: `divisionOptions` para p = 13 (n = 16, 3 retornos) com `loop.mergers === 2`; o balancer `matrix-split-loop` 1→20 com `pieces.mergers` incluindo a cascata; `designFloors` desse design sem merger com mais de 3 entradas; o teste de `flowNet` que usava `extraM` passa a chamar `checkNet(a)` sem extra.
+- [ ] **Step 2:** `npm test` e ver falhar.
+- [ ] **Step 3:** Implementar nos quatro lugares; casos com `r ≤ 2` não mudam (os testes atuais de contagem continuam iguais).
+- [ ] **Step 4:** `npm test` passa; `npm run build`.
+- [ ] **Step 5:** Commit — `Loop: retorno com 3+ partes conta a cascata de mergers`
