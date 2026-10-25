@@ -92,15 +92,18 @@ function pieceSvg(p, a, net) {
     paths.set(b.id, { s, z, d });
   });
   // Contorno dos blocos (com os retornos dentro): o bloco inteiro, peças inclusive, abre o diálogo como antes.
-  const bHead = [], bTail = [], bPieces = net.blocks.map(() => []);
+  const bBg = [], bHead = [], bTail = [], bPieces = net.blocks.map(() => []);
   net.blocks.forEach((bk, i) => {
     const e = ext[i], x1 = e.x1 - 10, x2 = e.x2 + 10, y1 = e.y1 - 10, y2 = e.y2 + 10;
     const gi = bk.kind === 'group' ? +bk.key.slice(1) : -1, gr = gi >= 0 ? v.groups[gi].gr : null, d = bk.kind === 'bal' ? v.bal.design : null;
     const dn = d && designName(d), name = gr ? (gr.mode === 'loop' ? `÷${gr.p} ↺` : `÷${gr.mode === 'sink' ? gr.n : gr.p}`) : esc(dn.includes(`${d.N}→${d.M}`) ? dn : `${d.N}→${d.M} · ${dn}`);
     const aria = esc(gr ? t('blkAria', 1, gr.p) : t('blkAria', d.N, d.M));
     yMin = Math.min(yMin, y1 - 12); yMax = Math.max(yMax, y2 + 4);
+    // Fundo do bloco embaixo das esteiras (clicável); contorno, peças e nome por cima, sem tapar o <title> das esteiras.
+    const box = `x="${f1(x1)}" y="${f1(y1)}" width="${f1(x2 - x1)}" height="${f1(y2 - y1)}" rx="8"`;
+    bBg.push(`<rect class="blkbg" data-open-bal="${bk.key}" ${box}/>`);
     bHead.push(`<g class="balblock" data-open-bal="${bk.key}" tabindex="0" role="button" aria-label="${aria}"><title>${t('blkHint')}</title>
-      <rect class="blk" x="${f1(x1)}" y="${f1(y1)}" width="${f1(x2 - x1)}" height="${f1(y2 - y1)}" rx="8"/>`);
+      <rect class="blk" ${box}/>`);
     bTail.push(`<rect class="blktag" x="${f1(x1)}" y="${f1(y1 - 10)}" width="${Math.round(name.length * 7.2 + 14)}" height="20" rx="3"/>
       <text class="lbl blkname" x="${f1(x1 + 7)}" y="${f1(y1 + 5)}">${name}</text></g>`);
   });
@@ -113,9 +116,10 @@ function pieceSvg(p, a, net) {
   net.belts.forEach(b => {
     const out = blockOf.get(b.a) !== undefined && blockOf.get(b.b) === undefined && N[b.b].t !== 'sink';
     if (!(b.role === 'donor' && out) && b.role !== 'over') return;
-    // Pelo lado: à direita da chegada, entre a peça e o corredor; por trás: acima da esteira, antes da peça.
+    // Pelo lado: colado na porta, à esquerda de quem chega por cima e à direita de quem chega por baixo (dois
+    // mergers vizinhos não empilham os rótulos no mesmo corredor); por trás: acima da esteira, antes da peça.
     const { z } = paths.get(b.id), n = z.n[1], txt = (b.role === 'donor' ? '+' : '') + fmt(b.rate);
-    if (n) label(f1(z.x + 7), f1(z.y + (n < 0 ? -4 : 13)), txt, ROLE_COLOR[b.role]);
+    if (n) label(f1(z.x + (n < 0 ? -5 : 5)), f1(z.y + (n < 0 ? -3 : 12)), txt, ROLE_COLOR[b.role], n < 0 ? 'end' : 'start');
     else label(f1(z.x - 10), f1(z.y - 9), txt, ROLE_COLOR[b.role], 'end');
   });
   // Peças; as de um bloco ficam dentro dele.
@@ -178,7 +182,7 @@ function pieceSvg(p, a, net) {
   return `<svg class="pflow" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${t('svgAria')}">
     <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="5" height="5" fill="var(--line)"/><rect width="2" height="5" fill="var(--held)"/></pattern></defs>
-    <g transform="translate(0,${-vy})">${front.join('')}${boxes.join('')}${bHead.map((x, i) => x + bPieces[i].join('') + bTail[i]).join('')}${top.join('')}</g></svg>`;
+    <g transform="translate(0,${-vy})">${bBg.join('')}${front.join('')}${boxes.join('')}${bHead.map((x, i) => x + bPieces[i].join('') + bTail[i]).join('')}${top.join('')}</g></svg>`;
 }
 
 // ---- Planta do fluxo de canos (modo fluido): ligação direta ou cano coletor com Pipeline Junction ----

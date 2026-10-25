@@ -1511,6 +1511,15 @@ test('layout do fluxo: colunas e portas', () => {
     const inb = n.belts.filter(b => n.nodes[b.a].t === 'src').sort((x, y) => r(x.a) - r(y.a));
     inb.forEach((b, i) => i && assert.ok(r(b.b) > r(inb[i - 1].b), `entradas cruzam em ${a.key}`));
   }
+  // Balancer enorme: a pilha de origens desce para perto das peças que ela alimenta (antes ficava no topo).
+  {
+    const big = L.computePlan({ ...base, srcCount: 14, srcRate: 455, srcPer: 1, dstCount: 13, dstRate: 475.3, dstPer: 1 });
+    const a = big.alternatives.flatMap(x => [x, ...(x.designAlts || [])]).find(x => x.key === 'balancer-matrix-split-loop');
+    const { n, lay } = checkLayout(a), r = id => lay.nodes.get(id).row, srcs = n.nodes.filter(q => q.t === 'src');
+    const firsts = n.belts.filter(b => n.nodes[b.a].t === 'src').map(b => r(b.b));
+    const avg = l => l.reduce((x, y) => x + y, 0) / l.length;
+    assert.ok(Math.abs(avg(srcs.map(q => r(q.id))) - avg(firsts)) <= srcs.length, 'origens perto das primeiras peças');
+  }
   // Caso 2 com sink: o sink não puxa o Smart Splitter, que fica na linha do destino.
   {
     const { n, lay } = checkLayout(alt(L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 4, dstRate: 440, dstPer: 1, policy: 'sink' }), 'direto-sink'));
@@ -1549,6 +1558,8 @@ test('fluxo desenhado em peças', async () => {
       assert.equal((inner.match(/data-piece=/g) || []).length, b.nodes.length, `peças dentro do bloco ${b.key} em ${a.key}`);
     });
     assert.equal(flowHasLoop(a), net.belts.some(b => b.role === 'loop'), `legenda do loop em ${a.key}`);
+    // Fundo do bloco (clicável) embaixo das esteiras, para o <title> delas continuar alcançável.
+    if (net.blocks.length) assert.ok(svg.indexOf('class="blkbg"') < svg.indexOf('class="items"'), `fundo do bloco embaixo em ${a.key}`);
   }
   for (const a of [alt(L.computePlan({ ...base, srcCount: 14, srcRate: 470, srcPer: 1, dstCount: 13, dstRate: 480, dstPer: 1 }), 'doadora-1-loop'),
     ...L.computePlan({ ...base, srcCount: 2, srcRate: 480, srcPer: 1, dstCount: 5, dstRate: 192, dstPer: 1 }).alternatives.find(x => x.designAlts).designAlts])

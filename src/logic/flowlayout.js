@@ -79,14 +79,32 @@ export function flowLayout(net) {
   // Esteira reta que atravessa a coluna: a peça fica a pelo menos meia linha dela, para não ser desenhada em cima.
   // Só conta esteira com as duas pontas já posicionadas (`done`); antes disso a linha é o 0 inicial.
   const done = new Set(fixed);
+  // Busca rápida: linhas ocupadas e esteiras retas em listas ordenadas. Se o desejado não cabe, anda para cima
+  // pulando para a borda de cima de quem bloqueia (que é um candidato: peça − 1 ou esteira − 0,5) até caber; o mesmo
+  // para baixo; fica o mais perto (empate: o de cima). Dá o mesmo que testar todos os candidatos, sem ser quadrático.
+  const upper = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] <= x) lo = m + 1; else hi = m; } return lo; };
+  const lower = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; } return lo; };
+  // Quem bloqueia x numa lista (raio d): o menor e o maior centro a até d de x.
+  const blockers = (a, x, d) => { const i = lower(a, x - d), j = upper(a, x + d) - 1; return i <= j ? [a[i], a[j]] : null; };
+  const cross = Array.from({ length: cols }, () => []); // esteiras (sem loop) que atravessam cada coluna
+  belts.forEach(b => { if (b.role !== 'loop') for (let c = col[b.a] + 1; c < col[b.b]; c++) cross[c].push(b); });
   const place = (c, want) => {
-    const placed = byCol[c].filter(id => fixed.has(id)).map(id => row[id]);
-    const thru = belts.filter(b => b.role !== 'loop' && col[b.a] < c && col[b.b] > c && done.has(b.a) && done.has(b.b) && Math.abs(row[b.a] - row[b.b]) < EPS).map(b => row[b.a]);
+    const placed = byCol[c].filter(id => fixed.has(id)).map(id => row[id]).sort((x, y) => x - y);
+    const thru = cross[c].filter(b => done.has(b.a) && done.has(b.b) && Math.abs(row[b.a] - row[b.b]) < EPS).map(b => row[b.a]).sort((x, y) => x - y);
     byCol[c].filter(id => !fixed.has(id) && want.has(id)).sort((x, y) => late(x) - late(y) || want.get(x) - want.get(y) || x - y).forEach(id => {
-      const w = want.get(id), ok = r => placed.every(p => Math.abs(p - r) > 1 - EPS) && thru.every(p => Math.abs(p - r) > 0.5 - EPS);
-      const cand = [w, ...placed.flatMap(p => [p - 1, p + 1]), ...thru.flatMap(p => [p - 0.5, p + 0.5])].filter(ok).sort((x, y) => Math.abs(x - w) - Math.abs(y - w) || x - y);
-      row[id] = cand[0];
-      placed.push(cand[0]);
+      const w = want.get(id), dp = 1 - EPS, dt = 0.5 - EPS;
+      const walk = (x, dir) => {
+        for (;;) {
+          const bp = blockers(placed, x, dp), bt = blockers(thru, x, dt);
+          if (!bp && !bt) return x;
+          const ends = [...(bp ? [dir < 0 ? bp[0] - 1 : bp[1] + 1] : []), ...(bt ? [dir < 0 ? bt[0] - 0.5 : bt[1] + 0.5] : [])];
+          x = dir < 0 ? Math.min(...ends) : Math.max(...ends);
+        }
+      };
+      const u = walk(w, -1), v = walk(w, 1), du = Math.abs(u - w), dv = Math.abs(v - w);
+      const best = du < dv || (du === dv && u <= v) ? u : v;
+      row[id] = best;
+      placed.splice(lower(placed, best), 0, best);
       done.add(id);
     });
   };
@@ -104,6 +122,13 @@ export function flowLayout(net) {
     pass(fwd, id => [...preds(id), ...succs(id)]);
   }
   pass(back, id => (succs(id).length ? succs(id) : preds(id)));
+  // Balancer enorme: as peças da primeira coluna se espalham por muito mais linhas que as origens. Se o meio delas
+  // estiver longe (mais que a altura da pilha de origens), a pilha desce até lá; plano pequeno não muda.
+  const firsts = srcs.flatMap(q => succs(q.id));
+  if (firsts.length) {
+    const shift = Math.round(mean(firsts) - mean(srcs.map(q => q.id)));
+    if (Math.abs(shift) > srcs.length) srcs.forEach(q => { row[q.id] += shift; });
+  }
 
   // Balancer do plano: dentro de cada coluna as peças trocam de linha (as mesmas linhas) pela ordem de montagem,
   // como na planta da biblioteca: entrada a entrada, cada árvore na ordem das folhas. Assim as árvores não se cruzam.

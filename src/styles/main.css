@@ -292,10 +292,12 @@
   /* Bloco do balancer no diagrama do meio: abre a montagem */
   .pflow .rate { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; stroke-linejoin: round; }
   .balblock { cursor: pointer; }
-  .balblock .blk { fill: rgba(255, 154, 60, .04); stroke: var(--ficsit); stroke-opacity: .55; stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .balblock .blk { fill: none; pointer-events: none; stroke: var(--ficsit); stroke-opacity: .55; stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .blkbg { fill: rgba(255, 154, 60, .04); cursor: pointer; }
+  .blkbg:hover { fill: rgba(255, 154, 60, .1); }
   .balblock .blkname { fill: var(--ficsit); font-size: 13px; }
   .balblock .blktag { fill: var(--paper); stroke: var(--ficsit); stroke-opacity: .7; stroke-width: 1.2; }
-  .balblock:hover .blk { fill: rgba(255, 154, 60, .1); stroke-opacity: 1; }
+  .balblock:hover .blk { stroke-opacity: 1; }
   .balblock:hover .blktag { stroke-opacity: 1; }
   .balblock:focus-visible .blk, .balblock:focus-visible .blktag { stroke: var(--holo); stroke-width: 2.5; stroke-opacity: 1; }
   .balblock:hover polygon { fill: var(--plate); }
