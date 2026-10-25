@@ -135,6 +135,35 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     ctx.strokeRect(r.x, r.y, r.w, r.h);
     ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
+  // Avisos: a área sobreposta pintada e os dois retângulos com contorno de aviso; cruzamento de esteira, um anel.
+  if (scene.overlaps.length) {
+    const rects = new Map<string, Rect>();
+    for (const b of scene.blocks) rects.set(b.stage, b.rect);
+    for (const m of scene.meios) rects.set(m.meio, m.rect);
+    const outline = new Set<string>();
+    ctx.fillStyle = th.sink;
+    for (const [a, b] of scene.overlaps) {
+      const p = rects.get(a), q = rects.get(b);
+      if (!p || !q) continue;
+      outline.add(a); outline.add(b);
+      const x = Math.max(p.x, q.x), y = Math.max(p.y, q.y), w = Math.min(p.x + p.w, q.x + q.w) - x, h = Math.min(p.y + p.h, q.y + q.h) - y;
+      if (!visible({ x, y, w, h }, cam, vw, vh)) continue;
+      ctx.globalAlpha = 0.3; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+    }
+    ctx.strokeStyle = th.sink; ctx.lineWidth = px(2);
+    for (const id of outline) {
+      const r = rects.get(id)!;
+      if (visible(r, cam, vw, vh)) ctx.strokeRect(r.x, r.y, r.w, r.h);
+    }
+  }
+  if (scene.crossings.length) {
+    const rad = px(6);
+    ctx.strokeStyle = th.sink; ctx.lineWidth = px(2);
+    for (const [x, y] of scene.crossings) {
+      if (!visible({ x: x - rad, y: y - rad, w: 2 * rad, h: 2 * rad }, cam, vw, vh)) continue;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   ctx.restore();
 
   // Rótulos em px de tela (legíveis em qualquer zoom).

@@ -29,3 +29,9 @@ export function fit(bounds: Rect, vw: number, vh: number, pad = 40): Camera {
 export function visible(r: Rect, c: Camera, vw: number, vh: number): boolean {
   return r.x + r.w >= c.x && r.y + r.h >= c.y && r.x <= c.x + vw / c.zoom && r.y <= c.y + vh / c.zoom;
 }
+
+// Centraliza o retângulo mantendo o zoom; se ele não cabe na tela (com `pad` px de margem) nesse zoom, enquadra.
+export function centerOn(c: Camera, r: Rect, vw: number, vh: number, pad = 40): Camera {
+  if (r.w * c.zoom > vw - 2 * pad || r.h * c.zoom > vh - 2 * pad) return fit(r, vw, vh, pad);
+  return { x: r.x + r.w / 2 - vw / 2 / c.zoom, y: r.y + r.h / 2 - vh / 2 / c.zoom, zoom: c.zoom };
+}

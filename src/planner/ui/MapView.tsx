@@ -1,28 +1,37 @@
 // Vista do mapa: a cena em escala num canvas, com a navegação do Figma (rolar move, Ctrl/⌘ + rodinha ou pinça
-// dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// dá zoom no cursor, arrastar o fundo move) e os botões de zoom e mostrar tudo. Clicar seleciona, arrastar um bloco
+// o muda de lugar (preso na grade), duplo clique abre a etapa; o painel ao lado gira, ajusta vãos e lista os avisos.
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenAlt, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
 import { perRowOf, stageRows } from '../model/stage.ts';
-import type { Chain, GameData } from '../model/types.ts';
-import { fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
-import type { MeioGeo } from '../model/map/geo.ts';
-import { buildScene, hitTest, placesOf } from '../model/map/scene.ts';
+import type { Chain, GameData, MapPlace, StageId } from '../model/types.ts';
+import type { Action } from '../model/persist.ts';
+import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
+import type { MeioGeo, Rect } from '../model/map/geo.ts';
+import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
+import { dragged, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { FOUNDATION } from '../model/map/sizes.ts';
 import { drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
+import { MapPanel } from './MapPanel.tsx';
+import type { Selection } from './selection.ts';
 
 interface Props {
   chain: Chain; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
-  selected: string | null;
+  selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
+  inspector: ReactNode;   // o painel da cadeia, mostrado com um meio selecionado
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
+// camMoved: o usuário já mexeu na câmera (aí ela não reenquadra sozinha quando os meios chegam).
 let sessionCam: Camera | null = null;
+let camMoved = false, refitted = false;
 
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
+const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 
 // Cor de cada item como na tela da etapa: fluido em holo; o item como entrada principal de quem consome em flow,
 // como entrada secundária em held; produto que ninguém consome (saída final) em ficsit.
@@ -39,7 +48,9 @@ function itemColors(chain: Chain, data: GameData, th: MapTheme): Record<string, 
   return out;
 }
 
-export function MapView({ chain, data, lang, meioList, results, selected }: Props) {
+export function MapView({ chain, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, inspector }: Props) {
+  const selected = selection?.id ?? null;
+  const selStage = selection?.kind === 'stage' ? selection.id : null;
   // A montagem escolhida de cada meio; null enquanto calcula, sem montagem ou grande demais.
   const geos = useMemo(() => {
     const g: Record<string, MeioGeo | null> = {};
@@ -49,7 +60,15 @@ export function MapView({ chain, data, lang, meioList, results, selected }: Prop
     }
     return g;
   }, [meioList, results, chain.alts]);
-  const scene = useMemo(() => buildScene(chain, data, placesOf(chain, data, geos), geos), [chain, data, geos]);
+  // Posições mostradas: as salvas e, para quem não tem, a derivada (que pode mudar quando os meios chegam). Arrastando,
+  // o bloco usa a posição provisória (a cena é refeita sem recalcular meio).
+  const basePlaces = useMemo(() => placesOf(chain, data, geos), [chain, data, geos]);
+  const [moving, setMoving] = useState<{ id: StageId; place: MapPlace } | null>(null);
+  const places = useMemo(() => (moving ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
+  const scene = useMemo(() => buildScene(chain, data, places, geos), [chain, data, places, geos]);
+  // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
+  const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
+  const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(chain, data, geos) });
 
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -94,6 +113,7 @@ export function MapView({ chain, data, lang, meioList, results, selected }: Prop
   };
   const request = () => { if (!frame.current) frame.current = requestAnimationFrame(draw); };
   const setCam = (c: Camera) => { cam.current = c; sessionCam = c; request(); };
+  const moveCam = (c: Camera) => { camMoved = true; setCam(c); };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
   useEffect(request, [scene, opts]);
 
@@ -122,6 +142,14 @@ export function MapView({ chain, data, lang, meioList, results, selected }: Prop
     return () => ro.disconnect();
   }, []);
 
+  // Os meios chegaram (o tamanho deles muda a cena): reenquadra uma vez, se ninguém mexeu na câmera.
+  const ready = meioList.every(m => results.get(m.id) !== null);
+  useEffect(() => {
+    if (!ready || refitted) return;
+    refitted = true;
+    if (!camMoved && size.current.w) setCam(fit(boundsRef.current, size.current.w, size.current.h));
+  }, [ready]);
+
   // Rodinha: sem Ctrl move; com Ctrl/⌘ (ou pinça no touchpad, que chega como Ctrl) dá zoom no cursor.
   useEffect(() => {
     const el = canvas.current;
@@ -132,58 +160,125 @@ export function MapView({ chain, data, lang, meioList, results, selected }: Prop
       e.preventDefault();
       const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? size.current.h : 1;
       const r = el.getBoundingClientRect();
-      if (e.ctrlKey || e.metaKey) setCam(zoomAt(c, Math.exp(-e.deltaY * unit * WHEEL_ZOOM), e.clientX - r.left, e.clientY - r.top));
-      else setCam(pan(c, (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit, (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit));
+      if (e.ctrlKey || e.metaKey) moveCam(zoomAt(c, Math.exp(-e.deltaY * unit * WHEEL_ZOOM), e.clientX - r.left, e.clientY - r.top));
+      else moveCam(pan(c, (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit, (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Arrastar o fundo move o mapa; sem arrastar, o ponteiro marca o que está embaixo.
-  const drag = useRef<{ id: number; x: number; y: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
+  // Arrastar um bloco o muda de lugar; arrastar o resto move o mapa; sem arrastar, é um clique (seleciona) e o ponteiro
+  // marca o que está embaixo.
+  const drag = useRef<{
+    id: number; button: number; x0: number; y0: number; x: number; y: number; moved: boolean;
+    hit: ReturnType<typeof hitTest>; from: MapPlace | null; to: MapPlace | null;
+  } | null>(null);
+  const [dragging, setDragging] = useState<'pan' | 'block' | null>(null);
   const local = (e: React.PointerEvent) => { const r = e.currentTarget.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const hitAt = (e: React.PointerEvent) => {
+    const c = cam.current;
+    if (!c) return null;
+    const [x, y] = local(e), [wx, wy] = screenToWorld(c, x, y);
+    return hitTest(scene, wx, wy);
+  };
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.button !== 1) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    setDragging(true);
+    const hit = e.button === 0 ? hitAt(e) : null;
+    const from = hit?.kind === 'block' ? basePlaces[hit.id] ?? null : null;
+    drag.current = { id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current, c = cam.current;
     if (!c) return;
     if (d && d.id === e.pointerId) {
-      setCam(pan(c, d.x - e.clientX, d.y - e.clientY));
+      if (!d.moved) {
+        if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK_PX) return;
+        d.moved = true;
+        setDragging(d.from ? 'block' : 'pan');
+      }
+      if (d.from && d.hit) {
+        const p = dragged(d.from, (e.clientX - d.x0) / c.zoom, (e.clientY - d.y0) / c.zoom), id = d.hit.id;
+        d.to = p;
+        setMoving(m => (m && m.id === id && m.place.x === p.x && m.place.y === p.y ? m : { id, place: p }));
+      } else {
+        moveCam(pan(c, d.x - e.clientX, d.y - e.clientY));
+      }
       d.x = e.clientX; d.y = e.clientY;
       return;
     }
-    const [x, y] = local(e), [wx, wy] = screenToWorld(c, x, y);
-    const hit = hitTest(scene, wx, wy)?.id ?? null;
+    const hit = hitAt(e)?.id ?? null;
     if (hit !== hover) setHover(hit);
   };
-  const endDrag = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (drag.current?.id !== e.pointerId) return;
+  const endDrag = (e: React.PointerEvent<HTMLCanvasElement>, cancel = false) => {
+    const d = drag.current;
+    if (d?.id !== e.pointerId) return;
     drag.current = null;
-    setDragging(false);
+    setDragging(null);
+    setMoving(null);
+    if (cancel) return;
+    if (!d.moved) {
+      if (d.button === 0) onSelect(d.hit ? { kind: d.hit.kind === 'block' ? 'stage' : 'meio', id: d.hit.id } : null);
+      return;
+    }
+    if (d.from && d.hit) {
+      if (d.to && (d.to.x !== d.from.x || d.to.y !== d.from.y)) place(d.hit.id, d.to);
+      onSelect({ kind: 'stage', id: d.hit.id });
+    }
+  };
+  const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = cam.current;
+    if (!c) return;
+    const r = e.currentTarget.getBoundingClientRect(), [wx, wy] = screenToWorld(c, e.clientX - r.left, e.clientY - r.top);
+    const hit = hitTest(scene, wx, wy);
+    if (hit?.kind === 'block') onOpenStage(hit.id);
   };
 
-  const zoomCenter = (f: number) => { const c = cam.current; if (c) setCam(zoomAt(c, f, size.current.w / 2, size.current.h / 2)); };
-  const showAll = () => { if (size.current.w) setCam(fit(scene.bounds, size.current.w, size.current.h)); };
+  // Teclado no bloco (na lista do painel ou no canvas): setas movem 8 m, R gira, Enter abre a etapa, Esc solta.
+  const blockKey = (e: React.KeyboardEvent, id: StageId | null) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { if (selection) { e.preventDefault(); onSelect(null); } return; }
+    if (!id || !basePlaces[id]) return;
+    const cur = basePlaces[id];
+    if (e.key === 'Enter') { e.preventDefault(); onOpenStage(id); return; }
+    const next = e.key === 'r' || e.key === 'R' ? rotated(cur) : nudged(cur, e.key);
+    if (!next) return;
+    e.preventDefault();
+    if (selStage !== id) onSelect({ kind: 'stage', id });
+    place(id, next);
+  };
+
+  // Aviso clicado no painel: a câmera vai até ele.
+  const focus = (r: Rect) => { const c = cam.current; if (c && size.current.w) moveCam(centerOn(c, r, size.current.w, size.current.h)); };
+
+  const zoomCenter = (f: number) => { const c = cam.current; if (c) moveCam(zoomAt(c, f, size.current.w / 2, size.current.h / 2)); };
+  const showAll = () => { if (size.current.w) moveCam(fit(scene.bounds, size.current.w, size.current.h)); };
 
   const b = scene.bounds;
   const area = t('plMapSize', fmt(b.w, 0), fmt(b.h, 0), fmt(Math.ceil(b.w / FOUNDATION - 1e-9), 0), fmt(Math.ceil(b.h / FOUNDATION - 1e-9), 0));
   return (
-    <div className="pl-map" ref={wrap}>
-      <canvas ref={canvas} className={'pl-map-canvas' + (dragging ? ' grabbing' : hover ? ' over' : '')} role="img"
-        aria-label={t('plMapAria', fmt(chain.stages.length, 0), area)}
-        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}
-        onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} />
-      <p className="pl-map-hint">{t('plMapHint')}</p>
-      <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
-        <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
-        <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
-        <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{t('plMapFit')}</button>
-      </div>
-    </div>
+    <>
+      <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plViewMap')}>
+        <div className="pl-map" ref={wrap}>
+          <canvas ref={canvas} tabIndex={0} role="img"
+            className={'pl-map-canvas' + (dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : hover ? ' over' : '')}
+            aria-label={t('plMapAria', fmt(chain.stages.length, 0), area)}
+            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
+            onPointerLeave={() => { if (!drag.current && hover) setHover(null); }} onDoubleClick={onDoubleClick}
+            onKeyDown={e => blockKey(e, selStage)} />
+          <p className="pl-map-hint">{t('plMapHint')}</p>
+          <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
+            <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
+            <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
+            <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{t('plMapFit')}</button>
+          </div>
+        </div>
+      </main>
+      {selection?.kind === 'meio'
+        ? inspector
+        : <MapPanel chain={chain} data={data} meioList={meioList} scene={scene} places={places} selected={selStage}
+          onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
+          onOpenStage={onOpenStage} onBlockKey={blockKey} />}
+    </>
   );
 }

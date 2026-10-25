@@ -95,6 +95,11 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [dispatch]);
 
+  // No mapa, o painel da cadeia aparece só com um meio selecionado (o resto fica no painel do mapa).
+  const inspector = (
+    <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults}
+      dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
+  );
   return (
     <div className="pl-app">
       <Header lang={lang} onLang={change} stages={stages} machines={machines} canUndo={canUndo} canRedo={canRedo}
@@ -102,14 +107,18 @@ export function App() {
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <Sidebar chain={chain} data={data} selection={selection} onSelect={setSelection}
           search={search} onClearSearch={() => setSearch(null)} dispatch={dispatch} />
-        <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t(view === 'map' ? 'plViewMap' : 'plGraph')}>
-          {view === 'map'
-            ? <MapView chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selected={selection?.id ?? null} />
-            : <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
-              dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />}
-        </main>
-        <Inspector selection={selection} chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults}
-          dispatch={dispatch} onSelect={setSelection} onOpenStage={setOpenStage} />
+        {view === 'map'
+          ? <MapView chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
+            onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} inspector={inspector} />
+          : (
+            <>
+              <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plGraph')}>
+                <Graph chain={chain} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection} onSelect={setSelection}
+                  dispatch={dispatch} onOpenSearch={setSearch} onOpenStage={setOpenStage} />
+              </main>
+              {inspector}
+            </>
+          )}
       </div>
       {openStage && <StageView key={openStage.id} stage={openStage} chain={chain} data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />}
     </div>

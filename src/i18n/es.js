@@ -374,6 +374,12 @@ export default {
   plMapFit: 'Ver todo', plMapZoomIn: 'Acercar el mapa', plMapZoomOut: 'Alejar el mapa', plMapControls: 'Navegación del mapa',
   plMapAria: (n, area) => `Mapa de la fábrica a escala: ${n} ${n === '1' ? 'etapa' : 'etapas'}, ${area}`,
   plMapEstimate: 'estimación', plMapFloors: n => `${n} pisos`, plMapCalc: 'calculando…',
-  plMapHint: 'Desplazar mueve el mapa · Ctrl + rueda o pellizco hace zoom · arrastrar el fondo lo mueve',
+  plMapHint: 'Desplazar mueve el mapa · Ctrl + rueda o pellizco hace zoom · arrastra un bloque para moverlo, el fondo para mover el mapa',
+  plMapInSide: 'Las entradas llegan por', plMapSideLeft: 'izquierda', plMapSideTop: 'arriba', plMapSideRight: 'derecha', plMapSideBottom: 'abajo',
+  plMapRotate: 'Girar 90°', plMapGapRow: 'Espacio entre filas (m)', plMapGapMachine: 'Espacio entre máquinas (m)', plMapGapBad: 'De 0 a 64 m.',
+  plMapArea: 'Área total', plMapPropose: 'Proponer de nuevo', plMapOverlap: (a, b) => `${a} se superpone con ${b}`,
+  plMapCrossings: n => `${n} ${n === '1' ? 'cruce' : 'cruces'} de cinta`, plMapBlocks: 'Bloques', plMapNoWarnings: 'Sin superposiciones ni cruces.',
+  plMapWarnings: 'Avisos', plMapPanel: 'Mapa', plMapBlockSize: 'Medida del bloque', plMapMeioName: item => `medio de ${item}`,
+  plMapListHint: 'Las flechas mueven 8 m · R gira · Enter abre la etapa',
   plStagePieces: 'Piezas de la etapa', plAreaEst: (w, d) => `Área estimada: ${w} × ${d} m (estimación)`,
 };
