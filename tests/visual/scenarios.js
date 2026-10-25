@@ -88,6 +88,17 @@ export const scenarios = [
       await pg.waitForTimeout(500);
     },
   },
+  {
+    // O mapa abre pela aba do cabeçalho; limpa também a vista lembrada. Espera o canvas e um quadro desenhado.
+    name: 'planner-mapa', path: '/planner.html', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view'],
+    actions: async pg => {
+      await pg.waitForSelector('.react-flow__node-stage');
+      await pg.locator('[role=tablist] [data-view=map]').click();
+      await pg.waitForSelector('canvas.pl-map-canvas');
+      await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+      await pg.waitForTimeout(800);
+    },
+  },
 ];
 
 // Rotas reais (/pt e /es): só existem com o servidor aplicando as rewrites do vercel.json.

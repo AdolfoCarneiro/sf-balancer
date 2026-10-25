@@ -45,7 +45,7 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 
 ## Planner 2D (beta)
 
-Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra el medio de cada enlace (la misma lógica de la herramienta), con un botón que abre la herramienta ya rellenada. Al abrir una etapa ves las filas de máquinas a escala. Solo la fase 1; el mapa viene después. Los datos del juego se generan del Docs del juego (`node scripts/gamedata.mjs <en-US.json>`).
+Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra el medio de cada enlace (la misma lógica de la herramienta), con un botón que abre la herramienta ya rellenada. Al abrir una etapa ves las filas de máquinas a escala. La pestaña Mapa coloca toda la cadena en un plano visto desde arriba a escala (cuadrícula de cimientos de 8 m): arrastra y gira los bloques, y ve las cintas y el medio de cada enlace dibujados entre ellos, con avisos de solapamiento y cruce de cintas (fase 2). Los datos del juego se generan del Docs del juego (`node scripts/gamedata.mjs <en-US.json>`).
 
 ## Reglas del juego que respeta
 
@@ -85,7 +85,7 @@ Para probarlo como en producción (nginx sirviendo el build, con las rutas `/pt`
 ```
 index.html            HTML base (en inglés, para los buscadores)
 planner.html         entrada del planner 2D (React + TypeScript)
-src/planner/          planner: model/ (puro) y ui/
+src/planner/          planner: model/ (puro; model/map/ es la escena del mapa), worker/ (medios fuera del hilo principal) y ui/
 src/main.js           punto de entrada
 src/logic/            funciones puras, sin DOM (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo)
 src/i18n/             textos en pt, en y es

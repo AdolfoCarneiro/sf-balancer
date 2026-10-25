@@ -38,7 +38,7 @@ const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!im
 
 async function openPage(browser, viewport, url, clearStore) {
   const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce', deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', permissions: ['clipboard-read', 'clipboard-write'] });
-  if (clearStore) await ctx.addInitScript(k => { try { localStorage.removeItem(k); } catch { /* sem storage */ } }, clearStore);
+  if (clearStore) await ctx.addInitScript(ks => { for (const k of ks) try { localStorage.removeItem(k); } catch { /* sem storage */ } }, [clearStore].flat());
   const pg = await ctx.newPage();
   const errs = [];
   pg.on('pageerror', e => errs.push('pageerror: ' + e.message));

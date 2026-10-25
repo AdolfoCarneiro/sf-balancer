@@ -45,7 +45,7 @@ You can do that math by hand every time, or you can type the machine counts and 
 
 ## Planner 2D (beta)
 
-A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. Phase 1 only; the map comes next. The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
+A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. The Map tab lays the whole chain out on a top-down map to scale (8 m foundation grid): drag and rotate blocks, belts and each link's middle drawn between them, with overlap and belt-crossing warnings (phase 2). The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
 
 ## Game rules it follows
 
@@ -85,7 +85,7 @@ To try it as in production (nginx serving the build, with the `/pt`, `/es` route
 ```
 index.html            base HTML (in English, for search engines)
 planner.html         2D planner entry (React + TypeScript)
-src/planner/          planner: model/ (pure) and ui/
+src/planner/          planner: model/ (pure; model/map/ is the map scene), worker/ (middles off the main thread) and ui/
 src/main.js           entry point
 src/logic/            pure functions, no DOM (grouping, case classification, splitter trees, flow simulation)
 src/i18n/             texts in pt, en and es
