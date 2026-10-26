@@ -1,9 +1,11 @@
 // uso: node tests/visual/smoke.js <url-base>   (ex.: npm run smoke -- http://localhost:4173, contra o npm run preview)
 // Smoke dos gestos do builder, de ponta a ponta: canvas vazio -> duplo clique -> "Pure Iron" + Enter cria o bloco;
 // arrastar da saída para o vazio -> "Solid Steel Ingot" cria o próximo já ligado; segunda perna "Steel Pipe";
-// Ctrl+Z desfaz a última; clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco no canvas; /#s= antigo cai em /balancer.
-// As coordenadas vêm de window.__sfPlanner (cena, câmera e portas), ligado por ?debug=1. Sai com código != 0 se um passo
-// falhar.
+// Ctrl+Z desfaz a última; (na Montar) clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco
+// no canvas; Desligar some com a ligação e Ctrl+Z a traz de volta; o botão Planta em escala troca a vista e as portas
+// continuam pegáveis (arrastar para o vazio abre o seletor); /#s= antigo cai em /balancer.
+// As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
+// por ?debug=1. Sai com código != 0 se um passo falhar.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -120,6 +122,38 @@ await step('clicar no chip abre o mini painel; Ver montagem abre o modal; Esc fe
   await pg.keyboard.press('Escape');
   await pg.waitForSelector('dialog.pl-lig', { state: 'detached' });
   must(await pg.evaluate(() => document.activeElement?.classList.contains('pl-map-canvas')), 'o foco não voltou ao canvas');
+});
+await step('Desligar no mini painel some com a ligação; Ctrl+Z volta', async () => {
+  await settled();
+  const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);
+  must(ch, 'sem chip na tela');
+  await pg.mouse.click(b.x + ch.x, b.y + ch.y);
+  await pg.waitForSelector('.pl-chip-pop[role=dialog]', { timeout: 5000 });
+  await pg.click('.pl-chip-pop .pl-chip-pop-unlink');
+  await nMeios(0);
+  await pg.waitForSelector('.pl-chip-pop', { state: 'detached' });
+  await pg.locator('canvas.pl-map-canvas').focus();
+  await pg.keyboard.press('Control+z');
+  await nMeios(1);
+  must((await state()).blocks.length === 2, 'Desligar/Ctrl+Z mexeu nos blocos');
+});
+await step('Planta em escala troca a vista e as portas continuam pegáveis', async () => {
+  await pg.locator('.pl-view button').nth(1).click();
+  await waitFor(() => window.__sfPlanner?.mode === 'planta', null, "mode === 'planta'");
+  await settled();
+  const b = await box(), port = await pg.evaluate(id => window.__sfPlanner.view.ports.find(p => p.block === id && p.side === 'out'), second);
+  must(port, 'porta de saída de ' + second + ' na Planta');
+  const x = b.x + port.x, y = b.y + port.y;
+  await pg.mouse.move(x, y);
+  await pg.mouse.down();
+  for (let i = 1; i <= 10; i++) await pg.mouse.move(x + 16 * i, y, { steps: 1 });
+  await pg.mouse.up();
+  await pg.waitForSelector('.pl-pick-in', { timeout: 5000 }).catch(() => { throw new Error('a porta na Planta não abriu o seletor'); });
+  await pg.keyboard.press('Escape');
+  await pg.waitForSelector('.pl-pick', { state: 'detached' });
+  must((await state()).blocks.length === 2, 'o seletor fechado criou bloco');
+  await pg.locator('.pl-view button').nth(0).click();
+  await waitFor(() => window.__sfPlanner?.mode === 'montar', null, "mode === 'montar'");
 });
 await step('/#s= antigo cai em /balancer', async () => {
   const { shareHash } = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));

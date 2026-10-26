@@ -40,6 +40,12 @@ const clickScreen = async (pg, [x, y], opts) => {
   await pg.mouse.click(box.x + x, box.y + y, opts);
 };
 const cardCenter = (pg, id) => pg.evaluate(i => { const r = window.__sfPlanner.view.blocks.find(b => b.id === i).rect; return [r.x + r.w / 2, r.y + r.h / 2]; }, id);
+// Abre o mini painel da ligação do ferro (s1 > s2) com um clique no chip.
+const openIronChip = async pg => {
+  const c = await pg.evaluate(() => window.__sfPlanner.view.chips.find(m => m.meio.startsWith('Desc_IronIngot_C')));
+  await clickScreen(pg, [c.x, c.y]);
+  await pg.waitForSelector('.pl-chip-pop');
+};
 const toLibrary = pg => pg.locator('#library').scrollIntoViewIfNeeded();
 
 export const scenarios = [
@@ -94,9 +100,10 @@ export const scenarios = [
   // localStorage limpo = exemplo carregado. ?debug=1 liga window.__sfPlanner (cena, câmera e portas) para achar o ponto.
   { name: 'builder', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); } },
   {
-    // Bloco selecionado (Solid Steel Ingot, o s2 do exemplo): painel do bloco e cantoneiras.
+    // Bloco selecionado (Pure Iron Ingot, o s1 do exemplo, com 330/min sobrando): o painel do bloco com a frase do
+    // problema e os consertos.
     name: 'builder-bloco', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
-    actions: async pg => { await builderReady(pg); await clickScreen(pg, await cardCenter(pg, 's2')); await builderReady(pg); },
+    actions: async pg => { await builderReady(pg); await clickScreen(pg, await cardCenter(pg, 's1')); await builderReady(pg); },
   },
   {
     // Seletor aberto por duplo clique no vazio (abaixo do primeiro bloco).
@@ -124,17 +131,40 @@ export const scenarios = [
     },
   },
   {
-    // Clique no chip da ligação do ferro (s1 > s2) e Ver montagem (Enter, com o foco nele): o modal com o desenho do fluxo.
+    // Mini painel do chip da ligação do ferro (s1 > s2): resumo e as três ações.
+    name: 'builder-chip', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => { await builderReady(pg); await openIronChip(pg); await pg.waitForTimeout(300); },
+  },
+  {
+    // Clique no chip da ligação do ferro e Ver montagem (Enter, com o foco nele): o modal com o desenho do fluxo.
     name: 'builder-ligacao', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
     actions: async pg => {
       await builderReady(pg);
-      const c = await pg.evaluate(() => window.__sfPlanner.view.chips.find(m => m.meio.startsWith('Desc_IronIngot_C')));
-      await clickScreen(pg, [c.x, c.y]);
-      await pg.waitForSelector('.pl-chip-pop');
+      await openIronChip(pg);
       await pg.keyboard.press('Enter');
       await pg.waitForSelector('dialog.pl-lig[open] .pl-lig-svg svg', { timeout: 10000 });
       await pg.waitForTimeout(300);
     },
+  },
+  {
+    // Planta em escala (o botão da barra de cima) e Mostrar tudo: os blocos no tamanho real.
+    name: 'builder-planta', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      await pg.locator('.pl-view button').nth(1).click();
+      await pg.waitForFunction(() => window.__sfPlanner.mode === 'planta');
+      await pg.locator('.pl-map-ctrl .pl-btn').last().click();
+      await builderReady(pg);
+    },
+  },
+  {
+    // Legenda aberta (o botão dos controles do mapa).
+    name: 'builder-legenda', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => { await builderReady(pg); await pg.click('.pl-leg-btn'); await pg.waitForSelector('.pl-leg[role=dialog]'); await pg.waitForTimeout(300); },
+  },
+  {
+    // Celular: a Montar com a folha de baixo recolhida (sem seleção).
+    name: 'builder-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); },
   },
 ];
 

@@ -9,9 +9,15 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 - Vai surgindo jogando. Cada caso esquisito vira um teste em `tests/logic.test.js`, partindo do link do cenário (`#s=`) ou do botão de reportar no GitHub.
 - **Smart / Programmable Splitter (Overflow, Any):** em alguns cenários pode resolver com menos peças que um balancer exato. Confirmar a mecânica antes de implementar.
 
-### 2. Builder (planner 2D): fases 1, 2 e 3 feitas
+### 2. Builder (planner 2D): fases 1, 2 e 3 e a reforma visual feitas
 
 - Specs: [`2026-10-25-planner-2d-design.md`](superpowers/specs/2026-10-25-planner-2d-design.md) (fase 1: cadeia, meio nas ligações, etapa aberta), [`…-fase2-design.md`](superpowers/specs/2026-10-25-planner-2d-fase2-design.md) (fase 2: mapa em escala) e [`…-fase3-design.md`](superpowers/specs/2026-10-25-planner-2d-fase3-design.md) (fase 3: montar como no Modeler, fluxo físico, ligação arrastável com modal, origens e sobras, ícones). O builder é a página inicial (`/`) e a ferramenta original foi para `/balancer`.
+- **Reforma visual (feita):** spec [`2026-10-25-builder-reforma-visual-design.md`](superpowers/specs/2026-10-25-builder-reforma-visual-design.md), protótipo e capturas aprovados em `superpowers/research/2026-10-25-reforma/`. Montar (cartões com a faixa das fileiras, portas pelo estado, esteiras animadas, chips) e Planta em escala, Balanço com "N faltas/N sobras", mini painel do chip, painel com a frase do problema e consertos de um clique, seletor maior, dica de primeiro uso e Legenda.
+- **Ficou de fora da reforma (para o dono decidir):**
+  - Celular: o topo ocupa três linhas (abas, Montar/Planta + desfazer, Compartilhar + idiomas) e os controles do mapa quebram em duas (a Legenda entrou); a dica de primeiro uso cobre boa parte do mapa até "Entendi". Cartões se sobrepõem no zoom mínimo do celular (60 %), e aí o rótulo de uma porta pode cobrir o cartão vizinho.
+  - Planta: o chip de uma ligação pequena fica em cima das portas dela (o chip ganha o clique; a porta só pega fora dele). A troca Montar → Planta mantém o centro e o zoom permitido, então a Planta abre bem perto até "Mostrar tudo".
+  - O modal da ligação continua o da fase 3 (o protótipo mostra um desenho mais simples, "Montagem: Iron Ingot, 6 → 8", com o passo a passo embaixo).
+  - Pequenos adiados das revisões: `viewGeo` aloca a cada quadro; fórmula da faixa e `CARD_HEAD` duplicados entre `model/map/cards.ts` e `ui/draw/cards.ts`; algumas cores fixas no desenho; o cano tem casca (o spec diz sem); chaves sem uso (`plMapScale`, `plMeioTooLargeShort`); o chip não distingue loop de balancer; o zoom/arraste do usuário não cancela a animação de 300 ms do "ir até o problema"; "Novo bloco" abre o seletor no alto e no meio, não onde se olha; `factoryBalance` é O(blocos × links); consertos recalculados a cada render; layout de 721–900 px não desenhado; contagem de produtoras por link em `fixes.ts` (não por bloco).
 - **Fase 4 (próxima):**
   - Outros jeitos de montar as fileiras: Mergers no meio da fileira, uma entrada e duas saídas.
   - Portas reais dos prédios (e entradas de um mesmo prédio em lados diferentes por item).
