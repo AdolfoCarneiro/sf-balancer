@@ -93,7 +93,8 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       case 'plFixRaise': {
         // A fonte a montante: a taxa da Miner (com unidade) ou a quantidade de extratores ou de máquinas.
         const up = f.blocks.find(s => s.id === (x.action && 'id' in x.action ? x.action.id : ''));
-        return t('plFixRaise', up?.kind === 'miner' ? rateText(data.items[p.item], x.n ?? 0) : `${fmt(x.n ?? 0, 0)} ${t('plCardMachines')}`);
+        if (up?.kind === 'miner') return t('plFixRaise', rateText(data.items[p.item], x.n ?? 0));
+        return t(up?.kind === 'extractor' ? 'plFixRaiseExtractors' : 'plFixRaiseMachines', fmt(x.n ?? 0, 0));
       }
       case 'plFixCreate': return t('plFixCreate', p.side);
       default: return t(x.key);

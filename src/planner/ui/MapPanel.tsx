@@ -13,7 +13,7 @@ import { warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
 import type { MeioResult } from '../model/meioresult.ts';
 import type { ChipLabel } from '../model/chip.ts';
-import { factoryBalance, portStates, type PortState } from '../model/portstate.ts';
+import { portStates, type PortState } from '../model/portstate.ts';
 import { problemSentence } from '../model/fixes.ts';
 import { factoryTotals } from '../model/solved.ts';
 import { NumField } from './NumField.tsx';
@@ -29,10 +29,15 @@ const SHEET_NEXT: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'pe
 const SHEET_UP: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'full' };
 const SHEET_DOWN: Record<Sheet, Sheet> = { peek: 'peek', half: 'peek', full: 'half' };
 const DRAG_PX = 30;
+const CLICK_AFTER_DRAG_MS = 400;
+type Dot = 'def' | 'stall' | 'sur' | '';
+const DOT_OF: Partial<Record<PortState['kind'], Dot>> = { deficit: 'def', stalled: 'stall', surplus: 'sur' };
+const DOT_TEXT: Record<Exclude<Dot, ''>, string> = { def: 'plPortStateDeficit', stall: 'plCardStalled', sur: 'plPortStateSurplus' };
 
 interface Props {
   factory: Factory; flow: FlowResult; data: GameData; meioList: Meio[]; scene: Scene; places: Record<StageId, MapPlace>;
   selection: Selection; view: ViewMode;
+  problems: PortState[];   // faltas, sobras e travados do Balanço
   open: boolean;   // desktop: o painel aparece (no celular a folha sempre existe)
   sheet: Sheet; onSheet: (s: Sheet) => void;
   chip: (id: string) => ChipLabel | null; results: Map<string, MeioResult | null>;
@@ -71,12 +76,29 @@ export function MapPanel(p: Props) {
     ? stageName(selBlock.id) + (selBlock.kind === 'recipe' && bf?.machines != null ? `, ${fmt(bf.machines, 0)} ${t('plCardMachines')}` : '')
     : meio ? t('plLigOf', itemName(meio.item)) : t('plPanelFactory');
 
-  // Alça: clique passa para o próximo tamanho; arrastar para cima abre mais, para baixo fecha.
-  const dragY = useRef<{ y0: number; dy: number }>({ y0: 0, dy: 0 });
+  // Alça: clique (ou Enter/Espaço) passa para o próximo tamanho; arrastar mais de 30 px para cima abre mais, para baixo
+  // fecha. O arraste decide no pointerup (com o ponteiro capturado, para valer mesmo saindo da alça) e o clique que o
+  // navegador manda logo depois não conta; cada pointerdown zera o estado.
+  const handle = useRef<{ y0: number; at: number; dragged: number }>({ y0: 0, at: -1, dragged: 0 });
+  const onHandleDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
+    handle.current = { y0: e.clientY, at: e.pointerId, dragged: 0 };
+  };
+  const onHandleUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const h = handle.current;
+    if (h.at !== e.pointerId) return;
+    h.at = -1;
+    const dy = e.clientY - h.y0;
+    if (Math.abs(dy) <= DRAG_PX) return;
+    h.dragged = performance.now();
+    p.onSheet(dy < 0 ? SHEET_UP[p.sheet] : SHEET_DOWN[p.sheet]);
+  };
   const onHandleClick = () => {
-    const dy = dragY.current.dy;
-    dragY.current.dy = 0;
-    p.onSheet(dy < -DRAG_PX ? SHEET_UP[p.sheet] : dy > DRAG_PX ? SHEET_DOWN[p.sheet] : SHEET_NEXT[p.sheet]);
+    const h = handle.current;
+    // O clique sintético de um arraste chega logo depois do pointerup (no toque, às vezes nem chega).
+    if (h.dragged && performance.now() - h.dragged < CLICK_AFTER_DRAG_MS) { h.dragged = 0; return; }
+    h.dragged = 0;
+    p.onSheet(SHEET_NEXT[p.sheet]);
   };
 
   let body: React.ReactNode;
@@ -98,8 +120,7 @@ export function MapPanel(p: Props) {
     <aside className={'pl-inspector' + (p.open ? '' : ' closed')} data-sheet={p.sheet} aria-label={t('plMapPanel')} id="pl-inspector">
       <button type="button" className="pl-sheet-h" aria-expanded={p.sheet !== 'peek'} aria-controls="pl-insp-body"
         aria-label={`${t('plPanelSheet')}: ${sheetTitle}`}
-        onPointerDown={e => { dragY.current = { y0: e.clientY, dy: 0 }; }}
-        onPointerUp={e => { dragY.current.dy = e.clientY - dragY.current.y0; }}
+        onPointerDown={onHandleDown} onPointerUp={onHandleUp} onPointerCancel={() => { handle.current.at = -1; }}
         onClick={onHandleClick}>
         <span>{sheetTitle}</span><i aria-hidden="true" />
       </button>
@@ -137,15 +158,14 @@ function LigPanel({ meio, factory: f, flow, data, chip, results, onSeeLig, onSwa
 }
 
 function Overview(p: Props & { nameOf: (id: string) => string }) {
-  const { factory: f, flow, data, scene, meioList, chip, nameOf, onFocus, onGo, onGoPort } = p;
+  const { factory: f, flow, data, scene, meioList, chip, nameOf, onFocus, onGo, onGoPort, problems } = p;
   const { blocks, machines } = factoryTotals(f, flow);
-  const problems = useMemo(() => factoryBalance(f, flow, data).problems, [f, flow, data]);
-  // Estado de cada bloco para o ponto da lista: falta (ou travado) pesa mais que sobra.
-  const dot = (id: StageId): 'def' | 'sur' | '' => {
+  // Estado de cada bloco para o ponto da lista: falta pesa mais que travado, que pesa mais que sobra.
+  const dot = (id: StageId): Dot => {
     const bf = flow.blocks[id];
     if (!bf) return '';
     const ks = portStates(bf).map(s => s.kind);
-    return ks.includes('deficit') || ks.includes('stalled') ? 'def' : ks.includes('surplus') ? 'sur' : '';
+    return ks.includes('deficit') ? 'def' : ks.includes('stalled') ? 'stall' : ks.includes('surplus') ? 'sur' : '';
   };
   // Cada clique no aviso de cruzamentos leva ao próximo cruzamento.
   const [next, setNext] = useState(0);
@@ -187,7 +207,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
               const url = iconUrl(q.item);
               return (
                 <li key={`${q.block}|${q.side}|${q.item}`}>
-                  <button type="button" className={q.kind === 'surplus' ? 'sur' : 'def'} onClick={() => onGoPort(q)}>
+                  <button type="button" className={DOT_OF[q.kind] ?? 'def'} onClick={() => onGoPort(q)}>
                     {url && <img src={url} alt="" width={24} height={24} />}
                     <span><b>{nameOf(q.block)}</b>: {why(q)}</span>
                   </button>
@@ -224,7 +244,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
                     <span className="pl-prow-n"><span>{blockName(b, data)}</span>{sub && <small>{sub}</small>}</span>
                     {b.kind === 'recipe' && bf?.machines != null && <b>{fmt(bf.machines, 0)}</b>}
                     <i className={'pl-dot ' + k} aria-hidden="true" />
-                    {k && <span className="pl-sr">{t(k === 'def' ? 'plPortStateDeficit' : 'plPortStateSurplus')}</span>}
+                    {k && <span className="pl-sr">{t(DOT_TEXT[k])}</span>}
                   </button>
                 </li>
               );

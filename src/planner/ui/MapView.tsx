@@ -39,6 +39,7 @@ interface Props {
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação
   onView: (v: ViewMode) => void;   // "Ver em escala" / "Voltar a montar" no painel
+  problems: PortState[];   // faltas, sobras e travados do Balanço (o App já calcula), para os avisos do painel
   ref?: Ref<MapViewHandle>;
 }
 
@@ -148,7 +149,7 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
   };
 }
 
-export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, ref }: Props) {
+export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, ref }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
   const montar = mode === 'montar';
@@ -778,7 +779,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
 
   // Retângulo do bloco na tela do último quadro (Montar: o cartão; Planta: o bloco).
   const viewRect = (id: StageId): Rect | null => lastView.current?.blocks.find(b => b.id === id)?.rect ?? null;
-  // Onde nasce o bloco de um conserto: à direita da saída, à esquerda da entrada, na altura do bloco.
+  // Onde nasce o bloco de um conserto: à direita da saída, à esquerda da entrada, na altura do bloco. É só o ponto de
+  // partida: o tamanho do bloco novo não se conhece aqui (na entrada, a largura do próprio bloco serve de estimativa).
   const fixAt = (p: PortState): Pt => {
     const r = viewRect(p.block), c = cam.current;
     if (r && c) return screenToWorld(c, p.side === 'out' ? r.x + r.w + FIX_GAP : r.x - FIX_GAP - r.w, r.y);
@@ -843,7 +845,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         </div>
       </main>
       <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places}
-        selection={selection} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
+        selection={selection} problems={problems} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
         chip={id => chips.get(id) ?? null} results={results}
         onPlace={place} onPropose={propose} onFocus={focus} onGo={goTo}
         onGoPort={q => { focusPort(q.block, q.side, q.item); canvas.current?.focus(); }}

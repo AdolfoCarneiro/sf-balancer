@@ -173,10 +173,12 @@ select.pl-field { width: auto; }
 .pl-map-warns button { align-items: flex-start; color: var(--ink-mid); }
 .pl-map-warns button.def { color: var(--deficit); border-color: var(--deficit); }
 .pl-map-warns button.sur { color: var(--surplus); border-color: var(--surplus); }
+.pl-map-warns button.stall { color: var(--lock); border: 1px dashed var(--lock); }
 .pl-map-warns button b { font-weight: 600; }
 .pl-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
 .pl-dot.def { background: var(--deficit); }
 .pl-dot.sur { background: var(--surplus); }
+.pl-dot.stall { background: transparent; border: 2px dashed var(--lock); }
 .pl-ov-area { display: flex; flex-direction: column; gap: 2px; }
 .pl-ov-area b { font: 700 18px/1.3 var(--display); font-variant-numeric: tabular-nums; }
 .pl-map-block:focus-visible, .pl-map-warns button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }

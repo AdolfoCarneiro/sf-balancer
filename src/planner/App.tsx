@@ -147,7 +147,7 @@ export function App() {
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
-          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} />
+          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} problems={balance.problems} />
       </div>
       {openStage && (
         <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
