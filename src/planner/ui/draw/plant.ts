@@ -45,7 +45,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   const A = ctx.globalAlpha;   // a vista inteira some na transição para a Montar
   const px = (n: number) => n / z;   // n px de tela em metros
   const pieceFill: Record<Piece['kind'], string> = {
-    machine: th.machine, splitter: th.flow, merger: th.ficsit, smart: th.donor, sink: th.sink, junction: th.holo, bp: 'transparent',
+    machine: th.machine, splitter: th.flow, merger: th.ficsit, smart: th.donor, sink: th.sink, junction: th.holo, bp: 'transparent', lift: th.edge,   // lift: desenho próprio na Task 4
   };
   const drawPieces = (geo: BlockGeo) => {
     strokeBelts(w, geo.belts, false);

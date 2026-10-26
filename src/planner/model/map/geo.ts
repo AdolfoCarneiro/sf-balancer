@@ -2,7 +2,7 @@ import type { ItemId, Rot, StageId } from '../types.ts';
 
 export type Pt = [number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
-export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | 'junction' | 'bp';
+export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | 'junction' | 'bp' | 'lift';   // lift: Conveyor Lift (desce; above = sobe)
 // above: num andar de cima (torre de vários andares); conta como peça, mas o mapa só desenha o chão.
 export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean }
 export type BeltRole = 'main' | 'donor' | 'loop' | 'sink' | 'extra' | 'over' | 'in' | 'out' | 'raw';

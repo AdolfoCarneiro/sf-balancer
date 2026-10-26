@@ -17,7 +17,7 @@ export const portsOf = (stage: Stage, data: GameData): { item: ItemId; side: Sid
 };
 const ports = portsOf;
 export const tierKey = (side: Side, item: ItemId): string => (side === 'ins' ? 'in:' : 'out:') + item;
-const tiersOf = (item: Item) => (item.fluid ? PIPES : BELTS) as { id: string; cap: number }[];
+export const tiersOf = (item: Item) => (item.fluid ? PIPES : BELTS) as { id: string; cap: number }[];
 
 // Taxa do item numa máquina, já com o clock.
 export function perMachine(stage: Stage, data: GameData, item: ItemId, side: Side): number {

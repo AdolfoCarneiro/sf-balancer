@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Factory, GameData, Layout, RecipeBlock } from '../../src/planner/model/types.ts';
-import { cleanLayout } from '../../src/planner/model/layout.ts';
+import type { Factory, GameData, Layout, MapPlace, RecipeBlock, Stage } from '../../src/planner/model/types.ts';
+import type { BlockGeo } from '../../src/planner/model/map/geo.ts';
+import { type Arrangement, arrange, arrangementLines, cleanLayout, recommendedPerRow } from '../../src/planner/model/layout.ts';
+import { suggestedPerRow } from '../../src/planner/model/stage.ts';
+import simpleFixture from './fixtures/layout-simple.json' with { type: 'json' };
 import {
   type History, decodeFactory, encodeFactory, exampleFactory, reduce,
 } from '../../src/planner/model/factorystate.ts';
@@ -66,4 +69,193 @@ test('decode: layout inválido deixa o bloco sem layout; sem layout decodifica c
   raw.blocks.find((b: { id: string }) => b.id === 's1').layout = { kind: 'zig' };
   assert.equal('layout' in rb(decodeFactory(encodeShare(raw), data)!, 's1'), false);
   assert.deepEqual(decodeFactory(encodeFactory(ex), data), ex);
+});
+
+// ---- arrange: simple, backToBack e ajustes ----
+
+const PURE = 'Recipe_Alternate_PureIronIngot_C', ORE = 'Desc_OreIron_C', WATER = 'Desc_Water_C', INGOT = 'Desc_IronIngot_C';
+const st = (machines: number, extra: Partial<Stage> = {}): Stage =>
+  ({ id: 's', recipe: PURE, machines, clock: 100, perRow: null, tiers: {}, ...extra });
+const machinesOf = (a: Arrangement) => a.geo.pieces.filter(p => p.kind === 'machine');
+const lifts = (a: Arrangement) => a.geo.pieces.filter(p => p.kind === 'lift');
+const belt = (a: Arrangement, side: 'in' | 'out', item: string, k = 0) =>
+  a.geo.belts.filter(b => b.role === side && b.item === item)[k];
+
+interface SimpleCase {
+  name: string; stage: Stage; place?: Pick<MapPlace, 'gapRow' | 'gapMachine'>;
+  geo: BlockGeo; pieces: { splitters: number; mergers: number }; area: { w: number; d: number }; rows: number[];
+}
+
+// Gravado do blockGeo/stagePieces/stageArea/stageRows da fase 3 por fixtures/layout-simple.record.ts.
+test('arrange simple sem ajustes = o bloco de hoje (geo, peças, área e linhas)', () => {
+  for (const c of simpleFixture as unknown as SimpleCase[]) {
+    for (const layout of [undefined, { kind: 'simple' } as Layout]) {
+      const a = arrange(c.stage, data, layout, c.place);
+      assert.deepEqual(a.geo, c.geo, c.name);
+      assert.deepEqual(a.pieces, { ...c.pieces, lifts: 0 }, c.name);
+      assert.deepEqual(a.area, c.area, c.name);
+      assert.equal(a.kind, 'simple');
+      assert.deepEqual(a.warnings, [], c.name);
+      const r = data.recipes[c.stage.recipe];
+      for (const f of r.ins) assert.deepEqual(arrangementLines(a, 'in', f.item), c.rows, c.name);
+      for (const f of r.outs) assert.deepEqual(arrangementLines(a, 'out', f.item), c.rows, c.name);
+    }
+  }
+  assert.ok((simpleFixture as unknown as SimpleCase[]).some(c => c.rows.length === 120));
+});
+
+test('recommendedPerRow: simple e backToBack = suggestedPerRow', () => {
+  for (const k of ['simple', 'backToBack'] as const) assert.equal(recommendedPerRow(st(42), data, k), suggestedPerRow(st(42), data));
+  assert.equal(recommendedPerRow(st(42), data, 'simple'), 7);
+});
+
+test('backToBack: 42 Pure Iron → 3 pares, a de baixo virada, 6 saídas de 7 separadas no corredor', () => {
+  const a = arrange(st(42), data, { kind: 'backToBack' });
+  assert.equal(a.kind, 'backToBack');
+  assert.deepEqual(a.rows.map(r => r.machines), [7, 7, 7, 7, 7, 7]);
+  assert.deepEqual(a.rows.map(r => r.flip), [false, true, false, true, false, true]);
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
+  assert.ok(a.lines.filter(l => l.side === 'out').every(l => l.rate === 455 && l.exit === 'end' && l.rows.length === 1));
+  assert.deepEqual(a.pieces, { splitters: 36, mergers: 36, lifts: 0 });
+  // Par 0: a saída da fileira 0 embaixo dela, a da fileira 1 em cima dela, coladas no corredor.
+  const m = machinesOf(a), top = m[0], bot = m[7];
+  const o0 = belt(a, 'out', INGOT, 0).pts[0][1], o1 = belt(a, 'out', INGOT, 1).pts[0][1];
+  assert.ok(top.y + top.h < o0 && o0 < o1 && o1 < bot.y);
+  const i1 = belt(a, 'in', ORE, 1).pts[0][1];
+  assert.ok(i1 > bot.y + bot.h, 'entrada da fileira de baixo por fora');
+  assert.deepEqual(a.warnings, []);
+  // Vão entre fileiras só entre os pares (31 m = 4 + 1 + 22 + 4 de cada fileira).
+  const g = arrange(st(42), data, { kind: 'backToBack' }, { gapRow: 8 });
+  assert.deepEqual(g.rows.map(r => r.y), [0, 31, 70, 101, 140, 171]);
+  assert.equal(g.geo.h, 202);
+  assert.ok(a.area.w % 8 === 0 && a.area.d % 8 === 0 && a.area.d >= a.geo.h && a.area.w >= a.geo.w);
+});
+
+test('backToBack com invert: as entradas no corredor, saídas por fora', () => {
+  const a = arrange(st(42), data, { kind: 'backToBack', invert: true });
+  assert.deepEqual(a.rows.map(r => r.flip), [true, false, true, false, true, false]);
+  const m = machinesOf(a), top = m[0], bot = m[7];
+  const i0 = belt(a, 'in', ORE, 0).pts[0][1], i1 = belt(a, 'in', ORE, 1).pts[0][1];
+  assert.ok(top.y + top.h < i0 && i0 < i1 && i1 < bot.y);
+  assert.ok(belt(a, 'out', INGOT, 0).pts[0][1] < top.y);
+  assert.deepEqual(arrangementLines(a, 'in', ORE), [7, 7, 7, 7, 7, 7]);
+});
+
+test('backToBack: número ímpar de fileiras e 1 máquina não quebram', () => {
+  const a = arrange(st(29), data, { kind: 'backToBack' });   // 4 de 7 + 1: a última fica sozinha, sem virar
+  assert.deepEqual(a.rows.map(r => r.machines), [7, 7, 7, 7, 1]);
+  assert.deepEqual(a.rows.map(r => r.flip), [false, true, false, true, false]);
+  assert.deepEqual(arrange(st(29), data, { kind: 'backToBack', invert: true }).rows.map(r => r.flip), [true, false, true, false, false]);
+  const one = arrange(st(1), data, { kind: 'backToBack' });
+  assert.deepEqual(arrangementLines(one, 'out', INGOT), [1]);
+  assert.ok(!JSON.stringify(one).includes('null'));
+});
+
+test('ajustes: flip troca as faixas, mirror troca as pontas, dx desloca, fileira inexistente é ignorada', () => {
+  const base = arrange(st(42), data, { kind: 'simple' });
+  const m0 = machinesOf(base)[0];
+  assert.ok(belt(base, 'in', ORE, 0).pts[0][1] < m0.y);
+
+  const f = arrange(st(42), data, { kind: 'simple', rows: { 0: { flip: true } } });
+  const fm = machinesOf(f)[0];
+  assert.ok(belt(f, 'in', ORE, 0).pts[0][1] > fm.y + fm.h && belt(f, 'out', INGOT, 0).pts[0][1] < fm.y);
+  assert.deepEqual(f.rows.map(r => r.flip), [true, false, false, false, false, false]);
+
+  const mi = arrange(st(42), data, { kind: 'simple', rows: { 0: { mirror: true } } });
+  assert.equal(mi.geo.w, 70);
+  assert.deepEqual(mi.geo.ins.filter(p => p.row === 0).map(p => p.x), [70, 70]);
+  assert.deepEqual(mi.geo.outs.filter(p => p.row === 0).map(p => p.x), [0]);
+  assert.equal(mi.rows[0].mirror, true);
+  // 6 máquinas na última fileira de 41: espelhada, encosta na direita.
+  const mr = arrange(st(41), data, { kind: 'simple', rows: { 5: { mirror: true } } });
+  assert.equal(Math.max(...machinesOf(mr).slice(35).map(p => p.x + p.w)), 70);
+
+  const d = arrange(st(42), data, { kind: 'simple', rows: { 1: { dx: 16 } } });
+  assert.deepEqual(machinesOf(d).slice(7, 14).map(p => p.x), machinesOf(base).slice(7, 14).map(p => p.x + 16));
+  assert.deepEqual(machinesOf(d).slice(0, 7), machinesOf(base).slice(0, 7));
+  assert.equal(d.geo.w, 86); assert.equal(d.rows[1].x, 16);
+  assert.ok(d.area.w >= 88);
+
+  const dy = arrange(st(42), data, { kind: 'simple', rows: { 0: { dy: -16 } } });
+  assert.equal(Math.min(...dy.geo.pieces.map(p => p.y)), 0, 'normaliza para o canto (0, 0)');
+
+  const orphan = arrange(st(42), data, { kind: 'simple', rows: { 99: { flip: true, dx: 8 } } });
+  assert.deepEqual(orphan.geo, base.geo);
+  assert.deepEqual(orphan.area, base.area);
+});
+
+test('corte por fileira: só com saída por baixo/cima; elevadores nos fins', () => {
+  const s = st(7);
+  const a = arrange(s, data, { kind: 'simple', belts: { [`in:${ORE}`]: { cut: 3, exit: 'down' } } });
+  const ins = a.lines.filter(l => l.side === 'in' && l.item === ORE);
+  assert.deepEqual(ins.map(l => l.machines), [3, 3, 1]);
+  assert.deepEqual(ins.map(l => l.rate), [105, 105, 35]);
+  assert.ok(ins.every(l => l.exit === 'down'));
+  assert.equal(a.pieces.lifts, 3);
+  assert.equal(a.pieces.splitters, 2 + 2 + 0);
+  assert.equal(a.pieces.mergers, 6);
+  const lf = lifts(a);
+  assert.equal(lf.length, 3);
+  assert.ok(lf.every(p => p.w === 2 && p.h === 2 && !p.above));
+  // O elevador fica no ponto da linha, que também é a âncora.
+  ins.forEach((l, k) => {
+    assert.deepEqual([lf[k].x + 1, lf[k].y + 1], l.at);
+    assert.ok(a.geo.ins.some(p => p.x === l.at[0] && p.y === l.at[1] && p.item === ORE));
+  });
+  assert.deepEqual(ins.map(l => l.at[0]), [0, 30, 60], 'entra pelo começo de cada trecho');
+  assert.deepEqual(a.area, arrange(s, data, undefined).area, 'elevador não entra na área');
+
+  const up = arrange(s, data, { kind: 'simple', belts: { [`out:${INGOT}`]: { exit: 'up' } } });
+  assert.deepEqual(arrangementLines(up, 'out', INGOT), [7]);
+  assert.equal(up.lines.find(l => l.side === 'out')!.at[0], 70, 'sai no fim do trecho');
+  assert.ok(lifts(up)[0].above);
+
+  const end = arrange(s, data, { kind: 'simple', belts: { [`in:${ORE}`]: { cut: 3, exit: 'end' } } });
+  assert.deepEqual(arrangementLines(end, 'in', ORE), [7]);
+  assert.equal(end.pieces.lifts, 0);
+  assert.deepEqual(end.geo, arrange(s, data, undefined).geo);
+
+  const one = arrange(s, data, { kind: 'simple', belts: { [`out:${INGOT}`]: { cut: 1, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(one, 'out', INGOT), [1, 1, 1, 1, 1, 1, 1]);
+  assert.equal(one.pieces.mergers, 0); assert.equal(one.pieces.lifts, 7);
+
+  const big = arrange(s, data, { kind: 'simple', belts: { [`out:${INGOT}`]: { cut: 50, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(big, 'out', INGOT), [7]);
+
+  // Corte em cada fileira de 42 (6 × 7): 3, 3, 1 por fileira.
+  const all = arrange(st(42), data, { kind: 'backToBack', belts: { [`in:${ORE}`]: { cut: 3, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(all, 'in', ORE), Array(6).fill([3, 3, 1]).flat());
+  assert.equal(all.pieces.lifts, 18);
+});
+
+test('corte num cano é ignorado com cutPipe; chave de item fora da receita é ignorada', () => {
+  const a = arrange(st(7), data, { kind: 'simple', belts: { [`in:${WATER}`]: { cut: 2, exit: 'down' }, 'out:Desc_Nope_C': { cut: 1, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(a, 'in', WATER), [7]);
+  assert.equal(a.pieces.lifts, 0);
+  assert.deepEqual(a.warnings, [{ kind: 'cutPipe', item: WATER }]);
+  assert.equal(a.lines.find(l => l.item === WATER)!.fluid, true);
+});
+
+test('aviso over: tier forçado pequeno dá o conserto (tier e corte)', () => {
+  const a = arrange(st(42, { tiers: { [`in:${ORE}`]: 'Mk1' } }), data, undefined);
+  assert.deepEqual(a.warnings, [{ kind: 'over', side: 'in', item: ORE, rate: 245, cap: 60, fixTier: 'Mk3', fixCut: 1 }]);
+  const l = a.lines.find(x => x.item === ORE)!;
+  assert.equal(l.tier, 'Mk1'); assert.equal(l.cap, 60);
+  // Cortando a cada 1 (sai por baixo) o aviso some.
+  const ok = arrange(st(42, { tiers: { [`in:${ORE}`]: 'Mk1' } }), data, { kind: 'simple', belts: { [`in:${ORE}`]: { cut: 1, exit: 'down' } } });
+  assert.deepEqual(ok.warnings, []);
+  // Saída de 455 em Mk1: fixCut nunca abaixo de 1.
+  const o = arrange(st(42, { tiers: { [`out:${INGOT}`]: 'Mk1' } }), data, undefined);
+  assert.deepEqual(o.warnings, [{ kind: 'over', side: 'out', item: INGOT, rate: 455, cap: 60, fixTier: 'Mk4', fixCut: 1 }]);
+});
+
+test('0 máquinas: arranjo vazio, sem NaN', () => {
+  for (const kind of ['simple', 'backToBack'] as const) {
+    const a = arrange(st(0), data, { kind, rows: { 0: { flip: true } }, belts: { [`out:${INGOT}`]: { cut: 3, exit: 'down' } } });
+    assert.deepEqual(a.rows, []); assert.deepEqual(a.lines, []);
+    assert.deepEqual(a.area, { w: 0, d: 0 });
+    assert.deepEqual(a.pieces, { splitters: 0, mergers: 0, lifts: 0 });
+    assert.equal(a.geo.w, 0); assert.equal(a.geo.h, 0);
+    assert.ok(!/null|NaN/.test(JSON.stringify(a)));
+  }
 });
