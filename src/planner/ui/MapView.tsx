@@ -5,23 +5,26 @@
 // liga (soltando numa porta) ou cria o próximo bloco já ligado (soltando no vazio); Delete apaga o bloco.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
+import { chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
 import { perRowOf, stageRows } from '../model/stage.ts';
 import { solvedStage } from '../model/solved.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Factory, GameData, ItemId, LigPlace, MapPlace, StageId } from '../model/types.ts';
+import type { Block, Factory, GameData, ItemId, LigPlace, MapPlace, StageId } from '../model/types.ts';
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
-import { dropTarget, portAt, scenePorts, type ScenePort } from '../model/map/ports.ts';
+import { dropTarget, type ScenePort } from '../model/map/ports.ts';
+import { PORT_D, cardSpec, viewGeo, type ViewGeo } from '../model/map/cards.ts';
+import { chipLabel, type ChipLabel } from '../model/chip.ts';
+import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
 import { iconImage } from './icons.ts';
-import { PORT_ZOOM, drawScene, readTheme, type DrawOpts, type MapTheme } from './mapDraw.ts';
+import { PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { blockBadges, type Badge } from '../model/badges.ts';
@@ -50,10 +53,19 @@ const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 const HINT_STORE = 'sf-balancer:planner-map-hint';
 const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)
-const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
+// Animação das esteiras da Montar: no máximo 30 quadros/s; um quadro acima de 12 ms deixa o desenho parado até o próximo
+// pedido de redesenho.
+const ANIM_MS = 1000 / 30, SLOW_MS = 12;
+const PHONE = '(max-width: 720px)', REDUCED = '(prefers-reduced-motion: reduce)';
+const media = (q: string) => (typeof matchMedia === 'function' ? matchMedia(q).matches : false);
 // Gancho de teste (tests/visual/smoke.js): a cena, a câmera e as portas do último quadro em window.__sfPlanner; só com
 // ?debug=1 ou no servidor de desenvolvimento.
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
+// Só com DEBUG, até a Task 5 trocar a vista de verdade: window.__sfPlannerT = 0 força a Montar (1 = Planta, o padrão).
+const debugT = (): number => {
+  const v = DEBUG ? (window as unknown as { __sfPlannerT?: unknown }).__sfPlannerT : undefined;
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+};
 const NOTICE_MS = 3500;
 const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink', full: 'plLinkWhyFull' } as const;
 export const portKey = (p: ScenePort): string => `${p.block}|${p.side}|${p.item}`;
@@ -79,6 +91,36 @@ function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, st
   return out;
 }
 
+// O cartão da Montar de um bloco, no idioma atual.
+function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): CardText {
+  const spec = cardSpec(b, data, flow), bf = flow.blocks[b.id];
+  const unitOf = (fluid: boolean) => t(fluid ? 'plPerMinFluid' : 'plPerMin', '').trim();
+  const base = { ins: spec.ins, outs: spec.outs, rows: spec.rows, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', rowsText: '', perRowText: '', rate: '', unit: '' };
+  if (b.kind !== 'recipe') {
+    // Origem: o que sai; sobra: a soma do que chega.
+    const src = b.kind === 'miner' || b.kind === 'extractor';
+    const ports = (src ? bf?.outs : bf?.ins) ?? [];
+    const rate = ports.some(p => p.rate === null) ? null : ports.reduce((s, p) => s + (p.rate ?? 0), 0);
+    const fluid = ports.length > 0 && ports.every(p => !!data.items[p.item]?.fluid);
+    const n = b.kind === 'extractor' ? bf?.extractors : null;
+    const building = b.kind === 'miner' ? t('plMiner') : b.kind === 'extractor'
+      ? (typeof n === 'number' ? `${fmt(n, 0)} × ` : '') + (data.extractors[b.building]?.name ?? b.building) : '';
+    const title = src ? data.items[b.item]?.name ?? b.item : blockName(b, data);
+    return { ...base, title, building, marker: true, rate: rate === null ? t('plUnbounded') : fmt(rate), unit: rate === null ? '' : unitOf(fluid) };
+  }
+  const s = solvedStage(b, bf), r = data.recipes[s.recipe], per = perRowOf(s, data), rows = spec.rows;
+  const stalled = bs.some(x => x.kind === 'stalled' || x.kind === 'deadlock');
+  const count = bf?.unbounded ? t('plUnbounded') : stalled ? t('plCardStalled') : fmt(s.machines, 0);
+  const n = rows.length, full = rows[0] ?? 0, last = rows[n - 1] ?? 0;
+  const rowsText = n > 1 && last !== full ? t('plCardRowsLast', fmt(n, 0), fmt(full, 0), fmt(last, 0)) : t('plCardRows', fmt(Math.max(1, n), 0), fmt(full, 0));
+  const main = r.outs[0];
+  const perRowText = main ? t('plCardPerRow', rateText(data.items[main.item], (main.perMin * b.clock / 100) * per)) : '';
+  return {
+    ...base, title: r.name, building: data.buildings[r.building]?.name ?? r.building, icon: r.building, alt: r.alt, marker: false,
+    count, fixed: b.limits?.machines !== undefined, clock: b.clock !== 100 ? `${fmt(b.clock)}%` : null, rowsText, perRowText,
+  };
+}
+
 export function MapView({ factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
@@ -98,7 +140,11 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const places = useMemo(() => (moving?.kind === 'block' ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
   const shown = useMemo(() => (moving?.kind === 'meio' ? { ...f, ligs: { ...f.ligs, [moving.id]: moving.place } } : f), [f, moving]);
   const scene = useMemo(() => buildScene(shown, data, places, geos, flow), [shown, data, places, geos, flow]);
-  const ports = useMemo(() => scenePorts(scene, f, data), [scene, f, data]);
+  // Portas de cada bloco (lado e item, na ordem do cartão), para saber quais aceitam a porta puxada.
+  const portIds = useMemo(() => f.blocks.flatMap(b => {
+    const c = cardSpec(b, data, flow), mk = (side: 'in' | 'out') => (item: ItemId): ScenePort => ({ block: b.id, side, item, x: 0, y: 0, fluid: !!data.items[item]?.fluid });
+    return [...c.ins.map(mk('in')), ...c.outs.map(mk('out'))];
+  }), [f.blocks, data, flow]);
   // Montar: seletor aberto, porta sendo puxada (com a ponta no ponteiro), porta sob o ponteiro e o aviso de não ligou.
   const [picker, setPicker] = useState<PickerAt | null>(null);
   const [wire, setWire] = useState<{ from: ScenePort; to: Pt } | null>(null);
@@ -111,8 +157,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   }, [notice]);
   // As portas que aceitam a puxada acendem (calculado uma vez por arraste).
   const wireFrom = wire?.from ?? null;
-  const lit = useMemo(() => new Set(wireFrom ? ports.filter(p => dropTarget(f, data, wireFrom, p).kind === 'connect').map(portKey) : []),
-    [wireFrom, ports, f, data]);
+  const lit = useMemo(() => new Set(wireFrom ? portIds.filter(p => dropTarget(f, data, wireFrom, p).kind === 'connect').map(portKey) : []),
+    [wireFrom, portIds, f, data]);
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
   // Propor de novo: o mapa inteiro, inclusive as ligações postas (voltam a colar na origem), num passo só.
@@ -154,13 +200,31 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     if (!loading.current.has(id)) { loading.current.add(id); img.addEventListener('load', () => redraw.current(), { once: true }); }
     return null;
   }, []);
+  // Estado de cada porta (bloco|lado|item), o rótulo do chip e o grupo de cada ligação (mudam com o fluxo e os meios).
+  const portStateMap = useMemo(() => {
+    const m = new Map<string, PortState>();
+    for (const b of f.blocks) { const bf = flow.blocks[b.id]; if (bf) for (const s of portStates(bf)) m.set(`${s.block}|${s.side}|${s.item}`, s); }
+    return m;
+  }, [f.blocks, flow]);
+  const meioById = useMemo(() => new Map(meioList.map(m => [m.id, m])), [meioList]);
+  const chips = useMemo(() => new Map<string, ChipLabel>(meioList.map(m => [m.id, chipLabel(m, results.get(m.id), f.alts, flow, data)])),
+    [meioList, results, f.alts, flow, data]);
+  // Cartão de cada bloco na Montar, já no idioma (lang nas dependências).
+  const cards = useMemo(() => new Map(f.blocks.map(b => [b.id, cardText(b, data, flow, badges.get(b.id) ?? [])])),
+    [f.blocks, data, flow, badges, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
   const opts = useMemo((): DrawOpts | null => theme && {
     // lang nas dependências: os rótulos mudam com o idioma.
-    selected, hover, colors, theme,
-    ports, portHover: hoverPort ? portKey(hoverPort) : null, wire: wire && { from: wire.from, to: wire.to, lit }, icon,
+    selected, hover, colors, theme, t: 1, time: 0,
+    portHover: hoverPort ? portKey(hoverPort) : null, wire: wire && { from: wire.from, to: wire.to, lit }, icon,
     names: item => data.items[item]?.name ?? item,
     badges: id => badges.get(id) ?? [],
-    badgeLabel: (id, x) => { const b = byId.get(id); return b ? badgeText(x, b, data, false) : ''; },
+    portState: (block, side, item) => portStateMap.get(`${block}|${side}|${item}`),
+    rate: (item, x) => rateText(data.items[item], x),
+    fluid: item => !!data.items[item]?.fluid,
+    chip: id => chips.get(id) ?? null,
+    meio: id => meioById.get(id),
+    card: id => cards.get(id)!,
+    flash: null,
     blockText: id => {
       const b = byId.get(id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
       // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
@@ -176,45 +240,64 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
         return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, alert };
       }
       const s = solvedStage(b, bf), r = data.recipes[s.recipe], bd = data.buildings[r.building];
-      const count = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
+      const num = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
       const sub = t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name);
-      return { title: `${r.name} · ${count}${lock}`, sub, icon, alert };
+      // Placa da Planta: o ícone do prédio, a receita e o número em laranja.
+      return { title: r.name + lock, num, sub, icon: r.building, alert };
     },
-    meioText: id => {
-      const r = results.get(id), m = meioList.find(x => x.id === id), icon = m?.item ?? null;
-      if (r === undefined) return { title: '', sub: '', icon: null };
-      if (r === null) return { title: t('plMapCalc'), sub: '', icon };
-      if (r.plan.unbounded) return { title: t('plUnbounded'), sub: '', icon };
-      if (r.plan.tooLarge) return { title: t('plMeioTooLargeShort'), sub: '', icon };
-      const lines = `${fmt(r.plan.src.lines.length, 0)} → ${fmt(r.plan.direct ? r.plan.src.lines.length : r.plan.dst.lines.length, 0)}`;
-      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = byId.get(c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines, icon };
-      const key = chosenAlt(r.plan, f.alts?.[id]);
-      const alt = r.plan.alternatives.find(a => a.key === key);
-      return { title: alt?.caseLabel ?? '', sub: lines, icon };
-    },
-  }, [selected, hover, colors, theme, f, byId, flow, data, results, meioList, lang, ports, hoverPort, wire, lit, badges]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
-  const latest = useRef({ scene, opts, ports });
-  latest.current = { scene, opts, ports };
+  // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só. A Montar anima o tracejado
+  // das esteiras (até 30 quadros/s), parado com movimento reduzido, com a aba escondida ou se um quadro passar de 12 ms.
+  // Tudo que o quadro lê vem daqui (o timer da animação chama um draw de um render antigo).
+  const latest = useRef({ scene, opts, f: shown, data, flow });
+  latest.current = { scene, opts, f: shown, data, flow };
+  const lastView = useRef<ViewGeo | null>(null);
   const frame = useRef(0);
+  const anim = useRef({ timer: 0, slow: false, time: 0 });
   const draw = () => {
     frame.current = 0;
-    const el = canvas.current, c = cam.current, { scene: sc, opts: o } = latest.current;
+    const el = canvas.current, c = cam.current, { scene: sc, opts: o, f: fs, data: dt, flow: fl } = latest.current;
     const ctx = el?.getContext('2d');
     if (!el || !ctx || !c || !o || !size.current.w) return;
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawScene(ctx, sc, c, size.current.w, size.current.h, o);
+    const T = debugT(), A = anim.current;
+    const view = viewGeo(sc, c, T, media(PHONE), fs, dt, fl);
+    lastView.current = view;
+    const moving = T < 1 && view.chips.length > 0 && !A.slow && !document.hidden && !media(REDUCED);
+    if (moving) A.time = performance.now();
+    const wireTo = o.wire && ([(o.wire.to[0] - c.x) * c.zoom, (o.wire.to[1] - c.y) * c.zoom] as Pt);
+    const t0 = performance.now();
+    drawScene(ctx, sc, view, c, size.current.w, size.current.h, { ...o, t: T, time: A.time, wire: o.wire && { ...o.wire, to: wireTo! } });
+    if (performance.now() - t0 > SLOW_MS) A.slow = true;
+    const flashing = !!o.flash && Date.now() < o.flash.until;
+    if (((moving && !A.slow) || flashing) && !A.timer) A.timer = window.setTimeout(() => { A.timer = 0; redraw.current(); }, ANIM_MS);
     el.dataset.cam = `${c.x.toFixed(2)},${c.y.toFixed(2)},${c.zoom.toFixed(4)}`;
-    if (DEBUG) (window as unknown as { __sfPlanner: unknown }).__sfPlanner = { scene: sc, cam: c, ports: latest.current.ports };
+    if (DEBUG) {
+      // Portas em metros, como antes (o smoke as acha pelo mundo).
+      const ports = view.ports.map(p => ({ block: p.block, side: p.side, item: p.item, x: c.x + p.x / c.zoom, y: c.y + p.y / c.zoom, dir: p.dir, fluid: !!dt.items[p.item]?.fluid }));
+      (window as unknown as { __sfPlanner: unknown }).__sfPlanner = { scene: sc, cam: c, ports };
+    }
   };
-  const request = () => { if (!frame.current) frame.current = requestAnimationFrame(draw); };
+  // Pedido de fora (câmera, dados, ponteiro): volta a animar se um quadro lento tinha parado.
+  const request = () => { anim.current.slow = false; if (!frame.current) frame.current = requestAnimationFrame(draw); };
   redraw.current = request;
   const setCam = (c: Camera) => { cam.current = c; sessionCam = c; request(); };
   const moveCam = (c: Camera) => { camMoved = true; setCam(c); };
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  useEffect(() => () => { cancelAnimationFrame(frame.current); clearTimeout(anim.current.timer); }, []);
   useEffect(request, [scene, opts]);
+  // Aba de volta: redesenha (e volta a animar); escondida, o próximo quadro já para.
+  useEffect(() => {
+    const onVis = () => { if (!document.hidden) redraw.current(); };
+    document.addEventListener('visibilitychange', onVis);
+    // DEBUG: window.__sfPlannerT = 0 redesenha na hora.
+    if (DEBUG) {
+      let v: unknown = (window as unknown as { __sfPlannerT?: unknown }).__sfPlannerT;
+      Object.defineProperty(window, '__sfPlannerT', { configurable: true, get: () => v, set: x => { v = x; redraw.current(); } });
+    }
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   useEffect(() => {
     if (canvas.current) setTheme(readTheme(canvas.current));
@@ -283,14 +366,29 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     const [x, y] = local(e);
     return screenToWorld(c, x, y);
   };
+  // O chip (px fixos) pode passar do retângulo da ligação: vale como a ligação.
   const hitAt = (e: React.PointerEvent | React.MouseEvent) => {
     const w = worldAt(e);
-    return w ? hitTest(scene, w[0], w[1]) : null;
+    const h = w ? hitTest(scene, w[0], w[1]) : null;
+    if (h || !w) return h;
+    const [x, y] = local(e), chip = lastView.current?.chips.find(c => Math.abs(x - c.x) <= c.w / 2 && Math.abs(y - c.y) <= c.h / 2);
+    return chip ? { kind: 'meio' as const, id: chip.meio } : null;
   };
-  const portUnder = (e: React.PointerEvent) => {
-    const w = worldAt(e), c = cam.current;
-    // De longe as portas não aparecem: a borda do bloco volta a mover o bloco.
-    return w && c && c.zoom >= PORT_ZOOM ? portAt(ports, w[0], w[1], PORT_PX / c.zoom) : null;
+  // A porta sob o ponteiro: o círculo desenhado (PORT_D px). Na Planta, de longe, as portas não aparecem (a não ser
+  // puxando uma) e a borda do bloco volta a mover o bloco.
+  const portUnder = (e: React.PointerEvent): ScenePort | null => {
+    const c = cam.current, v = lastView.current;
+    if (!c || !v || (debugT() >= 0.5 && c.zoom < PORT_ZOOM && !drag.current?.port)) return null;
+    const [x, y] = local(e);
+    let best: ScenePort | null = null, bd = PORT_D / 2;
+    for (const p of v.ports) {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d > bd) continue;
+      bd = d;
+      const [wx, wy] = screenToWorld(c, p.x, p.y);
+      best = { block: p.block, side: p.side, item: p.item, x: wx, y: wy, fluid: !!data.items[p.item]?.fluid, dir: p.dir };
+    }
+    return best;
   };
   // Seletor no ponto da tela (px do mapa); de uma porta, filtrado e ligando o bloco novo a ela.
   const openPicker = (x: number, y: number, extra: Pick<PickerAt, 'filter' | 'port'> = {}) => {

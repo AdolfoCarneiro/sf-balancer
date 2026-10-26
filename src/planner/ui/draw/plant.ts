@@ -42,6 +42,7 @@ export function drawPlantFloor(ctx: CanvasRenderingContext2D, cam: Camera, vw: n
 // Blocos, esteiras, ligações e avisos, com o contexto já em metros.
 export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], meios: SceneMeio[], o: DrawOpts): void {
   const { ctx, cam, vw, vh, th } = w, z = cam.zoom, detail = z >= DETAIL_ZOOM;
+  const A = ctx.globalAlpha;   // a vista inteira some na transição para a Montar
   const px = (n: number) => n / z;   // n px de tela em metros
   const pieceFill: Record<Piece['kind'], string> = {
     machine: th.machine, splitter: th.flow, merger: th.ficsit, smart: th.donor, sink: th.sink, junction: th.holo, bp: 'transparent',
@@ -53,9 +54,9 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
       if (p.above) continue;   // andar de cima: o mapa mostra o chão
       if (p.kind === 'bp') { ctx.strokeStyle = th.edge; ctx.strokeRect(p.x, p.y, p.w, p.h); continue; }
       ctx.fillStyle = pieceFill[p.kind];
-      ctx.globalAlpha = p.kind === 'sink' ? 0.35 : 1;
+      ctx.globalAlpha = A * (p.kind === 'sink' ? 0.35 : 1);
       ctx.fillRect(p.x, p.y, p.w, p.h);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       if (p.kind === 'machine' || p.kind === 'sink') { ctx.strokeStyle = p.kind === 'sink' ? th.sink : th.inkDim; ctx.strokeRect(p.x, p.y, p.w, p.h); }
     }
   };
@@ -63,7 +64,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   // Blocos: chapa, contorno e, de perto, o conteúdo em escala.
   for (const b of blocks) {
     const r = b.rect, on = o.selected === b.stage, hov = o.hover === b.stage;
-    ctx.globalAlpha = PANEL_ALPHA; ctx.fillStyle = th.paper; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = 1;
+    ctx.globalAlpha = A * PANEL_ALPHA; ctx.fillStyle = th.paper; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
     if (detail) { ctx.save(); enterLocal(ctx, b.place, b.geo); drawPieces(b.geo); ctx.restore(); }
     ctx.strokeStyle = on ? th.ficsit : hov ? th.ink : th.inkDim;
     ctx.lineWidth = px(on ? 2 : 1);
@@ -98,14 +99,14 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   // Meios: faixa tracejada; de perto, as peças.
   for (const m of meios) {
     const r = m.rect, on = o.selected === m.meio, hov = o.hover === m.meio;
-    ctx.globalAlpha = 0.8; ctx.fillStyle = th.bench; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = 1;
+    ctx.globalAlpha = A * 0.8; ctx.fillStyle = th.bench; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
     if (detail && m.geo && !m.geo.tooLarge) { ctx.save(); enterLocal(ctx, { x: r.x, y: r.y, rot: m.rot }, m.geo); drawPieces(m.geo); ctx.restore(); }
     ctx.strokeStyle = th.ficsit;
-    ctx.globalAlpha = on || hov ? 1 : 0.75;
+    ctx.globalAlpha = A * (on || hov ? 1 : 0.75);
     ctx.lineWidth = px(on ? 2 : 1.5);
     ctx.setLineDash([px(5), px(4)]);
     ctx.strokeRect(r.x, r.y, r.w, r.h);
-    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.setLineDash([]); ctx.globalAlpha = A;
   }
   // Avisos: a área sobreposta pintada e os dois retângulos com contorno de aviso; cruzamento de esteira, um anel.
   if (scene.overlaps.length) {
@@ -120,7 +121,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
       outline.add(a); outline.add(b);
       const x = Math.max(p.x, q.x), y = Math.max(p.y, q.y), w = Math.min(p.x + p.w, q.x + q.w) - x, h = Math.min(p.y + p.h, q.y + q.h) - y;
       if (!visible({ x, y, w, h }, cam, vw, vh)) continue;
-      ctx.globalAlpha = 0.3; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+      ctx.globalAlpha = A * 0.3; ctx.fillRect(x, y, w, h); ctx.globalAlpha = A;
     }
     ctx.strokeStyle = th.sink; ctx.lineWidth = px(2);
     for (const id of outline) {
@@ -138,13 +139,17 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   }
 }
 
-// Régua de escala no canto inferior esquerdo.
-export function drawRuler(ctx: CanvasRenderingContext2D, z: number, vh: number, th: DrawOpts['theme'], L: Labels): void {
+// Régua de escala no canto de cima à esquerda, abaixo da Legenda (embaixo fica a dica de navegação).
+export function drawRuler(ctx: CanvasRenderingContext2D, z: number, th: DrawOpts['theme'], L: Labels): void {
   const meters = [...SCALES].reverse().find(s => s * z <= SCALE_MAX_PX) ?? SCALES[0];
-  const len = meters * z, rx = 16, ry = vh - 18;
-  L.drawLine({ s: '', font: L.SMALL, color: th.ink, h: 32 }, { x: rx - 8, y: ry - 22, w: Math.max(len, 40) + 16, h: 32 });
+  const len = meters * z, rx = 20, ry = 82;
+  const label = t('plPlantScale', fmt(meters, 0));
+  ctx.font = L.SMALL;
+  const plate = { x: rx - 8, y: ry - 22, w: Math.max(len, ctx.measureText(label).width) + 16, h: 32 };
+  L.drawLine({ s: '', font: L.SMALL, color: th.ink, h: 32 }, plate);
+  L.placed.push(plate);
   ctx.strokeStyle = th.ink; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(rx, ry - 4); ctx.lineTo(rx, ry); ctx.lineTo(rx + len, ry); ctx.lineTo(rx + len, ry - 4); ctx.stroke();
   ctx.font = L.SMALL; ctx.fillStyle = th.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(t('plMapScale', fmt(meters, 0)), rx, ry - 8);
+  ctx.fillText(label, rx, ry - 8);
 }

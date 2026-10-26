@@ -8,11 +8,11 @@ import { DETAIL_ZOOM, visible, type Camera } from '../../model/map/camera.ts';
 import type { BeltPath, Rect } from '../../model/map/geo.ts';
 import type { BadgeKind } from '../../model/badges.ts';
 import { toWorld, type Scene, type SceneBlock, type SceneMeio } from '../../model/map/scene.ts';
-import { sizeText } from '../format.ts';
+import { foundations } from '../format.ts';
 import type { DrawOpts } from '../mapDraw.ts';
 import { boxOf } from './belts.ts';
 import type { MapTheme } from './theme.ts';
-import { ICON_PX, PORT_PX, PORT_ZOOM, STUB_PX, portId } from './ports.ts';
+import { PORT_ZOOM } from './ports.ts';
 
 // De longe, um ponto por tipo de aviso no canto do bloco (a saída da fábrica não é aviso).
 const DOT_KINDS: BadgeKind[] = ['deficit', 'held', 'stalled', 'deadlock', 'unbounded'];
@@ -22,12 +22,16 @@ const SUB_ZOOM = 2, SIZE_ZOOM = 3.5, RAW_ZOOM = 2;
 const PAD = 5, CUT = 5, GAP = 3;
 
 // Uma linha de rótulo: texto numa chapa escura com o canto de cima chanfrado (as placas do site); icon: ícone antes
-// do texto; accent: filete à esquerda (o selecionado).
-export interface Line { s: string; font: string; color: string; h: number; icon?: string | null; accent?: string | null }
+// do texto (iconPx: o tamanho, 16 por padrão); accent: filete à esquerda (o selecionado); num: um número em laranja
+// depois do texto (as placas de nome da Planta: receita e máquinas).
+export interface Line { s: string; font: string; color: string; h: number; icon?: string | null; accent?: string | null; num?: string; iconPx?: number }
 // Candidato: x, y do canto de cima da pilha.
 export type Cand = [number, number, ('left' | 'right' | 'center')?];
 
 export type Labels = ReturnType<typeof makeLabels>;
+
+// Medida na Planta: "70 × 150 m, 9 × 19 fundações".
+const plantSize = (r: { w: number; h: number }) => t('plPlantSize', fmt(r.w, 0), fmt(r.h, 0), fmt(foundations(r.w), 0), fmt(foundations(r.h), 0));
 
 // O posicionador de um quadro. boxes: os retângulos de tela dos blocos e ligações (um rótulo não os cobre, a não ser o do dono).
 export function makeLabels(ctx: CanvasRenderingContext2D, vw: number, vh: number, th: MapTheme, icon: DrawOpts['icon'], boxes: { id: string; r: Rect }[]) {
@@ -37,7 +41,7 @@ export function makeLabels(ctx: CanvasRenderingContext2D, vw: number, vh: number
   const free = (r: Rect, own: string | null, blocksToo = true) => r.x >= 0 && r.y >= 0 && r.x + r.w <= vw && r.y + r.h <= vh
     && !placed.some(p => hit(p, r)) && (!blocksToo || !boxes.some(b => b.id !== own && hit(b.r, r)));
 
-  const NAME = `600 13px ${th.display}`, SMALL = `11px ${th.body}`, BADGE = `600 12px ${th.body}`;
+  const NAME = `600 14px ${th.display}`, SMALL = `11px ${th.body}`;
   // Larguras medidas uma vez por quadro (o posicionador mede o mesmo texto em vários candidatos).
   const widths = new Map<string, number>();
   const measure = (s: string, font: string) => {
@@ -47,7 +51,7 @@ export function makeLabels(ctx: CanvasRenderingContext2D, vw: number, vh: number
     return w;
   };
   const iconOf = (id: string | null | undefined) => (id ? icon(id) : null);
-  const lineW = (l: Line) => measure(l.s, l.font) + 2 * PAD + (iconOf(l.icon) ? TITLE_ICON + 4 : 0);
+  const lineW = (l: Line) => measure(l.s, l.font) + 2 * PAD + (iconOf(l.icon) ? (l.iconPx ?? TITLE_ICON) + 4 : 0) + (l.num ? measure(l.num, l.font) + 6 : 0);
   const fit = (l: Line, max: number): Line | null => {
     if (lineW(l) <= max) return l;
     let s = l.s;
@@ -70,9 +74,11 @@ export function makeLabels(ctx: CanvasRenderingContext2D, vw: number, vh: number
     if (l.accent) { ctx.fillStyle = l.accent; ctx.fillRect(r.x, r.y, 2, r.h); }
     let tx = r.x + PAD;
     const img = iconOf(l.icon);
-    if (img) { ctx.drawImage(img, tx - 1, r.y + (r.h - TITLE_ICON) / 2, TITLE_ICON, TITLE_ICON); tx += TITLE_ICON + 4; }
+    const ip = l.iconPx ?? TITLE_ICON;
+    if (img) { ctx.drawImage(img, tx - 1, r.y + (r.h - ip) / 2, ip, ip); tx += ip + 4; }
     ctx.font = l.font; ctx.fillStyle = l.color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(l.s, tx, r.y + r.h / 2 + 1);
+    if (l.num) { ctx.fillStyle = th.ficsit; ctx.fillText(l.num, tx + measure(l.s, l.font) + 6, r.y + r.h / 2 + 1); }
   };
   // Tenta cada candidato e desenha no primeiro livre. force (um nome que precisa aparecer): sem lugar livre, aceita
   // cobrir um bloco vizinho (nunca outro rótulo); last: em último caso, o primeiro candidato mesmo cobrindo (só o
@@ -97,7 +103,7 @@ export function makeLabels(ctx: CanvasRenderingContext2D, vw: number, vh: number
     const inside: Cand[] = W <= r.w - 2 * GAP && H <= r.h - 2 * GAP ? [[r.x + GAP, r.y + GAP]] : [];
     return insideFirst ? [...inside, ...out] : [...out, ...inside];
   };
-  return { placed, hit, free, measure, lineW, fit, rectsAt, drawLine, put, around, NAME, SMALL, BADGE };
+  return { placed, hit, free, measure, lineW, fit, rectsAt, drawLine, put, around, NAME, SMALL };
 }
 
 // Os rótulos da Planta: avisos, nomes, secundário e os sinais de longe.
@@ -105,7 +111,7 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
   o: DrawOpts, L: Labels, boxOfId: Map<string, Rect>): void {
   const th = o.theme, z = cam.zoom, detail = z >= DETAIL_ZOOM, near = z >= PORT_ZOOM;
   const sx = (x: number) => (x - cam.x) * z, sy = (y: number) => (y - cam.y) * z;
-  const { placed, hit, put, around, fit, rectsAt, drawLine, lineW, measure, NAME, SMALL, BADGE } = L;
+  const { placed, hit, put, around, fit, lineW, measure, NAME, SMALL } = L;
 
   const badgeColor: Record<BadgeKind, string> = {
     deficit: th.sink, held: th.ok, exit: th.ok, stalled: th.ficsit, deadlock: th.lock, unbounded: th.holo,
@@ -123,50 +129,24 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
     ctx.strokeStyle = th.bench; ctx.lineWidth = 1; ctx.stroke();
   };
 
-  // 1. Avisos do fluxo. De perto, o texto na ponta de cada porta (falta em vermelho por dentro da entrada; represado
-  // por dentro da saída; saída da fábrica e saída parada por fora, onde não há ligação); de longe, os sinais no canto.
-  const portOf = new Map(o.ports.map(p => [portId(p), p]));
+  // 1. Avisos do fluxo. De perto eles ficam nas portas (rótulo do estado, desenhado com elas); de longe, os sinais no
+  // canto do bloco.
   const dots: { k: BadgeKind; x: number; y: number }[] = [];
-  for (const b of blocks) {
+  for (const b of near ? [] : blocks) {
     const bs = o.badges(b.stage);
     if (!bs.length) continue;
-    if (!near) {
-      // Centrados no canto de cima à direita (cabem até em bloco pequeno); entram no posicionador para nenhum nome
-      // cobri-los e são desenhados por último, por cima de tudo.
-      const kinds = DOT_KINDS.filter(k => bs.some(x => x.kind === k));
-      const x1 = sx(b.rect.x + b.rect.w), y0 = sy(b.rect.y);
-      kinds.forEach((k, i) => {
-        const x = x1 - i * (2 * DOT_PX + 4), y = y0;
-        dots.push({ k, x, y });
-        placed.push({ x: x - DOT_PX - 2, y: y - DOT_PX - 2, w: 2 * DOT_PX + 4, h: 2 * DOT_PX + 4 });
-      });
-      continue;
-    }
-    const stack = new Map<string, number>();
-    for (const x of bs) {
-      if ((x.side === 'block' && x.kind !== 'stalled') || !x.item) continue;
-      const p = portOf.get(`${b.stage}|${x.side === 'in' ? 'in' : 'out'}|${x.item}`);
-      if (!p) continue;
-      const k = stack.get(portId(p)) ?? 0;
-      stack.set(portId(p), k + 1);
-      const [px0, py0] = p.dir ?? [x.side === 'in' ? -1 : 1, 0];
-      const outside = x.kind === 'exit' || x.kind === 'stalled', dx = outside ? px0 : -px0, dy = outside ? py0 : -py0;
-      const off = outside ? STUB_PX + PORT_PX * 1.5 + ICON_PX + 8 : 6;
-      const align = dx > 0 ? 'left' : dx < 0 ? 'right' : 'center';
-      const line: Line = { s: o.badgeLabel(b.stage, x), font: BADGE, color: badgeColor[x.kind], h: 18 };
-      const step = 20 * (dy < 0 ? -1 : 1);
-      const tx = sx(p.x) + dx * off;
-      let ty = sy(p.y) + dy * (off + 4) - 9 + k * step;
-      // Portas vizinhas (fluido e sólido na mesma borda): um aviso não cobre o outro.
-      for (let i = 0; i < 4 && placed.some(r => hit(r, rectsAt([line], tx, ty, align)[0])); i++) ty += step || 20;
-      // Sempre dentro da tela (uma porta na borda não empurra o aviso para fora).
-      const r0 = rectsAt([line], tx, ty, align)[0];
-      const r = { ...r0, x: Math.max(0, Math.min(r0.x, vw - r0.w)), y: Math.max(0, Math.min(r0.y, vh - r0.h)) };
-      drawLine(line, r); placed.push(r);
-    }
+    // Centrados no canto de cima à direita (cabem até em bloco pequeno); entram no posicionador para nenhum nome
+    // cobri-los e são desenhados por último, por cima de tudo.
+    const kinds = DOT_KINDS.filter(k => bs.some(x => x.kind === k));
+    const x1 = sx(b.rect.x + b.rect.w), y0 = sy(b.rect.y);
+    kinds.forEach((k, i) => {
+      const x = x1 - i * (2 * DOT_PX + 4), y = y0;
+      dots.push({ k, x, y });
+      placed.push({ x: x - DOT_PX - 2, y: y - DOT_PX - 2, w: 2 * DOT_PX + 4, h: 2 * DOT_PX + 4 });
+    });
   }
 
-  // 2. Nomes dos blocos (o selecionado primeiro) e das ligações. De perto o nome vai por fora (em cima, embaixo) e só
+  // 2. Nomes dos blocos (o selecionado primeiro; a ligação tem o chip). De perto o nome vai por fora (em cima, embaixo) e só
   // por dentro se couber; de longe, por dentro primeiro.
   // Ordem: o selecionado, os blocos de receita (os maiores antes), as origens e sobras (marcadores fora de escala).
   const order = [...blocks].sort((a, b) => +(b.stage === o.selected) - +(a.stage === o.selected) || +!!a.marker - +!!b.marker
@@ -175,7 +155,8 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
     const r = boxOfId.get(b.stage)!;
     if (r.w < 12) continue;
     const on = o.selected === b.stage, hov = o.hover === b.stage, txt = o.blockText(b.stage);
-    const title: Line = { s: txt.title, font: NAME, color: on ? th.ficsit : th.ink, h: 20, icon: txt.icon, accent: on ? th.ficsit : null };
+    // Placa de nome: ícone, receita e o número de máquinas em laranja.
+    const title: Line = { s: txt.title, font: NAME, color: on ? th.ficsit : th.ink, h: 28, icon: txt.icon, iconPx: 22, accent: on ? th.ficsit : null, num: txt.num };
     // De perto o motivo do travado fica só na porta parada; de longe ele vai no lugar das fileiras.
     const subText = !near && txt.alert ? txt.alert : txt.sub;
     const sub: Line = { s: subText, font: SMALL, color: !near && txt.alert ? th.ficsit : th.inkDim, h: 15 };
@@ -188,37 +169,25 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
       // mesmo cobrindo, ou, sem altura para isso, no primeiro lugar de fora); origem e sobra podem ficar sem.
       const must = !b.marker;
       const cut = fit(title, r.w - 2 * GAP);
-      if (cut && 20 <= r.h - 2 * GAP) done = put([cut], [[r.x + GAP, r.y + GAP]], b.stage, must, must);
+      if (cut && 28 <= r.h - 2 * GAP) done = put([cut], [[r.x + GAP, r.y + GAP]], b.stage, must, must);
       if (!done && must) done = put([title], around(r, [title], !detail), b.stage, true, true);
     }
   }
-  for (const m of meios) {
-    const r = boxOfId.get(m.meio)!;
-    if (r.w < 12) continue;
-    const on = o.selected === m.meio, hov = o.hover === m.meio, txt = o.meioText(m.meio);
-    if (!txt.title) continue;
-    const head: Line = { s: txt.title + (txt.sub ? ` · ${txt.sub}` : ''), font: `700 12px ${th.display}`, color: th.ficsit, h: 18, icon: txt.icon, accent: on ? th.ficsit : null };
-    const short: Line = { ...head, s: txt.title };
-    if (!put([head], around(r, [head], !detail), m.meio) && !put([short], around(r, [short], !detail), m.meio, true, on || hov) && !detail) {
-      const cut = fit(short, r.w - 2 * GAP);
-      if (cut && 18 <= r.h - 2 * GAP) put([cut], [[r.x + GAP, r.y + GAP]], m.meio);
-    }
-  }
-
   // 3. Secundário: medida do bloco (de perto, ou selecionado), medida da ligação selecionada, entradas brutas e o nome
   // das peças grandes.
   for (const b of order) {
     const r = boxOfId.get(b.stage)!, on = o.selected === b.stage, hov = o.hover === b.stage;
     if (r.w < 24 || !(on || hov || z >= SIZE_ZOOM)) continue;
-    const size = b.marker ? t('plNotToScale') : sizeText(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
-    const line: Line = { s: size, font: SMALL, color: on ? th.ficsit : th.inkDim, h: 15 };
+    const size = b.marker ? t('plNotToScale')
+      : plantSize(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
+    const line: Line = { s: size, font: SMALL, color: on ? th.ficsit : th.inkMid, h: 15 };
     put([line], [[r.x, r.y + r.h + GAP], [r.x + GAP, r.y + r.h - 15 - GAP]], b.stage);
   }
   for (const m of meios) {
     const on = o.selected === m.meio, hov = o.hover === m.meio;
     if (!(on || hov) || !m.geo || m.geo.tooLarge) continue;
     const r = boxOfId.get(m.meio)!;
-    const extra = [sizeText(m.rect), m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ');
+    const extra = [plantSize(m.rect), m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ');
     put([{ s: extra, font: SMALL, color: th.inkDim, h: 15 }], [[r.x, r.y + r.h + GAP], [r.x, r.y - 15 - GAP]], m.meio);
   }
   // Entradas brutas: uma etiqueta por item e bloco (não uma por fileira), atrás da ponta do primeiro toco.
