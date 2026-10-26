@@ -5,12 +5,13 @@ import { useState, type ReactNode } from 'react';
 import { fmt, parseNum, t } from '../../i18n/index.js';
 import { BELTS, PIPES } from '../../logic/belts.js';
 import type { Action } from '../model/factorystate.ts';
-import type { Arrangement, ArrLine, LayoutWarning } from '../model/layout.ts';
+import type { Arrangement, LayoutWarning } from '../model/layout.ts';
 import {
-  type WarningFix, fixCut, hasEdits, joinState, moveRow, resetModel, resetRowPlace, setBelt, setEven, setInvert, setKind, sharedKeyOf,
+  type WarningFix, hasEdits, joinState, moveRow, resetModel, resetRowPlace, setBelt, setEven, setInvert, setKind,
   toggleJoin, toggleRow, warningFixes,
 } from '../model/layoutedit.ts';
 import { portsOf, portTier, tierKey } from '../model/stage.ts';
+import { beltInfo, beltKeyOf, cutMath } from '../model/stagebelt.ts';
 import type { GameData, Layout, LayoutExit, LayoutKind, Stage } from '../model/types.ts';
 import type { StageSel } from './StageDrawing.tsx';
 import { rateText } from './format.ts';
@@ -89,7 +90,6 @@ interface Props {
   stage: Stage; data: GameData; arr: Arrangement; sel: StageSel; onSel: (s: StageSel) => void; dispatch: (a: Action) => void;
 }
 const setter = (p: Props) => (l: Layout | null) => p.dispatch({ type: 'setLayout', id: p.stage.id, layout: l });
-const beltKeyOf = (l: ArrLine) => `${l.side}:${l.item}`;
 
 // Visão geral: os modelos como cartões, Inverter, "Por linha", a dica, "Voltar ao modelo" e as esteiras para ajustar.
 export function Overview(p: Props & { perRow: ReactNode }) {
@@ -204,32 +204,14 @@ export function RowAdjust(p: Props & { i: number }) {
   );
 }
 
-// O que a esteira selecionada sabe de si: as linhas, o padrão de saída e de corte, o recomendado e a conta do corte.
-export function beltInfo(stage: Stage, data: GameData, arr: Arrangement, key: string) {
-  const lines = arr.lines.filter(l => beltKeyOf(l) === key);
-  if (!lines.length) return null;
-  const lay = stage.layout, first = lines[0];
-  const shared = sharedKeyOf(stage, data, lay) === key;
-  const per = first.rate / Math.max(1, first.machines);
-  const rec = Math.max(1, Math.floor(first.cap / per + 1e-9));     // o maior corte que cabe na esteira
-  const edit = lay?.belts?.[key];
-  const defCut = shared ? rec : null;
-  const longest = lines.reduce((m, l) => Math.max(m, l.machines), 0);
-  const cut = first.exit === 'end' ? null : edit?.cut ?? defCut;
-  // Recomendado: o padrão do modelo (na compartilhada, o maior corte que cabe); uma esteira sem corte que passa do limite
-  // fecha no maior que cabe (descendo, se saía pela ponta).
-  const fits = lines.every(l => l.rate <= l.cap + 1e-9);
-  const recLayout = (): Layout | null => (shared || edit?.cut || fits ? setBelt(lay, key, { cut: null }) : fixCut(lay, key, rec, first.exit));
-  return { lines, first, shared, per, rec, edit, defCut, longest, cut, recLayout };
-}
-
 // Ajuste da esteira: Sai/Entra por, Fecha a cada (+ Recomendado e a conta), Dividir igual, Juntar e o tier.
 export function BeltAdjust(p: Props & { beltKey: string; row: number }) {
   const { stage, data, arr, onSel, beltKey: key, row } = p;
   const lay = stage.layout, set = setter(p);
   const info = beltInfo(stage, data, arr, key);
   if (!info) return null;
-  const { first, shared, per, rec, edit, defCut, longest, cut } = info;
+  const { first, shared, defCut } = info;
+  const edit = lay?.belts?.[key];
   const { side, item, fluid, exit } = first;
   const it = data.items[item];
   const title = t('plLayBelt', it?.name ?? item, side, fluid);
@@ -237,10 +219,9 @@ export function BeltAdjust(p: Props & { beltKey: string; row: number }) {
   const join = fluid ? null : joinState(arr, lay, key, row);
   const ps: 'ins' | 'outs' = side === 'in' ? 'ins' : 'outs';
   const tiers = (fluid ? PIPES : BELTS) as { id: string; cap: number }[];
-  // A conta do corte: n máquinas × taxa de cada uma, e se cabe na esteira.
-  const n = cut ?? longest;
-  const total = n * per, over = total > first.cap + 1e-9;
-  const why = t('plSvCutWhy', fmt(n), fmt(per), rateText(it, total), first.tier, over ? 'over' : n === rec ? 'max' : 'fits', fmt(n + 1));
+  // A conta do corte: n máquinas × taxa de cada uma, e se cabe na esteira (sem máquinas, nada a explicar).
+  const m = cutMath(info);
+  const why = m ? t('plSvCutWhy', fmt(m.n), fmt(m.per), rateText(it, m.total), first.tier, m.state, fmt(m.n + 1)) : '';
   const recNow = JSON.stringify(info.recLayout()) === JSON.stringify(lay ?? null);
   return (
     <div className="pl-sv-level">
@@ -253,7 +234,7 @@ export function BeltAdjust(p: Props & { beltKey: string; row: number }) {
             placeholder={defCut ? t('plLayCutDefault', fmt(defCut)) : t('plLayCutWhole')} bad={t('plLayCutBad')}
             onCommit={v => set(setBelt(lay, key, { cut: v }))}
             after={<button type="button" className="pl-btn" disabled={recNow} onClick={() => set(info.recLayout())}>{t('plSvRecommended')}</button>} />
-          <p className="pl-note">{exit === 'end' ? t('plLayCutEnd') : why}</p>
+          {(exit === 'end' || why) && <p className="pl-note">{exit === 'end' ? t('plLayCutEnd') : why}</p>}
           {exit !== 'end' && (
             <label className="pl-check pl-lay-check">
               <input type="checkbox" checked={!!edit?.even} onChange={e => set(setEven(lay, key, e.target.checked))} />

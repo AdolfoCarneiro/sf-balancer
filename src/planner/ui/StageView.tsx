@@ -1,7 +1,7 @@
 // Tela da etapa: topo fixo (Voltar ao mapa, o caminho, máquinas/clock/receita e "? Como mexer"), o desenho ocupando o
 // espaço livre com a barra das ações da seleção por cima, e o painel em dois níveis (visão geral / ajuste) com o resumo
 // fixo embaixo. No celular o painel vira uma folha de baixo com alça.
-import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
 import { MAX_MACHINES, machinesOk } from '../model/factory.ts';
@@ -13,6 +13,7 @@ import { suggestedPerRow } from '../model/stage.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData, Layout, Recipe, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
+import { previewBox } from './rowspreview.ts';
 import { NumField } from './NumField.tsx';
 import { StageDrawing, type StageSel } from './StageDrawing.tsx';
 import { BeltAdjust, CUT_ID, EXITS, OptIntField, Overview, RowAdjust, Summary, exitLabel } from './StageLayout.tsx';
@@ -26,6 +27,7 @@ const SHEET_NEXT: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'pe
 const SHEET_UP: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'full' };
 const SHEET_DOWN: Record<Sheet, Sheet> = { peek: 'peek', half: 'peek', full: 'half' };
 const DRAG_PX = 12, CLICK_AFTER_DRAG_MS = 400;
+const SHEET_HALF = 0.55, SHEET_PEEK = 52;   // a folha na metade e fechada, como no planner.css (.pl-sv-panel)
 const phone = () => window.matchMedia('(max-width: 720px)').matches;
 
 // Cor de cada item da receita: entradas sólidas em branco/cinza, saídas em laranja/turquesa, fluidos em ciano/verde.
@@ -86,6 +88,24 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
     .filter(x => data.items[x.item]?.fluid && !factory.links.some(l => l.from === stage.id && l.item === x.item))
     .map(x => t('plFluidOut', name(x.item), rateText(data.items[x.item], bf?.outs.find(p => p.item === x.item)?.rate ?? 0)));
 
+  // Enquadra de novo quando o desenho muda de forma: modelo, inverter, fileiras ou o tamanho (em fundações de 8 m).
+  const box = previewBox(arr.geo);
+  const fitKey = `${arr.kind}|${lay?.invert ? 1 : 0}|${arr.rows.length}|${Math.ceil(box.w / 8)}x${Math.ceil(box.h / 8)}`;
+  // Celular: a folha na metade cobre a parte de baixo do desenho; o desenho deixa esse espaço livre.
+  // A altura do corpo muda com o topo (os chips somem com a seleção), por isso é medida e não lida no render.
+  const body = useRef<HTMLDivElement>(null);
+  const [bodyH, setBodyH] = useState(0);
+  useLayoutEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    const read = () => setBodyH(el.clientHeight);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const bottom = sheet === 'half' && phone() ? Math.max(0, Math.round(bodyH * SHEET_HALF) - SHEET_PEEK) : 0;
+
   const panel = { stage, data, arr, sel: live, onSel: select, dispatch };
   const center = arr.kind === 'center';
   // "Por linha": vazio = sugerido. No center o modelo divide as máquinas, então o campo some.
@@ -145,9 +165,9 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
         <span className="pl-grow" />
         <StageHelp items={Object.keys(colors).map(it => ({ name: name(it), color: colors[it] }))} />
       </div>
-      <div className="pl-sv-body">
+      <div className="pl-sv-body" ref={body}>
         <StageDrawing arr={arr} data={data} machine={b.name} colors={colors} sel={live} onSel={select} onMove={onMove}
-          fitKey={`${arr.kind}|${lay?.invert ? 1 : 0}|${arr.rows.length}`} float={float} />
+          fitKey={fitKey} bottom={bottom} float={float} />
         <aside className="pl-sv-panel" data-sheet={sheet} aria-label={t('plInspector')} data-tour="stage-belt-panel">
           <SheetHandle sheet={sheet} onSheet={setSheet} title={selTitle ?? `${t('plSvOverview')} · ${r.name}`} />
           <div className="pl-sv-scroll" key={live ? JSON.stringify(live) : ''}>
@@ -172,10 +192,12 @@ function StageChips({ block, stage, factory, flow, data, dispatch }: Omit<Props,
   const fixed = block.limits?.machines !== undefined;
   return (
     <div className="pl-sv-chips">
-      <div className={'pl-sv-chip' + (fixed ? ' pl-fixed' : '')}>
+      {/* O estado (calculado ou fixado) em texto e no nome do grupo, não só na cor da borda. */}
+      <div className={'pl-sv-chip' + (fixed ? ' pl-fixed' : '')} role="group" aria-label={`${t('plMachines')}: ${t(fixed ? 'plFixed' : 'plCalc')}`}>
         <NumField label={t('plMachines')} value={limitView(block, bf, factory.links).machines.value} valid={machinesOk}
           bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} always={!fixed} placeholder={bf?.unbounded && !fixed ? t('plUnbounded') : undefined}
           onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} />
+        <span className="pl-sv-state" aria-hidden="true">{t(fixed ? 'plFixed' : 'plCalc')}</span>
         {fixed && (
           <button type="button" className="pl-sv-auto" aria-label={`${t('plResetDefault')}: ${t('plMachines')}`}
             onClick={() => dispatch({ type: 'setLimits', id: stage.id, limits: block.limits?.inputs ? { inputs: block.limits.inputs } : null })}>

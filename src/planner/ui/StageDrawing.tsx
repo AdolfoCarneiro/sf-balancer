@@ -27,11 +27,12 @@ interface Cam { x: number; y: number; s: number }
 interface Props {
   arr: Arrangement; data: GameData; machine: string; colors: Record<string, string>;
   sel: StageSel; onSel: (s: StageSel) => void; onMove: (i: number, dx: number, dy: number) => void;
-  fitKey: string;             // muda quando o desenho muda de forma (modelo, inverter): enquadra de novo
+  fitKey: string;             // muda quando o desenho muda de forma (modelo, inverter, tamanho): enquadra de novo
+  bottom?: number;            // px cobertos embaixo (a folha do celular na metade): enquadrar e os botões desviam
   float?: ReactNode;          // a barra das ações da seleção, por cima do desenho
 }
 
-export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, fitKey, float }: Props) {
+export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, fitKey, bottom = 0, float }: Props) {
   const geo = arr.geo;
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -58,10 +59,10 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, f
   const fit = useCallback((): Cam | null => {
     if (!size.w || !size.h) return null;
     const box = previewBox(geo);
-    const bw = box.w + 2 * PAD, bh = box.h + 2 * PAD, top = Math.min(TOP, size.h / 4), vh = size.h - top - MARGIN;
+    const bw = box.w + 2 * PAD, bh = box.h + 2 * PAD, top = Math.min(TOP, size.h / 4), vh = Math.max(40, size.h - top - MARGIN - bottom);
     const s = clampS(Math.min((size.w - 2 * MARGIN) / bw, vh / bh));
     return { s, x: box.x + box.w / 2 - size.w / 2 / s, y: box.y + box.h / 2 - (top + vh / 2) / s };
-  }, [geo, size.w, size.h]);
+  }, [geo, size.w, size.h, bottom]);
 
   // Abre enquadrado; enquadra de novo quando o desenho muda de forma.
   const fitted = useRef<string | null>(null);
@@ -70,6 +71,14 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, f
     const c = fit();
     if (c) { setCam(c); fitted.current = fitKey; }
   }, [fitKey, fit, size.w]);
+
+  // A folha subiu ou desceu: o que estava no meio continua no meio da parte que se vê (mesmo zoom).
+  const lastBottom = useRef(bottom);
+  useEffect(() => {
+    const d = bottom - lastBottom.current;
+    lastBottom.current = bottom;
+    if (d) setCam(c => (c ? { ...c, y: c.y + d / 2 / c.s } : c));
+  }, [bottom]);
 
   const zoomAt = useCallback((k: number, px: number, py: number) => setCam(c => {
     if (!c) return c;
@@ -162,7 +171,7 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, f
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); beltSel(k); }
   };
   const ghost = drag && arr.rows.find(r => r.index === drag.i);
-  const zoomBtn = (k: number) => zoomAt(k, size.w / 2, size.h / 2);
+  const zoomBtn = (k: number) => zoomAt(k, size.w / 2, (size.h - bottom) / 2);
   const vw = size.w / s, vh = size.h / s;
 
   return (
@@ -219,7 +228,7 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, f
         </svg>
       )}
       {float}
-      <div className="pl-sv-zoom">
+      <div className="pl-sv-zoom" style={bottom ? { bottom: bottom + 12 } : undefined}>
         <button type="button" className="pl-btn" aria-label={t('plSvZoomOut')} onClick={() => zoomBtn(1 / STEP)}>−</button>
         <button type="button" className="pl-btn" aria-label={t('plSvZoomIn')} onClick={() => zoomBtn(STEP)}>+</button>
         <button type="button" className="pl-btn" onClick={() => { const c = fit(); if (c) setCam(c); }}>{t('plSvFit')}</button>

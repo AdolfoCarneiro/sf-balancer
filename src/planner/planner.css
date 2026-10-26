@@ -147,6 +147,8 @@ select.pl-field { width: auto; }
 .pl-sv-chip option { background: var(--paper); }
 .pl-sv-chip input:focus-visible, .pl-sv-chip select:focus-visible { outline: none; }
 .pl-sv-chip .pl-bad { position: absolute; top: calc(100% + 4px); left: 0; z-index: 12; width: max-content; max-width: 260px; padding: 6px 8px; background: var(--paper); border: 1px solid var(--sink); }
+.pl-sv-state { font: 600 11px var(--display); color: var(--ink-soft); white-space: nowrap; }
+.pl-sv-chip.pl-fixed .pl-sv-state { color: var(--ficsit); }
 .pl-sv-auto { min-height: 32px; padding: 0 6px; background: none; border: 1px solid var(--line); color: var(--ink-dim); font: 600 12px var(--display); cursor: pointer; }
 .pl-sv-auto:hover { color: var(--ink); border-color: var(--ink-dim); }
 .pl-sv-auto:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
