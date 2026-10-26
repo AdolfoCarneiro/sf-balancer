@@ -183,9 +183,10 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const places = useMemo(() => (montar ? basePlaces : movedIn(basePlaces)), [basePlaces, moving, montar]);   // eslint-disable-line react-hooks/exhaustive-deps
   const shown = useMemo((): Factory => {
     if (!moving) return f;
+    // Arrastando a ligação na Planta, os chips da Montar ficam onde estão (os que seguiam as ligs, presos nelas).
     if (moving.kind === 'meio') return montar
       ? { ...f, montarLigs: { ...(f.montarLigs ?? f.ligs), [moving.id]: moving.place } }
-      : { ...f, ligs: { ...f.ligs, [moving.id]: moving.place } };
+      : { ...f, ligs: { ...f.ligs, [moving.id]: moving.place }, montarLigs: f.montarLigs ?? { ...f.ligs } };
     // Arrastando na Planta, a Montar fica onde está (sem isso, quem a segue andaria junto com a posição provisória).
     return { ...f, montar: montar ? movedIn(montarBase) : montarBase };
   }, [f, moving, montar, montarBase]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -242,8 +243,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return m && ch && c && tNow.current === 0 ? { ...chipWorld(c, ch.x, ch.y, ligSize(id, m.rot)), rot: m.rot } : null;
   };
   const ligAt = (id: string) => (montar ? ligAtMontar(id) : ligAtPlanta(id));
-  const placeLig = (id: string, p: LigPlace | null) =>
-    dispatch({ type: 'placeLig', meio: id, place: p, view: mode, together, shown: { planta: ligAtPlanta(id), montar: ligAtMontar(id) } });
+  const placeLig = (id: string, p: LigPlace | null, view: ViewMode = mode) =>
+    dispatch({ type: 'placeLig', meio: id, place: p, view, together, shown: { planta: ligAtPlanta(id), montar: ligAtMontar(id) } });
 
 
   // Painel no desktop: sem seleção aparece só se a pessoa o abriu (lembrado); uma seleção nova o abre, e fechar com algo
@@ -834,11 +835,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       remove(id);
       return;
     }
-    const next = e.key === 'r' || e.key === 'R' ? rotated(cur) : nudged(cur, e.key);
+    // R gira o bloco real (na Planta, também vendo a Montar, como o Girar do painel); as setas andam na vista atual.
+    const turn = e.key === 'r' || e.key === 'R';
+    const next = turn ? (basePlaces[id] ? rotated(basePlaces[id]) : null) : nudged(cur, e.key);
     if (!next) return;
     e.preventDefault();
     if (selStage !== id) onSelect({ kind: 'stage', id });
-    place(id, next);
+    if (turn) placePlanta(id, next); else place(id, next);
   };
 
   // Teclado com a ligação selecionada: setas movem 8 m, R gira (a partir de onde ela está, posta ou colada), Enter abre
@@ -848,9 +851,15 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     if (e.key === 'Escape') { e.preventDefault(); if (popMeio) closePop(true); else onSelect(null); return; }
     if (e.key === 'Enter') { e.preventDefault(); setPopId(id); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); unlink(id); return; }
-    const cur = ligAt(id);
-    if (!cur) return;
-    const next = e.key === 'r' || e.key === 'R' ? ligRotated(cur) : nudged(cur, e.key);
+    // R gira a ligação na Planta (o chip da Montar fica onde está); as setas andam na vista atual.
+    if (e.key === 'r' || e.key === 'R') {
+      const cur = ligAtPlanta(id);
+      if (!cur) return;
+      e.preventDefault();
+      placeLig(id, ligRotated(cur), 'planta');
+      return;
+    }
+    const cur = ligAt(id), next = cur && nudged(cur, e.key);
     if (!next) return;
     e.preventDefault();
     placeLig(id, next);

@@ -169,7 +169,7 @@ export function App() {
       {ligMeio && (
         <Suspense fallback={null}>
           <LigacaoModal key={ligMeio.id} meio={ligMeio} result={meioResults.get(ligMeio.id)} factory={f} flow={flow} data={data} lang={lang}
-            dispatch={dispatch} onClose={closeLig} onUnlink={unlinkIn} />
+            dispatch={dispatch} onClose={closeLig} mapView={view} onUnlink={unlinkIn} />
         </Suspense>
       )}
       {impFile && <ImportDialog key={impFile.name + impFile.lastModified + impFile.size} file={impFile} data={data} onImport={importFactory} onClose={() => setImpFile(null)} />}

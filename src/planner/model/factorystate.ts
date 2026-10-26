@@ -12,7 +12,7 @@ import {
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
 import { exampleChain } from './example.ts';
-import { placeBlockIn, placeLigIn, proposeIn, setPlacesIn, type PlaceView } from './views.ts';
+import { bare, placeBlockIn, placeLigIn, proposeIn, setPlacesIn, type PlaceView } from './views.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
 export const PLANNER_STORE = 'sf-balancer:planner';
@@ -185,7 +185,8 @@ function cleanFactory(raw: unknown, data: GameData): Factory | null {
     if (!isObj(raw[k])) continue;
     const map: Record<StageId, MapPlace> = {};
     for (const [key, v] of Object.entries(raw[k])) {
-      const id = safeId(key), place = k === 'montar' ? cleanLigPlace(v) : cleanPlace(v);
+      // Montar: só o lugar (o giro é da Planta).
+      const id = safeId(key), c = cleanPlace(v), place = c && k === 'montar' ? bare(c) : c;
       if (id && id === key && place && seen.has(id)) map[id] = place;
     }
     if (Object.keys(map).length) f = { ...f, [k]: map };

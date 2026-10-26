@@ -1,6 +1,8 @@
-// Posições por vista: a Montar e a Planta em escala guardam cada uma a posição e o giro dos blocos e das ligações.
-// Mexer numa vista não muda a outra ("congela" na outra o lugar de antes, quando ela ainda seguia esta); com "Mover
-// junto", a outra anda o mesmo deslocamento (o giro dela fica). Puro.
+// Posições por vista: a Montar e a Planta em escala guardam cada uma o lugar dos blocos e das ligações. O giro é só da
+// Planta (o cartão da Montar nunca é desenhado girado): `montar` guarda rot 0, e o rot de `montarLigs` só diz em que
+// orientação estava o retângulo que centra o chip quando ele foi posto (nunca muda por um giro). Mexer numa vista não
+// muda a outra ("congela" na outra o lugar de antes, quando ela ainda seguia esta); com "Mover junto", a outra anda o
+// mesmo deslocamento. Puro.
 import type { Factory, LigPlace, MapPlace, StageId } from './types.ts';
 import { cleanLigPlace, meiosOf, placeLig } from './factory.ts';
 import { cleanPlace } from './map/sizes.ts';
@@ -12,16 +14,17 @@ export interface PlaceOpts { together?: boolean; auto?: Record<StageId, MapPlace
 export interface LigOpts { together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
 
 const own = Object.hasOwn;
-const bare = (p: MapPlace): MapPlace => ({ x: p.x, y: p.y, rot: p.rot });
-const same = (a: MapPlace, b: MapPlace) => a.x === b.x && a.y === b.y && a.rot === b.rot;
+// Lugar na Montar: sem vãos nem giro.
+export const bare = (p: { x: number; y: number }): MapPlace => ({ x: p.x, y: p.y, rot: 0 });
+const same = (a: MapPlace, b: MapPlace) => a.x === b.x && a.y === b.y;
 const shift = <P extends LigPlace>(p: P, dx: number, dy: number): P | null => {
   const q = cleanPlace({ ...p, x: p.x + dx, y: p.y + dy });
   return q && ({ ...p, x: q.x, y: q.y });
 };
 
-// Posição do bloco na Montar: a dela, senão a da Planta.
+// Posição do bloco na Montar: a dela, senão o lugar da Planta (sem giro nem vãos).
 export const montarPlace = (f: Factory, id: StageId): MapPlace | undefined =>
-  (f.montar && own(f.montar, id) ? f.montar[id] : f.map && own(f.map, id) ? f.map[id] : undefined);
+  (f.montar && own(f.montar, id) ? f.montar[id] : f.map && own(f.map, id) ? bare(f.map[id]) : undefined);
 // Posição da ligação na Montar: sem `montarLigs`, a da Planta; com ele, só a dele (fora dele, a automática).
 export const montarLig = (f: Factory, meio: string): LigPlace | undefined => {
   const o = f.montarLigs ?? f.ligs;
@@ -33,7 +36,7 @@ export function montarPlaces(f: Factory, planta: Record<StageId, MapPlace>): Rec
   const out: Record<StageId, MapPlace> = {};
   for (const b of f.blocks) {
     const p = f.montar && own(f.montar, b.id) ? f.montar[b.id] : planta[b.id];
-    if (p) out[b.id] = p;
+    if (p) out[b.id] = bare(p);
   }
   return out;
 }
@@ -49,7 +52,7 @@ export function setPlacesIn(f: Factory, view: PlaceView, places: Record<StageId,
     if (p && ids.has(id)) next[id] = view === 'montar' ? bare(p) : p;
   }
   const was = (id: StageId) => (view === 'montar' ? montarAt : plantaAt)(f, id, o.auto);
-  // Quem mudou nesta vista e quanto andou (o giro não conta no deslocamento).
+  // Quem mudou de lugar nesta vista e quanto andou (girar na Planta não muda o cartão da Montar).
   const changed: StageId[] = [], moved = new Map<StageId, [number, number]>();
   for (const [id, p] of Object.entries(next)) {
     const w = was(id);
@@ -65,7 +68,7 @@ export function setPlacesIn(f: Factory, view: PlaceView, places: Record<StageId,
     for (const [id, [dx, dy]] of moved) { const p = map[id] && shift(map[id], dx, dy); if (p) map[id] = p; }
     return { ...g, map };
   }
-  // Planta: quem mudou e ainda seguia a Planta na Montar fica onde estava lá.
+  // Planta: quem andou e ainda seguia a Planta na Montar fica onde estava lá.
   const montar: Record<StageId, MapPlace> = { ...f.montar };
   for (const id of changed) {
     if (own(montar, id)) continue;
@@ -94,7 +97,8 @@ export function proposeIn(f: Factory, view: PlaceView, places: Record<StageId, M
   return f.ligs && !f.montarLigs ? { ...rest, montarLigs: { ...f.ligs } } : rest;
 }
 
-// Posição da ligação numa vista (null volta ao lugar automático dela).
+// Posição da ligação numa vista (null volta ao lugar automático dela, só nessa vista: na Planta, a Montar que ainda
+// seguia as ligs volta junto, sem congelar).
 export function placeLigIn(f: Factory, view: PlaceView, meio: string, place: LigPlace | null, o: LigOpts = {}): Factory {
   const p = place === null ? null : cleanLigPlace(place);
   if ((place !== null && !p) || !meiosOf(f).some(m => m.id === meio)) return f;
@@ -102,6 +106,7 @@ export function placeLigIn(f: Factory, view: PlaceView, meio: string, place: Lig
   const atPlanta = (f.ligs && own(f.ligs, meio) ? f.ligs[meio] : o.shown?.planta) ?? null;
   const atMontar = montarLig(f, meio) ?? o.shown?.montar ?? null;
   // A Montar passa a ter as suas (copiadas das da Planta, se ainda as seguia).
+  if (view === 'planta' && p === null) return placeLig(f, meio, null);
   const ml: Record<string, LigPlace> = { ...(f.montarLigs ?? f.ligs) };
   const [from, to] = view === 'montar' ? [atMontar, atPlanta] : [atPlanta, atMontar];
   const other = o.together && p && from && to ? shift(to, p.x - from.x, p.y - from.y) : null;
