@@ -294,10 +294,13 @@ test('center: a fábrica do dono (42 Pure Iron, 2 pares, 6 saídas de 455 descen
   assert.equal(a.geo.pieces.filter(p => p.kind === 'merger').length, 22);
   // Splitters: o minério continua por fileira, k−1: 10 + 9 + 10 + 9.
   assert.equal(a.pieces.splitters, 38);
-  // Elevadores no fim de cada trecho: o corte no meio da coluna 3 fica no meio dela (35 m).
+  // Elevadores no fim de cada trecho: o corte no meio da coluna 3 (35 m) leva o elevador uma peça adiante (39 m),
+  // para fora do Merger da coluna.
   const w = a.geo.w;   // 2 × 110 + 4 do vão entre os pares
   assert.equal(w, 224);
-  assert.deepEqual(outLines(a).map(l => l.at[0]), [35, 70, 110, w - 35, w - 70, w - 110]);
+  assert.deepEqual(outLines(a).map(l => l.at[0]), [39, 70, 110, w - 39, w - 70, w - 110]);
+  const mergers = a.geo.pieces.filter(p => p.kind === 'merger');
+  for (const l of lifts(a)) assert.ok(!mergers.some(q => l.x < q.x + q.w && q.x < l.x + l.w && l.y < q.y + q.h && q.y < l.y + l.h), `elevador em cima de Merger em x = ${l.x}`);
   lifts(a).forEach((p, k) => assert.deepEqual([p.x + 1, p.y + 1], outLines(a)[k].at));
   // A linha passa no corredor, entre as máquinas de cima e as de baixo.
   const m = machinesOf(a), top = m[0], bot = m[11];
@@ -306,6 +309,36 @@ test('center: a fábrica do dono (42 Pure Iron, 2 pares, 6 saídas de 455 descen
   assert.equal(a.geo.outs.length, 6);
   assert.deepEqual(a.warnings, []);
   assert.deepEqual(a.area, { w: Math.ceil(a.geo.w / 8) * 8, d: Math.ceil(a.geo.h / 8) * 8 });
+});
+
+test('center com mais de 2 pares: faixas de até 2 pares empilhadas, toda entrada numa borda de fora', () => {
+  for (const [M, rows, pairs] of [[60, 6, 3], [120, 10, 5]] as const) {
+    const a = arrange(st(M), data, { kind: 'center' }), w = a.geo.w;
+    assert.equal(a.rows.length, rows);
+    // Cada faixa: o par da esquerda em x = 0 e o da direita (espelhado) colado nele; a última pode ter só o da esquerda.
+    const pairX = [...new Set(a.rows.map(r => r.x))].sort((u, v) => u - v);
+    assert.equal(pairX.length, 2, `${M}: dois pares lado a lado no máximo`);
+    assert.ok(a.rows.every(r => r.mirror === (r.x > 0)));
+    const bands = [...new Set(a.rows.filter(r => r.index % 2 === 0).map(r => r.y))];
+    assert.equal(bands.length, Math.ceil(pairs / 2));
+    // A faixa seguinte começa embaixo da anterior, com o vão (no mínimo 4 m).
+    for (let k = 1; k < bands.length; k++) {
+      const prev = a.rows.filter(r => r.y >= bands[k - 1] && r.y < bands[k]);
+      assert.ok(bands[k] >= Math.max(...prev.map(r => r.y + r.h)) + 4 - 1e-9, `${M}: faixa ${k} encostada`);
+    }
+    // Entradas (minério e água) só nas bordas de fora.
+    assert.ok(a.geo.ins.every(x => x.x === 0 || x.x === w), `${M}: entrada fora da borda`);
+    assert.ok(a.lines.filter(l => l.side === 'in').every(l => l.at[0] === 0 || l.at[0] === w));
+    // Largura de 2 pares (não cresce com as máquinas) e altura das faixas.
+    const W = Math.max(...a.rows.map(r => r.w));
+    assert.equal(w, 2 * W + 4);
+    assert.ok(a.geo.h < bands.length * 70, `${M}: altura ${a.geo.h}`);
+    assert.deepEqual(a.warnings, []);
+  }
+  // 2.000 máquinas: continua com 2 pares de largura (o bloco cresce para baixo, não numa tira de quilômetros).
+  const big = arrange(st(2000), data, { kind: 'center' });
+  assert.ok(big.geo.w < 300, `largura ${big.geo.w}`);
+  assert.ok(big.geo.ins.every(x => x.x === 0 || x.x === big.geo.w));
 });
 
 test('center: saída pela ponta avisa centerEnd; corte 8 estoura com o conserto 7', () => {
@@ -338,6 +371,10 @@ test('center com invert: a entrada principal no corredor, saídas por fileira', 
   //   (6 + 4) × 2 pares = 20.
   assert.equal(a.pieces.splitters, 2 * (6 + 4));
   assert.equal(a.geo.pieces.filter(p => p.kind === 'splitter' && p.y > top.y + top.h && p.y < bot.y).length, 20);
+  // Corte no meio da coluna 6 (65 m): o elevador do trecho seguinte fica uma peça antes do Splitter dela (61 m).
+  assert.deepEqual(a.lines.filter(l => l.item === ORE).map(l => l.at[0]), [0, 61, a.geo.w, a.geo.w - 61]);
+  const sp = a.geo.pieces.filter(p => p.kind === 'splitter');
+  for (const l of lifts(a)) assert.ok(!sp.some(q => l.x < q.x + q.w && q.x < l.x + l.w && l.y < q.y + q.h && q.y < l.y + l.h), `elevador em cima de Splitter em x = ${l.x}`);
   assert.deepEqual(a.warnings, []);
 });
 
@@ -391,13 +428,13 @@ test('joins no simple: fileiras coladas dividem a esteira; avisos badJoin, over 
   // A 1 já divide com a 0; juntar também com a 2 poria 3 fileiras na linha (Merger com 4 entradas).
   const three = arrange(st(9, { perRow: 3 }), data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`, `out:${INGOT}@1`] });
   assert.deepEqual(arrangementLines(three, 'out', INGOT), [6, 3]);
-  assert.deepEqual(three.warnings, [{ kind: 'merger3', item: INGOT }]);
+  assert.deepEqual(three.warnings, [{ kind: 'merger3', item: INGOT, key: `out:${INGOT}@1` }]);
   // Cadeia @0, @1, @2: a @1 cai (merger3), a @2 não depende dela e junta a 2 com a 3 (em qualquer ordem).
   for (const joins of [[0, 1, 2], [2, 1, 0]].map(rs => rs.map(r => `out:${INGOT}@${r}`))) {
     const chain = arrange(st(12, { perRow: 3 }), data, { kind: 'simple', rows: { 1: { flip: true }, 3: { flip: true } }, joins });
     assert.deepEqual(arrangementLines(chain, 'out', INGOT), [6, 6]);
     assert.deepEqual(outLines(chain).map(l => l.rows), [[0, 1], [2, 3]]);
-    assert.deepEqual(chain.warnings, [{ kind: 'merger3', item: INGOT }]);
+    assert.deepEqual(chain.warnings, [{ kind: 'merger3', item: INGOT, key: `out:${INGOT}@1` }]);
   }
 });
 

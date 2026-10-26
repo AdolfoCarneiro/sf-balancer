@@ -8,8 +8,20 @@ export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | '
 export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean; item?: string }
 export type BeltRole = 'main' | 'donor' | 'loop' | 'sink' | 'extra' | 'over' | 'in' | 'out' | 'raw';
 export interface BeltPath { pts: Pt[]; item: ItemId; rate: number; role: BeltRole; fluid: boolean }
+// Onde a esteira do mapa encontra a linha da âncora, em coordenadas locais: o ponto, o sentido para fora do bloco e,
+// quando a esteira anda dentro do bloco até a borda (pelo vão entre os pares do center), o caminho desde a âncora.
+export interface Gate { at: Pt; dir: Pt; path?: Pt[] }
 // extra: saída de linha extra do meio. exit: a linha do bloco desce ou sobe por Conveyor Lift ali (ausente = pela ponta).
-export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean; exit?: LayoutExit }
+// gate: ausente = a própria âncora, para fora pelo lado padrão (entradas para −x, saídas para +x).
+export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean; exit?: LayoutExit; gate?: Gate }
+
+export const gateOf = (a: Anchor, side: 'ins' | 'outs'): Gate => a.gate ?? { at: [a.x, a.y], dir: [side === 'ins' ? -1 : 1, 0] };
+// Sentido local (rot 0) no mundo, com o bloco girado `rot` quartos de volta no sentido horário (como toWorld).
+export function dirWorld(d: Pt, rot: Rot): Pt {
+  const [x, y] = d;
+  const v: Pt = rot === 1 ? [-y, x] : rot === 2 ? [-x, -y] : rot === 3 ? [y, -x] : [x, y];
+  return [v[0] + 0, v[1] + 0];   // + 0: sem -0
+}
 export interface BlockGeo { w: number; h: number; pieces: Piece[]; belts: BeltPath[]; ins: Anchor[]; outs: Anchor[]; estimate: boolean }
 export interface MeioGeo extends BlockGeo { floors: number; tooLarge: boolean }
 

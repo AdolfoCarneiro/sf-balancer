@@ -5,7 +5,7 @@ import type { Block, Factory, GameData, ItemId, LigPlace, Link, StageId } from '
 import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
 import { PLANT_LIMITS, fit, type Camera, type ZoomLimits } from './camera.ts';
-import { toWorld, type Pt, type Rect } from './geo.ts';
+import { gateOf, toWorld, type Pt, type Rect } from './geo.ts';
 import type { Scene, SceneBlock } from './scene.ts';
 import { MAP_GRID } from './sizes.ts';
 
@@ -84,11 +84,15 @@ function spread(vs: number[], gap: number): number[] {
   return out.map(v => v + shift);
 }
 
-// Portas da Planta de um lado: a PLANT_PORT_OUT px por fora da borda, cada uma na média das âncoras do item.
+// Portas da Planta de um lado: a PLANT_PORT_OUT px por fora da borda, cada uma na média das linhas do item que saem
+// (ou chegam) por essa borda. O leque vai ao gate de cada uma, onde a esteira do mapa encontra a linha (na borda; o
+// elevador fica no meio das máquinas); as que usam outra borda (fileira espelhada, vão do center) ficam fora do leque,
+// que assim nunca atravessa o bloco.
 function plantPorts(sb: SceneBlock, side: 'in' | 'out', items: ItemId[], plant: Rect, toS: (p: Pt) => Pt): { at: Pt; dir: Pt; lanes: Pt[] }[] {
   const [fx, fy] = DIR[sb.place.rot], k = side === 'out' ? 1 : -1, dir: Pt = [fx * k + 0, fy * k + 0];
-  const anchors = sb.geo[side === 'in' ? 'ins' : 'outs'];
-  const lanes = items.map(item => anchors.filter(a => a.item === item).map(a => toS(toWorld([a.x, a.y], sb.geo, sb.place))));
+  const s = side === 'in' ? 'ins' : 'outs', anchors = sb.geo[s];
+  const lanes = items.map(item => anchors.filter(a => a.item === item).map(a => gateOf(a, s))
+    .filter(g => g.dir[0] === k && g.dir[1] === 0).map(g => toS(toWorld(g.at, sb.geo, sb.place))));
   const along = dir[0] !== 0 ? 1 : 0;   // borda vertical: as portas andam em y
   const mid = along ? plant.y + plant.h / 2 : plant.x + plant.w / 2;
   const pos = spread(lanes.map(ls => mean(ls)?.[along] ?? mid), PORT_STEP);

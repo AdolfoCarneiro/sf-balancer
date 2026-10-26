@@ -72,7 +72,7 @@ export interface ArrLine {                  // uma esteira/cano que entra ou sai
 }
 export type LayoutWarning =
   | { kind: 'over'; side: 'in' | 'out'; item: ItemId; rate: number; cap: number; fixTier: string | null; fixCut: number }
-  | { kind: 'merger3'; item: ItemId }                    // juntar daria Merger com mais de 3 entradas
+  | { kind: 'merger3'; item: ItemId; key: string }       // juntar daria Merger com mais de 3 entradas (key: a junção)
   | { kind: 'centerEnd'; item: ItemId }                  // Mergers no meio saindo pela ponta
   | { kind: 'cutPipe'; item: ItemId }                    // corte pedido num cano (ignorado)
   | { kind: 'badJoin'; key: string };                    // junção que não vale mais (fileiras não coladas, fileira sumiu)
@@ -216,9 +216,10 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     }
   }
 
-  // Fileiras do modelo. simple: empilhadas. backToBack: pares, a de baixo virada. center: pares lado a lado em x,
-  // a metade da direita espelhada (alimentada pela direita); vão entre pares = gapRow, no mínimo o do elevador.
-  const pairGap = Math.max(PIECE, gapRow), pairs = Math.ceil(counts.length / 2), leftPairs = Math.ceil(pairs / 2);
+  // Fileiras do modelo. simple: empilhadas. backToBack: pares, a de baixo virada. center: faixas de até 2 pares (como o
+  // 2×2 do dono), o da esquerda alimentado pela esquerda e o da direita espelhado (pela direita), as faixas empilhadas;
+  // toda entrada fica numa borda de fora. Vão entre pares e entre faixas = gapRow, no mínimo o do elevador.
+  const pairGap = Math.max(PIECE, gapRow), pairs = Math.ceil(counts.length / 2);
   const plans: RowPlan[] = [];
   counts.forEach((n, i) => {
     if (n <= 0) return;
@@ -226,10 +227,10 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     const pairFlip = i % 2 === 1 ? !invert : invert;
     const model = kind === 'backToBack' ? { flip: pairFlip && (i % 2 === 1 || i + 1 < counts.length), gapAfter: i % 2 === 1 }
       : center ? { flip: pairFlip, gapAfter: false } : { flip: false, gapAfter: true };
-    const p = Math.floor(i / 2), right = center && p >= leftPairs;
+    const p = Math.floor(i / 2), right = center && pairs > 1 && p % 2 === 1;
     plans.push({
       index: i, n, flip: model.flip !== !!e.flip, mirror: right !== !!e.mirror,
-      bx: center ? p * (W + pairGap) : 0, dx: e.dx ?? 0, dy: e.dy ?? 0, gapAfter: model.gapAfter, pairStart: center && i % 2 === 0,
+      bx: right ? W + pairGap : 0, dx: e.dx ?? 0, dy: e.dy ?? 0, gapAfter: model.gapAfter, pairStart: center && i % 2 === 0,
     });
   });
   const planOf = new Map(plans.map(rp => [rp.index, rp]));
@@ -265,7 +266,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     }
     const f = parse(key);
     if (f && planOf.has(r + 1) && skip.has(`${r}|${key}`)) {
-      warnings.push({ kind: 'merger3', item: f.item });   // a r já divide com a r−1: 3 fileiras numa linha
+      warnings.push({ kind: 'merger3', item: f.item, key: j });   // a r já divide com a r−1: 3 fileiras numa linha
       continue;
     }
     const g = joinable(key, r);
@@ -275,7 +276,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const pieces: Piece[] = [], belts: BeltPath[] = [], ins: Anchor[] = [], outs: Anchor[] = [];
   const rows: ArrRow[] = [], lines: ArrLine[] = [];
   const count = { splitters: 0, mergers: 0, lifts: 0 };
-  let shifted = false, y = 0, maxBottom = -Infinity;
+  let shifted = false, y = 0, maxBottom = -Infinity, bandTop = 0, bandBottom = 0;
   const machX = (rp: RowPlan, m: number) => (rp.mirror ? W - m * pitch - b.w : m * pitch) + rp.bx + rp.dx;
   const lift = (a: Pt, exit: LayoutExit, item: ItemId) => {
     count.lifts++;
@@ -303,8 +304,10 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     const perCol = new Map<number, number>();
     for (const sg of segs) {
       const first = sg.cols[0], last = sg.cols[sg.cols.length - 1];
-      const xs = exit === 'end' ? rowStart : first.from > 0 ? mid(first.ci) : ends(first.ci)[0];
-      const xe = exit === 'end' ? rowEnd : last.from + last.k < cols[last.ci].rows.length ? mid(last.ci) : ends(last.ci)[1];
+      // Corte no meio da coluna: o elevador anda uma peça ao longo da esteira, para fora da peça da coluna (depois dela
+      // na saída, antes dela na entrada), e a esteira vai até ele.
+      const xs = exit === 'end' ? rowStart : first.from > 0 ? mid(first.ci) - (side === 'ins' ? dir * PIECE : 0) : ends(first.ci)[0];
+      const xe = exit === 'end' ? rowEnd : last.from + last.k < cols[last.ci].rows.length ? mid(last.ci) + (side === 'outs' ? dir * PIECE : 0) : ends(last.ci)[1];
       const a: Pt = side === 'ins' ? [xs, cy] : [xe, cy];
       const rate = p * sg.machines;
       const segRows = [...new Set(sg.cols.flatMap(c => cols[c.ci].rows.slice(c.from, c.from + c.k)))].sort((u, v) => u - v);
@@ -328,7 +331,11 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   for (const rp of plans) {
     const { index: row, n, flip, mirror, bx, dx, dy } = rp;
     if (dx || dy) shifted = true;
-    if (rp.pairStart) y = 0;
+    if (rp.pairStart) {
+      const p = rp.index / 2;
+      if (p % 2 === 0) bandTop = p === 0 ? 0 : bandBottom + pairGap;   // faixa nova embaixo da anterior
+      y = bandTop;
+    }
     const top = y + dy;
     // Coordenadas da fileira (largura W, entrada à esquerda) para o bloco: espelho e deslocamento.
     const tx = (x: number) => (mirror ? W - x : x) + bx + dx;
@@ -387,7 +394,43 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     arow.h = ly - top;
     maxBottom = Math.max(maxBottom, ly);
     y = ly - dy;
+    bandBottom = Math.max(bandBottom, y);
     if (rp.gapAfter) y += gapRow;
+  }
+
+  // Onde a esteira do mapa encontra cada linha (Gate). Elevador: na borda do lado padrão (a linha passa por baixo ou
+  // por cima das máquinas), as linhas do mesmo corredor espalhadas ao longo da borda na ordem delas. Fileira
+  // espelhada: pela borda do outro lado, para fora dela. Ponta no vão entre os pares do center: pelo vão (a metade do
+  // lado da fileira) até a borda de cima ou de baixo, a mais perto.
+  function gates(minX: number) {
+    const rowById = new Map(rows.map(r => [r.index, r]));
+    const gapL = W - minX, gapR = W + pairGap - minX, gap = center && pairs > 1 && !shifted;
+    for (const side of ['ins', 'outs'] as const) {
+      const list = side === 'ins' ? ins : outs, ls = lines.filter(l => l.side === sideOf(side));
+      const out = side === 'ins' ? -1 : 1, edge = side === 'ins' ? 0 : w;
+      const lifts = new Map<string, { a: Anchor; l: ArrLine }[]>();
+      list.forEach((a, k) => {
+        if (a.exit) {
+          const key = `${a.item}|${a.y}`;
+          lifts.set(key, [...(lifts.get(key) ?? []), { a, l: ls[k] }]);
+          return;
+        }
+        const face = rowById.get(a.row)?.mirror ? -out : out;
+        if (Math.abs(a.x - (face < 0 ? 0 : w)) < 1e-6) {
+          if (face !== out) a.gate = { at: [a.x, a.y], dir: [face, 0] };
+        } else if (gap && a.x > gapL - 1e-6 && a.x < gapR + 1e-6) {
+          const cx = (gapL + gapR) / 2 - face * (gapR - gapL) / 4, ey = a.y < h / 2 ? 0 : h;
+          a.gate = { at: [cx, ey], dir: [0, ey === 0 ? -1 : 1], path: [[a.x, a.y], [cx, a.y], [cx, ey]] };
+        } else a.gate = { at: [a.x, a.y], dir: [face, 0] };
+      });
+      for (const g of lifts.values()) {
+        const rs = g.flatMap(x => x.l.rows).map(i => rowById.get(i)).filter((r): r is ArrRow => !!r);
+        const top = Math.min(...rs.map(r => r.y)), bottom = Math.max(...rs.map(r => r.y + r.h)), n = g.length;
+        const stepY = Math.min(2, (bottom - top) / n), cy = g[0].a.y;
+        const y0 = Math.max(top + stepY / 2, Math.min(bottom - stepY / 2 - (n - 1) * stepY, cy - (n - 1) / 2 * stepY));
+        g.forEach(({ a }, k) => { a.gate = { at: [edge, y0 + k * stepY], dir: [out, 0] }; });
+      }
+    }
   }
 
   // Ajustes podem levar fileiras para x/y negativos: o bloco recomeça no canto (0, 0).
@@ -401,6 +444,8 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     for (const a of [...ins, ...outs]) { a.x -= minX; a.y -= minY; }
     for (const l of lines) l.at = [l.at[0] - minX, l.at[1] - minY];
   }
+
+  gates(minX);
 
   for (const p of ports) {
     const s = sideOf(p.side), ls = lines.filter(l => l.side === s && l.item === p.item);

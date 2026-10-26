@@ -9,7 +9,7 @@ import { solvedStage } from '../../src/planner/model/solved.ts';
 import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import { blockGeo } from '../../src/planner/model/map/block.ts';
-import type { MeioGeo, Rect } from '../../src/planner/model/map/geo.ts';
+import { cutsRect, type MeioGeo, type Pt, type Rect } from '../../src/planner/model/map/geo.ts';
 import { buildScene as build, hitTest, placesOf as places0, proposeMap as propose0, rotSize, toWorld, type Geos } from '../../src/planner/model/map/scene.ts';
 import { crossings, overlaps } from '../../src/planner/model/map/checks.ts';
 import { vf } from './fixtures.ts';
@@ -409,4 +409,70 @@ test('cena: linha que desce por Conveyor Lift sai da borda do bloco, não do ele
   assert.ok(sb.geo.outs.every(a => a.exit === undefined));
   const starts = sb.geo.outs.map(a => toWorld([a.x, a.y], sb.geo, sb.place));
   assert.ok(sc.belts.filter(b => b.role === 'main' && starts.some(p => same(p, b.pts[0]))).length > 0);
+});
+
+// ---- Mergers no meio: o par da direita (espelhado) recebe pela direita; o vão do center ----
+const ORE = 'Desc_OreIron_C';
+// O exemplo com o Pure Iron em Mergers no meio e um Miner ligado na entrada de minério.
+function minerCenter(layout: Layout = { kind: 'center' }): Factory {
+  const f0 = withLayout(ex, 's1', layout), id = nextBlockId(f0);
+  const f1: Factory = { ...f0, blocks: [...f0.blocks, { id, kind: 'miner', item: ORE, rate: 1470 }] };
+  return connect(f1, data, id, 's1', ORE);
+}
+
+test('cena: center com Miner ligado: nenhuma esteira da ligação atravessa o bloco; o par da direita recebe pela direita', () => {
+  for (const rot of [0, 1, 2, 3] as const) {
+    const f = minerCenter(), geos = geosOf(f), p0 = placesOf(f, data, geos);
+    const s = buildScene(f, data, { ...p0, s1: { ...p0.s1, rot } }, geos), sb = blockOf(s, 's1'), r = sb.rect;
+    const ore = s.belts.filter(b => b.item === ORE && b.role === 'main');
+    const anchors = sb.geo.ins.filter(a => a.item === ORE);
+    assert.equal(anchors.length, 4);
+    const ends = anchors.map(a => ({ a, at: toWorld(a.gate ? a.gate.at : [a.x, a.y], sb.geo, sb.place) }));
+    const into = ore.filter(b => ends.some(e => same(e.at, b.pts[b.pts.length - 1])));
+    assert.equal(into.length, 4, `rot ${rot}: uma esteira por fileira`);
+    for (const b of ore) assert.ok(!cuts(b.pts, r), `rot ${rot}: esteira atravessa o bloco: ${JSON.stringify(b.pts)}`);
+    // Par da direita (x = w no bloco): a esteira chega andando para −x local (de fora para dentro pela borda da direita).
+    const DIRS: Pt[] = [[1, 0], [0, 1], [-1, 0], [0, -1]], fwd = DIRS[rot];
+    for (const b of into) {
+      const e = ends.find(x => same(x.at, b.pts[b.pts.length - 1]))!, n = b.pts.length;
+      const d: Pt = [Math.sign(b.pts[n - 1][0] - b.pts[n - 2][0]), Math.sign(b.pts[n - 1][1] - b.pts[n - 2][1])];
+      const k = e.a.x === sb.geo.w ? -1 : 1;
+      assert.deepEqual([d[0] * k + 0, d[1] * k + 0], fwd, `rot ${rot}: chega na fileira ${e.a.row} no sentido errado`);
+    }
+  }
+});
+
+test('cena: center sem ligação na entrada: os tocos do par da direita ficam por fora, chegando pela direita', () => {
+  const f = withLayout(ex, 's1', { kind: 'center' }), geos = geosOf(f), s = buildScene(f, data, placesOf(f, data, geos), geos);
+  const sb = blockOf(s, 's1'), r = sb.rect, raw = s.belts.filter(b => b.role === 'raw' && b.item === ORE);
+  assert.equal(raw.length, 4);
+  for (const b of raw) assert.ok(!cuts(b.pts, r) && !inside({ x: r.x + 1e-6, y: r.y + 1e-6, w: r.w - 2e-6, h: r.h - 2e-6 }, b.pts[0][0], b.pts[0][1]), JSON.stringify(b.pts));
+  const right = raw.filter(b => b.pts[b.pts.length - 1][0] === r.x + r.w);
+  assert.equal(right.length, 2);
+  for (const b of right) assert.ok(b.pts[0][0] > r.x + r.w);
+});
+
+test('cena: center: as linhas que descem saem da borda em pontos diferentes, na ordem das linhas', () => {
+  const f = center40(), geos = geosOf(f), s = buildScene(f, data, placesOf(f, data, geos), geos), sb = blockOf(s, 's1');
+  const outs = sb.geo.outs.filter(a => a.item === 'Desc_IronIngot_C' && a.exit);
+  assert.equal(outs.length, 6);
+  const ys = outs.map(a => a.gate!.at[1]);
+  assert.equal(new Set(ys).size, 6, `pontos repetidos: ${ys}`);
+  assert.deepEqual([...ys].sort((u, v) => u - v), ys, 'na ordem das linhas');
+  assert.ok(outs.every(a => a.gate!.at[0] === sb.geo.w));
+  const starts = outs.map(a => toWorld(a.gate!.at, sb.geo, sb.place));
+  const belts = s.belts.filter(b => b.role === 'main' && starts.some(p => same(p, b.pts[0])));
+  assert.equal(belts.length, 6);
+});
+
+test('cena: center invertido: as saídas no vão entre os pares descem pelo vão até a borda e não atravessam máquinas', () => {
+  const f = withLayout(ex, 's1', { kind: 'center', invert: true }), geos = geosOf(f), s = buildScene(f, data, placesOf(f, data, geos), geos);
+  const sb = blockOf(s, 's1'), r = sb.rect;
+  const machines = sb.geo.pieces.filter(p => p.kind === 'machine').map(p => ({ ...p, x: p.x + r.x, y: p.y + r.y }));
+  const outs = sb.geo.outs.filter(a => a.item === 'Desc_IronIngot_C');
+  assert.equal(outs.length, 4);
+  assert.ok(outs.every(a => a.gate?.path && (a.gate.at[1] === 0 || a.gate.at[1] === sb.geo.h)));
+  const belts = s.belts.filter(b => b.role === 'main' && b.item === 'Desc_IronIngot_C' && outs.some(a => same(toWorld([a.x, a.y], sb.geo, sb.place), b.pts[0])));
+  assert.equal(belts.length, 4);
+  for (const b of belts) for (const m of machines) assert.ok(!cuts(b.pts, m), `esteira sobre máquina: ${JSON.stringify(b.pts)}`);
 });

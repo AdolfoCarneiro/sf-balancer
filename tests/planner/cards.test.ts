@@ -232,7 +232,7 @@ test('Planta: mostrar tudo deixa as portas e os rótulos delas dentro da tela', 
   for (const p of v.ports) assert.ok(p.x - 22 - PORT_LABEL_ROOM >= 0 && p.x + 22 + PORT_LABEL_ROOM <= vw, `porta/rótulo fora: ${p.x}`);
 });
 
-test('Planta: bloco em Mergers no meio desenha o arranjo; a porta fica na borda, na média das saídas, e o leque vai a cada uma', () => {
+test('Planta: bloco em Mergers no meio desenha o arranjo; a porta fica na borda, na média das saídas, e o leque vai à borda de cada uma', () => {
   const IRON = 'Desc_IronIngot_C';
   const f: Factory = { ...ex, blocks: ex.blocks.map(b => (b.id === 's1' ? { ...(b as RecipeBlock), layout: { kind: 'center' } } : b)) };
   const { scene, flow, v } = view(f, 1);
@@ -248,8 +248,17 @@ test('Planta: bloco em Mergers no meio desenha o arranjo; a porta fica na borda,
   const s1 = v.blocks.find(b => b.id === 's1')!, port = v.ports.find(p => p.block === 's1' && p.side === 'out' && p.item === IRON)!;
   const toS = (x: number, y: number) => [(sb.rect.x + x - CAM.x) * CAM.zoom, (sb.rect.y + y - CAM.y) * CAM.zoom];
   near(port.x, s1.plant.x + s1.plant.w + PLANT_PORT_OUT);
-  near(port.y, outs.reduce((s, x) => s + toS(x.x, x.y)[1], 0) / outs.length);
-  assert.deepEqual(port.lanes, outs.map(x => toS(x.x, x.y)));
+  // O leque vai onde a esteira do mapa encontra cada linha: a borda de saída, uma altura por linha (sem cruzar o bloco).
+  const gates = outs.map(x => x.gate!);
+  assert.ok(gates.every(g => g.at[0] === sb.geo.w && g.dir[0] === 1));
+  assert.equal(new Set(gates.map(g => g.at[1])).size, 6);
+  assert.deepEqual(port.lanes, gates.map(g => toS(g.at[0], g.at[1])));
+  near(port.y, port.lanes.reduce((s, l) => s + l[1], 0) / port.lanes.length);
+  for (const l of port.lanes) near(l[0], s1.plant.x + s1.plant.w);
+  // A entrada de minério: o leque só nas linhas que chegam pela borda da esquerda (o par da direita chega pela direita).
+  const ore = v.ports.find(p => p.block === 's1' && p.side === 'in' && p.item === 'Desc_OreIron_C')!;
+  assert.equal(ore.lanes.length, 2);
+  for (const l of ore.lanes) near(l[0], s1.plant.x);
 });
 
 test('Planta: Conveyor Lift fora da caixa do bloco (x = -1) não muda o retângulo nem o acerto do clique', () => {

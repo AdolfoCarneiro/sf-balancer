@@ -6,7 +6,7 @@ import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
 import { markerGeo, solvedStage } from '../solved.ts';
 import { blockGeo } from './block.ts';
-import { clean, cutsRect, rotSize, route, toWorld, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
+import { clean, cutsRect, dirWorld, gateOf, rotSize, toWorld, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
 import { crossings, intersects, overlaps } from './checks.ts';
 import { blockCardSize, MONTAR_REF } from './cards.ts';
@@ -30,7 +30,7 @@ export { rotSize, toWorld } from './geo.ts';
 
 // Direção do x local no mundo (sentido do fluxo dentro do bloco).
 const DIR: Record<Rot, Pt> = { 0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1] };
-const axis = (rot: Rot): 'x' | 'y' => (rot % 2 ? 'y' : 'x');
+const neg = (d: Pt): Pt => [-d[0] + 0, -d[1] + 0];
 
 // Esteira reta na saída e na chegada antes da primeira curva (e folga para contornar um retângulo), em metros.
 const LEAD = 1;
@@ -205,14 +205,13 @@ export function buildScene(f: Factory, data: GameData, places: Record<StageId, M
   const belts: BeltPath[] = [];
   const world = (b: SceneBlock, p: { x: number; y: number }): Pt => toWorld([p.x, p.y], b.geo, b.place);
   // Portas do bloco para o item, com a taxa da faixa de cada linha, na ordem das linhas do meio: o meioInput agrupa as
-  // linhas do bloco por tamanho (na ordem em que aparecem), então aqui também (estável). Linha que desce ou sobe por
-  // Conveyor Lift: a esteira até a ligação começa na borda do lado dela (não atravessa as máquinas no chão); o leque
-  // da porta mostra o elevador.
+  // linhas do bloco por tamanho (na ordem em que aparecem), então aqui também (estável). Cada uma pelo gate da âncora:
+  // at e dir (para fora do bloco) no mundo, e path, o trecho desenhado dentro do bloco desde a âncora até at.
   const ports = (b: SceneBlock, side: 'ins' | 'outs', item: string) => {
     const lanes = b.geo.belts.filter(x => x.role === (side === 'ins' ? 'in' : 'out') && x.item === item);
     const list = b.geo[side].filter(a => a.item === item).map((a, k) => {
-      const p = a.exit ? { x: side === 'ins' ? 0 : b.geo.w, y: a.y } : a;
-      return { at: world(b, p), rate: lanes[k]?.rate ?? 0 };
+      const g = gateOf(a, side), pt = ([x, y]: Pt) => world(b, { x, y });
+      return { at: pt(g.at), dir: dirWorld(g.dir, b.place.rot), path: (g.path ?? []).map(pt), rate: lanes[k]?.rate ?? 0 };
     });
     const first = new Map<string, number>(), key = (r: number) => r.toFixed(6);
     list.forEach((p, k) => { if (!first.has(key(p.rate))) first.set(key(p.rate), k); });
@@ -234,7 +233,7 @@ export function buildScene(f: Factory, data: GameData, places: Record<StageId, M
       const n = b.marker && from.length ? to.length : Math.min(from.length, to.length);
       for (let k = 0; k < n; k++) {
         const src = nth(from, k, b.marker);
-        const pts = link(src.at, DIR[b.place.rot], mw(to[k]), DIR[sm.rot], [b.rect, sm.rect]);
+        const pts = clean([...src.path, ...link(src.at, src.dir, mw(to[k]), DIR[sm.rot], [b.rect, sm.rect])]);
         belts.push({ pts, item: m.item, rate: b.marker ? src.rate / n : src.rate, role: 'main', fluid: fluid(m.item) });
       }
     }
@@ -249,30 +248,30 @@ export function buildScene(f: Factory, data: GameData, places: Record<StageId, M
         if (!to) continue;
         const mine = extras.filter((_, k) => k % outlets.length === outlets.indexOf(b));
         for (const a of mine) {
-          const pts = link(mw(a), DIR[sm.rot], to.at, DIR[b.place.rot], [sm.rect, b.rect], RAW_STUB + LEAD);
+          const pts = clean([...link(mw(a), DIR[sm.rot], to.at, neg(to.dir), [sm.rect, b.rect], RAW_STUB + LEAD), ...[...to.path].reverse()]);
           belts.push({ pts, item: m.item, rate: to.rate / Math.max(1, mine.length), role: 'main', fluid: fluid(m.item) });
         }
         continue;
       }
       const from = byRow(geo.outs, id), to = ports(b, 'ins', m.item);
       for (let k = 0; k < Math.min(from.length, to.length); k++) {
-        const pts = link(mw(from[k]), DIR[sm.rot], to[k].at, DIR[b.place.rot], [sm.rect, b.rect], RAW_STUB + LEAD);
+        const pts = clean([...link(mw(from[k]), DIR[sm.rot], to[k].at, neg(to[k].dir), [sm.rect, b.rect], RAW_STUB + LEAD), ...[...to[k].path].reverse()]);
         belts.push({ pts, item: m.item, rate: to[k].rate, role: 'main', fluid: fluid(m.item) });
       }
     }
   });
-  // Entradas sem ligação: toco de RAW_STUB chegando pela borda de entrada, com a taxa resolvida da porta repartida
-  // como as faixas das fileiras (sem fluxo ou sem limite: a nominal das faixas).
+  // Entradas sem ligação: toco de RAW_STUB chegando por fora no gate de cada linha (a borda de entrada, ou a do outro
+  // lado numa fileira espelhada), com a taxa resolvida da porta repartida como as faixas das fileiras (sem fluxo ou sem
+  // limite: a nominal das faixas).
   for (const b of blocks) {
     const linked = new Set(f.links.filter(l => l.to === b.stage).map(l => l.item));
-    const [dx, dy] = DIR[b.place.rot];
     for (const item of new Set(b.geo.ins.map(a => a.item))) {
       if (linked.has(item)) continue;
       const ps = ports(b, 'ins', item), nominal = ps.reduce((s, p) => s + p.rate, 0);
       const real = flow.blocks[b.stage]?.ins.find(p => p.item === item)?.rate;
       const scale = typeof real === 'number' && nominal > 0 ? real / nominal : 1;
       for (const p of ps) {
-        belts.push({ pts: route([p.at[0] - dx * RAW_STUB, p.at[1] - dy * RAW_STUB], p.at, axis(b.place.rot)), item, rate: p.rate * scale, role: 'raw', fluid: fluid(item) });
+        belts.push({ pts: clean([step(p.at, p.dir, RAW_STUB), p.at, ...[...p.path].reverse()]), item, rate: p.rate * scale, role: 'raw', fluid: fluid(item) });
       }
     }
   }
