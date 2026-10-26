@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Reforma — Seletor e ligação</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0d2136}
+a{color:#ff9b3d}a:hover{color:#ffc58f}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #0d2136; color: #e4eef8; font: 14px/1.45 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 20px; background: #0a1b2d; border-bottom: 2px solid #ff9b3d">
+    <div style="font: 700 19px 'Chakra Petch', sans-serif; letter-spacing: .03em; color: #ff9b3d">SF Balancer</div>
+    <nav aria-label="Seções" style="display: flex; gap: 4px; background: #13314f; padding: 4px">
+      <a href="#" aria-current="page" style="padding: 8px 16px; background: #ff9b3d; color: #0a1b2d; font: 600 14px 'Chakra Petch', sans-serif; text-decoration: none">Fábrica</a>
+      <a href="#" style="padding: 8px 16px; color: #e4eef8; font: 600 14px 'Chakra Petch', sans-serif; text-decoration: none">Balancer</a>
+    </nav>
+    <div style="flex: 1 1 auto"></div>
+  </header>
+
+  <main aria-label="Fábrica" style="flex: 1 1 auto; position: relative; overflow: auto; background-color: #0d2136; background-image: radial-gradient(#24476b 1.2px, transparent 1.2px); background-size: 24px 24px">
+    <div style="position: relative; width: 1400px; height: 800px">
+
+      <svg width="1400" height="800" aria-hidden="true" style="position: absolute; inset: 0">
+        <g fill="none" stroke-linecap="round">
+          <path d="M260 232 L 330 232" stroke="#0a1b2d" stroke-width="12"></path>
+          <path d="M260 232 L 330 232" stroke="#c9d8e8" stroke-width="6" stroke-dasharray="3 6"></path>
+          <path d="M438 232 L 500 232" stroke="#0a1b2d" stroke-width="12"></path>
+          <path d="M438 232 L 500 232" stroke="#c9d8e8" stroke-width="6" stroke-dasharray="3 6"></path>
+          <path d="M704 232 C 760 232, 760 420, 820 420" stroke="#ff9b3d" stroke-width="4" stroke-dasharray="8 6"></path>
+        </g>
+      </svg>
+
+      <article aria-label="Pure Iron Ingot" style="position: absolute; left: 56px; top: 172px; width: 204px; height: 112px; background: #13314f; border: 1px solid #2d5176; box-sizing: border-box; padding: 10px 12px; display: flex; gap: 10px; align-items: center">
+        <img src="/_blob/dd4aa69b445d68a0ae8ee8a823481c6a" alt="" style="width: 44px; height: 44px">
+        <div style="display: flex; flex-direction: column"><span style="font: 600 15px 'Chakra Petch', sans-serif">Pure Iron Ingot</span><span style="font: 700 22px 'Chakra Petch', sans-serif">42</span></div>
+      </article>
+
+      <div role="group" aria-label="Ligação de Iron Ingot selecionada" style="position: absolute; left: 330px; top: 208px">
+        <button type="button" aria-pressed="true" style="width: 108px; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #2b2010; color: #ffc58f; border: 2px solid #ff9b3d; outline: 2px solid #ff9b3d; outline-offset: 3px; font: 600 15px 'Chakra Petch', sans-serif">
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="#ff9b3d" stroke-width="2"><path d="M2 6h6l6 10h6"></path><path d="M2 16h6l6-10h6"></path></g></svg>
+          6 → 5
+        </button>
+        <div style="position: absolute; left: -40px; top: -118px; width: 300px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #0a1b2d; border: 1px solid #ff9b3d">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <img src="/_blob/cbf129205cc1c74dd13239ae327b0679" alt="" style="width: 26px; height: 26px">
+            <span style="font: 600 14px 'Chakra Petch', sans-serif">Balancer 6 → 5</span>
+            <span style="margin-left: auto; color: #8ff0e6; font-size: 12px">2.400 de 2.730</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            <button type="button" style="min-height: 40px; padding: 0 12px; background: #ff9b3d; color: #0a1b2d; border: 0; font: 600 13px 'Chakra Petch', sans-serif">Ver montagem</button>
+            <button type="button" style="min-height: 40px; padding: 0 12px; background: transparent; color: #e4eef8; border: 1px solid #2d5176; font: 500 13px 'IBM Plex Sans', sans-serif">Trocar montagem</button>
+            <button type="button" style="min-height: 40px; padding: 0 12px; background: transparent; color: #ffb3a8; border: 1px solid #ff7a6b; font: 500 13px 'IBM Plex Sans', sans-serif">Desligar</button>
+          </div>
+        </div>
+      </div>
+
+      <article aria-label="Solid Steel Ingot" style="position: absolute; left: 500px; top: 172px; width: 204px; height: 112px; background: #13314f; border: 1px solid #2d5176; box-sizing: border-box; padding: 10px 12px; display: flex; gap: 10px; align-items: center">
+        <img src="/_blob/dac98b6464903a2371bd1bea6c307260" alt="" style="width: 44px; height: 44px">
+        <div style="display: flex; flex-direction: column"><span style="font: 600 15px 'Chakra Petch', sans-serif">Solid Steel Ingot</span><span style="font: 700 22px 'Chakra Petch', sans-serif">60</span></div>
+        <span style="position: absolute; right: -18px; top: 38px; width: 36px; height: 36px; border-radius: 50%; background: #ff9b3d; display: flex; align-items: center; justify-content: center"><img src="/_blob/95d3f09318e26b00dfb24da8ad44d71b" alt="" style="width: 24px; height: 24px"></span>
+      </article>
+
+      <section role="dialog" aria-label="Escolher o que consome Steel Ingot" style="position: absolute; left: 820px; top: 300px; width: 460px; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #0a1b2d; border: 2px solid #ff9b3d">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <img src="/_blob/95d3f09318e26b00dfb24da8ad44d71b" alt="" style="width: 36px; height: 36px">
+          <h2 style="margin: 0; font: 600 18px 'Chakra Petch', sans-serif">O que usa Steel Ingot</h2>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #9fb6cc">Buscar
+          <input value="" placeholder="viga, cano, frame…" style="min-height: 44px; padding: 0 12px; background: #13314f; border: 1px solid #ff9b3d; color: #e4eef8; font: 16px 'IBM Plex Sans', sans-serif">
+        </label>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px">
+          <li><button type="button" style="width: 100%; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 12px; background: #1f4a72; color: #fff; border: 1px solid #6fa3d4; text-align: left">
+            <img src="/_blob/0e9634ce622053b962f52fb980486e6a" alt="" style="width: 44px; height: 44px">
+            <span style="display: flex; flex-direction: column; flex: 1"><span style="font: 600 16px 'Chakra Petch', sans-serif">Steel Beam</span><span style="color: #c3d3e3; font-size: 13px">Constructor, 60 Steel Ingot → 15 Steel Beam</span></span>
+          </button></li>
+          <li><button type="button" style="width: 100%; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 12px; background: #13314f; color: #e4eef8; border: 1px solid #2d5176; text-align: left">
+            <img src="/_blob/304835dc7075e93184a8ded60a6f4cc8" alt="" style="width: 44px; height: 44px">
+            <span style="display: flex; flex-direction: column; flex: 1"><span style="font: 600 16px 'Chakra Petch', sans-serif">Steel Pipe</span><span style="color: #c3d3e3; font-size: 13px">Constructor, 30 Steel Ingot → 20 Steel Pipe</span></span>
+          </button></li>
+          <li><button type="button" style="width: 100%; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 12px; background: #13314f; color: #e4eef8; border: 1px solid #2d5176; text-align: left">
+            <img src="/_blob/304835dc7075e93184a8ded60a6f4cc8" alt="" style="width: 44px; height: 44px">
+            <span style="display: flex; flex-direction: column; flex: 1"><span style="font: 600 16px 'Chakra Petch', sans-serif">Iron Pipe</span><span style="color: #c3d3e3; font-size: 13px">Constructor, alternativa</span></span>
+            <span style="padding: 2px 8px; border: 1px solid #ff9b3d; color: #ffc58f; font: 600 12px 'Chakra Petch', sans-serif">Alt</span>
+          </button></li>
+        </ul>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid #2d5176">
+          <button type="button" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; background: transparent; color: #e4eef8; border: 1px solid #2d5176; font: 500 13px 'IBM Plex Sans', sans-serif"><img src="/_blob/5df21fee61251fc2689dbee6c51bce1b" alt="" style="width: 26px; height: 26px">Mandar pro sink</button>
+          <button type="button" style="min-height: 44px; padding: 0 12px; background: transparent; color: #e4eef8; border: 1px solid #2d5176; font: 500 13px 'IBM Plex Sans', sans-serif">Container</button>
+          <button type="button" style="min-height: 44px; padding: 0 12px; background: transparent; color: #e4eef8; border: 1px solid #2d5176; font: 500 13px 'IBM Plex Sans', sans-serif">Saída para outra fábrica</button>
+        </div>
+      </section>
+
+      <div style="position: absolute; left: 56px; top: 360px; width: 420px; display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #0a1b2d; border: 1px solid #2d5176">
+        <h2 style="margin: 0; font: 600 16px 'Chakra Petch', sans-serif">Como ler as portas</h2>
+        <div style="display: flex; align-items: center; gap: 10px"><span style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #c9d8e8; background: #0a1b2d"></span><span>Atendida: tudo que entra ou sai está ligado</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><span style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #ff7a6b; background: #3a1f24"></span><span>Falta: a etapa pede mais do que chega</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><span style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #45d4c8; background: #123a3c"></span><span>Sobra: sai mais do que a frente usa</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><span style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #ff9b3d; background: #ff9b3d"></span><span>Produto final: sai da fábrica</span></div>
+        <div style="display: flex; align-items: center; gap: 10px"><span style="width: 28px; height: 28px; border-radius: 50%; border: 2px dashed #ffd84a; background: #2b2a10"></span><span>Travada: subproduto sem destino</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

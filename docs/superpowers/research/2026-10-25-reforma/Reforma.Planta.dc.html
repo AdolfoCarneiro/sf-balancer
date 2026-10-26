@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Reforma — Planta em escala</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0d2136}
+a{color:#ff9b3d}a:hover{color:#ffc58f}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #0d2136; color: #e4eef8; font: 14px/1.45 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 20px; background: #0a1b2d; border-bottom: 2px solid #ff9b3d">
+    <div style="font: 700 19px 'Chakra Petch', sans-serif; letter-spacing: .03em; color: #ff9b3d">SF Balancer</div>
+    <nav aria-label="Seções" style="display: flex; gap: 4px; background: #13314f; padding: 4px">
+      <a href="#" aria-current="page" style="padding: 8px 16px; background: #ff9b3d; color: #0a1b2d; font: 600 14px 'Chakra Petch', sans-serif; text-decoration: none">Fábrica</a>
+      <a href="#" style="padding: 8px 16px; color: #e4eef8; font: 600 14px 'Chakra Petch', sans-serif; text-decoration: none">Balancer</a>
+    </nav>
+    <div role="group" aria-label="Vista" style="display: flex; border: 1px solid #2d5176">
+      <button type="button" aria-pressed="false" style="padding: 8px 14px; background: transparent; color: #c3d3e3; border: 0; font: 500 13px 'IBM Plex Sans', sans-serif">Montar</button>
+      <button type="button" aria-pressed="true" style="padding: 8px 14px; background: #1f4a72; color: #fff; border: 0; font: 600 13px 'IBM Plex Sans', sans-serif">Planta em escala</button>
+    </div>
+    <div style="flex: 1 1 auto"></div>
+    <button type="button" style="min-height: 40px; padding: 0 14px; background: transparent; color: #e4eef8; border: 1px solid #2d5176; font: 500 13px 'IBM Plex Sans', sans-serif">Desfazer</button>
+    <button type="button" style="min-height: 40px; padding: 0 16px; background: #ff9b3d; color: #0a1b2d; border: 0; font: 600 14px 'Chakra Petch', sans-serif">Compartilhar</button>
+  </header>
+
+  <div style="display: flex; flex: 1 1 auto; min-height: 0">
+    <main aria-label="Planta da fábrica" style="flex: 1 1 auto; position: relative; overflow: auto; background-color: #0d2136; background-image: linear-gradient(#1a3858 1px, transparent 1px), linear-gradient(90deg, #1a3858 1px, transparent 1px); background-size: 16px 16px">
+      <div style="position: relative; width: 1080px; height: 720px">
+
+        <svg width="1080" height="720" aria-hidden="true" style="position: absolute; inset: 0">
+          <g fill="none" stroke="#c9d8e8" stroke-width="3">
+            <path d="M180 190 H 210"></path><path d="M180 250 H 210"></path><path d="M180 310 H 210"></path>
+            <path d="M294 230 H 320"></path><path d="M294 280 H 320"></path><path d="M294 330 H 320"></path>
+            <path d="M560 240 H 590"></path><path d="M560 300 H 590"></path>
+            <path d="M642 250 C 660 250, 660 150, 680 150"></path>
+            <path d="M642 280 C 660 280, 660 370, 680 370"></path>
+          </g>
+          <g fill="none" stroke="#ff7a6b" stroke-width="3" stroke-dasharray="6 4">
+            <path d="M642 290 C 664 290, 664 400, 680 400"></path>
+          </g>
+        </svg>
+
+        <div style="position: absolute; left: 40px; top: 100px; width: 140px; height: 372px; display: flex; flex-direction: column; gap: 6px; padding: 6px; box-sizing: border-box; border: 1px solid #45d4c8; background: rgba(19, 49, 79, .6)">
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 16px, #0d2136 16px 18px)"></div>
+        </div>
+        <button type="button" style="position: absolute; left: 40px; top: 56px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: #13314f; color: #e4eef8; border: 1px solid #2d5176; font: 600 14px 'Chakra Petch', sans-serif">
+          <img src="/_blob/dd4aa69b445d68a0ae8ee8a823481c6a" alt="" style="width: 30px; height: 30px">Pure Iron Ingot <span style="color: #ff9b3d">42</span>
+        </button>
+        <div style="position: absolute; left: 40px; top: 480px; color: #c3d3e3; font-size: 12px">70 × 186 m, 9 × 24 fundações</div>
+        <div style="position: absolute; left: 96px; top: 506px; padding: 3px 8px; background: #123a3c; border: 1px solid #45d4c8; color: #8ff0e6; font: 600 12px 'IBM Plex Sans', sans-serif">+330 sobrando</div>
+
+        <div style="position: absolute; left: 210px; top: 180px; width: 84px; height: 164px; border: 2px dashed #ff9b3d; box-sizing: border-box; background: rgba(43, 32, 16, .55); display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 20px; gap: 6px; padding: 8px; align-content: center">
+          <span style="background: #ff9b3d"></span><span style="background: #c9d8e8"></span><span style="background: #ff9b3d"></span>
+          <span style="background: #c9d8e8"></span><span style="background: #ff9b3d"></span><span style="background: #c9d8e8"></span>
+          <span style="background: #ff9b3d"></span><span style="background: #c9d8e8"></span><span style="background: #ff9b3d"></span>
+          <span style="background: #c9d8e8"></span><span style="background: #ff9b3d"></span><span style="background: #c9d8e8"></span>
+        </div>
+        <button type="button" style="position: absolute; left: 204px; top: 140px; display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; background: #1b2f45; color: #ffc58f; border: 1px solid #ff9b3d; font: 600 13px 'Chakra Petch', sans-serif">Balancer 6 → 5</button>
+
+        <div style="position: absolute; left: 320px; top: 160px; width: 240px; height: 220px; display: flex; flex-direction: column; gap: 6px; padding: 6px; box-sizing: border-box; border: 1px solid #2d5176; background: rgba(19, 49, 79, .6)">
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 18px, #0d2136 18px 20px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 18px, #0d2136 18px 20px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 18px, #0d2136 18px 20px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 18px, #0d2136 18px 20px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 18px, #0d2136 18px 20px)"></div>
+        </div>
+        <button type="button" style="position: absolute; left: 320px; top: 116px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: #13314f; color: #e4eef8; border: 1px solid #2d5176; font: 600 14px 'Chakra Petch', sans-serif">
+          <img src="/_blob/dac98b6464903a2371bd1bea6c307260" alt="" style="width: 30px; height: 30px">Solid Steel Ingot <span style="color: #ff9b3d">60</span>
+        </button>
+        <div style="position: absolute; left: 320px; top: 388px; color: #c3d3e3; font-size: 12px">120 × 110 m, 15 × 14 fundações</div>
+        <div style="position: absolute; left: 252px; top: 400px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: #0a1b2d; border: 1px solid #2d5176; font-size: 12px"><img src="/_blob/12df06c0305f915ff2ba996b2fb3f0bb" alt="" style="width: 20px; height: 20px">Coal 2.400</div>
+
+        <div style="position: absolute; left: 590px; top: 220px; width: 52px; height: 92px; border: 2px dashed #c9d8e8; box-sizing: border-box; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 16px; gap: 6px; padding: 8px; align-content: center">
+          <span style="background: #ff9b3d"></span><span style="background: #ff9b3d"></span>
+          <span style="background: #c9d8e8"></span><span style="background: #c9d8e8"></span>
+        </div>
+        <button type="button" style="position: absolute; left: 576px; top: 180px; min-height: 34px; padding: 0 10px; background: #1b2f45; color: #e4eef8; border: 1px solid #2d5176; font: 600 13px 'Chakra Petch', sans-serif">3 + 2</button>
+
+        <div style="position: absolute; left: 680px; top: 80px; width: 128px; height: 144px; display: flex; flex-direction: column; gap: 6px; padding: 6px; box-sizing: border-box; border: 1px solid #2d5176; background: rgba(19, 49, 79, .6)">
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 22px, #0d2136 22px 24px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 22px, #0d2136 22px 24px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 22px, #0d2136 22px 24px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 22px, #0d2136 22px 24px)"></div>
+        </div>
+        <button type="button" style="position: absolute; left: 680px; top: 36px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: #13314f; color: #e4eef8; border: 1px solid #2d5176; font: 600 14px 'Chakra Petch', sans-serif">
+          <img src="/_blob/408505e3b5b45daef7183d0c2a3d4eee" alt="" style="width: 30px; height: 30px">Steel Beam <span style="color: #ff9b3d">30</span>
+        </button>
+
+        <div style="position: absolute; left: 680px; top: 300px; width: 256px; height: 144px; display: flex; flex-direction: column; gap: 6px; padding: 6px; box-sizing: border-box; border: 2px solid #ff7a6b; background: rgba(19, 49, 79, .6)">
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 14px, #0d2136 14px 16px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 14px, #0d2136 14px 16px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 14px, #0d2136 14px 16px)"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(90deg, #2a5a87 0 14px, #0d2136 14px 16px)"></div>
+        </div>
+        <button type="button" style="position: absolute; left: 680px; top: 256px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; background: #13314f; color: #e4eef8; border: 1px solid #ff7a6b; font: 600 14px 'Chakra Petch', sans-serif">
+          <img src="/_blob/408505e3b5b45daef7183d0c2a3d4eee" alt="" style="width: 30px; height: 30px">Steel Pipe <span style="color: #ff9b3d">60</span>
+        </button>
+        <div style="position: absolute; left: 680px; top: 452px; padding: 4px 10px; background: #3a1f24; border: 1px solid #ff7a6b; color: #ffb3a8; font: 600 13px 'IBM Plex Sans', sans-serif">Faltam 120 Steel Ingot /min</div>
+
+        <div style="position: absolute; right: 16px; bottom: 16px; display: flex; gap: 8px">
+          <button type="button" aria-label="Aproximar" style="width: 44px; height: 44px; background: #0a1b2d; color: #e4eef8; border: 1px solid #2d5176; font: 600 20px 'Chakra Petch', sans-serif">+</button>
+          <button type="button" aria-label="Afastar" style="width: 44px; height: 44px; background: #0a1b2d; color: #e4eef8; border: 1px solid #2d5176; font: 600 20px 'Chakra Petch', sans-serif">−</button>
+          <button type="button" style="min-height: 44px; padding: 0 14px; background: #0a1b2d; color: #e4eef8; border: 1px solid #2d5176; font: 600 14px 'Chakra Petch', sans-serif">Mostrar tudo</button>
+        </div>
+        <div style="position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; background: #0a1b2d; border: 1px solid #2d5176; font-size: 12px; color: #c3d3e3">
+          <span style="width: 80px; height: 3px; background: #e4eef8"></span>40 m, cada quadrado é uma fundação de 8 m
+        </div>
+      </div>
+    </main>
+
+    <aside aria-label="Planta" style="flex: 0 0 300px; box-sizing: border-box; padding: 18px; background: #0a1b2d; border-left: 1px solid #2d5176; display: flex; flex-direction: column; gap: 16px">
+      <div>
+        <p style="margin: 0; color: #9fb6cc; font-size: 13px">Área total</p>
+        <p style="margin: 2px 0 0; font: 700 24px 'Chakra Petch', sans-serif">416 × 186 m</p>
+        <p style="margin: 0; color: #c3d3e3">52 × 24 fundações</p>
+      </div>
+      <button type="button" style="min-height: 44px; background: #1f4a72; color: #fff; border: 0; font: 600 14px 'Chakra Petch', sans-serif">Arrumar de novo</button>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h3 style="margin: 0; font: 600 14px 'Chakra Petch', sans-serif; color: #c3d3e3">O que conferir</h3>
+        <button type="button" style="display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 12px; background: #3a1f24; color: #ffb3a8; border: 1px solid #ff7a6b; text-align: left; font: 500 13px 'IBM Plex Sans', sans-serif">Steel Pipe com falta de Steel Ingot</button>
+        <button type="button" style="display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 12px; background: #123a3c; color: #8ff0e6; border: 1px solid #45d4c8; text-align: left; font: 500 13px 'IBM Plex Sans', sans-serif">Iron Ingot sobrando no ferro</button>
+      </div>
+      <p style="margin: 0; color: #9fb6cc; font-size: 13px">Na planta, os nomes ficam sempre do mesmo tamanho na tela; o resto segue a escala real.</p>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
