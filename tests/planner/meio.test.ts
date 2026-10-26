@@ -130,15 +130,16 @@ test('meio: refinaria em Mergers no meio entrega as linhas do arranjo (6 de 455)
   assert.equal(inp.tier, 'Mk4');
   const p = meioPlan(me, f, flow, data);
   assert.deepEqual(p.src.lines.map(l => [l.machines, l.rate]), Array(6).fill([7, 455]));
-  // Corte 6: trechos de 6 e o resto (21 por par = 6, 6, 6, 3): dois grupos, o clock igual nos dois.
-  const g = withLayout(comSobra(), 's1', { kind: 'center', belts: { 'out:Desc_IronIngot_C': { cut: 6, exit: 'down' } } });
+  // Corte 5: a linha atravessa os pares (ceil(42 / 5) = 9 saídas, contra 5 + 5 fechando cada par de 21): trechos de
+  // 5 e o resto, 2. Dois grupos, o clock igual nos dois.
+  const g = withLayout(comSobra(), 's1', { kind: 'center', belts: { 'out:Desc_IronIngot_C': { cut: 5, exit: 'down' } } });
   const gi = meioInput(meioFor(g, 'l1'), g, solveFactory(g, data), data);
   assert.deepEqual(gi.srcGroups, [
-    { driver: 'clock', count: 36, clock: 100, nominal: 65, per: 6 }, { driver: 'clock', count: 6, clock: 100, nominal: 65, per: 3 },
+    { driver: 'clock', count: 40, clock: 100, nominal: 65, per: 5 }, { driver: 'clock', count: 2, clock: 100, nominal: 65, per: 2 },
   ]);
   assert.deepEqual(gi.owners.src, ['s1', 's1']);
   const gp = meioPlan(meioFor(g, 'l1'), g, solveFactory(g, data), data);
-  assert.deepEqual(gp.src.lines.map(l => l.machines).sort((a, b) => b - a), [6, 6, 6, 6, 6, 6, 3, 3]);
+  assert.deepEqual(gp.src.lines.map(l => l.machines).sort((a, b) => b - a), [5, 5, 5, 5, 5, 5, 5, 5, 2]);
   assert.ok(gp.src.lines.every(l => lineOwner(meioFor(g, 'l1'), 'src', l, gp) === 's1'));
 });
 
@@ -176,4 +177,25 @@ test('meio: simples (ou costas com costas) só com fileiras viradas/deslocadas d
   // Com esteira editada já vale o arranjo.
   const cut = withLayout(base, 's3', { kind: 'simple', belts: { 'in:Desc_SteelIngot_C': { cut: 4, exit: 'down' } } });
   assert.notDeepEqual(steel(cut).inp.dstGroups, ref.inp.dstGroups);
+});
+
+// ---- Saídas espertas (fase 5): a linha atravessando os pares chega na ligação ----
+test('meio: Copper Ingot 40 em Mergers no meio entrega 16, 16 e 8 (Dividir igual: 14, 13, 13), agrupadas por tamanho', () => {
+  const COPPER = 'Desc_CopperIngot_C';
+  const base: Factory = { v: 2, links: [{ id: 'l1', item: COPPER, from: 's1', to: 's2' }], blocks: [
+    { id: 's1', kind: 'recipe', recipe: 'Recipe_IngotCopper_C', clock: 100, perRow: null, tiers: {}, limits: { machines: 40 } },
+    { id: 's2', kind: 'recipe', recipe: 'Recipe_Wire_C', clock: 100, perRow: null, tiers: {} },
+  ] };
+  const groups = (belt: object) => {
+    const f = withLayout(base, 's1', { kind: 'center', belts: { [`out:${COPPER}`]: belt } }), flow = solveFactory(f, data);
+    assert.equal(flow.blocks.s1.machines, 40);
+    const me = meioFor(f, 'l1');
+    return { inp: meioInput(me, f, flow, data), plan: meioPlan(me, f, flow, data) };
+  };
+  const plain = groups({});
+  assert.deepEqual(plain.inp.srcGroups.map(g => [g.count, g.per]), [[32, 16], [8, 8]]);
+  assert.deepEqual(plain.plan.src.lines.map(l => l.machines).sort((a, b) => b - a), [16, 16, 8]);
+  const even = groups({ even: true });
+  assert.deepEqual(even.inp.srcGroups.map(g => [g.count, g.per]), [[14, 14], [26, 13]]);
+  assert.deepEqual(even.plan.src.lines.map(l => l.machines).sort((a, b) => b - a), [14, 13, 13]);
 });

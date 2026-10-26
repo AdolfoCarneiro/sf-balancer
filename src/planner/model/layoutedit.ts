@@ -56,6 +56,13 @@ export function setBelt(cur: Layout | undefined, key: string, patch: { cut?: num
   return normLayout({ ...l, belts: { ...l.belts, [key]: e } });
 }
 
+// "Dividir igual" da esteira `key`: desligado volta ao padrão (encher cada saída até o limite).
+export function setEven(cur: Layout | undefined, key: string, on: boolean): Layout | null {
+  const l = base(cur), e = { ...l.belts?.[key] };
+  if (on) e.even = true; else delete e.even;
+  return normLayout({ ...l, belts: { ...l.belts, [key]: e } });
+}
+
 // "Fechar antes": o corte só vale saindo por baixo/cima, então quem sai pela ponta passa a descer.
 export const fixCut = (cur: Layout | undefined, key: string, cut: number, exit: LayoutExit): Layout | null =>
   setBelt(cur, key, exit === 'end' ? { cut, exit: 'down' } : { cut });

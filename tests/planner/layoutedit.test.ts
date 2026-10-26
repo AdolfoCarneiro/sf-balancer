@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Factory, GameData, Layout, Stage } from '../../src/planner/model/types.ts';
 import { arrange } from '../../src/planner/model/layout.ts';
 import {
-  fixCut, hasEdits, joinState, moveRow, normLayout, warningFixes, resetModel, resetRowPlace, setBelt, setInvert, setKind, toggleJoin, toggleRow,
+  fixCut, hasEdits, joinState, moveRow, normLayout, warningFixes, resetModel, resetRowPlace, setBelt, setEven, setInvert, setKind, toggleJoin, toggleRow,
 } from '../../src/planner/model/layoutedit.ts';
 import { type History, exampleFactory, reduce } from '../../src/planner/model/factorystate.ts';
 import { historyNew } from '../../src/logic/index.js';
@@ -133,4 +133,14 @@ test('um gesto = um passo do desfazer', () => {
   h = reduce(h, { type: 'undo' }, data);
   const b = h.present.blocks.find(x => x.id === 's1');
   assert.deepEqual(b && b.kind === 'recipe' ? b.layout : null, { kind: 'center' });
+});
+
+test('Dividir igual: liga e desliga sem mexer no corte e na saída; desligado some do layout', () => {
+  const a = setEven(undefined, INGOT, true);
+  assert.deepEqual(a, { kind: 'simple', belts: { [INGOT]: { even: true } } });
+  assert.equal(setEven(a!, INGOT, false), null);
+  const cut: Layout = { kind: 'center', belts: { [INGOT]: { cut: 6, exit: 'up' } } };
+  assert.deepEqual(setEven(cut, INGOT, true), { kind: 'center', belts: { [INGOT]: { cut: 6, exit: 'up', even: true } } });
+  assert.deepEqual(setEven(setEven(cut, INGOT, true)!, INGOT, false), cut);
+  assert.deepEqual(setEven({ kind: 'center' }, INGOT, false), { kind: 'center' });
 });

@@ -463,3 +463,84 @@ test('center órfão: salvo com 42, a etapa recalculada para 20 máquinas', () =
   assert.deepEqual(arrangementLines(one, 'out', INGOT), [1]);
   assert.ok(!/null|NaN/.test(JSON.stringify(one)));
 });
+
+// ---- Saídas espertas (fase 5): a linha do corredor atravessando os pares e "Dividir igual" ----
+
+const COPPER = 'Desc_CopperIngot_C', COPPER_ORE = 'Desc_OreCopper_C';
+const copper = (machines: number): Stage => ({ id: 's', recipe: 'Recipe_IngotCopper_C', machines, clock: 100, perRow: null, tiers: {} });
+
+test('center: Copper Ingot 40 atravessa os dois pares (3 saídas, não 4)', () => {
+  const a = arrange(copper(40), data, { kind: 'center' });
+  assert.deepEqual(a.rows.map(r => r.machines), [10, 10, 10, 10]);
+  assert.deepEqual(arrangementLines(a, 'out', COPPER), [16, 16, 8]);
+  const ls = outLines(a, COPPER);
+  assert.deepEqual(ls.map(l => l.rows), [[0, 1], [0, 1, 2, 3], [2, 3]]);
+  assert.ok(ls.every(l => l.exit === 'down' && l.cap === 480));
+  assert.equal(a.pieces.lifts, 3);
+  assert.deepEqual(a.warnings, []);
+  // Uma esteira só, da esquerda para a direita: cada trecho sai onde termina, o último na borda da direita.
+  const W = Math.max(...a.rows.map(r => r.w)), xs = ls.map(l => l.at[0]);
+  assert.deepEqual([...xs].sort((u, v) => u - v), xs);
+  assert.equal(xs[2], a.geo.w);
+  const bs = a.geo.belts.filter(b => b.role === 'out' && b.item === COPPER);
+  assert.equal(bs.length, 3);
+  assert.ok(bs[1].pts[0][0] < W && bs[1].pts[1][0] > W + 4, 'o trecho do meio passa pelo vão');
+  assert.ok(bs.every(b => b.pts[0][1] === ls[0].at[1]), 'no mesmo corredor');
+  // Mergers (k−1): colunas de 2; trecho 1 = 8 colunas (8), trecho 2 = 8 colunas (8), trecho 3 = 4 colunas (4).
+  assert.equal(a.pieces.mergers, 20);
+  assert.equal(a.geo.pieces.filter(p => p.kind === 'merger').length, 20);
+  assert.equal(a.pieces.splitters, 36);
+  lifts(a).forEach((p, k) => assert.deepEqual([p.x + 1, p.y + 1], ls[k].at));
+});
+
+test('center: Dividir igual divide o mesmo número de saídas o mais igual possível', () => {
+  const even = (belt: object) => ({ kind: 'center' as const, belts: { [`out:${COPPER}`]: belt } });
+  assert.deepEqual(arrangementLines(arrange(copper(40), data, even({ even: true })), 'out', COPPER), [14, 13, 13]);
+  assert.deepEqual(arrange(copper(40), data, even({ even: true })).pieces.lifts, 3);
+  // Com o corte fixado: ceil(40 / 15) = 3 saídas (atravessa: 3 < 2 + 2).
+  assert.deepEqual(arrangementLines(arrange(copper(40), data, even({ cut: 15 })), 'out', COPPER), [15, 15, 10]);
+  assert.deepEqual(arrangementLines(arrange(copper(40), data, even({ cut: 15, even: true })), 'out', COPPER), [14, 13, 13]);
+  // Pares que fecham certinho não atravessam: o ferro do dono continua igual, com ou sem Dividir igual.
+  for (const belt of [{}, { even: true }]) {
+    const a = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: belt } });
+    assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
+    assert.equal(a.pieces.mergers, 22); assert.equal(a.pieces.splitters, 38);
+  }
+  // Corte 8 no ferro: 6 saídas separadas ou atravessando, então não atravessa; igual = 7, 7, 7 por par.
+  const c8 = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 8, even: true } } });
+  assert.deepEqual(arrangementLines(c8, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
+  assert.deepEqual(c8.warnings, []);
+});
+
+test('center invertido: a linha de Splitters da entrada atravessa os pares pela mesma regra', () => {
+  const a = arrange(copper(40), data, { kind: 'center', invert: true });
+  assert.deepEqual(arrangementLines(a, 'in', COPPER_ORE), [16, 16, 8]);
+  const ls = a.lines.filter(l => l.side === 'in' && l.item === COPPER_ORE);
+  assert.deepEqual(ls.map(l => l.rows), [[0, 1], [0, 1, 2, 3], [2, 3]]);
+  assert.equal(ls[0].at[0], 0, 'entra pela borda da esquerda');
+  assert.deepEqual([...ls.map(l => l.at[0])].sort((u, v) => u - v), ls.map(l => l.at[0]));
+  assert.deepEqual(arrangementLines(a, 'out', COPPER), [10, 10, 10, 10]);
+  assert.equal(a.pieces.lifts, 3);
+  assert.deepEqual(a.warnings, []);
+  assert.deepEqual(arrangementLines(arrange(copper(40), data, { kind: 'center', invert: true, belts: { [`in:${COPPER_ORE}`]: { even: true } } }), 'in', COPPER_ORE), [14, 13, 13]);
+});
+
+test('Dividir igual: corte numa fileira; sem efeito com uma saída só e em cano', () => {
+  const row = (belt: object) => arrangementLines(arrange(st(7, { perRow: 7 }), data, { kind: 'simple', belts: { [`out:${INGOT}`]: { exit: 'down', ...belt } } }), 'out', INGOT);
+  assert.deepEqual(row({ cut: 3 }), [3, 3, 1]);
+  assert.deepEqual(row({ cut: 3, even: true }), [3, 2, 2]);
+  assert.deepEqual(row({ even: true }), [7], 'sem corte: uma saída');
+  // Pela ponta: uma saída por fileira, nada muda.
+  const end = { kind: 'center' as const, belts: { [`out:${INGOT}`]: { exit: 'end' as const } } };
+  assert.deepEqual(arrange(st(42), data, { ...end, belts: { [`out:${INGOT}`]: { exit: 'end', even: true } } }).lines, arrange(st(42), data, end).lines);
+  // Cano: ignorado, sem aviso.
+  const pipe = arrange(st(42), data, { kind: 'center', belts: { [`in:${WATER}`]: { even: true } } });
+  assert.deepEqual(pipe.lines, arrange(st(42), data, { kind: 'center' }).lines);
+  assert.deepEqual(pipe.warnings, []);
+});
+
+test('cleanLayout: even só true; o resto some', () => {
+  assert.deepEqual(cleanLayout({ kind: 'center', belts: { [`out:${INGOT}`]: { even: true, cut: 7 } } }),
+    { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 7, even: true } } });
+  assert.deepEqual(cleanLayout({ kind: 'center', belts: { 'out:A': { even: 'yes' }, 'out:B': { even: 1 }, 'out:C': { even: false } } }), { kind: 'center' });
+});

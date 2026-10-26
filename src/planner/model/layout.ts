@@ -29,6 +29,7 @@ function cleanBelt(v: unknown): BeltEdit | null {
   const e: BeltEdit = {};
   if (typeof v.cut === 'number' && Number.isInteger(v.cut) && v.cut >= 1 && v.cut <= MAX_CUT) e.cut = v.cut;
   if (typeof v.exit === 'string' && (EXITS as readonly string[]).includes(v.exit)) e.exit = v.exit as LayoutExit;
+  if (v.even === true) e.even = true;
   return Object.keys(e).length ? e : null;
 }
 
@@ -128,23 +129,32 @@ export function arrangementLines(a: Arrangement, side: 'in' | 'out', item: ItemI
   return a.lines.filter(l => l.side === side && l.item === item).map(l => l.machines);
 }
 
+// Máquinas de cada trecho de uma esteira de n máquinas cortada a cada `cut` (sem corte: um trecho só). even ("Dividir
+// igual"): o mesmo número de trechos, de floor(n / S) ou uma a mais, os maiores primeiro.
+function cutSizes(n: number, cut: number | undefined, even: boolean): number[] {
+  if (!cut || cut >= n) return [n];
+  const S = Math.ceil(n / cut - E);
+  if (!even) return Array.from({ length: S }, (_, k) => Math.min(cut, n - k * cut));
+  const q = Math.floor(n / S + E), r = n - q * S;
+  return Array.from({ length: S }, (_, k) => q + (k < r - E ? 1 : 0));
+}
+
 // Trechos da esteira de uma fileira: o corte só vale saindo por baixo/cima e nunca em cano.
-function segments(n: number, cut: number | undefined): { start: number; count: number }[] {
-  if (!cut || cut >= n) return [{ start: 0, count: n }];
-  const out = [];
-  for (let s = 0; s < n - E; s += cut) out.push({ start: s, count: Math.min(cut, n - s) });
-  return out;
+function segments(n: number, cut: number | undefined, even: boolean): { start: number; count: number }[] {
+  let start = 0;
+  return cutSizes(n, cut, even).map(count => { const sg = { start, count }; start += count; return sg; });
 }
 
 // Linha compartilhada: as máquinas contam coluna a coluna (sizes: máquinas de cada coluna, na ordem do fluxo),
-// de cima para baixo, fechando a cada `cut`. Cada coluna de um trecho: a partir de qual máquina (from) e quantas (k).
+// de cima para baixo, fechando cada trecho com as máquinas dele (segSizes). Cada coluna de um trecho: a partir de qual
+// máquina (from) e quantas (k).
 interface SharedSeg { machines: number; cols: { ci: number; from: number; k: number }[] }
-function sharedSegments(sizes: number[], cut: number | undefined): SharedSeg[] {
+function sharedSegments(sizes: number[], segSizes: number[]): SharedSeg[] {
   const segs: SharedSeg[] = [];
   let cur: SharedSeg = { machines: 0, cols: [] };
   sizes.forEach((size, ci) => {
     for (let j = 0; j < size; j++) {
-      if (cut && cur.machines >= cut) { segs.push(cur); cur = { machines: 0, cols: [] }; }
+      if (cur.machines >= segSizes[segs.length] && segs.length < segSizes.length - 1) { segs.push(cur); cur = { machines: 0, cols: [] }; }
       const last = cur.cols[cur.cols.length - 1];
       if (last?.ci === ci) last.k++; else cur.cols.push({ ci, from: j, k: 1 });
       cur.machines++;
@@ -199,8 +209,8 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   };
 
   const warnings: LayoutWarning[] = [];
-  // Ajustes por esteira: saída e corte valendo para esta receita.
-  const beltOf = new Map<string, { exit: LayoutExit; cut?: number }>();
+  // Ajustes por esteira: saída, corte e "Dividir igual" valendo para esta receita (cano: só pela ponta).
+  const beltOf = new Map<string, { exit: LayoutExit; cut?: number; even?: boolean }>();
   for (const p of ports) {
     const key = tierKey(p.side, p.item), e = layout?.belts?.[key];
     if (fluidOf(p.item)) {
@@ -209,10 +219,10 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     } else if (key === sharedKey) {
       const exit = e?.exit ?? 'down';
       if (exit === 'end') warnings.push({ kind: 'centerEnd', item: p.item });
-      beltOf.set(key, exit === 'end' ? { exit } : { exit, cut: e?.cut ?? centerCut });
+      beltOf.set(key, exit === 'end' ? { exit } : { exit, cut: e?.cut ?? centerCut, even: !!e?.even });
     } else {
       const exit = e?.exit ?? 'end';
-      beltOf.set(key, exit === 'end' ? { exit } : { exit, cut: e?.cut });
+      beltOf.set(key, exit === 'end' ? { exit } : { exit, cut: e?.cut, even: !!e?.even });
     }
   }
 
@@ -273,6 +283,21 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     if (g) accept(g); else warnings.push({ kind: 'badJoin', key: j });
   }
 
+  // Faixa do center com dois pares: a linha compartilhada atravessa os dois (uma esteira só no corredor, da ponta da
+  // esquerda à da direita, passando pelo vão) quando isso dá menos saídas que fechar cada par. Precisa do corredor na
+  // mesma altura nos dois pares (a faixa de peças só existe com mais de 1 máquina na fileira).
+  const cross = new Map<number, Shared>(), crossed = new Set<number>();   // fileira de cima do par esquerdo → o direito
+  const sharedBelt = sharedKey ? beltOf.get(sharedKey) : undefined;
+  if (center && sharedKey && sharedBelt?.cut) {
+    const cut = sharedBelt.cut;
+    for (let r = 0; r < counts.length; r += 4) {
+      const gl = shared.get(`${r}|${sharedKey}`), gr = shared.get(`${r + 2}|${sharedKey}`);
+      if (!gl || !gr || (gl.top.n > 1) !== (gr.top.n > 1)) continue;
+      const nl = gl.top.n + gl.bot.n, nr = gr.top.n + gr.bot.n;
+      if (Math.ceil((nl + nr) / cut - E) < Math.ceil(nl / cut - E) + Math.ceil(nr / cut - E)) { cross.set(r, gr); crossed.add(r + 2); }
+    }
+  }
+
   const pieces: Piece[] = [], belts: BeltPath[] = [], ins: Anchor[] = [], outs: Anchor[] = [];
   const rows: ArrRow[] = [], lines: ArrLine[] = [];
   const count = { splitters: 0, mergers: 0, lifts: 0 };
@@ -283,14 +308,15 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     pieces.push({ kind: 'lift', x: a[0] - LIFT / 2, y: a[1] - LIFT / 2, w: LIFT, h: LIFT, item, ...(exit === 'up' ? { above: true } : {}) });
   };
 
-  // A linha compartilhada de um par, numa faixa de Mergers (Splitters) em ly.
-  const drawShared = (g: Shared, ly: number) => {
-    const { side, item, top, bot } = g, s = sideOf(side), cy = ly + PIECE / 2, p = pm(side, item);
-    const { exit, cut } = beltOf.get(g.key)!;
+  // A linha compartilhada de um par (ou de dois, atravessando a faixa da esquerda para a direita), numa faixa de
+  // Mergers (Splitters) em ly.
+  const drawShared = (gs: Shared[], ly: number) => {
+    const { side, item, top } = gs[0], s = sideOf(side), cy = ly + PIECE / 2, p = pm(side, item);
+    const { exit, cut, even } = beltOf.get(gs[0].key)!;
     const tier = tierOf(side, item), cap = capOf(data.items[item], tier);
-    const dir = top.mirror ? -1 : 1;
+    const dir = gs.length === 1 && top.mirror ? -1 : 1;
     const byX = new Map<number, number[]>();
-    for (const rp of [top, bot]) {
+    for (const rp of gs.flatMap(g => [g.top, g.bot])) {
       for (let m = 0; m < rp.n; m++) {
         const x = machX(rp, m);
         byX.set(x, [...(byX.get(x) ?? []), rp.index]);
@@ -300,7 +326,8 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     const ends = (ci: number) => (dir > 0 ? [cols[ci].x, cols[ci].x + b.w] : [cols[ci].x + b.w, cols[ci].x]);
     const mid = (ci: number) => cols[ci].x + b.w / 2;
     const rowStart = top.bx + (dir > 0 ? 0 : W), rowEnd = top.bx + (dir > 0 ? W : 0);
-    const segs = sharedSegments(cols.map(c => c.rows.length), exit === 'end' ? undefined : cut);
+    const sizes = cols.map(c => c.rows.length), total = sizes.reduce((u, v) => u + v, 0);
+    const segs = sharedSegments(sizes, cutSizes(total, exit === 'end' ? undefined : cut, !!even));
     const perCol = new Map<number, number>();
     for (const sg of segs) {
       const first = sg.cols[0], last = sg.cols[sg.cols.length - 1];
@@ -349,11 +376,14 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       const key = tierKey(side, item), fluid = fluidOf(item);
       if (skip.has(`${row}|${key}`)) return;
       const g = shared.get(`${row}|${key}`);
-      if (g) { drawShared(g, ly); ly += PIECE; return; }
+      if (g) {
+        if (!crossed.has(row)) drawShared(cross.has(row) ? [g, cross.get(row)!] : [g], ly);
+        ly += PIECE; return;
+      }
       const h = strip(fluid), cy = ly + h / 2, s = sideOf(side), p = pm(side, item);
-      const { exit, cut } = beltOf.get(key)!;
+      const { exit, cut, even } = beltOf.get(key)!;
       const tier = tierOf(side, item), cap = capOf(data.items[item], tier);
-      for (const sg of segments(n, cut)) {
+      for (const sg of segments(n, cut, !!even)) {
         let a: Pt, pts: Pt[];
         if (exit === 'end') {
           a = side === 'ins' ? pt(0, cy) : pt(W, cy);

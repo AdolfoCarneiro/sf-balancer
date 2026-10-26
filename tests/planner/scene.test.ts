@@ -388,6 +388,29 @@ test('cena: linhas de tamanhos misturados chegam cada uma na entrada da ligaçã
   }
 });
 
+test('cena: linha atravessando os pares (Copper Ingot 40: 16, 16, 8) chega cada uma na entrada do mesmo tamanho', () => {
+  const COPPER = 'Desc_CopperIngot_C', MEIO = `${COPPER}:s1>s2`;
+  for (const belt of [{}, { even: true }]) {
+    const f: Factory = { v: 2, links: [{ id: 'l1', item: COPPER, from: 's1', to: 's2' }], blocks: [
+      { id: 's1', kind: 'recipe', recipe: 'Recipe_IngotCopper_C', clock: 100, perRow: null, tiers: {}, limits: { machines: 40 },
+        layout: { kind: 'center', belts: { [`out:${COPPER}`]: belt } } },
+      { id: 's2', kind: 'recipe', recipe: 'Recipe_Wire_C', clock: 100, perRow: null, tiers: {} },
+    ] };
+    const geos = geosOf(f), s = buildScene(f, data, placesOf(f, data, geos), geos);
+    const plan = meioPlan(meiosOf(f).find(m => m.id === MEIO)!, f, flowOf(f), data);
+    assert.deepEqual(plan.src.lines.map(l => l.machines).sort((a, b) => b - a), 'even' in belt ? [14, 13, 13] : [16, 16, 8]);
+    const sm = meioOf(s, MEIO), geo = sm.geo!, place = { x: sm.rect.x, y: sm.rect.y, rot: sm.rot };
+    const ends = geo.ins.filter(a => a.stage === 's1').map(a => ({ at: toWorld([a.x, a.y], geo, place), line: plan.src.lines[a.row] }));
+    const belts = s.belts.filter(b => b.role === 'main' && b.item === COPPER && ends.some(e => same(e.at, b.pts[b.pts.length - 1])));
+    assert.equal(belts.length, 3);
+    for (const b of belts) {
+      const e = ends.find(x => same(x.at, b.pts[b.pts.length - 1]))!;
+      assert.ok(Math.abs(b.rate - e.line.rate) < 1e-6, `esteira de ${b.rate} chegou na linha de ${e.line.rate}`);
+    }
+    assert.deepEqual(belts.map(b => b.rate).sort((a, b) => b - a), plan.src.lines.map(l => l.rate).sort((a, b) => b - a));
+  }
+});
+
 test('cena: linha que desce por Conveyor Lift sai da borda do bloco, não do elevador no meio das máquinas', () => {
   for (const rot of [0, 2] as const) {
     const f = center40(), geos = geosOf(f);

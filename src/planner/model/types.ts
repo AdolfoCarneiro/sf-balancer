@@ -26,7 +26,8 @@ export interface Limits { machines?: number; inputs?: Record<ItemId, number> }
 export type LayoutKind = 'simple' | 'backToBack' | 'center';
 export type LayoutExit = 'end' | 'down' | 'up';          // pela ponta da fileira, desce ou sobe por Conveyor Lift
 export interface RowEdit { flip?: boolean; mirror?: boolean; dx?: number; dy?: number }   // dx/dy em m, múltiplos de 8
-export interface BeltEdit { cut?: number; exit?: LayoutExit }                           // cut: fecha a cada N máquinas
+// cut: fecha a cada N máquinas; even: as máquinas divididas o mais igual possível entre o mesmo número de saídas
+export interface BeltEdit { cut?: number; exit?: LayoutExit; even?: boolean }
 export interface Layout {
   kind: LayoutKind;
   invert?: boolean;                        // backToBack/center: o corredor do meio é das entradas, não das saídas
