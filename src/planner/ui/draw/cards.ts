@@ -25,7 +25,7 @@ const HEAD = 62, ICON = 42, PAD_X = 14;
 // Ícone pequeno no canto de baixo do ícone grande, num disco da cor da chapa (s: lado do ícone grande).
 function drawBadge(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, x: number, y: number, s: number, th: MapTheme): void {
   if (!img) return;
-  const b = s * 0.48, cx = x + s - b / 2 + s * 0.08, cy = y + s - b / 2 + s * 0.08;
+  const b = s * 0.62, cx = x + s - b / 2 + s * 0.12, cy = y + s - b / 2 + s * 0.1;
   ctx.fillStyle = th.paper; ctx.beginPath(); ctx.arc(cx, cy, b / 2 + s * 0.05, 0, Math.PI * 2); ctx.fill();
   ctx.drawImage(img, cx - b / 2, cy - b / 2, b, b);
 }
@@ -65,12 +65,13 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
   }
 
   if (Math.min(kx, ky) < COMPACT) {
-    // Enxuto: o ícone na altura do cartão, à esquerda, e o número (máquinas ou a taxa) ocupando o resto.
-    const img = c.icon ? icon(c.icon) : null, gap = 8, s = H - 2 * gap;
-    if (img) ctx.drawImage(img, gap, gap, s, s);
-    if (img && c.badge) drawBadge(ctx, icon(c.badge), gap, gap, s, th);
-    const x = (img ? s + gap : 0) + gap, max = W - x - gap;
-    const num = fitText(ctx, c.marker ? c.rate : c.count, max, p => `700 ${p}px ${th.display}`, Math.round(H * 0.62), 14);
+    // Enxuto: o prédio e o item (ou o produto) lado a lado, como no nó do Modeler, centrados na altura e sem passar de
+    // um quarto da largura cada (o cartão alto de várias portas não infla os ícones); o número ocupa o resto.
+    const imgs = [c.icon, c.badge].filter((x): x is string => !!x).map(id => icon(id)).filter((x): x is HTMLImageElement => !!x);
+    const gap = 8, s = Math.min(H - 2 * gap, W * 0.25), y = (H - s) / 2;
+    imgs.forEach((im, i) => ctx.drawImage(im, gap + i * (s + 2), y, s, s));
+    const x = gap + imgs.length * (s + 2) + 4, max = W - x - gap;
+    const num = fitText(ctx, c.marker ? c.rate : c.count, max, p => `700 ${p}px ${th.display}`, Math.round(Math.min(H * 0.62, s * 0.8)), 14);
     ctx.font = num.font; ctx.fillStyle = c.fixed && !c.marker ? th.ficsitSoft : th.ink;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(num.s, x + max / 2, H / 2);

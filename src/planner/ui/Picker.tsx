@@ -84,9 +84,10 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
     if (e.spec.kind === 'miner' || e.spec.kind === 'extractor' || e.spec.kind === 'input' || e.spec.kind === 'generator') return (
       <li key={i} id={`${uid}-o${i}`} role="option" aria-selected={i === active} className="pl-pick-card pl-pick-tile"
         onMouseDown={ev => ev.preventDefault()} onClick={() => pick(e)} onMouseMove={() => { if (i !== active) setActive(i); }}>
+        {/* O prédio e o item lado a lado, no mesmo tamanho (como o nó do Modeler): Oil Extractor e Resource Well se separam. */}
         <span className="pl-pick-ic">
+          {e.badge && <Icon src={e.badge} size={30} />}
           <Icon src={e.icon} size={30} />
-          {e.badge && <img className="pl-pick-badge" src={e.badge} alt="" width={18} height={18} loading="lazy" decoding="async" />}
         </span>
         <span className="pl-pick-body"><b>{e.title}</b>{e.sub && <span className="pl-pick-sub">{e.sub}</span>}</span>
       </li>

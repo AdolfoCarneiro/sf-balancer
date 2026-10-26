@@ -379,11 +379,10 @@ select.pl-field { width: auto; }
 .pl-pick-item { display: inline-flex; align-items: center; gap: 4px; }
 .pl-pick-item b { font: 600 12px var(--display); color: var(--ink); }
 .pl-pick-item img { display: block; }
-.pl-pick-list ul.pl-pick-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 3px; }
+.pl-pick-list ul.pl-pick-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 3px; }
 .pl-pick-tile { gap: 8px; min-height: 44px; padding: 5px 8px; }
-.pl-pick-ic { position: relative; flex: none; display: block; width: 34px; height: 34px; }
+.pl-pick-ic { flex: none; display: flex; align-items: center; gap: 2px; }
 .pl-pick-ic > img, .pl-pick-ic > .pl-pick-noicon { display: block; }
-.pl-pick-badge { position: absolute; right: -2px; bottom: -2px; padding: 1px; background: var(--paper); border: 1px solid var(--line); border-radius: 50%; }
 .pl-pick-tile b { font-size: 13px; line-height: 1.2; }
 .pl-pick-tile .pl-pick-sub { font-size: 11px; }
 .pl-pick-title { display: flex; align-items: center; gap: 10px; }
