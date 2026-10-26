@@ -42,7 +42,7 @@ test('dados: só receitas das 11 máquinas de produção, e todo prédio tem tam
 });
 
 test('extratores: vazão do Docs, itens e pureza', () => {
-  assert.deepEqual(data.extractors.Build_WaterPump_C, { id: 'Build_WaterPump_C', name: 'Water Extractor', perMin: 120, items: ['Desc_Water_C'], purity: false });
+  assert.deepEqual(data.extractors.Build_WaterPump_C, { id: 'Build_WaterPump_C', name: 'Water Extractor', perMin: 120, items: ['Desc_Water_C'], purity: false, power: 20 });
   assert.equal(data.extractors.Build_OilPump_C.perMin, 120);
   assert.deepEqual(data.extractors.Build_OilPump_C.items, ['Desc_LiquidOil_C']);
   assert.equal(data.extractors.Build_OilPump_C.purity, true);

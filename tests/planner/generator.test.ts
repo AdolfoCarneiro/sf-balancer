@@ -73,3 +73,18 @@ test('seletor: de uma saída de Fuel aparece o Fuel-Powered Generator; do vazio,
   const all = pickerEntries(data, '').special.filter(e => e.spec.kind === 'generator');
   assert.equal(all.length, Object.values(data.generators!).reduce((n, g) => n + g.fuels.length, 0));
 });
+
+test('energia gasta: máquinas × MW do prédio × (clock/100)^1,321929; extrator pelo clock dele; saldo no Balanço', () => {
+  // 100 de Fuel -> 5 geradores (1.250 MW); 1 Constructor de Iron Rod a 100 % (4 MW) e um Oil Extractor a 250 % (40 × 2,5^1,321929).
+  let f = fed(FUEL, 'Desc_LiquidFuel_C', 100);
+  f = addBlock(f, data, { kind: 'input', item: 'Desc_IronIngot_C' }, [0, 160]);
+  f = addBlock(f, data, { kind: 'recipe', recipe: 'Recipe_IronRod_C' }, [80, 160]);
+  const ing = f.blocks.at(-2)!.id, rod = f.blocks.at(-1)!.id;
+  f = { ...f, blocks: f.blocks.map(b => (b.id === rod ? { ...b, limits: { machines: 1 } } : b)) as Factory['blocks'] };
+  f = connect(f, data, ing, rod, 'Desc_IronIngot_C');
+  f = addBlock(f, data, { kind: 'extractor', building: 'Build_OilPump_C', item: 'Desc_LiquidOil_C' }, [-80, 80]);
+  f = { ...f, blocks: f.blocks.map(b => (b.kind === 'extractor' ? { ...b, clock: 250 } : b)) as Factory['blocks'] };
+  const bal = factoryBalance(f, solveFactory(f, data), data);
+  close(bal.power, 1250);
+  close(bal.use, 4 + 40 * Math.pow(2.5, 1.321929));
+});

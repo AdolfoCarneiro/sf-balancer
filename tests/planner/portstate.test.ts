@@ -102,5 +102,5 @@ test('nextProblem: circular, por tipo, travada conta como falta', () => {
 });
 
 test('balanço da fábrica vazia', () => {
-  assert.deepEqual(factoryBalance(fac([]), solveFactory(fac([]), data), data), { ins: [], outs: [], sink: [], power: 0, problems: [] });
+  assert.deepEqual(factoryBalance(fac([]), solveFactory(fac([]), data), data), { ins: [], outs: [], sink: [], power: 0, use: 0, problems: [] });
 });

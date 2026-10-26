@@ -53,10 +53,15 @@ export function BalanceBar({ balance, data, onGo, nameOf }: Props) {
       <Group label={t('plBalIn')} rows={balance.ins} data={data} />
       <Group label={t('plBalOut')} rows={balance.outs} data={data} />
       {balance.sink.length > 0 && <Group label={t('plBalSink')} rows={balance.sink} data={data} />}
-      {balance.power > 0 && (
+      {(balance.power > 0 || balance.use > 0) && (
+        // Energia: o que os geradores fazem, o que a fábrica gasta e o saldo (vermelho quando falta).
         <div className="pl-bal-grp">
           <span className="pl-bal-lbl">{t('plBalPower')}</span>
-          <span className="pl-bal-it"><b>{t('plPowerMW', fmt(balance.power))}</b></span>
+          <span className="pl-bal-it">{t('plBalPowerMade')} <b>{t('plPowerMW', fmt(balance.power))}</b></span>
+          <span className="pl-bal-it">{t('plBalPowerUsed')} <b>{t('plPowerMW', fmt(balance.use))}</b></span>
+          <span className={'pl-bal-it ' + (balance.power - balance.use < -1e-6 ? 'pl-bal-neg' : 'pl-bal-pos')}>
+            {t('plBalPowerNet')} <b>{t('plPowerMW', (balance.power - balance.use > 1e-6 ? '+' : '') + fmt(balance.power - balance.use))}</b>
+          </span>
         </div>
       )}
       <div className="pl-bal-probs">

@@ -4,66 +4,77 @@
    "id": "Build_AssemblerMk1_C",
    "l": 16,
    "name": "Assembler",
+   "power": 15,
    "w": 9
   },
   "Build_Blender_C": {
    "id": "Build_Blender_C",
    "l": 16,
    "name": "Blender",
+   "power": 75,
    "w": 18
   },
   "Build_ConstructorMk1_C": {
    "id": "Build_ConstructorMk1_C",
    "l": 10,
    "name": "Constructor",
+   "power": 4,
    "w": 8
   },
   "Build_Converter_C": {
    "id": "Build_Converter_C",
    "l": 16,
    "name": "Converter",
+   "power": 0,
    "w": 16
   },
   "Build_FoundryMk1_C": {
    "id": "Build_FoundryMk1_C",
    "l": 10,
    "name": "Foundry",
+   "power": 16,
    "w": 10
   },
   "Build_HadronCollider_C": {
    "id": "Build_HadronCollider_C",
    "l": 38,
    "name": "Particle Accelerator",
+   "power": 0,
    "w": 24
   },
   "Build_ManufacturerMk1_C": {
    "id": "Build_ManufacturerMk1_C",
    "l": 20,
    "name": "Manufacturer",
+   "power": 55,
    "w": 18
   },
   "Build_OilRefinery_C": {
    "id": "Build_OilRefinery_C",
    "l": 22,
    "name": "Refinery",
+   "power": 30,
    "w": 10
   },
   "Build_Packager_C": {
    "id": "Build_Packager_C",
    "l": 8,
    "name": "Packager",
+   "power": 10,
    "w": 8
   },
   "Build_QuantumEncoder_C": {
    "id": "Build_QuantumEncoder_C",
    "l": 50,
    "name": "Quantum Encoder",
+   "power": 0,
    "w": 22
   },
   "Build_SmelterMk1_C": {
    "id": "Build_SmelterMk1_C",
    "l": 10,
    "name": "Smelter",
+   "power": 4,
    "w": 5
   }
  },
@@ -77,6 +88,7 @@
    ],
    "name": "Resource Well Extractor",
    "perMin": 60,
+   "power": 0,
    "purity": true
   },
   "Build_OilPump_C": {
@@ -86,6 +98,7 @@
    ],
    "name": "Oil Extractor",
    "perMin": 120,
+   "power": 40,
    "purity": true
   },
   "Build_WaterPump_C": {
@@ -95,6 +108,7 @@
    ],
    "name": "Water Extractor",
    "perMin": 120,
+   "power": 20,
    "purity": false
   }
  },
@@ -1319,7 +1333,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 60
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_Alternate_AILimiter_Plastic_C": {
    "alt": true,
@@ -1961,7 +1976,8 @@
      "item": "Desc_DarkMatter_C",
      "perMin": 20
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_Alternate_DarkMatter_Trap_C": {
    "alt": true,
@@ -1983,7 +1999,8 @@
      "item": "Desc_DarkMatter_C",
      "perMin": 60
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_Alternate_Diamond_Cloudy_C": {
    "alt": true,
@@ -2005,7 +2022,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 20
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_Alternate_Diamond_OilBased_C": {
    "alt": true,
@@ -2023,7 +2041,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 40
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_Alternate_Diamond_Petroleum_C": {
    "alt": true,
@@ -2041,7 +2060,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 30
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_Alternate_Diamond_Pink_C": {
    "alt": true,
@@ -2063,7 +2083,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 15
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Alternate_Diamond_Turbo_C": {
    "alt": true,
@@ -2085,7 +2106,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 60
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_Alternate_DilutedFuel_C": {
    "alt": true,
@@ -2613,7 +2635,8 @@
      "item": "Desc_PlutoniumCell_C",
      "perMin": 10
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_Alternate_InstantScrap_C": {
    "alt": true,
@@ -2673,7 +2696,8 @@
      "item": "Desc_CompactedCoal_C",
      "perMin": 40
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Alternate_IronIngot_Basic_C": {
    "alt": true,
@@ -4007,7 +4031,8 @@
      "item": "Desc_OreBauxite_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Bauxite_Copper_C": {
    "alt": false,
@@ -4029,7 +4054,8 @@
      "item": "Desc_OreBauxite_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Biofuel_C": {
    "alt": false,
@@ -4273,7 +4299,8 @@
      "item": "Desc_OreGold_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Caterium_Quartz_C": {
    "alt": false,
@@ -4295,7 +4322,8 @@
      "item": "Desc_OreGold_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_CircuitBoard_C": {
    "alt": false,
@@ -4339,7 +4367,8 @@
      "item": "Desc_Coal_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Coal_Limestone_C": {
    "alt": false,
@@ -4361,7 +4390,8 @@
      "item": "Desc_Coal_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_ComputerSuper_C": {
    "alt": false,
@@ -4523,7 +4553,8 @@
      "item": "Desc_OreCopper_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Copper_Sulfur_C": {
    "alt": false,
@@ -4545,7 +4576,8 @@
      "item": "Desc_OreCopper_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_CrystalOscillator_C": {
    "alt": false,
@@ -4589,7 +4621,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 100
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_DarkMatter_C": {
    "alt": false,
@@ -4611,7 +4644,8 @@
      "item": "Desc_DarkMatter_C",
      "perMin": 30
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_Diamond_C": {
    "alt": false,
@@ -4629,7 +4663,8 @@
      "item": "Desc_Diamond_C",
      "perMin": 30
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_ElectromagneticControlRod_C": {
    "alt": false,
@@ -4717,7 +4752,8 @@
      "item": "Desc_FicsiteIngot_C",
      "perMin": 30
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_FicsiteIngot_CAT_C": {
    "alt": false,
@@ -4739,7 +4775,8 @@
      "item": "Desc_FicsiteIngot_C",
      "perMin": 15
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_FicsiteIngot_Iron_C": {
    "alt": false,
@@ -4761,7 +4798,8 @@
      "item": "Desc_FicsiteIngot_C",
      "perMin": 10
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_FicsiteMesh_C": {
    "alt": false,
@@ -4813,7 +4851,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 50
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_Ficsonium_C": {
    "alt": false,
@@ -4839,7 +4878,8 @@
      "item": "Desc_Ficsonium_C",
      "perMin": 10
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_FilterGasMask_C": {
    "alt": false,
@@ -5355,7 +5395,8 @@
      "item": "Desc_OreIron_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Limestone_Sulfur_C": {
    "alt": false,
@@ -5377,7 +5418,8 @@
      "item": "Desc_Stone_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_LiquidBiofuel_C": {
    "alt": false,
@@ -5573,7 +5615,8 @@
      "item": "Desc_NitrogenGas_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Nitrogen_Caterium_C": {
    "alt": false,
@@ -5595,7 +5638,8 @@
      "item": "Desc_NitrogenGas_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_NobeliskCluster_C": {
    "alt": false,
@@ -6129,7 +6173,8 @@
      "item": "Desc_PlutoniumPellet_C",
      "perMin": 30
     }
-   ]
+   ],
+   "power": 500
   },
   "Recipe_PowerCrystalShard_1_C": {
    "alt": false,
@@ -6308,7 +6353,8 @@
      "item": "Desc_QuantumEnergy_C",
      "perMin": 200
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_QuartzCrystal_C": {
    "alt": false,
@@ -6348,7 +6394,8 @@
      "item": "Desc_RawQuartz_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Quartz_Coal_C": {
    "alt": false,
@@ -6370,7 +6417,8 @@
      "item": "Desc_RawQuartz_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Quickwire_C": {
    "alt": false,
@@ -6834,7 +6882,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 100
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_SpaceElevatorPart_1_C": {
    "alt": false,
@@ -7052,7 +7101,8 @@
      "item": "Desc_SpaceElevatorPart_9_C",
      "perMin": 0.5
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_SpikedRebar_C": {
    "alt": false,
@@ -7150,7 +7200,8 @@
      "item": "Desc_Sulfur_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Sulfur_Iron_C": {
    "alt": false,
@@ -7172,7 +7223,8 @@
      "item": "Desc_Sulfur_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_SulfuricAcid_C": {
    "alt": false,
@@ -7228,7 +7280,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 125
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_SyntheticPowerShard_C": {
    "alt": false,
@@ -7262,7 +7315,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 60
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_TemporalProcessor_C": {
    "alt": false,
@@ -7296,7 +7350,8 @@
      "item": "Desc_DarkEnergy_C",
      "perMin": 75
     }
-   ]
+   ],
+   "power": 1000
   },
   "Recipe_TimeCrystal_C": {
    "alt": false,
@@ -7314,7 +7369,8 @@
      "item": "Desc_TimeCrystal_C",
      "perMin": 6
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_UnpackageAlumina_C": {
    "alt": false,
@@ -7630,7 +7686,8 @@
      "item": "Desc_OreUranium_C",
      "perMin": 120
     }
-   ]
+   ],
+   "power": 250
   },
   "Recipe_Wire_C": {
    "alt": false,

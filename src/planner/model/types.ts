@@ -1,9 +1,10 @@
 export type ItemId = string; export type RecipeId = string; export type BuildingId = string; export type StageId = string;
 export interface Item { id: ItemId; name: string; fluid: boolean; raw: boolean }
 export interface Flow { item: ItemId; perMin: number }            // por máquina, clock 100%; fluido em m³/min
-export interface Recipe { id: RecipeId; name: string; alt: boolean; building: BuildingId; ins: Flow[]; outs: Flow[] }
-export interface Building { id: BuildingId; name: string; w: number; l: number }   // metros
-export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean }   // perMin em m³/min, pureza normal
+// power: MW gastos a 100 % (do Docs). Na receita, só nos prédios de energia variável (a média da faixa da receita).
+export interface Recipe { id: RecipeId; name: string; alt: boolean; building: BuildingId; ins: Flow[]; outs: Flow[]; power?: number }
+export interface Building { id: BuildingId; name: string; w: number; l: number; power?: number }   // metros
+export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean; power?: number }   // perMin em m³/min, pureza normal
 export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building>; extractors: Record<BuildingId, Extractor>; generators?: Record<BuildingId, Generator> }
 // Gerador (do Docs): potência a 100 % (MW) e, por combustível, o consumo por minuto de um gerador (sólido: itens;
 // fluido: m³), a água (m³/min, carvão e nuclear) e o resíduo (nuclear).

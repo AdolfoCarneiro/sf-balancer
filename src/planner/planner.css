@@ -523,6 +523,8 @@ select.pl-field { width: auto; }
 .pl-bal-it { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .pl-bal-it img, .pl-bal-noicon { width: 22px; height: 22px; flex: none; }
 .pl-bal-it b { font: 600 14px var(--display); color: var(--ink); }
+.pl-bal-neg b { color: var(--deficit); }
+.pl-bal-pos b { color: var(--surplus); }
 .pl-bal-probs { position: sticky; right: 0; display: flex; flex: none; gap: 8px; margin-left: auto; padding: 0 16px 0 8px; background: var(--paper); box-shadow: -10px 0 10px -4px var(--paper); }
 .pl-bal-pb { min-height: 44px; padding: 0 14px; font: 600 14px var(--body); border: 1px solid; cursor: pointer; }
 .pl-bal-pb.def { background: var(--deficit-bg); color: var(--deficit); border-color: var(--deficit); }

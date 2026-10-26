@@ -1,7 +1,7 @@
 // Gera src/planner/data/game.json (itens, receitas, prédios de produção e extratores de fluido) a partir do Docs do jogo.
 //
 // Uso: node scripts/gamedata.mjs <en-US.json> [saida]
-//      node scripts/gamedata.mjs <en-US.json> --generators   (só troca os geradores no game.json que já existe)
+//      node scripts/gamedata.mjs <en-US.json> --generators   (só troca os geradores e a energia gasta no game.json que já existe)
 //
 // Fonte usada hoje: cópia do Docs da versão 1.1 mantida pelo projeto satisfactory-logistics,
 //   https://raw.githubusercontent.com/rockfactory/satisfactory-logistics/main/data/docs-en.json
@@ -128,8 +128,23 @@ for (const c of [...(porClasse.FGBuildableGeneratorFuel ?? []), ...(porClasse.FG
   if (fuels.length) geradores[c.ClassName] = { id: c.ClassName, name: c.mDisplayName, power: mw, fuels };
 }
 
+// Energia gasta (MW a 100 %; o jogo eleva pelo clock com mPowerConsumptionExponent, 1,321929): prédios de produção e
+// extratores. Os de energia variável (Particle Accelerator, Converter, Quantum Encoder) gastam por receita, em média
+// mVariablePowerConsumptionConstant + mVariablePowerConsumptionFactor / 2.
+const gasto = {};
+for (const lista of Object.values(porClasse)) for (const c of lista) if (c.mPowerConsumption !== undefined) gasto[c.ClassName] = arred(Number(c.mPowerConsumption));
+const variavel = new Set((porClasse.FGBuildableManufacturerVariablePower ?? []).map(c => c.ClassName));
+const gastoReceita = {};
+for (const c of porClasse.FGRecipe ?? []) {
+  const em = [...(c.mProducedIn ?? '').matchAll(/\.(Build_\w+)/g)].map(m => m[1]).find(b => variavel.has(b));
+  if (em) gastoReceita[c.ClassName] = arred(Number(c.mVariablePowerConsumptionConstant) + Number(c.mVariablePowerConsumptionFactor) / 2);
+}
+
 if (soGeradores) {
   const atual = JSON.parse(readFileSync(saida, 'utf8'));
+  for (const [id, b] of Object.entries(atual.buildings)) if (gasto[id] !== undefined) b.power = gasto[id];
+  for (const [id, x] of Object.entries(atual.extractors)) if (gasto[id] !== undefined) x.power = gasto[id];
+  for (const [id, r] of Object.entries(atual.recipes)) if (gastoReceita[id] !== undefined) r.power = gastoReceita[id];
   for (const g of Object.values(geradores)) g.fuels = g.fuels.filter(f => atual.items[f.item] && (!f.waste || atual.items[f.waste.item]));
   atual.generators = ordenar(geradores);
   writeFileSync(saida, JSON.stringify(ordenar(atual), (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? ordenar(v) : v), 1) + '\n');
