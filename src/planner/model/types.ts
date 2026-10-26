@@ -15,7 +15,6 @@ export interface Link { id: string; item: ItemId; from: StageId; to: StageId }
 export type Rot = 0 | 1 | 2 | 3;
 // Metros, canto superior esquerdo do bloco já girado, no mundo; x/y múltiplos de 8.
 export interface MapPlace { x: number; y: number; rot: Rot; gapRow?: number; gapMachine?: number }
-export interface PortWarning { item: ItemId; side: Side; rowRate: number; tier: string; cap: number; fixTier: string | null; fixPerRow: number }
 
 // Estado v2 (fase 3): a fábrica em blocos.
 export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'sink' | 'container' | 'export';

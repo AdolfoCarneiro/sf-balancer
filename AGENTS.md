@@ -152,4 +152,4 @@ O backlog combinado (prioridades, bugs visuais anotados e ideias futuras) fica e
 
 Importar o `.sfmd` do Satisfactory Modeler (JSON só com o grafo e as receitas, sem taxas; o builder já conhece as receitas, falta um arquivo de exemplo), vários itens por etapa no Balancer.
 
-Já feito: cenários salvos e link compartilhável (`#s=` com o estado em base64url, lido por `decodeShare`, que valida tudo), botão que abre issue no GitHub com o link do cenário, modo fluido, e o builder com receitas e cadeia (fases 1–3).
+Já feito: cenários salvos e link compartilhável (`#s=` com o estado em base64url, lido por `decodeShare`, que valida tudo), botão que abre issue no GitHub com o link do cenário, modo fluido, e o builder com receitas e cadeia (fases 1–4).

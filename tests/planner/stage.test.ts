@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { GameData, RecipeBlock } from '../../src/planner/model/types.ts';
-import { perMachine, stageTotals, suggestedPerRow, stageRows, portTier, portWarnings, stageArea, tierKey } from '../../src/planner/model/stage.ts';
+import { perMachine, stageTotals, suggestedPerRow, stageRows, portTier, stageArea, tierKey } from '../../src/planner/model/stage.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
 import { solveFactory } from '../../src/planner/model/solve.ts';
 import { solvedStage } from '../../src/planner/model/solved.ts';
-import { stagePieces } from '../../src/planner/model/layout.ts';
+import { arrange, stagePieces } from '../../src/planner/model/layout.ts';
+const overs = (s: Parameters<typeof arrange>[0]) => arrange(s, data, undefined).warnings;
 
 const data = game as GameData;
 const ex = exampleFactory(data), flow = solveFactory(ex, data);
@@ -21,16 +22,16 @@ test('etapa: Foundry sugere 8; com 12 por linha a saída vira Mk5 sozinha', () =
   assert.equal(suggestedPerRow(s2, data), 8);
   assert.deepEqual(stageRows(s2, data), [12, 12, 12, 12, 12]);
   assert.equal(portTier(s2, data, 'Desc_SteelIngot_C', 'outs'), 'Mk5');
-  assert.deepEqual(portWarnings(s2, data), []);
+  assert.deepEqual(overs(s2), []);
 });
 test('etapa: tier escolhido que estoura vira aviso com as duas saídas', () => {
-  const w = portWarnings({ ...s2, tiers: { 'out:Desc_SteelIngot_C': 'Mk4' } }, data);
-  assert.deepEqual(w, [{ item: 'Desc_SteelIngot_C', side: 'outs', rowRate: 720, tier: 'Mk4', cap: 480, fixTier: 'Mk5', fixPerRow: 8 }]);
+  const w = overs({ ...s2, tiers: { 'out:Desc_SteelIngot_C': 'Mk4' } });
+  assert.deepEqual(w, [{ kind: 'over', side: 'out', item: 'Desc_SteelIngot_C', rate: 720, cap: 480, fixTier: 'Mk5', fixCut: 8 }]);
 });
 test('etapa: fileira acima de Mk6 não tem tier que resolva', () => {
   const s = { ...s2, perRow: 25 };
   assert.deepEqual(stageRows(s, data), [25, 25, 10]);
-  assert.deepEqual(portWarnings(s, data), [{ item: 'Desc_SteelIngot_C', side: 'outs', rowRate: 1500, tier: 'Mk6', cap: 1200, fixTier: null, fixPerRow: 20 }]);
+  assert.deepEqual(overs(s), [{ kind: 'over', side: 'out', item: 'Desc_SteelIngot_C', rate: 1500, cap: 1200, fixTier: null, fixCut: 20 }]);
 });
 test('etapa: peças da Foundry 110 Splitters e 55 Mergers; a água da Refinery não conta', () => {
   assert.deepEqual(stagePieces(s2, data), { splitters: 110, mergers: 55, lifts: 0 });
@@ -57,6 +58,6 @@ test('etapa: tier por lado; o da entrada não vale para a saída', () => {
   const s = { ...cell, machines: 30, perRow: 30, tiers: { [tierKey('ins', ACID)]: 'Mk1' } };
   assert.equal(portTier(s, data, ACID, 'ins'), 'Mk1');
   assert.equal(portTier(s, data, ACID, 'outs'), 'Mk2');
-  const w = portWarnings(s, data).filter(x => x.item === ACID);
-  assert.deepEqual(w.map(x => [x.side, x.rowRate, x.tier]), [['ins', 1200, 'Mk1']]);
+  const w = overs(s).filter(x => x.kind === 'over' && x.item === ACID);
+  assert.deepEqual(w.map(x => x.kind === 'over' && [x.side, x.rate, x.cap]), [['in', 1200, 300]]);
 });

@@ -475,6 +475,5 @@ export default {
   plLegChipPipe: 'Tubería', plLegChipPipeD: 'Conexión de fluido: tuberías y Junctions, sin balanceador.',
   plLegChipShort: 'Cinta roja', plLegChipShortD: 'Esta conexión no da abasto con lo que pide el otro extremo.',
   plLegLift: 'Conveyor Lift', plLegLiftD: 'La cinta baja (flecha hacia abajo) o sube (flecha hacia arriba) a otro piso. En la planta, un cuadrado de 2 m del color del ítem.',
-  plLegStripIn: 'cinta de entrada', plLegStripMachine: 'cuadrado = una máquina', plLegStripOut: 'cinta de salida', plLegStripMore: '+ N filas iguales',
   plCredit: 'Iconos y datos de Satisfactory © Coffee Stain Studios. SF Balancer es una herramienta no oficial hecha por fans.',
 };

@@ -475,6 +475,5 @@ export default {
   plLegChipPipe: 'Cano', plLegChipPipeD: 'Ligação de fluido: canos e Junctions, sem balancer.',
   plLegChipShort: 'Esteira vermelha', plLegChipShortD: 'Essa ligação não dá conta do que a ponta de lá pede.',
   plLegLift: 'Conveyor Lift', plLegLiftD: 'A esteira desce (seta para baixo) ou sobe (seta para cima) para outro andar. Na planta, um quadrado de 2 m na cor do item.',
-  plLegStripIn: 'esteira de entrada', plLegStripMachine: 'quadrado = uma máquina', plLegStripOut: 'esteira de saída', plLegStripMore: '+ N fileiras iguais',
   plCredit: 'Ícones e dados do Satisfactory © Coffee Stain Studios. O SF Balancer é uma ferramenta de fã, não oficial.',
 };

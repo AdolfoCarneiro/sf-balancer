@@ -98,10 +98,11 @@ export function warningFixes(w: LayoutWarning, stage: Stage, arr: Arrangement): 
       else if (line?.fluid && !w.fixTier && arr.kind !== 'center') out.push({ kind: 'perRow', n: w.fixCut, action: { type: 'setPerRow', id, perRow: w.fixCut } });
       return out;
     }
-    case 'centerEnd': return [{ kind: 'down', action: set(setBelt(lay, tierKey(lay?.invert ? 'ins' : 'outs', w.item), { exit: 'down' })) }];
+    // Descer é o padrão da compartilhada: limpa a saída (como o "Sai por" no padrão).
+    case 'centerEnd': return [{ kind: 'down', action: set(setBelt(lay, tierKey(lay?.invert ? 'ins' : 'outs', w.item), { exit: null })) }];
     case 'cutPipe': return [{ kind: 'uncut', action: set(setBelt(setBelt(lay, `in:${w.item}`, { cut: null }) ?? undefined, `out:${w.item}`, { cut: null })) }];
     case 'badJoin': return lay?.joins?.includes(w.key) ? [{ kind: 'unjoin', action: set(toggleJoin(lay, w.key)) }] : [];
-    case 'merger3': return [];
+    case 'merger3': return lay?.joins?.includes(w.key) ? [{ kind: 'unjoin', action: set(toggleJoin(lay, w.key)) }] : [];
   }
 }
 

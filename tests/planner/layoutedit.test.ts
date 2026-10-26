@@ -106,13 +106,22 @@ test('avisos → consertos: tier e corte; cano sem tier reduz por fileira (fora 
   assert.deepEqual(cw[0].f, []);
   const end: Stage = { ...st(42), layout: { kind: 'center', belts: { [INGOT]: { exit: 'end' } } } };
   assert.deepEqual(fx(end).find(x => x.w.kind === 'centerEnd')!.f,
-    [{ kind: 'down', action: { type: 'setLayout', id: 's', layout: { kind: 'center', belts: { [INGOT]: { exit: 'down' } } } } }]);
+    [{ kind: 'down', action: { type: 'setLayout', id: 's', layout: { kind: 'center' } } }]);
+  // Com corte salvo, o corte fica e a saída volta ao padrão (null, como o "Sai por").
+  const endCut: Stage = { ...st(42), layout: { kind: 'center', belts: { [INGOT]: { exit: 'end', cut: 6 } } } };
+  assert.deepEqual(fx(endCut).find(x => x.w.kind === 'centerEnd')!.f.map(f => f.action),
+    [{ type: 'setLayout', id: 's', layout: { kind: 'center', belts: { [INGOT]: { cut: 6 } } } }]);
   const pipe: Stage = { ...st(42), layout: { kind: 'simple', belts: { [`in:${WATER}`]: { cut: 3, exit: 'down' } } } };
   assert.deepEqual(fx(pipe).find(x => x.w.kind === 'cutPipe')!.f.map(f => f.action),
     [{ type: 'setLayout', id: 's', layout: { kind: 'simple', belts: { [`in:${WATER}`]: { exit: 'down' } } } }]);
   const bj: Stage = { ...st(42), layout: { kind: 'simple', joins: [`${INGOT}@0`] } };
   assert.deepEqual(fx(bj).find(x => x.w.kind === 'badJoin')!.f.map(f => f.kind), ['unjoin']);
-  assert.deepEqual(warningFixes({ kind: 'merger3', item: 'x' }, bj, arrange(bj, data, bj.layout)), []);
+  assert.deepEqual(warningFixes({ kind: 'merger3', item: 'x', key: 'out:x@5' }, bj, arrange(bj, data, bj.layout)), []);
+  // Juntar a 1 com a 2 quando a 1 já divide com a 0: o conserto tira a junção que sobra.
+  const m3: Stage = { ...st(9), perRow: 3, layout: { kind: 'simple', rows: { 1: { flip: true } }, joins: [`${INGOT}@0`, `${INGOT}@1`] } };
+  const w3 = fx(m3).find(x => x.w.kind === 'merger3')!;
+  assert.deepEqual(w3.w, { kind: 'merger3', item: INGOT.slice(4), key: `${INGOT}@1` });
+  assert.deepEqual(w3.f, [{ kind: 'unjoin', action: { type: 'setLayout', id: 's', layout: { kind: 'simple', rows: { 1: { flip: true } }, joins: [`${INGOT}@0`] } } }]);
 });
 
 test('um gesto = um passo do desfazer', () => {

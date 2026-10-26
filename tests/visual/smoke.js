@@ -210,7 +210,9 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   await waitFor(() => Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}')).length === 4 && Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers'))).every(v => v === false), null, 'as quatro camadas desligadas');
   // Chip escondido não pega o clique: o mini painel não abre.
   const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);
-  if (ch) { await pg.mouse.click(b.x + ch.x, b.y + ch.y); must(await pg.locator('.pl-chip-pop').count() === 0, 'o chip escondido abriu o mini painel'); }
+  must(ch, 'sem chip na vista para conferir o clique escondido');
+  await pg.mouse.click(b.x + ch.x, b.y + ch.y);
+  must(await pg.locator('.pl-chip-pop').count() === 0, 'o chip escondido abriu o mini painel');
   if (!await pg.locator('.pl-layers-pop').count()) await pg.locator('.pl-layers-btn').click();
   for (const c of await pg.locator('.pl-layers-pop input[type=checkbox]').all()) await c.check();
   await pg.waitForTimeout(150);

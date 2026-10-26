@@ -475,6 +475,5 @@ export default {
   plLegChipPipe: 'Pipe', plLegChipPipeD: 'Fluid connection: pipes and Junctions, no balancer.',
   plLegChipShort: 'Red belt', plLegChipShortD: 'This connection cannot carry what the far end asks for.',
   plLegLift: 'Conveyor Lift', plLegLiftD: 'The belt goes down (arrow down) or up (arrow up) to another floor. In the plant view, a 2 m square in the item color.',
-  plLegStripIn: 'input belt', plLegStripMachine: 'square = one machine', plLegStripOut: 'output belt', plLegStripMore: '+ N identical rows',
   plCredit: 'Satisfactory icons and game data © Coffee Stain Studios. SF Balancer is an unofficial fan tool.',
 };

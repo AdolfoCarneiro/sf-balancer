@@ -60,26 +60,6 @@ function LiftSvg({ th }: { th: MapTheme }) {
   return <svg width="56" height="28" viewBox="0 0 56 28" aria-hidden="true">{lift(2, 1)}{lift(32, -1)}</svg>;
 }
 
-// Um cartão pequeno anotado: barra de entrada em cima, um quadrado por máquina, barra de saída embaixo, "+ N fileiras".
-function StripSvg() {
-  const note = { fontSize: 11, fill: 'var(--ink-mid)', fontFamily: 'var(--body)' } as const;
-  return (
-    <svg className="pl-leg-strip" viewBox="0 0 330 120" role="img" aria-label={`${t('plLegStripIn')}, ${t('plLegStripMachine')}, ${t('plLegStripOut')}`}>
-      <rect x="1" y="1" width="150" height="104" fill="var(--plate-2)" stroke="var(--line)" />
-      <rect x="10" y="12" width="132" height="6" fill="var(--ficsit)" />
-      {[0, 1, 2, 3, 4, 5].map(i => <rect key={i} x={10 + i * 22} y="24" width="18" height="18" fill="var(--ink)" opacity=".85" />)}
-      <rect x="10" y="46" width="132" height="6" fill="var(--holo)" />
-      <rect x="10" y="62" width="132" height="6" fill="var(--ficsit)" opacity=".5" />
-      {[0, 1, 2, 3, 4, 5].map(i => <rect key={i} x={10 + i * 22} y="74" width="18" height="18" fill="var(--ink)" opacity=".5" />)}
-      <text x="10" y="102" fontSize="11" fill="var(--ink-soft)" fontFamily="var(--display)" fontWeight="600">{t('plLegStripMore')}</text>
-      <g stroke="var(--ink-dim)" strokeWidth="1"><line x1="152" y1="15" x2="170" y2="15" /><line x1="124" y1="33" x2="170" y2="33" /><line x1="152" y1="49" x2="170" y2="49" /></g>
-      <text x="174" y="19" {...note}>{t('plLegStripIn')}</text>
-      <text x="174" y="37" {...note}>{t('plLegStripMachine')}</text>
-      <text x="174" y="53" {...note}>{t('plLegStripOut')}</text>
-    </svg>
-  );
-}
-
 function Row({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return <li><span className="pl-leg-ic">{icon}</span><span><b>{title}</b><br /><span className="pl-leg-d">{desc}</span></span></li>;
 }
@@ -131,7 +111,6 @@ export function Legend() {
             <ul>
               <Row icon={<LiftSvg th={th} />} title={t('plLegLift')} desc={t('plLegLiftD')} />
             </ul>
-            <StripSvg />
           </div>
         </div>
       )}

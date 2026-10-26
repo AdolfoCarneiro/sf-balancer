@@ -1,5 +1,5 @@
 import { BELTS, PIPES } from '../../logic/belts.js';
-import type { GameData, Item, ItemId, PortWarning, Side, Stage, Flow } from './types.ts';
+import type { GameData, Item, ItemId, Side, Stage, Flow } from './types.ts';
 
 const E = 1e-9;
 const floorE = (x: number) => Math.floor(x + E);
@@ -69,20 +69,6 @@ export function portTier(stage: Stage, data: GameData, item: ItemId, side: Side)
   const from = list.findIndex(t => t.id === defaultTier(it));
   const cands = list.slice(Math.max(0, from));
   return (cands.find(t => t.cap >= rate - E) ?? cands[cands.length - 1]).id;
-}
-
-export function portWarnings(stage: Stage, data: GameData): PortWarning[] {
-  const out: PortWarning[] = [];
-  for (const p of ports(stage, data)) {
-    const it = data.items[p.item];
-    const pm = perMachine(stage, data, p.item, p.side);
-    const rowRate = maxRow(stage, data) * pm;
-    const tier = portTier(stage, data, p.item, p.side);
-    const cap = capOf(it, tier);
-    if (rowRate <= cap + E) continue;
-    out.push({ item: p.item, side: p.side, rowRate, tier, cap, fixTier: tiersOf(it).find(t => t.cap >= rowRate - E)?.id ?? null, fixPerRow: floorE(cap / pm) });
-  }
-  return out;
 }
 
 // As peças da etapa saem do arranjo (stagePieces em layout.ts).
