@@ -330,3 +330,25 @@ select.pl-field { width: auto; }
   .pl-bal-probs { margin-left: 0; width: 100%; }
   .pl-bal-pb { flex: 1; }
 }
+
+/* Dica de primeiro uso, convite da fábrica vazia e Legenda (ainda sem lugar no mapa: a tarefa de montagem posiciona). */
+.pl-hint { position: absolute; left: 12px; bottom: 12px; max-width: min(520px, calc(100% - 24px)); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; background: rgba(10, 27, 45, .94); border: 1px solid var(--line); z-index: 5; }
+.pl-hint p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-mid); }
+.pl-hint button { flex: none; min-height: 44px; padding: 0 16px; font: 600 14px var(--body); color: var(--paper); background: var(--ficsit); border: 0; cursor: pointer; }
+.pl-hint button:hover { filter: brightness(1.1); }
+.pl-hint button:focus-visible, .pl-leg-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+.pl-invite { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 36px; text-align: center; border: 2px dashed var(--line); color: var(--ink-mid); pointer-events: none; }
+.pl-invite b { font: 600 18px var(--display); color: var(--ink); }
+.pl-invite span { font-size: 13px; color: var(--ink-dim); }
+.pl-leg-btn { min-width: 44px; min-height: 44px; padding: 0 14px; font: 600 14px var(--body); color: var(--ink); background: var(--plate-2); border: 1px solid var(--line); cursor: pointer; }
+.pl-leg-btn:hover { border-color: var(--ink-dim); }
+.pl-leg-back { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(5, 12, 22, .66); }
+.pl-leg { width: min(560px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 18px; padding: 16px 20px 20px; background: var(--paper); border: 1px solid var(--line); border-top: 2px solid var(--ficsit); }
+.pl-leg:focus { outline: none; }
+.pl-leg header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pl-leg h2 { margin: 0; font: 700 20px var(--display); }
+.pl-leg ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pl-leg li { display: grid; grid-template-columns: 80px 1fr; gap: 14px; align-items: center; font-size: 14px; }
+.pl-leg-ic { display: flex; justify-content: center; }
+.pl-leg-d { color: var(--ink-dim); font-size: 13px; }
+.pl-leg-strip { width: 100%; max-width: 360px; height: auto; align-self: center; }
