@@ -3,9 +3,10 @@
 import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { BALANCER_PATH, type Lang } from '../lang.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
+import { arrange, type ArrLine } from './layout.ts';
 import { solvedStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
-import type { Block, Factory, GameData, ItemId, Link, StageId } from './types.ts';
+import type { Block, Factory, GameData, ItemId, Link, RecipeBlock, StageId } from './types.ts';
 import { PURITY } from './factory.ts';
 import { countPieces, type MeioGeo, type PieceCount } from './map/geo.ts';
 
@@ -13,9 +14,10 @@ export interface Meio { id: string; item: ItemId; producers: StageId[]; consumer
 
 export type Policy = 'represar' | 'sink' | 'extra';
 export interface MeioGroup { driver: 'clock'; count: number; clock: number; nominal: number; per: number }
+// owners: o bloco de cada grupo (um bloco com arranjo pode dar vários grupos, um por tamanho de linha).
 export interface MeioInput {
   srcGroups: MeioGroup[]; dstGroups: MeioGroup[]; cap: number; tier: string; medium: 'item' | 'fluid';
-  policy: Policy; excess: 'represar'; conv: 'k-1';
+  policy: Policy; excess: 'represar'; conv: 'k-1'; owners: { src: StageId[]; dst: StageId[] };
 }
 
 // Só o que o planner lê do resultado do computePlan.
@@ -33,6 +35,8 @@ export interface Plan {
   // direct: o grupo só leva a blocos de sobra (cada fileira reta até eles, sem computePlan).
   // unbounded: algum bloco do grupo está sem limite (ou ainda sem fluxo): sem números, sem computePlan.
   direct?: true; unbounded?: true;
+  // O bloco de cada grupo (comp.gi); ausente = um grupo por bloco, na ordem do meio.
+  owners?: { src: StageId[]; dst: StageId[] };
 }
 
 export interface MeioSummary {
@@ -92,53 +96,76 @@ export const meioUnbounded = (meio: Meio, flow: FlowResult): boolean =>
 export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData): MeioInput {
   const it = d.items[meio.item];
   const consumers = planMeio(meio, f).consumers;
+  // Linhas do item no arranjo do bloco (null sem arranjo: as contas de hoje, por perRowOf). Uma vez por bloco e lado.
+  const memo = new Map<string, ArrLine[] | null>();
+  const arranged = (b: RecipeBlock, id: StageId, side: 'ins' | 'outs'): ArrLine[] | null => {
+    const k = `${id}|${side}`;
+    if (!memo.has(k)) {
+      const s = side === 'ins' ? 'in' : 'out';
+      memo.set(k, b.layout ? arrange(solvedStage(b, flow.blocks[id]), d, b.layout).lines.filter(l => l.side === s && l.item === meio.item) : null);
+    }
+    return memo.get(k)!;
+  };
+  // Um grupo por tamanho de linha k (na ordem em que aparecem), com count = n·k, per = k e o mesmo clock.
+  const bySize = (lines: ArrLine[], g: Omit<MeioGroup, 'count' | 'per'>): MeioGroup[] => {
+    const n = new Map<number, number>();
+    for (const l of lines) if (l.machines > 0) n.set(l.machines, (n.get(l.machines) ?? 0) + 1);
+    return [...n].map(([k, c]) => ({ ...g, count: c * k, per: k }));
+  };
   // A esteira (ou cano) do meio é a maior entre as portas que ele liga; origem e sobra entram com o tier padrão.
   let tier = defaultTier(it), cap = capOf(it, tier);
   const sides = [...meio.producers.map(id => [id, 'outs'] as const), ...consumers.map(id => [id, 'ins'] as const)];
   for (const [id, side] of sides) {
     const b = blockOf(f, id);
     if (b.kind !== 'recipe') continue;
-    const tr = portTier(solvedStage(b, flow.blocks[id]), d, meio.item, side), c = capOf(it, tr);
+    // Com arranjo, o tier das linhas dele (um por porta); sem, o da porta pela fileira simples de hoje.
+    const lines = arranged(b, id, side);
+    const tr = lines ? lines[0]?.tier ?? defaultTier(it) : portTier(solvedStage(b, flow.blocks[id]), d, meio.item, side);
+    const c = capOf(it, tr);
     if (c > cap) { cap = c; tier = tr; }
   }
   // Produtora: a oferta real (máquinas resolvidas no clock de funcionamento).
-  const src = (id: StageId): MeioGroup => {
+  const src = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id], x = finite(bf?.x);
     switch (b.kind) {
       case 'recipe': {
-        const st = solvedStage(b, bf);
-        return { driver: 'clock', count: st.machines, clock: 100 * x / st.machines, nominal: perMinOf(b.recipe, d, meio.item, 'outs'), per: perRowOf(st, d) };
+        const st = solvedStage(b, bf), lines = arranged(b, id, 'outs');
+        const g = { driver: 'clock' as const, clock: 100 * x / st.machines, nominal: perMinOf(b.recipe, d, meio.item, 'outs') };
+        return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
       }
       case 'miner': {
         // Linhas iguais, cada uma dentro da esteira.
         const n = Math.max(1, Math.ceil(x / cap - E));
-        return { driver: 'clock', count: n, clock: 100, nominal: x / n, per: 1 };
+        return [{ driver: 'clock', count: n, clock: 100, nominal: x / n, per: 1 }];
       }
       case 'extractor': {
         const e = d.extractors[b.building], each = e.perMin * (e.purity ? PURITY[b.purity] : 1);
         const n = Math.max(1, finite(bf?.extractors));
-        return { driver: 'clock', count: n, clock: 100 * x / (n * each), nominal: each, per: Math.max(1, Math.floor(cap / each + E)) };
+        return [{ driver: 'clock', count: n, clock: 100 * x / (n * each), nominal: each, per: Math.max(1, Math.floor(cap / each + E)) }];
       }
       default: throw new Error(`bloco ${id} não produz`);
     }
   };
   // Consumidora: o que ela quer (o que chega mais o que falta), sempre finito; a falta aparece como "short" no meio.
-  const dst = (id: StageId): MeioGroup => {
+  const dst = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id];
     if (b.kind !== 'recipe') throw new Error(`bloco ${id} não consome pelo meio`);
     const st = solvedStage(b, bf), nominal = perMinOf(b.recipe, d, meio.item, 'ins');
     const port = bf?.ins.find(p => p.item === meio.item);
     const want = finite(port?.rate) + finite(port?.deficit);
-    return { driver: 'clock', count: st.machines, clock: 100 * want / (nominal * st.machines), nominal, per: perRowOf(st, d) };
+    const g = { driver: 'clock' as const, clock: 100 * want / (nominal * st.machines), nominal }, lines = arranged(b, id, 'ins');
+    return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
   };
   // Bloco de sobra no grupo: a sobra sai numa linha extra até ele; coleta numa produtora: pro sink; senão represa.
   // Fluido não vai pro sink: a sobra represa.
   const outlet = meio.consumers.length > consumers.length;
   const collect = meio.producers.some(id => { const b = blockOf(f, id); return b.kind === 'recipe' && (b.collect ?? []).includes(meio.item); });
   const policy: Policy = outlet ? 'extra' : collect && !it.fluid ? 'sink' : 'represar';
+  const srcs = meio.producers.map(id => ({ id, gs: src(id) })), dsts = consumers.map(id => ({ id, gs: dst(id) }));
   return {
-    srcGroups: meio.producers.map(src), dstGroups: consumers.map(dst),
+    srcGroups: srcs.flatMap(x => x.gs), dstGroups: dsts.flatMap(x => x.gs),
     cap, tier, medium: it.fluid ? 'fluid' : 'item', policy, excess: 'represar', conv: 'k-1',
+    owners: { src: srcs.flatMap(x => x.gs.map(() => x.id)), dst: dsts.flatMap(x => x.gs.map(() => x.id)) },
   };
 }
 
@@ -147,8 +174,8 @@ export const MEIO_MAX_LINES = 120;
 
 export function meioPlan(meio: Meio, f: Factory, flow: FlowResult, d: GameData): Plan {
   const inp = meioInput(meio, f, flow, d);
-  const fluid = inp.medium === 'fluid';
-  const empty = { cap: inp.cap, policy: inp.policy, fluid, alternatives: [], warnings: [] };
+  const fluid = inp.medium === 'fluid', owners = inp.owners;
+  const empty = { cap: inp.cap, policy: inp.policy, fluid, alternatives: [], warnings: [], owners };
   if (meioUnbounded(meio, flow)) return { ...empty, supply: 0, demand: 0, src: { lines: [] }, dst: { lines: [] }, unbounded: true };
   // buildLines é barato (linear); só o computePlan explode com muitas linhas.
   const src = buildLines(inp.srcGroups, inp.cap, '', fluid);
@@ -157,7 +184,7 @@ export function meioPlan(meio: Meio, f: Factory, flow: FlowResult, d: GameData):
   if (src.lines.length > MEIO_MAX_LINES || dst.lines.length > MEIO_MAX_LINES) {
     return { ...empty, supply: src.total, demand: dst.total, src, dst, tooLarge: { src: src.lines.length, dst: dst.lines.length } } as Plan;
   }
-  return computePlan(inp) as unknown as Plan;
+  return { ...(computePlan(inp) as unknown as Plan), owners };
 }
 
 // A montagem escolhida se ainda existe, senão a primeira; null quando o meio não tem alternativas.
@@ -188,13 +215,14 @@ export function meioSummary(plan: Plan, key?: string, geos?: Record<string, Meio
   };
 }
 
-export const lineOwner = (meio: Meio, side: 'src' | 'dst', line: PlanLine): StageId =>
-  (side === 'src' ? meio.producers : meio.consumers)[line.comp[0].gi];
+// plan: com os donos dos grupos (meioPlan); sem ele, um grupo por bloco.
+export const lineOwner = (meio: Meio, side: 'src' | 'dst', line: PlanLine, plan?: Pick<Plan, 'owners'>): StageId =>
+  (plan?.owners?.[side] ?? (side === 'src' ? meio.producers : meio.consumers))[line.comp[0].gi];
 
 // Link da página atual com este meio; números em inglês (a página converte ao abrir). selectedKey: a montagem que a
 // página abre escolhida (a mesma chave do computePlan; se não existir lá, ela abre a primeira).
-export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData, selectedKey?: string | null): string {
-  const inp = meioInput(meio, f, flow, d);
+// inp: o meioInput já calculado (o cacheKey reaproveita).
+export function meioHash(meio: Meio, f: Factory, flow: FlowResult, d: GameData, selectedKey?: string | null, inp = meioInput(meio, f, flow, d)): string {
   const row = (g: MeioGroup) => ({ driver: g.driver, count: String(g.count), clock: String(g.clock), nominal: String(g.nominal), total: '', per: String(g.per) });
   const fluid = inp.medium === 'fluid';
   return '#s=' + encodeShare({

@@ -7,10 +7,10 @@ import type { Anchor, BeltPath, BlockGeo, Piece } from './map/geo.ts';
 import { FOUNDATION, SINK } from './map/sizes.ts';
 
 // Máquinas resolvidas (sem fluxo, parado ou sem limite: 1); clock do bloco, para as fileiras e os tiers não pularem
-// com o fluxo (o clock de funcionamento fica com o meio).
+// com o fluxo (o clock de funcionamento fica com o meio). O arranjo do bloco vai junto.
 export function solvedStage(b: RecipeBlock, bf: BlockFlow | undefined): Stage {
   const machines = Math.min(MAX_MACHINES, Math.max(1, bf?.machines ?? 1));
-  return { id: b.id, recipe: b.recipe, machines, clock: b.clock, perRow: b.perRow, tiers: b.tiers };
+  return { id: b.id, recipe: b.recipe, machines, clock: b.clock, perRow: b.perRow, tiers: b.tiers, ...(b.layout ? { layout: b.layout } : {}) };
 }
 
 // Blocos e máquinas de receita resolvidas, mais os extratores.

@@ -1,6 +1,6 @@
 // O resultado de um meio pronto para o mapa e para o cache: plano leve (clonável pelo postMessage) e a geometria de cada montagem.
 import { getLang } from '../../i18n/index.js';
-import { chosenAlt, meioHash, meioPlan, meioUnbounded, planMeio, type Meio, type Plan, type PlanAlt, type PlanLine } from './meio.ts';
+import { chosenAlt, meioHash, meioInput, meioPlan, meioUnbounded, planMeio, type Meio, type Plan, type PlanAlt, type PlanLine } from './meio.ts';
 import { directGeo, meioGeo } from './map/meiogeo.ts';
 import type { MeioGeo } from './map/geo.ts';
 import { PIECE_GAP, pieceGap } from './map/sizes.ts';
@@ -14,9 +14,13 @@ export interface MeioResult { id: string; key: string; plan: Plan; geos: Record<
 // O caseLabel e os avisos vêm no idioma do cálculo; a posição no mapa não entra (o meioHash só lê os blocos do grupo
 // e o fluxo deles). O id do meio entra também: dois meios iguais em blocos diferentes têm o mesmo hash, mas âncoras
 // de blocos diferentes. O vão entre peças do meio entra quando não é o padrão (muda a geometria); sem limite, um `|u`.
+// Bloco com arranjo pode dar vários grupos: o hash não diz de quem é cada um, então os donos entram (só fora do
+// padrão de um grupo por bloco).
 export const cacheKey = (meio: Meio, f: Factory, flow: FlowResult, d: GameData, lang: string): string => {
-  const gap = pieceGap(f);
-  return lang + '|' + meio.id + '|' + meioHash(meio, f, flow, d) + (gap !== PIECE_GAP ? `|gap${gap}` : '') + (meioUnbounded(meio, flow) ? '|u' : '');
+  const gap = pieceGap(f), inp = meioInput(meio, f, flow, d);
+  const own = inp.owners.src.length === meio.producers.length && inp.owners.dst.length === planMeio(meio, f).consumers.length
+    ? '' : `|o${inp.owners.src.join(',')}>${inp.owners.dst.join(',')}`;
+  return lang + '|' + meio.id + '|' + meioHash(meio, f, flow, d, null, inp) + own + (gap !== PIECE_GAP ? `|gap${gap}` : '') + (meioUnbounded(meio, flow) ? '|u' : '');
 };
 
 // Chave da geometria de um meio direto (sem montagens).
@@ -48,6 +52,7 @@ export function litePlan(plan: Plan): Plan {
     alternatives: plan.alternatives.map(liteAlt), warnings: plan.warnings.map(w => ({ level: w.level, text: w.text })),
     ...(plan.tooLarge ? { tooLarge: { src: plan.tooLarge.src, dst: plan.tooLarge.dst } } : {}),
     ...(plan.direct ? { direct: true } : {}), ...(plan.unbounded ? { unbounded: true } : {}),
+    ...(plan.owners ? { owners: { src: [...plan.owners.src], dst: [...plan.owners.dst] } } : {}),
   };
 }
 

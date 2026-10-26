@@ -34,7 +34,7 @@ function path(a: End, b: End): Pt[] {
 // gap: vão entre peças ligadas (Chain.mapGap); a grade anda de PIECE + gap.
 export function meioGeo(meio: Meio, plan: Plan, altKey: string, item: Item, gap = PIECE_GAP): MeioGeo {
   const fluid = item.fluid;
-  const owner = (side: 'src' | 'dst', id: number) => lineOwner(meio, side, (side === 'src' ? plan.src : plan.dst).lines[id] as PlanLine);
+  const owner = (side: 'src' | 'dst', id: number) => lineOwner(meio, side, (side === 'src' ? plan.src : plan.dst).lines[id] as PlanLine, plan);
   if (plan.tooLarge) return { w: 16, h: 8, pieces: [], belts: [], ins: [], outs: [], estimate: fluid, floors: 1, tooLarge: true };
   const alts = plan.alternatives as unknown as FullAlt[];
   const a = alts.find(x => x.key === altKey) ?? alts[0];
@@ -51,7 +51,7 @@ export function directGeo(meio: Meio, plan: Plan, item: Item, gap = PIECE_GAP): 
   const ins: Anchor[] = [], outs: Anchor[] = [], belts: BeltPath[] = [];
   plan.src.lines.forEach((line, k) => {
     const y = k * CELL + PIECE / 2;
-    ins.push({ x: 0, y, item: item.id, row: k, stage: lineOwner(meio, 'src', line) });
+    ins.push({ x: 0, y, item: item.id, row: k, stage: lineOwner(meio, 'src', line, plan) });
     outs.push({ x: w, y, item: item.id, row: k, extra: true });
     belts.push({ pts: [[0, y], [w, y]], item: item.id, rate: line.rate, role: 'extra', fluid: item.fluid });
   });

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Factory, GameData, RecipeBlock } from '../../src/planner/model/types.ts';
+import type { Factory, GameData, Layout, RecipeBlock } from '../../src/planner/model/types.ts';
+import { solvedStage } from '../../src/planner/model/solved.ts';
+import { arrange, arrangementLines } from '../../src/planner/model/layout.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
 import { meiosOf, setClock, setCollect, setLimits, setPerRow } from '../../src/planner/model/factory.ts';
 import { solveFactory } from '../../src/planner/model/solve.ts';
@@ -96,4 +98,63 @@ test('meio: acima de MEIO_MAX_LINES não chama o computePlan e volta rápido, co
   assert.equal(p.alternatives.length, 0); assert.ok(p.supply > 0 && p.demand === 2400);
   const ex = meioPlan(meioFor(f0, 'l1'), f0, solveFactory(f0, data), data);
   assert.equal(ex.tooLarge, undefined); assert.equal(meioSummary(ex).tooLarge, null);
+});
+
+// ---- O arranjo das fileiras nas ligações (fase 4) ----
+const withLayout = (f: Factory, id: string, layout: Layout): Factory =>
+  ({ ...f, blocks: f.blocks.map(b => (b.id === id ? { ...(b as RecipeBlock), layout } : b)) });
+const groupsOf = (inp: { srcGroups: unknown; dstGroups: unknown; cap: number; tier: string; policy: string }) =>
+  ({ srcGroups: inp.srcGroups, dstGroups: inp.dstGroups, cap: inp.cap, tier: inp.tier, policy: inp.policy });
+
+test('meio: sem arranjo, os grupos do exemplo são exatamente os de antes da fase 4', () => {
+  // Gravado do meioInput no commit 3f0dabc (antes do arranjo valer nas ligações).
+  const f = exampleFactory(data), flow = solveFactory(f, data);
+  const iron = meioInput(meioFor(f, 'l1'), f, flow, data), steel = meioInput(meioFor(f, 'l2'), f, flow, data);
+  assert.deepEqual(groupsOf(iron), {
+    srcGroups: [{ driver: 'clock', count: 42, clock: 87.9120879120879, nominal: 65, per: 7 }],
+    dstGroups: [{ driver: 'clock', count: 60, clock: 100, nominal: 40, per: 12 }], cap: 480, tier: 'Mk4', policy: 'represar',
+  });
+  assert.deepEqual(groupsOf(steel), {
+    srcGroups: [{ driver: 'clock', count: 60, clock: 100, nominal: 60, per: 12 }],
+    dstGroups: [{ driver: 'clock', count: 30, clock: 100, nominal: 60, per: 8 }, { driver: 'clock', count: 60, clock: 100, nominal: 30, per: 16 }],
+    cap: 780, tier: 'Mk5', policy: 'represar',
+  });
+  assert.deepEqual(iron.owners, { src: ['s1'], dst: ['s2'] });
+  assert.deepEqual(steel.owners, { src: ['s2'], dst: ['s3', 's4'] });
+});
+
+test('meio: refinaria em Mergers no meio entrega as linhas do arranjo (6 de 455), agrupadas por tamanho', () => {
+  const f = withLayout(comSobra(), 's1', { kind: 'center' }), flow = solveFactory(f, data);
+  const me = meioFor(f, 'l1'), inp = meioInput(me, f, flow, data);
+  assert.deepEqual(inp.srcGroups, [{ driver: 'clock', count: 42, clock: 100, nominal: 65, per: 7 }]);
+  assert.equal(inp.tier, 'Mk4');
+  const p = meioPlan(me, f, flow, data);
+  assert.deepEqual(p.src.lines.map(l => [l.machines, l.rate]), Array(6).fill([7, 455]));
+  // Corte 6: trechos de 6 e o resto (21 por par = 6, 6, 6, 3): dois grupos, o clock igual nos dois.
+  const g = withLayout(comSobra(), 's1', { kind: 'center', belts: { 'out:Desc_IronIngot_C': { cut: 6, exit: 'down' } } });
+  const gi = meioInput(meioFor(g, 'l1'), g, solveFactory(g, data), data);
+  assert.deepEqual(gi.srcGroups, [
+    { driver: 'clock', count: 36, clock: 100, nominal: 65, per: 6 }, { driver: 'clock', count: 6, clock: 100, nominal: 65, per: 3 },
+  ]);
+  assert.deepEqual(gi.owners.src, ['s1', 's1']);
+  const gp = meioPlan(meioFor(g, 'l1'), g, solveFactory(g, data), data);
+  assert.deepEqual(gp.src.lines.map(l => l.machines).sort((a, b) => b - a), [6, 6, 6, 6, 6, 6, 3, 3]);
+  assert.ok(gp.src.lines.every(l => lineOwner(meioFor(g, 'l1'), 'src', l, gp) === 's1'));
+});
+
+test('meio: fundição em Mergers no meio invertido recebe as linhas de entrada do arranjo; os donos seguem os grupos', () => {
+  const f = withLayout(comSobra(), 's2', { kind: 'center', invert: true }), flow = solveFactory(f, data);
+  const st = solvedStage(f.blocks[1] as RecipeBlock, flow.blocks.s2);
+  const lines = arrangementLines(arrange(st, data, st.layout), 'in', 'Desc_IronIngot_C');
+  const me = meioFor(f, 'l1'), inp = meioInput(me, f, flow, data), p = meioPlan(me, f, flow, data);
+  const sizes = [...new Set(lines)];
+  assert.deepEqual(inp.dstGroups.map(x => [x.count, x.per]), sizes.map(k => [k * lines.filter(n => n === k).length, k]));
+  assert.ok(sizes.length > 1, `linhas ${lines}`);
+  assert.deepEqual(p.dst.lines.map(l => l.machines).sort((a, b) => b - a), [...lines].sort((a, b) => b - a));
+  // O aço sai da fundição s2 em center (a saída por fileira): as consumidoras s3 e s4 continuam donas das linhas delas.
+  const h = withLayout(exampleFactory(data), 's3', { kind: 'center' }), hf = solveFactory(h, data);
+  const steel = meioFor(h, 'l2'), sp = meioPlan(steel, h, hf, data), si = meioInput(steel, h, hf, data);
+  assert.ok(si.owners.dst.length > 2, `donos ${si.owners.dst}`);
+  const mine = (id: string) => sp.dst.lines.filter(l => lineOwner(steel, 'dst', l, sp) === id).reduce((s, l) => s + l.machines, 0);
+  assert.equal(mine('s3'), hf.blocks.s3.machines); assert.equal(mine('s4'), hf.blocks.s4.machines);
 });

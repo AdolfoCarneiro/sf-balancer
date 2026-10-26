@@ -1,6 +1,6 @@
 // Arranjo das fileiras de um bloco: tipos, leitura segura do que vem salvo e o arranjo em si (arrange).
 import type { BeltEdit, GameData, ItemId, Layout, LayoutExit, LayoutKind, MapPlace, RowEdit, Side, Stage } from './types.ts';
-import { capOf, defaultTier, perMachine, stageArea, stageRows, suggestedPerRow, tierKey, tiersOf } from './stage.ts';
+import { capOf, defaultTier, perMachine, perRowOf, stageArea, stageRows, suggestedPerRow, tierKey, tiersOf } from './stage.ts';
 import { BELT, PIECE } from './map/sizes.ts';
 import type { Anchor, BeltPath, BlockGeo, Piece, Pt } from './map/geo.ts';
 
@@ -112,6 +112,16 @@ export function recommendedPerRow(stage: Stage, data: GameData, kind: LayoutKind
   return kind === 'center' ? Math.max(1, ...centerCounts(stage, data)) : suggestedPerRow(stage, data);
 }
 
+// Máquinas de cada fileira do modelo do bloco (sem montar o desenho); no center pode vir fileira com 0.
+const modelRows = (stage: Stage, data: GameData, kind: LayoutKind): number[] =>
+  (stage.machines > 0 ? (kind === 'center' ? centerCounts(stage, data) : stageRows(stage, data)) : []);
+
+// Quantas fileiras e até quantas máquinas por fileira, para os textos do mapa. Barato: sem montar o desenho.
+export function rowsSummary(stage: Stage, data: GameData): { rows: number; per: number } {
+  const kind = stage.layout?.kind ?? 'simple', rows = modelRows(stage, data, kind).filter(n => n > 0);
+  return { rows: rows.length, per: kind === 'center' ? Math.max(0, ...rows) : perRowOf(stage, data) };
+}
+
 // Máquinas de cada linha do lado/item, na ordem das fileiras.
 export function arrangementLines(a: Arrangement, side: 'in' | 'out', item: ItemId): number[] {
   return a.lines.filter(l => l.side === side && l.item === item).map(l => l.machines);
@@ -160,7 +170,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const b = data.buildings[recipe.building];
   const fluidOf = (item: ItemId) => data.items[item].fluid;
   const estimate = [...recipe.ins, ...recipe.outs].some(f => fluidOf(f.item));
-  const counts = stage.machines > 0 ? (center ? centerCounts(stage, data) : stageRows(stage, data)) : [];
+  const counts = modelRows(stage, data, kind);
   const pitch = b.w + gapMachine;
   const rowW = (n: number) => n * b.w + Math.max(0, n - 1) * gapMachine;
   const W = counts.reduce((m, n) => Math.max(m, rowW(n)), 0);
@@ -266,9 +276,9 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const count = { splitters: 0, mergers: 0, lifts: 0 };
   let shifted = false, y = 0, maxBottom = -Infinity;
   const machX = (rp: RowPlan, m: number) => (rp.mirror ? W - m * pitch - b.w : m * pitch) + rp.bx + rp.dx;
-  const lift = (a: Pt, exit: LayoutExit) => {
+  const lift = (a: Pt, exit: LayoutExit, item: ItemId) => {
     count.lifts++;
-    pieces.push({ kind: 'lift', x: a[0] - LIFT / 2, y: a[1] - LIFT / 2, w: LIFT, h: LIFT, ...(exit === 'up' ? { above: true } : {}) });
+    pieces.push({ kind: 'lift', x: a[0] - LIFT / 2, y: a[1] - LIFT / 2, w: LIFT, h: LIFT, item, ...(exit === 'up' ? { above: true } : {}) });
   };
 
   // A linha compartilhada de um par, numa faixa de Mergers (Splitters) em ly.
@@ -303,7 +313,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       const withPiece = pieceCols(sg, side);
       count[side === 'ins' ? 'splitters' : 'mergers'] += withPiece.length;
       for (const c of withPiece) perCol.set(c.ci, (perCol.get(c.ci) ?? 0) + 1);
-      if (exit !== 'end') lift(a, exit);
+      if (exit !== 'end') lift(a, exit, item);
     }
     // Coluna cortada no meio leva duas peças, uma de cada trecho, lado a lado.
     for (const [ci, k] of perCol) {
@@ -349,7 +359,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
         (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row, stage: stage.id });
         lines.push({ side: s, item, machines: sg.count, rate, rows: [row], exit, at: a, tier, cap, fluid });
         if (!fluid) count[side === 'ins' ? 'splitters' : 'mergers'] += Math.max(0, sg.count - 1);
-        if (exit !== 'end') lift(a, exit);
+        if (exit !== 'end') lift(a, exit, item);
       }
       if (h === PIECE) {
         for (let m = 0; m < n; m++) {
@@ -409,3 +419,6 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
 
   return { kind, rows, lines, pieces: count, area, warnings, geo: { w, h, pieces, belts, ins, outs, estimate } };
 }
+
+// Peças da etapa pelo arranjo do bloco: Splitters, Mergers (k−1 por linha) e Conveyor Lifts.
+export const stagePieces = (stage: Stage, data: GameData): Arrangement['pieces'] => arrange(stage, data, stage.layout).pieces;

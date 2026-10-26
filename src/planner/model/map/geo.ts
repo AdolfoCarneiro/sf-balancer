@@ -4,7 +4,8 @@ export type Pt = [number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
 export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | 'junction' | 'bp' | 'lift';   // lift: Conveyor Lift (desce; above = sobe)
 // above: num andar de cima (torre de vários andares); conta como peça, mas o mapa só desenha o chão.
-export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean }
+// item: o que passa pelo Conveyor Lift (a cor dele na Planta).
+export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean; item?: string }
 export type BeltRole = 'main' | 'donor' | 'loop' | 'sink' | 'extra' | 'over' | 'in' | 'out' | 'raw';
 export interface BeltPath { pts: Pt[]; item: ItemId; rate: number; role: BeltRole; fluid: boolean }
 export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean }  // extra: saída de linha extra do meio

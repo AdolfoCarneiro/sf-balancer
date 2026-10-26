@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { GameData, RecipeBlock } from '../../src/planner/model/types.ts';
-import { perMachine, stageTotals, suggestedPerRow, stageRows, portTier, portWarnings, stagePieces, stageArea, tierKey } from '../../src/planner/model/stage.ts';
+import { perMachine, stageTotals, suggestedPerRow, stageRows, portTier, portWarnings, stageArea, tierKey } from '../../src/planner/model/stage.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
 import { solveFactory } from '../../src/planner/model/solve.ts';
 import { solvedStage } from '../../src/planner/model/solved.ts';
+import { stagePieces } from '../../src/planner/model/layout.ts';
 
 const data = game as GameData;
 const ex = exampleFactory(data), flow = solveFactory(ex, data);
@@ -32,8 +33,8 @@ test('etapa: fileira acima de Mk6 não tem tier que resolva', () => {
   assert.deepEqual(portWarnings(s, data), [{ item: 'Desc_SteelIngot_C', side: 'outs', rowRate: 1500, tier: 'Mk6', cap: 1200, fixTier: null, fixPerRow: 20 }]);
 });
 test('etapa: peças da Foundry 110 Splitters e 55 Mergers; a água da Refinery não conta', () => {
-  assert.deepEqual(stagePieces(s2, data), { splitters: 110, mergers: 55 });
-  assert.deepEqual(stagePieces(s1, data), { splitters: 36, mergers: 36 });
+  assert.deepEqual(stagePieces(s2, data), { splitters: 110, mergers: 55, lifts: 0 });
+  assert.deepEqual(stagePieces(s1, data), { splitters: 36, mergers: 36, lifts: 0 });
 });
 test('etapa: fileiras incompletas e clock', () => {
   assert.deepEqual(stageRows(s3, data), [8, 8, 8, 6]);

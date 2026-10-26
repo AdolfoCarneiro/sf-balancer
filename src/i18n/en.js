@@ -381,6 +381,9 @@ export default {
   plRowsLines: (n, r) => (n === '1' ? `1 output of ${r}` : `${n} outputs of ${r}`),
   plRowsLinesLast: (n, r, last) => `${n} outputs of ${r}, the last one ${last}`,
   plRowsExitEnd: 'at the row end', plRowsOpen: 'Arrange rows',
+  plRowsModelBackToBack: 'Back to back', plRowsModelCenter: 'Mergers in the middle',
+  plRowsExitDown: 'go down by Conveyor Lift', plRowsExitUp: 'go up by Conveyor Lift',
+  plRowsLinesMix: list => `Outputs: ${list}`,
   plPortDeficit: r => `${r} short`, plPortSurplus: r => `+${r} spare`, plPortExit: r => `out ${r}`, plPortStalled: 'stalled: nowhere to go',
   plChipDirect: 'direct', plChipLines: (s, d) => `${s} → ${d}`, plChipSink: (s, d) => `${s} → ${d} + sink`,
   plChipPipe: (s, d) => (s === d ? 'pipe' : `pipe ${s} → ${d}`), plChipCalc: 'calculating…', plChipUnbounded: 'unbounded', plChipTooLarge: 'too large',
@@ -447,6 +450,7 @@ export default {
   plLegChipDirect: 'Direct', plLegChipDirectD: 'One source line into each row, with no parts in between.',
   plLegChipPipe: 'Pipe', plLegChipPipeD: 'Fluid connection: pipes and Junctions, no balancer.',
   plLegChipShort: 'Red belt', plLegChipShortD: 'This connection cannot carry what the far end asks for.',
+  plLegLift: 'Conveyor Lift', plLegLiftD: 'The belt goes down (arrow down) or up (arrow up) to another floor. In the plant view, a 2 m square in the item color.',
   plLegStripIn: 'input belt', plLegStripMachine: 'square = one machine', plLegStripOut: 'output belt', plLegStripMore: '+ N identical rows',
   plCredit: 'Satisfactory icons and game data © Coffee Stain Studios. SF Balancer is an unofficial fan tool.',
 };

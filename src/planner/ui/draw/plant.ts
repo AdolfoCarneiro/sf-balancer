@@ -45,12 +45,31 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   const A = ctx.globalAlpha;   // a vista inteira some na transição para a Montar
   const px = (n: number) => n / z;   // n px de tela em metros
   const pieceFill: Record<Piece['kind'], string> = {
-    machine: th.machine, splitter: th.flow, merger: th.ficsit, smart: th.donor, sink: th.sink, junction: th.holo, bp: 'transparent', lift: th.edge,   // lift: desenho próprio na Task 4
+    machine: th.machine, splitter: th.flow, merger: th.ficsit, smart: th.donor, sink: th.sink, junction: th.holo, bp: 'transparent', lift: th.flow,   // lift: desenho próprio (drawLift)
   };
-  const drawPieces = (geo: BlockGeo) => {
+  // Conveyor Lift: quadrado na cor do item com a seta para baixo (desce) ou para cima (sobe, above), sempre na vertical
+  // da tela (desfaz o giro do bloco). Pode passar da borda do bloco (a entrada em x = -1): desenha igual.
+  const drawLift = (p: Piece, rot: Rot) => {
+    ctx.fillStyle = (p.item && w.colors[p.item]) || th.flow;
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = th.beltCase; ctx.lineWidth = px(1);
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
+    const k = p.w * 0.3, s = p.above ? -1 : 1;
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y + p.h / 2); ctx.rotate(-rot * Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -s * k); ctx.lineTo(0, s * k);
+    ctx.moveTo(-k * 0.8, s * k * 0.2); ctx.lineTo(0, s * k); ctx.lineTo(k * 0.8, s * k * 0.2);
+    ctx.strokeStyle = th.beltCase; ctx.lineWidth = Math.max(p.w * 0.14, px(1.5)); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+  };
+  const drawPieces = (geo: BlockGeo, rot: Rot) => {
     strokeBelts(w, geo.belts, false);
     ctx.lineWidth = px(1);
+    const lifts: Piece[] = [];
     for (const p of geo.pieces) {
+      if (p.kind === 'lift') { lifts.push(p); continue; }   // por cima das outras peças, também o que sobe
       if (p.above) continue;   // andar de cima: o mapa mostra o chão
       if (p.kind === 'bp') { ctx.strokeStyle = th.edge; ctx.strokeRect(p.x, p.y, p.w, p.h); continue; }
       ctx.fillStyle = pieceFill[p.kind];
@@ -59,13 +78,14 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
       ctx.globalAlpha = A;
       if (p.kind === 'machine' || p.kind === 'sink') { ctx.strokeStyle = p.kind === 'sink' ? th.sink : th.inkDim; ctx.strokeRect(p.x, p.y, p.w, p.h); }
     }
+    for (const p of lifts) drawLift(p, rot);
   };
 
   // Blocos: chapa, contorno e, de perto, o conteúdo em escala.
   for (const b of blocks) {
     const r = b.rect, on = o.selected.has(b.stage), hov = o.hover === b.stage;
     ctx.globalAlpha = A * PANEL_ALPHA; ctx.fillStyle = th.paper; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
-    if (detail) { ctx.save(); enterLocal(ctx, b.place, b.geo); drawPieces(b.geo); ctx.restore(); }
+    if (detail) { ctx.save(); enterLocal(ctx, b.place, b.geo); drawPieces(b.geo, b.place.rot); ctx.restore(); }
     ctx.strokeStyle = on ? th.ficsit : hov ? th.ink : th.inkDim;
     ctx.lineWidth = px(on ? 2 : 1);
     // Origem e sobra: marcador fora de escala, tracejado.
@@ -101,7 +121,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   for (const m of meios) {
     const r = m.rect, on = o.selected.has(m.meio), hov = o.hover === m.meio;
     ctx.globalAlpha = A * 0.8; ctx.fillStyle = th.bench; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
-    if (detail && m.geo && !m.geo.tooLarge) { ctx.save(); enterLocal(ctx, { x: r.x, y: r.y, rot: m.rot }, m.geo); drawPieces(m.geo); ctx.restore(); }
+    if (detail && m.geo && !m.geo.tooLarge) { ctx.save(); enterLocal(ctx, { x: r.x, y: r.y, rot: m.rot }, m.geo); drawPieces(m.geo, m.rot); ctx.restore(); }
     ctx.strokeStyle = th.ficsit;
     ctx.globalAlpha = A * (on || hov ? 1 : 0.75);
     ctx.lineWidth = px(on ? 2 : 1.5);

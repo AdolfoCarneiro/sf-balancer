@@ -9,7 +9,7 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, 
 import { fmt, t } from '../../i18n/index.js';
 import { chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
-import { perRowOf, stageRows } from '../model/stage.ts';
+import { rowsSummary } from '../model/layout.ts';
 import { solvedStage } from '../model/solved.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Block, Factory, GameData, ItemId, LigPlace, MapPlace, StageId } from '../model/types.ts';
@@ -319,7 +319,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       }
       const s = solvedStage(b, bf), r = data.recipes[s.recipe], bd = data.buildings[r.building];
       const num = bf?.unbounded ? t('plUnbounded') : fmt(s.machines, 0);
-      const sub = t('plRowsAria', fmt(stageRows(s, data).length, 0), fmt(perRowOf(s, data), 0), bd.name);
+      const rs = rowsSummary(s, data), sub = t('plRowsAria', fmt(rs.rows, 0), fmt(rs.per, 0), bd.name);
       // Placa da Planta: o ícone do prédio, a receita e o número em laranja.
       return { title: r.name + lock, num, sub, icon: r.building, alert };
     },

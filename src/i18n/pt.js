@@ -381,6 +381,9 @@ export default {
   plRowsLines: (n, r) => (n === '1' ? `1 saída de ${r}` : `${n} saídas de ${r}`),
   plRowsLinesLast: (n, r, last) => `${n} saídas de ${r}, a última de ${last}`,
   plRowsExitEnd: 'pela ponta', plRowsOpen: 'Montar fileiras',
+  plRowsModelBackToBack: 'Costas com costas', plRowsModelCenter: 'Mergers no meio',
+  plRowsExitDown: 'descem por Conveyor Lift', plRowsExitUp: 'sobem por Conveyor Lift',
+  plRowsLinesMix: list => `Saídas: ${list}`,
   plPortDeficit: r => `faltam ${r}`, plPortSurplus: r => `+${r} sobrando`, plPortExit: r => `sai ${r}`, plPortStalled: 'travado: sem destino',
   plChipDirect: 'direto', plChipLines: (s, d) => `${s} → ${d}`, plChipSink: (s, d) => `${s} → ${d} + sink`,
   plChipPipe: (s, d) => (s === d ? 'cano' : `cano ${s} → ${d}`), plChipCalc: 'calculando…', plChipUnbounded: 'sem limite', plChipTooLarge: 'grande demais',
@@ -447,6 +450,7 @@ export default {
   plLegChipDirect: 'Direto', plLegChipDirectD: 'Uma linha de origem em cada fileira, sem nenhuma peça entre elas.',
   plLegChipPipe: 'Cano', plLegChipPipeD: 'Ligação de fluido: canos e Junctions, sem balancer.',
   plLegChipShort: 'Esteira vermelha', plLegChipShortD: 'Essa ligação não dá conta do que a ponta de lá pede.',
+  plLegLift: 'Conveyor Lift', plLegLiftD: 'A esteira desce (seta para baixo) ou sobe (seta para cima) para outro andar. Na planta, um quadrado de 2 m na cor do item.',
   plLegStripIn: 'esteira de entrada', plLegStripMachine: 'quadrado = uma máquina', plLegStripOut: 'esteira de saída', plLegStripMore: '+ N fileiras iguais',
   plCredit: 'Ícones e dados do Satisfactory © Coffee Stain Studios. O SF Balancer é uma ferramenta de fã, não oficial.',
 };

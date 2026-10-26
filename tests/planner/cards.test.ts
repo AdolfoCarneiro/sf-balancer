@@ -8,7 +8,9 @@ import { solveFactory, type FlowResult } from '../../src/planner/model/solve.ts'
 import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import type { MeioGeo } from '../../src/planner/model/map/geo.ts';
-import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
+import { buildScene, hitTest, placesOf } from '../../src/planner/model/map/scene.ts';
+import { solvedStage } from '../../src/planner/model/solved.ts';
+import { arrange } from '../../src/planner/model/layout.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
@@ -228,4 +230,36 @@ test('Planta: mostrar tudo deixa as portas e os rótulos delas dentro da tela', 
   const v = viewGeo(scene, c, 1, false, ex, data, flow);
   assert.ok(v.ports.length > 0);
   for (const p of v.ports) assert.ok(p.x - 22 - PORT_LABEL_ROOM >= 0 && p.x + 22 + PORT_LABEL_ROOM <= vw, `porta/rótulo fora: ${p.x}`);
+});
+
+test('Planta: bloco em Mergers no meio desenha o arranjo; a porta fica na borda, na média das saídas, e o leque vai a cada uma', () => {
+  const IRON = 'Desc_IronIngot_C';
+  const f: Factory = { ...ex, blocks: ex.blocks.map(b => (b.id === 's1' ? { ...(b as RecipeBlock), layout: { kind: 'center' } } : b)) };
+  const { scene, flow, v } = view(f, 1);
+  const sb = scene.blocks.find(b => b.stage === 's1')!, st = solvedStage(f.blocks[0] as RecipeBlock, flow.blocks.s1);
+  const a = arrange(st, data, st.layout, sb.place);
+  assert.deepEqual(sb.geo, a.geo);
+  // Âncoras de saída nos fins dos trechos (onde descem os Conveyor Lifts), não na borda do bloco.
+  const outs = sb.geo.outs.filter(x => x.item === IRON);
+  assert.deepEqual(outs.map(x => [x.x, x.y]), a.lines.filter(l => l.side === 'out' && l.item === IRON).map(l => l.at));
+  assert.equal(outs.length, 6);
+  assert.ok(outs.some(x => x.x > 0 && x.x < sb.geo.w));
+  assert.equal(sb.geo.pieces.filter(p => p.kind === 'lift' && p.item === IRON).length, 6);
+  const s1 = v.blocks.find(b => b.id === 's1')!, port = v.ports.find(p => p.block === 's1' && p.side === 'out' && p.item === IRON)!;
+  const toS = (x: number, y: number) => [(sb.rect.x + x - CAM.x) * CAM.zoom, (sb.rect.y + y - CAM.y) * CAM.zoom];
+  near(port.x, s1.plant.x + s1.plant.w + PLANT_PORT_OUT);
+  near(port.y, outs.reduce((s, x) => s + toS(x.x, x.y)[1], 0) / outs.length);
+  assert.deepEqual(port.lanes, outs.map(x => toS(x.x, x.y)));
+});
+
+test('Planta: Conveyor Lift fora da caixa do bloco (x = -1) não muda o retângulo nem o acerto do clique', () => {
+  const ORE = 'Desc_OreIron_C';
+  const lay = { kind: 'simple' as const, belts: { [`in:${ORE}`]: { exit: 'down' as const } } };
+  const f: Factory = { ...ex, blocks: ex.blocks.map(b => (b.id === 's1' ? { ...(b as RecipeBlock), layout: lay } : b)) };
+  const { scene } = view(f, 1), sb = scene.blocks.find(b => b.stage === 's1')!;
+  const lifts = sb.geo.pieces.filter(p => p.kind === 'lift');
+  assert.ok(lifts.length > 0 && lifts.every(p => p.x === -1 && p.item === ORE));
+  assert.deepEqual([sb.rect.w, sb.rect.h], [sb.geo.w, sb.geo.h]);
+  assert.deepEqual(hitTest(scene, sb.rect.x + sb.rect.w / 2, sb.rect.y + sb.rect.h / 2), { kind: 'block', id: 's1' });
+  assert.ok(finite(sb.geo));
 });

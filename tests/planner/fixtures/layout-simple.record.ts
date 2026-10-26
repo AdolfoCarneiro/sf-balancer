@@ -7,7 +7,8 @@ import type { GameData, RecipeBlock, Stage } from '../../../src/planner/model/ty
 import { exampleFactory } from '../../../src/planner/model/factorystate.ts';
 import { solveFactory } from '../../../src/planner/model/solve.ts';
 import { solvedStage } from '../../../src/planner/model/solved.ts';
-import { stageArea, stagePieces, stageRows } from '../../../src/planner/model/stage.ts';
+import { stageArea, stageRows } from '../../../src/planner/model/stage.ts';
+import { stagePieces } from '../../../src/planner/model/layout.ts';   // até a Task 4 vinha de stage.ts (sem lifts)
 import { blockGeo } from '../../../src/planner/model/map/block.ts';
 
 const data = game as GameData;

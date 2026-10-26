@@ -48,6 +48,18 @@ function ChipSvg({ kind, th }: { kind: ChipKind; th: MapTheme }) {
   );
 }
 
+// Conveyor Lift como na Planta: quadrado na cor do item, um com a seta para baixo (desce) e outro para cima (sobe).
+function LiftSvg({ th }: { th: MapTheme }) {
+  const lift = (x: number, s: 1 | -1) => (
+    <g key={x}>
+      <rect x={x} y="3" width="22" height="22" fill={th.ficsit} stroke={th.beltCase} strokeWidth="1.5" />
+      <path d={`M${x + 11} ${14 - 6 * s}V${14 + 6 * s}M${x + 6} ${14 + s}L${x + 11} ${14 + 6 * s}L${x + 16} ${14 + s}`}
+        fill="none" stroke={th.beltCase} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  );
+  return <svg width="56" height="28" viewBox="0 0 56 28" aria-hidden="true">{lift(2, 1)}{lift(32, -1)}</svg>;
+}
+
 // Um cartão pequeno anotado: barra de entrada em cima, um quadrado por máquina, barra de saída embaixo, "+ N fileiras".
 function StripSvg() {
   const note = { fontSize: 11, fill: 'var(--ink-mid)', fontFamily: 'var(--body)' } as const;
@@ -115,6 +127,9 @@ export function Legend() {
               <Row icon={<ChipSvg kind="direct" th={th} />} title={t('plLegChipDirect')} desc={t('plLegChipDirectD')} />
               <Row icon={<ChipSvg kind="pipe" th={th} />} title={t('plLegChipPipe')} desc={t('plLegChipPipeD')} />
               <Row icon={<ChipSvg kind="short" th={th} />} title={t('plLegChipShort')} desc={t('plLegChipShortD')} />
+            </ul>
+            <ul>
+              <Row icon={<LiftSvg th={th} />} title={t('plLegLift')} desc={t('plLegLiftD')} />
             </ul>
             <StripSvg />
           </div>

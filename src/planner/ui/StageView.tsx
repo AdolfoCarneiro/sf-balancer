@@ -6,7 +6,8 @@ import type { Action } from '../model/factorystate.ts';
 import { MAX_MACHINES, machinesOk } from '../model/factory.ts';
 import { limitView } from '../model/badges.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
-import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
+import { stagePieces } from '../model/layout.ts';
+import { perRowOf, portsOf, portTier, portWarnings, stageArea, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
@@ -193,6 +194,7 @@ function Side({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onCl
         <ul className="pl-pieces">
           <li><span>Splitter</span><b>{fmt(pieces.splitters)}</b></li>
           <li><span>Merger</span><b>{fmt(pieces.mergers)}</b></li>
+          {pieces.lifts > 0 && <li><span>Conveyor Lift</span><b>{fmt(pieces.lifts)}</b></li>}
         </ul>
         <p className="pl-note">{t('plAreaEst', fmt(area.w), fmt(area.d))}</p>
       </div>

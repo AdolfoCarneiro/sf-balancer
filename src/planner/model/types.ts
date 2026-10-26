@@ -8,7 +8,8 @@ export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeI
 export type Side = 'ins' | 'outs';
 // Etapa derivada de um bloco de receita resolvido (solvedStage): o que as contas de fileira e o desenho leem.
 // tiers: chave `in:<item>` ou `out:<item>` (o mesmo item pode entrar e sair da receita).
-export interface Stage { id: StageId; recipe: RecipeId; machines: number; clock: number; perRow: number | null; tiers: Record<string, string> }
+// layout: o arranjo das fileiras do bloco (ausente = fileira simples).
+export interface Stage { id: StageId; recipe: RecipeId; machines: number; clock: number; perRow: number | null; tiers: Record<string, string>; layout?: Layout }
 export interface Link { id: string; item: ItemId; from: StageId; to: StageId }
 // Quartos de volta no sentido horário: 0 entradas pela esquerda (saída à direita), 1 por cima, 2 pela direita, 3 por baixo.
 export type Rot = 0 | 1 | 2 | 3;

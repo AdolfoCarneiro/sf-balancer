@@ -85,15 +85,9 @@ export function portWarnings(stage: Stage, data: GameData): PortWarning[] {
   return out;
 }
 
-// k−1 por fileira, por porta sólida.
-export function stagePieces(stage: Stage, data: GameData): { splitters: number; mergers: number } {
-  const r = data.recipes[stage.recipe];
-  const per = stageRows(stage, data).reduce((s, k) => s + Math.max(0, k - 1), 0);
-  const n = (fs: Flow[]) => fs.filter(f => !data.items[f.item].fluid).length * per;
-  return { splitters: n(r.ins), mergers: n(r.outs) };
-}
+// As peças da etapa saem do arranjo (stagePieces em layout.ts).
 
-// Estimativa até a fase 4.
+// Estimativa da fileira simples (a área do arranjo simples sem fileiras deslocadas).
 export function stageArea(stage: Stage, data: GameData): { w: number; d: number } {
   const b = data.buildings[data.recipes[stage.recipe].building];
   const rows = stageRows(stage, data).length;

@@ -230,6 +230,7 @@ select.pl-field { width: auto; }
 .pl-rows-svg .pl-rp-machine { fill: #1f4a72; }
 .pl-rows-svg .pl-rp-splitter { fill: var(--flow); stroke: none; }
 .pl-rows-svg .pl-rp-merger { fill: var(--ficsit); stroke: none; }
+.pl-rows-svg .pl-rp-lift { fill: var(--ink); stroke: none; }
 .pl-rp-belt { fill: none; stroke-width: 2px; stroke-linecap: round; }
 .pl-rp-in { stroke: var(--flow); opacity: .7; }
 .pl-rp-out { stroke: var(--ficsit); }
