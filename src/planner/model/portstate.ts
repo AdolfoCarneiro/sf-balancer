@@ -57,3 +57,11 @@ export function factoryBalance(f: Factory, flow: FlowResult, _d: GameData): Bala
   }
   return { ins: sumBy(ins), outs: sumBy(outs), sink: sumBy(sink), problems };
 }
+
+// Próximo problema do tipo, circular: `last` é o índice devolvido da vez anterior (-1 = nenhum). "Falta" inclui a porta travada.
+export function nextProblem(problems: PortState[], kind: 'deficit' | 'surplus', last: number): { index: number; problem: PortState } | null {
+  const list = problems.filter(p => (kind === 'surplus' ? p.kind === 'surplus' : p.kind === 'deficit' || p.kind === 'stalled'));
+  if (!list.length) return null;
+  const index = (Math.max(-1, last) + 1) % list.length;
+  return { index, problem: list[index] };
+}

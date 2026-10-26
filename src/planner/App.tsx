@@ -13,6 +13,8 @@ import { Header } from './ui/Header.tsx';
 import type { Selection, ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView } from './ui/MapView.tsx';
+import { BalanceBar } from './ui/BalanceBar.tsx';
+import { factoryBalance, nextProblem, type PortState } from './model/portstate.ts';
 import { blockName } from './ui/format.ts';
 
 const data = game as unknown as GameData;
@@ -24,7 +26,7 @@ const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 // ou no servidor de desenvolvimento.
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 
-export function App() {
+export function App({ onFocusProblem }: { onFocusProblem?: (p: PortState) => void } = {}) {
   // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
   const [lang, setLangState] = useState<Lang>(getLang() as Lang);
 
@@ -104,6 +106,18 @@ export function App() {
     : picked.kind === 'stage' ? (f.blocks.some(b => b.id === picked.id) ? picked : null)
     : (meioList.some(m => m.id === picked.id) ? picked : null);
   const { blocks, machines } = factoryTotals(f, flow);
+  // Faixa Balanço: o que entra, sai e vai pro sink; os botões passam pelas faltas e sobras em círculo.
+  const balance = useMemo(() => factoryBalance(f, flow, data), [f, flow]);
+  const probIdx = useRef({ deficit: -1, surplus: -1 });
+  const goProblem = (kind: 'deficit' | 'surplus'): PortState | null => {
+    const n = nextProblem(balance.problems, kind, probIdx.current[kind]);
+    if (!n) return null;
+    probIdx.current[kind] = n.index;
+    setSelection({ kind: 'stage', id: n.problem.block });
+    onFocusProblem?.(n.problem);
+    return n.problem;
+  };
+  const nameOfBlock = (id: string) => { const b = f.blocks.find(x => x.id === id); return b ? blockName(b, data) : id; };
   // O que o fluxo tem a dizer: calculando, não estabilizou, loop travado.
   const status = [
     ...(pending ? [t('plFlowCalc')] : []),
@@ -130,6 +144,7 @@ export function App() {
       <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
         view={view} onView={setView} />
+      <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} />

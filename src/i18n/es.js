@@ -415,5 +415,7 @@ export default {
   plMinerRate: 'Tasa (ítems/min)', plPurity: 'Pureza', plPurityImpure: 'Impuro', plPurityNormal: 'Normal', plPurityPure: 'Puro',
   plExtractorCount: 'Extractores', plExtractorNeed: n => `${n} para cubrir lo que se pide`, plExtractorBad: max => `Indica un entero de 1 a ${max}.`,
   plOutletGets: 'Recibe', plChangeRecipe: 'Receta (cambiar)', plDeleteBlock: 'Borrar bloque',
+  plBalIn: 'Entra', plBalOut: 'Sale', plBalSink: 'Sink', plBalDeficits: n => `${n} ${n === '1' ? 'falta' : 'faltas'}`, plBalSurpluses: n => `${n} ${n === '1' ? 'sobrante' : 'sobrantes'}`,
+  plBalAria: 'Balance de la fábrica: lo que entra, lo que sale y lo que va al sink', plBalGo: (kind, item, block, rate) => `${kind === 'surplus' ? 'Sobrante' : kind === 'stalled' ? 'Bloqueado' : 'Falta'} de ${item} en ${block}: ${rate}`,
   plCredit: 'Iconos y datos de Satisfactory © Coffee Stain Studios. SF Balancer es una herramienta no oficial hecha por fans.',
 };

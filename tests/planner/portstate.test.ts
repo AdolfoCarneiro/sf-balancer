@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Block, Factory, GameData, Link, RecipeBlock } from '../../src/planner/model/types.ts';
 import { setCollect } from '../../src/planner/model/factory.ts';
 import { solveFactory } from '../../src/planner/model/solve.ts';
-import { factoryBalance, portStates } from '../../src/planner/model/portstate.ts';
+import { factoryBalance, nextProblem, portStates, type PortState } from '../../src/planner/model/portstate.ts';
 import { close } from './fixtures.ts';
 
 const data = game as GameData;
@@ -75,6 +75,19 @@ test('balanço: entra, sai, sink e problemas', () => {
     [link('l1', 'Desc_IronIngot_C', 's1', 's2')]);
   const d = factoryBalance(h, solveFactory(h, data), data);
   assert.deepEqual(d.problems.map(p => [p.block, p.kind]), [['s1', 'surplus']]);
+});
+
+test('nextProblem: circular, por tipo, travada conta como falta', () => {
+  const p = (kind: PortState['kind'], block: string): PortState => ({ block, side: kind === 'deficit' ? 'in' : 'out', item: 'x', kind, amount: 1, rate: 1 });
+  const ps = [p('surplus', 'a'), p('deficit', 'b'), p('stalled', 'c'), p('surplus', 'd')];
+  assert.equal(nextProblem([], 'deficit', -1), null);
+  assert.equal(nextProblem([p('surplus', 'a')], 'deficit', -1), null);
+  assert.equal(nextProblem(ps, 'deficit', -1)?.index, 0);
+  assert.equal(nextProblem(ps, 'deficit', -1)?.problem.block, 'b');
+  assert.equal(nextProblem(ps, 'deficit', 0)?.problem.block, 'c');
+  assert.equal(nextProblem(ps, 'deficit', 1)?.index, 0);   // volta ao primeiro
+  assert.equal(nextProblem(ps, 'surplus', 0)?.problem.block, 'd');
+  assert.equal(nextProblem(ps, 'surplus', 7)?.index, 0);   // índice velho depois de a lista encolher
 });
 
 test('balanço da fábrica vazia', () => {
