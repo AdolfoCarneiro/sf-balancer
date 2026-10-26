@@ -1,9 +1,9 @@
 // Seletor do mapa (como o Recipe Chooser do Modeler): abre no ponto clicado, busca com foco, especiais (origens e
 // sobras) e receitas em cartões com ícone, prédio e ingredientes; setas + Enter escolhem, Esc fecha.
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { t } from '../../i18n/index.js';
+import { fmt, t } from '../../i18n/index.js';
 import { pickerEntries, pickerGroups, type PickerEntry, type PickerFilter } from '../model/picker.ts';
-import type { GameData, ItemId } from '../model/types.ts';
+import type { Flow, GameData } from '../model/types.ts';
 import { iconUrl } from './icons.ts';
 
 interface Props {
@@ -13,19 +13,24 @@ interface Props {
   onClose: (refocus: boolean) => void;   // refocus: Esc devolve o foco ao canvas; clicar fora deixa o foco onde foi
 }
 
-const W = 380, H = 440, PAD = 8;
+const W = 440, H = 560, PAD = 8;
 
 function Icon({ src, size }: { src: string | null; size: number }) {
   return src ? <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" />
     : <span className="pl-pick-noicon" style={{ width: size, height: size }} />;
 }
 
-function Items({ items, data }: { items: ItemId[]; data: GameData }) {
+// "60 [ícone] Steel Ingot + 30 [ícone] Water": taxa por minuto a 100 % (por máquina) antes de cada item.
+function Flows({ flows, data }: { flows: Flow[]; data: GameData }) {
   return (
     <>
-      {items.map(item => {
-        const name = data.items[item]?.name ?? item;
-        return <span key={item} className="pl-pick-item" title={name}><Icon src={iconUrl(item)} size={16} /><span>{name}</span></span>;
+      {flows.map((f, i) => {
+        const name = data.items[f.item]?.name ?? f.item;
+        return (
+          <span key={f.item + i} className="pl-pick-item" title={name}>
+            <b>{fmt(f.perMin)}</b><Icon src={iconUrl(f.item)} size={18} /><span>{name}</span>
+          </span>
+        );
       })}
     </>
   );
@@ -63,19 +68,22 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
   const w = Math.min(W, area.w - 2 * PAD), h = Math.min(H, area.h - 2 * PAD);
   const left = Math.max(PAD, Math.min(x, area.w - w - PAD)), top = Math.max(PAD, Math.min(y, area.h - h - PAD));
   const listId = `${uid}-list`;
-  const option = (e: PickerEntry, i: number) => (
+  const option = (e: PickerEntry, i: number) => {
+    const r = e.spec.kind === 'recipe' ? data.recipes[e.spec.recipe] : undefined;
+    return (
     <li key={i} id={`${uid}-o${i}`} role="option" aria-selected={i === active} className={'pl-pick-card' + (e.alt ? ' alt' : '')}
       onMouseDown={ev => ev.preventDefault()} onClick={() => onPick(e)} onMouseMove={() => { if (i !== active) setActive(i); }}>
-      <Icon src={e.icon} size={32} />
+      <Icon src={e.icon} size={42} />
       <span className="pl-pick-body">
         <span className="pl-pick-top"><b>{e.title}</b>{e.alt && <span className="pl-alt">{t('plPickAlt')}</span>}</span>
         {e.sub && <span className="pl-pick-sub">{e.sub}</span>}
-        {e.spec.kind === 'recipe' && (
-          <span className="pl-pick-flow"><Items items={e.ins} data={data} /><span aria-hidden="true">→</span><Items items={e.outs} data={data} /></span>
+        {r && (
+          <span className="pl-pick-flow"><Flows flows={r.ins} data={data} /><span aria-hidden="true">→</span><Flows flows={r.outs} data={data} /></span>
         )}
       </span>
     </li>
-  );
+    );
+  };
   return (
     <div ref={box} className="pl-pick" role="dialog" aria-label={title} style={{ left, top, width: w, maxHeight: h }}
       onPointerDown={e => e.stopPropagation()} onContextMenu={e => e.preventDefault()}>
@@ -89,7 +97,7 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
           const start = groups.slice(0, gi).reduce((n, x) => n + x.entries.length, 0), hid = `${uid}-g${g.kind}`;
           return (
             <li key={g.kind} role="group" aria-labelledby={hid}>
-              <p id={hid} className="pl-pick-h">{t(g.kind === 'special' ? 'plPickSpecial' : 'plPickRecipes')}</p>
+              <p id={hid} className="pl-pick-h">{t(g.kind === 'special' ? 'plPickSources' : 'plPickRecipes')}</p>
               <ul role="presentation">{g.entries.map((e, i) => option(e, start + i))}</ul>
             </li>
           );

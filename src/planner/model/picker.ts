@@ -55,11 +55,9 @@ export function pickerEntries(d: GameData, query: string, filter: PickerFilter =
   return { special, recipes };
 }
 
-// Ordem dos grupos no seletor: vindo de uma porta (filtrado), as receitas primeiro e as especiais depois; sem filtro
-// (duplo clique no vazio), as especiais primeiro. Grupo vazio não aparece.
+// Ordem dos grupos no seletor: as receitas sempre primeiro (de uma porta ou do duplo clique no vazio, com ou sem busca)
+// e "Fontes e sobras" depois. Grupo vazio não aparece. O filtro não muda a ordem; fica na assinatura por compatibilidade.
 export interface PickerGroup { kind: 'special' | 'recipes'; entries: PickerEntry[] }
-export function pickerGroups(r: { special: PickerEntry[]; recipes: PickerEntry[] }, filter?: PickerFilter): PickerGroup[] {
-  const special: PickerGroup = { kind: 'special', entries: r.special }, recipes: PickerGroup = { kind: 'recipes', entries: r.recipes };
-  const fromPort = !!(filter?.consumes || filter?.produces);
-  return (fromPort ? [recipes, special] : [special, recipes]).filter(g => g.entries.length > 0);
+export function pickerGroups(r: { special: PickerEntry[]; recipes: PickerEntry[] }, _filter?: PickerFilter): PickerGroup[] {
+  return ([{ kind: 'recipes', entries: r.recipes }, { kind: 'special', entries: r.special }] as PickerGroup[]).filter(g => g.entries.length > 0);
 }

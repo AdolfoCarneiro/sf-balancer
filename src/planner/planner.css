@@ -208,24 +208,26 @@ select.pl-field { width: auto; }
 /* Seletor do mapa (duplo clique, botão direito ou soltar uma porta no vazio): placa escura com a faixa laranja no topo,
    contorno e sombra (sem clip-path, que cortaria os dois). */
 .pl-pick { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bench); border-top: 3px solid var(--ficsit); box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0, 0, 0, .55); }
-.pl-pick-title { margin: 0; font: 600 14px var(--display); color: var(--ficsit); }
-.pl-pick-in { padding: 7px 8px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font: 14px var(--body); }
+.pl-pick-title { margin: 0; font: 600 17px var(--display); color: var(--ficsit); }
+.pl-pick-in { min-height: 44px; padding: 0 12px; background: var(--paper); border: 1px solid var(--ficsit); color: var(--ink); font: 16px var(--body); }
 .pl-pick-in:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
 .pl-pick-list, .pl-pick-list ul { list-style: none; margin: 0; padding: 0; }
 .pl-pick-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-color: var(--line) transparent; }
 .pl-pick-list ul { display: flex; flex-direction: column; gap: 3px; }
 .pl-pick-h { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font: 600 13px var(--display); color: var(--ink-dim); }
 .pl-pick-h::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.pl-pick-card { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; background: var(--plate); border: 1px solid transparent; border-left: 3px solid transparent; cursor: pointer; }
+.pl-pick-card { display: flex; gap: 12px; align-items: center; min-height: 56px; padding: 7px 10px; background: var(--plate); border: 1px solid transparent; border-left: 3px solid transparent; cursor: pointer; }
 .pl-pick-card.alt { border-left-color: var(--donor); }
 .pl-pick-card[aria-selected="true"] { border-color: var(--ficsit); background: #1b3d60; }
 .pl-pick-card > img, .pl-pick-noicon { flex: none; display: block; }
-.pl-pick-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.pl-pick-top { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.pl-pick-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pl-pick-top { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.pl-pick-card .pl-alt { letter-spacing: 0; font-size: 11px; }
 .pl-pick-card.alt .pl-alt { border-color: var(--donor); color: var(--donor); }
-.pl-pick-sub { font-size: 12px; color: var(--ink-dim); }
-.pl-pick-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 11px; color: var(--ink-dim); }
-.pl-pick-item { display: inline-flex; align-items: center; gap: 3px; }
+.pl-pick-sub { font-size: 12px; color: var(--ink-soft); }
+.pl-pick-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 12px; color: var(--ink-mid); }
+.pl-pick-item { display: inline-flex; align-items: center; gap: 4px; }
+.pl-pick-item b { font: 600 12px var(--display); color: var(--ink); }
 .pl-pick-item img { display: block; }
 
 /* Painel do bloco: cabeçalho com ícone, avisos do fluxo e limites (calculado em texto normal; fixado em destaque). */

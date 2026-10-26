@@ -89,7 +89,7 @@ test('seletor de uma saída: receitas comuns primeiro, alternativas depois, Conv
   assert.ok(orn.length > 0 && orn.every(n => /FICSMAS/.test(n)));
 });
 
-test('seletor vindo de uma porta: receitas primeiro, depois Sink, Container e Saída; sem filtro, especiais primeiro', () => {
+test('receitas sempre primeiro, fontes e sobras depois', () => {
   const from = pickerGroups(pickerEntries(data, '', { consumes: 'Desc_IronIngot_C' }), { consumes: 'Desc_IronIngot_C' });
   assert.deepEqual(from.map(g => g.kind), ['recipes', 'special']);
   const flat = from.flatMap(g => g.entries.map(e => e.spec.kind === 'recipe' ? e.title : e.spec.kind));
@@ -97,7 +97,9 @@ test('seletor vindo de uma porta: receitas primeiro, depois Sink, Container e Sa
   assert.deepEqual(flat.slice(-3), ['sink', 'container', 'export']);
   const up = pickerGroups(pickerEntries(data, '', { produces: 'Desc_Water_C' }), { produces: 'Desc_Water_C' });
   assert.deepEqual(up.map(g => g.kind), ['recipes', 'special']);
-  assert.deepEqual(pickerGroups(pickerEntries(data, ''), undefined).map(g => g.kind), ['special', 'recipes']);
+  // Sem filtro (duplo clique no vazio), com e sem busca: receitas primeiro também.
+  assert.deepEqual(pickerGroups(pickerEntries(data, ''), undefined).map(g => g.kind), ['recipes', 'special']);
+  assert.deepEqual(pickerGroups(pickerEntries(data, 'iron'), undefined).map(g => g.kind), ['recipes', 'special']);
   // Grupo vazio não aparece.
   const miner = pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special;
   assert.deepEqual(pickerGroups({ special: miner, recipes: [] }, { produces: 'Desc_OreIron_C' }).map(g => g.kind), ['special']);
