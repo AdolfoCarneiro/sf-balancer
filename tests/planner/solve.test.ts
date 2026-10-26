@@ -257,3 +257,53 @@ test('solver: o resto do ponto fixo não vira máquina a mais nem falta minúscu
   for (const p of r.blocks.A.ins) assert.equal(p.deficit, 0);
   assert.equal(r.converged, true);
 });
+
+// Conservação: em cada entrada ligada, a soma das ligações é o que o bloco consome; em cada saída ligada, o que o bloco
+// produz é o que as ligações levam + o que sai da fábrica (o represado fica fora: é o que ele daria e não produz).
+function conserves(f: Factory, r: FlowResult): void {
+  const eq = (a: number, b: number, what: string) => assert.ok(Math.abs(a - b) < 1e-6, `${what}: ${a} ≠ ${b}`);
+  for (const [id, b] of Object.entries(r.blocks)) {
+    for (const p of b.ins) {
+      const ls = f.links.filter(l => l.to === id && l.item === p.item);
+      if (!ls.length || p.rate === null) continue;
+      eq(ls.reduce((s, l) => s + (r.links[l.id] ?? 0), 0), p.rate, `${id} entrada ${p.item}`);
+    }
+    for (const p of b.outs) {
+      const ls = f.links.filter(l => l.from === id && l.item === p.item);
+      if (!ls.length || p.rate === null || p.exits === null) continue;
+      eq(ls.reduce((s, l) => s + (r.links[l.id] ?? 0), 0) + p.exits, p.rate, `${id} saída ${p.item}`);
+    }
+  }
+}
+
+test('solver: duas produtoras para três consumidoras limitadas (duo.sfmd): todo o minério vira barra, nada some', () => {
+  const f = fac([
+    { id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: 180 },
+    recipe('s2', 'Recipe_IngotIron_C'), recipe('s3', 'Recipe_IngotIron_C'),
+    recipe('s4', 'Recipe_IronRod_C', { machines: 8 }), recipe('s5', 'Recipe_IronRod_C', { machines: 2 }),
+    recipe('s6', 'Recipe_IronRod_C', { machines: 2 }),
+  ], [
+    link('a', 'Desc_OreIron_C', 's1', 's2'), link('b', 'Desc_OreIron_C', 's1', 's3'),
+    link('c', 'Desc_IronIngot_C', 's2', 's4'), link('d', 'Desc_IronIngot_C', 's3', 's4'),
+    link('e', 'Desc_IronIngot_C', 's3', 's5'), link('g', 'Desc_IronIngot_C', 's3', 's6'),
+  ]);
+  const r = solveFactory(f, data);
+  assert.equal(r.converged, true);
+  close(r.blocks.s2.x! + r.blocks.s3.x!, 6);                       // 180 de barra (30/min por máquina)
+  close(r.blocks.s4.x, 8); close(r.blocks.s5.x, 2); close(r.blocks.s6.x, 2);
+  for (const id of ['s4', 's5', 's6']) close(r.blocks[id].ins[0].deficit, 0);
+  close(r.blocks.s1.outs[0].held, 0);
+  conserves(f, r); finite(r);
+  // Com 200 de minério as barras param em 180 (o que as 12 máquinas consomem) e a mineradora represa 20.
+  const g = setMinerRate(f, 's1', 200), q = solveFactory(g, data);
+  assert.equal(q.converged, true);
+  close(q.blocks.s2.x! + q.blocks.s3.x!, 6); close(q.blocks.s1.outs[0].held, 20);
+  conserves(g, q);
+});
+
+test('solver: conservação nas fábricas de teste: o que entra e sai de cada porta ligada bate com as ligações', () => {
+  for (const f of [vf(), semFramework(), setLimits(vf(), 's4', { machines: 8 }), setLimits(semFramework(), 's3', { machines: 15 })]) {
+    const r = solveFactory(f, data);
+    assert.equal(r.converged, true); conserves(f, r);
+  }
+});

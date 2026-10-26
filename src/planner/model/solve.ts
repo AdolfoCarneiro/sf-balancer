@@ -96,7 +96,25 @@ function build(f: Factory, d: GameData) {
     const ls = es.map(e => ({ p: local(pm, prods, edges[e].from, edges[e].out), c: local(cm, cons, edges[e].to, edges[e].inp), e }));
     groups.push({ prods, cons, ls });
   }
-  return { nodes, edges, groups };
+  return { nodes, edges, groups: upstreamFirst(groups) };
+}
+
+// Meios de cima para baixo: um meio vem antes dos meios que as consumidoras dele alimentam. Loop fica na ordem em que veio.
+function upstreamFirst(groups: Group[]): Group[] {
+  const feeds = groups.map(g => {
+    const cons = new Set(g.cons.map(([a]) => a));
+    return groups.flatMap((h, k) => (h !== g && h.prods.some(([a]) => cons.has(a)) ? [k] : []));
+  });
+  const indeg = groups.map(() => 0);
+  for (const fs of feeds) for (const k of fs) indeg[k]++;
+  const out: number[] = [], done = new Set<number>();
+  while (out.length < groups.length) {
+    let k = indeg.findIndex((d, i) => d === 0 && !done.has(i));
+    if (k < 0) k = groups.findIndex((_, i) => !done.has(i));   // loop: o primeiro que falta
+    done.add(k); out.push(k);
+    for (const m of feeds[k]) indeg[m]--;
+  }
+  return out.map(k => groups[k]);
 }
 
 // Alocação max-min justa (enchimento progressivo) nos links `ls` (índices locais `p`, `c`), com sobras `remP`/`remC`.
@@ -158,16 +176,19 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
         cap[i][k] = p.a * Math.min(nd.U0, supEx, acc);
       });
     }
-    // 2. Fluxo dos links: fase 1 para consumidoras com limite, fase 2 o resto para as sem limite.
+    // 2. Fluxo dos links, meio a meio de cima para baixo: fase 1 para consumidoras com limite, fase 2 o resto para as sem
+    // limite. A produtora oferece o tamanho que o que já chegou nela nesta volta deixa (não o da volta anterior): com o
+    // tamanho velho, o que entra e o que sai de um bloco vêm de voltas diferentes e o fluxo oscila sem convergir.
     const next = new Float64Array(edges.length);
     for (const g of groups) {
-      const remP = g.prods.map(([a, j]) => (x[a] === INF ? INF : nodes[a].outs[j].b * x[a]));
+      const remP = g.prods.map(([a, j]) => { const v = xOf(a); return v === INF ? INF : nodes[a].outs[j].b * v; });
       const remC = g.cons.map(([a, j]) => cap[a][j]);
       fill(g.ls.filter(l => remC[l.c] !== INF), remP, remC, next);
       fill(g.ls.filter(l => remC[l.c] === INF), remP, remC, next);
+      // 3a. O que chega em cada entrada deste meio (as ligações de uma entrada estão todas no mesmo meio).
+      for (const [a, k] of g.cons) intake[a][k] = nodes[a].ins[k].links.reduce((s, e) => s + next[e], 0);
     }
-    // 3. O que chega e o que escoa em cada porta ligada.
-    for (let i = 0; i < n; i++) nodes[i].ins.forEach((p, k) => { if (p.links.length) intake[i][k] = p.links.reduce((s, e) => s + next[e], 0); });
+    // 3b. O que escoa em cada saída ligada.
     for (let i = 0; i < n; i++) nodes[i].outs.forEach((p, j) => {
       if (p.mode !== 'linked') return;
       let acc = 0;
