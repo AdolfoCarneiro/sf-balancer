@@ -16,7 +16,7 @@ import { isSource, type Block, type Factory, type GameData, type ItemId, type Li
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, clampCam, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
-import { buildScene, hitTest, placesOf, proposeMap, type Scene } from '../model/map/scene.ts';
+import { buildScene, hitTest, placesOf, proposeMap, selectionBox, type Scene } from '../model/map/scene.ts';
 import { montarLig, montarPlaces } from '../model/views.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
@@ -362,6 +362,11 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Cartão de cada bloco na Montar, já no idioma (lang nas dependências).
   const cards = useMemo(() => new Map(f.blocks.map(b => [b.id, cardText(b, data, flow, badges.get(b.id) ?? [])])),
     [f.blocks, data, flow, badges, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Vários blocos selecionados: o que ocupam na Planta, com a medida em fundações.
+  const selBox = useMemo(() => {
+    const r = selection?.kind === 'stages' ? selectionBox(scene, selection.ids, meioList) : null;
+    return r ? { r, text: sizeText(r) } : null;
+  }, [selection, scene, meioList, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
   const opts = useMemo((): DrawOpts | null => theme && {
     // lang nas dependências: os rótulos mudam com o idioma.
     selected, hover, colors, theme, t: 1, time: 0,
@@ -374,7 +379,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     chip: id => chips.get(id) ?? null,
     meio: id => meioById.get(id),
     card: id => cards.get(id)!,
-    flash, layers,
+    flash, layers, selBox,
     blockText: id => {
       const b = byId.get(id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
       // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
@@ -399,7 +404,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       // Placa da Planta: o ícone do prédio, a receita e o número em laranja.
       return { title: r.name + lock, num, sub, icon: r.building, alert };
     },
-  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards, flash, layers]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards, flash, layers, selBox]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // A vista: t vai de 0 (Montar) a 1 (Planta) em TRANS_MS ao trocar; a câmera usa os limites de zoom da vista atual.
   const tNow = useRef(montar ? 0 : 1);

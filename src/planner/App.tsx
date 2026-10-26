@@ -3,10 +3,10 @@ import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
 import { BUILDER_PATH, type Lang } from './lang.ts';
 import game from './data/game.json';
-import type { Factory, GameData } from './model/types.ts';
+import { hasRows, type Factory, type GameData } from './model/types.ts';
 import type { SfmdReport } from './model/sfmd.ts';
 import { meiosOf } from './model/factory.ts';
-import { solvedStage } from './model/solved.ts';
+import { rowStage } from './model/solved.ts';
 import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
@@ -65,12 +65,14 @@ export function App() {
   const [openId, setOpenId] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const setOpenStage = (id: string | null) => {
-    if (id && f.blocks.find(b => b.id === id)?.kind !== 'recipe') return;   // origem e sobra não têm fileiras
+    const b = id ? f.blocks.find(x => x.id === id) : undefined;
+    if (id && !(b && hasRows(b))) return;   // origem e sobra não têm fileiras
     if (id) openerRef.current = document.activeElement as HTMLElement | null;
     setOpenId(id);
   };
   const openBlock = openId ? f.blocks.find(b => b.id === openId) : undefined;
-  const openStage = openBlock?.kind === 'recipe' ? openBlock : undefined;
+  const openStage = openBlock && hasRows(openBlock) ? openBlock : undefined;
+  const openRows = useMemo(() => (openStage ? rowStage(openStage, flow.blocks[openStage.id], data) : null), [openStage, flow, data]);
   // Bloco que sumiu (apagar, desfazer): fecha de vez, para não reabrir se o id voltar.
   useEffect(() => { if (openId && !openStage) setOpenId(null); }, [openId, openStage]);
   // Ao fechar, o foco volta a quem abriu (se ainda existe) ou ao mapa.
@@ -184,9 +186,9 @@ export function App() {
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} problems={balance.problems}
           onImportFile={setImpFile} onSplit={splitSel} />
       </div>
-      {openStage && (
-        <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
-          data={data} dispatch={dispatch} onClose={() => setOpenStage(null)} />
+      {openStage && openRows && (
+        <StageView key={openStage.id} block={openStage} stage={openRows.stage} factory={f} flow={flow}
+          data={openRows.data} dispatch={dispatch} onClose={() => setOpenStage(null)} />
       )}
       {ligMeio && (
         <Suspense fallback={null}>

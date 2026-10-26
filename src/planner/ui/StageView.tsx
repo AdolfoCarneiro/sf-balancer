@@ -4,7 +4,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
-import { MAX_MACHINES, machinesOk } from '../model/factory.ts';
+import { MAX_MACHINES, clockOk, machinesOk } from '../model/factory.ts';
 import { limitView } from '../model/badges.ts';
 import { recipesFor } from '../model/search.ts';
 import { arrange } from '../model/layout.ts';
@@ -12,7 +12,7 @@ import { joinState, moveRow, setBelt, setEven, toggleJoin, toggleRow, sharedKeyO
 import { suggestedPerRow } from '../model/stage.ts';
 import { beltInfo } from '../model/stagebelt.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Factory, GameData, Layout, Recipe, RecipeBlock, Stage } from '../model/types.ts';
+import type { Factory, GameData, GeneratorBlock, Layout, Recipe, RecipeBlock, RowBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
 import { previewBox } from './rowspreview.ts';
 import { NumField } from './NumField.tsx';
@@ -20,8 +20,9 @@ import { StageDrawing, type StageSel } from './StageDrawing.tsx';
 import { BeltAdjust, CUT_ID, EXITS, OptIntField, Overview, RowAdjust, Summary, exitLabel } from './StageLayout.tsx';
 import { StageHelp } from './StageHelp.tsx';
 
-// stage: o bloco resolvido (solvedStage); block: o bloco salvo, com os limites.
-interface Props { block: RecipeBlock; stage: Stage; factory: Factory; flow: FlowResult; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
+// stage: o bloco resolvido (rowStage); block: o bloco salvo, com os limites; data: o do rowStage (no gerador, com a
+// receita do gerador).
+interface Props { block: RowBlock; stage: Stage; factory: Factory; flow: FlowResult; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
 
 type Sheet = 'peek' | 'half' | 'full';
 const SHEET_NEXT: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'peek' };
@@ -163,7 +164,9 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
           </h2>
           {selTitle && <><span aria-hidden="true" className="pl-crumb-sep">›</span><b aria-current="page">{selTitle}</b></>}
         </nav>
-        {!selTitle && <StageChips block={block} stage={stage} factory={factory} flow={flow} data={data} dispatch={dispatch} />}
+        {!selTitle && (block.kind === 'recipe'
+          ? <StageChips block={block} stage={stage} factory={factory} flow={flow} data={data} dispatch={dispatch} />
+          : <GenChips block={block} flow={flow} data={data} dispatch={dispatch} />)}
         <span className="pl-grow" />
         <StageHelp items={Object.keys(colors).map(it => ({ name: name(it), color: colors[it] }))} />
       </div>
@@ -185,7 +188,7 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
 }
 
 // Máquinas (calculado ou fixado, com "auto" para voltar), clock e receita, editáveis no topo.
-function StageChips({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onClose'>) {
+function StageChips({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onClose' | 'block'> & { block: RecipeBlock }) {
   const r = data.recipes[stage.recipe];
   const main = (r.outs[0] ?? r.ins[0]).item;
   const options = recipesFor(data, main);
@@ -215,6 +218,37 @@ function StageChips({ block, stage, factory, flow, data, dispatch }: Omit<Props,
         <span>{t('plRecipe')}</span>
         <select value={r.id} onChange={e => dispatch({ type: 'setRecipe', id: stage.id, recipe: e.target.value })}>
           {options.map(o => <option key={o.id} value={o.id}>{o.alt ? `${o.name} · ${t('plPickAlt')}` : o.name}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+// Gerador: quantos (calculado pelo que chega ou fixado, com "auto"), clock e combustível, como no painel do bloco.
+function GenChips({ block: b, flow, data, dispatch }: { block: GeneratorBlock; flow: FlowResult; data: GameData; dispatch: (a: Action) => void }) {
+  const g = data.generators?.[b.building], bf = flow.blocks[b.id], fixed = b.count !== null;
+  return (
+    <div className="pl-sv-chips">
+      <div className={'pl-sv-chip' + (fixed ? ' pl-fixed' : '')} role="group" aria-label={`${t('plGenCount')}: ${t(fixed ? 'plFixed' : 'plCalc')}`}>
+        <NumField label={t('plGenCount')} value={fixed ? b.count : bf?.machines ?? null} valid={machinesOk}
+          bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} always={!fixed} placeholder={bf?.unbounded && !fixed ? t('plUnbounded') : undefined}
+          onCommit={n => dispatch({ type: 'setGenerator', id: b.id, count: n })} />
+        <span className="pl-sv-state" aria-hidden="true">{t(fixed ? 'plFixed' : 'plCalc')}</span>
+        {fixed && (
+          <button type="button" className="pl-sv-auto" aria-label={`${t('plResetDefault')}: ${t('plGenCount')}`}
+            onClick={() => dispatch({ type: 'setGenerator', id: b.id, count: null })}>
+            {t('plSvAuto')}
+          </button>
+        )}
+      </div>
+      <div className="pl-sv-chip">
+        <NumField label={t('plClock')} value={b.clock ?? 100} valid={clockOk}
+          onCommit={n => dispatch({ type: 'setGenerator', id: b.id, clock: n })} bad={t('plClockBad')} />
+      </div>
+      <label className="pl-sv-chip pl-sv-chip-recipe">
+        <span>{t('plGenFuel')}</span>
+        <select value={b.fuel} onChange={e => dispatch({ type: 'setGenerator', id: b.id, fuel: e.target.value })}>
+          {(g?.fuels ?? []).filter(x => data.items[x.item]).map(x => <option key={x.item} value={x.item}>{data.items[x.item].name}</option>)}
         </select>
       </label>
     </div>

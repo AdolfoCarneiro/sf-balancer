@@ -7,7 +7,10 @@ import { decodeFactory, encodeFactory } from '../../src/planner/model/factorysta
 import { solveFactory } from '../../src/planner/model/solve.ts';
 import { factoryBalance } from '../../src/planner/model/portstate.ts';
 import { pickerEntries } from '../../src/planner/model/picker.ts';
-import { genPerRow, markerGeo } from '../../src/planner/model/solved.ts';
+import { rowStage } from '../../src/planner/model/solved.ts';
+import { blockGeo } from '../../src/planner/model/map/block.ts';
+import { perRowOf } from '../../src/planner/model/stage.ts';
+import { reduce, type Action } from '../../src/planner/model/factorystate.ts';
 import { buildScene } from '../../src/planner/model/map/scene.ts';
 import { close } from './fixtures.ts';
 
@@ -91,31 +94,44 @@ test('energia gasta: máquinas × MW do prédio × (clock/100)^1,321929; extrato
   close(bal.use, 4 + 40 * Math.pow(2.5, 1.321929));
 });
 
-test('gerador ocupa o tamanho dele na Planta: fileiras de quantos cabem na linha mais apertada', () => {
+test('gerador ocupa o tamanho dele na Planta: fileiras como as da receita, pela receita do gerador', () => {
   const g = data.generators!;
   assert.deepEqual([FUEL, COAL, NUKE, 'Build_GeneratorBiomass_Automated_C'].map(b => [g[b].w, g[b].l]), [[20, 20], [10, 26], [36, 43], [8, 8]]);
-  // Fuel: 20 m³/min por gerador num cano Mk2 (600) = 30 por fileira; Coal: a água (45) aperta antes do carvão = 13;
-  // Nuclear: a água (240) = 2.
-  const gen = (building: string, fuel: string): GeneratorBlock => ({ id: 'g', kind: 'generator', building, fuel, count: null });
-  assert.equal(genPerRow(data, gen(FUEL, 'Desc_LiquidFuel_C')), 30);
-  assert.equal(genPerRow(data, gen(COAL, 'Desc_Coal_C')), 13);
-  assert.equal(genPerRow(data, gen(NUKE, 'Desc_NuclearFuelRod_C')), 2);
-  // 100 de Fuel = 5 geradores de 20 × 20 numa fileira, com o cano em cima: 100 × 24 m, uma Junction por gerador.
+  // Quantos por fileira, pela linha mais apertada no tier padrão: Fuel 600/20 = 30; Coal, a água (600/45) = 13;
+  // Nuclear, a água (600/240) = 2.
+  const per = (building: string, fuel: string) => {
+    const s = rowStage({ id: 'g', kind: 'generator', building, fuel, count: null }, undefined, data);
+    return perRowOf(s.stage, s.data);
+  };
+  assert.deepEqual([per(FUEL, 'Desc_LiquidFuel_C'), per(COAL, 'Desc_Coal_C'), per(NUKE, 'Desc_NuclearFuelRod_C')], [30, 13, 2]);
+  // 100 de Fuel = 5 geradores de 20 m numa fileira só.
   const f = fed(FUEL, 'Desc_LiquidFuel_C', 100), r = solveFactory(f, data), id = f.blocks[1].id;
-  const geo = markerGeo(f.blocks[1] as GeneratorBlock, r.blocks[id], data);
-  assert.deepEqual([geo.w, geo.h], [100, 24]);
+  const s = rowStage(f.blocks[1] as GeneratorBlock, r.blocks[id], data), geo = blockGeo(s.stage, s.data);
+  assert.equal(s.data.recipes[s.stage.recipe].building, FUEL);
+  assert.equal(geo.w, 100);
   assert.equal(geo.pieces.filter(p => p.kind === 'machine').length, 5);
-  assert.equal(geo.pieces.filter(p => p.kind === 'junction').length, 5);
-  assert.deepEqual(geo.ins.map(a => [a.x, a.y, a.row]), [[0, 2, 0]]);
-  close(geo.belts[0].rate, 100);
-  // Fixado em 3 Nuclear: 2 fileiras (2 + 1), cada uma com barra, água e resíduo; a scene não marca como fora de escala.
-  let n = addBlock(empty, data, { kind: 'generator', building: NUKE, fuel: 'Desc_NuclearFuelRod_C' }, [0, 0]);
-  n = setGenerator(n, data, n.blocks[0].id, { count: 3 });
-  const rn = solveFactory(n, data), nid = n.blocks[0].id;
-  const ng = markerGeo(n.blocks[0] as GeneratorBlock, rn.blocks[nid], data);
-  assert.deepEqual([ng.w, ng.h], [72, 2 * (3 * 4 + 43)]);
-  assert.deepEqual(ng.ins.map(a => a.row), [0, 0, 1, 1]);
-  assert.deepEqual(ng.outs.map(a => [a.x, a.row]), [[72, 0], [72, 1]]);
-  const scene = buildScene(n, data, { [nid]: { x: 0, y: 0, rot: 0 } }, {}, rn);
-  assert.equal(scene.blocks[0].marker, false);
+  assert.deepEqual(geo.ins.map(a => a.row), [0]);
+  // A scene desenha em escala (não é marcador) e a ligação chega na fileira.
+  const scene = buildScene(f, data, { [f.blocks[0].id]: { x: 0, y: 0, rot: 0 }, [id]: { x: 80, y: 0, rot: 0 } }, {}, r);
+  assert.equal(scene.blocks.find(b => b.stage === id)!.marker, false);
+});
+
+const act = (f: Factory, a: Action): Factory => reduce({ past: [], present: f, future: [], limit: 50 }, a, data).present;
+
+test('gerador: arranjo, por linha e tier editáveis e salvos; trocar o combustível tira o tier dele', () => {
+  let f = addBlock(empty, data, { kind: 'generator', building: COAL, fuel: 'Desc_Coal_C' }, [0, 0]);
+  const id = f.blocks[0].id;
+  f = setGenerator(f, data, id, { count: 20 });
+  f = act(f, { type: 'setLayout', id, layout: { kind: 'backToBack' } });
+  f = act(f, { type: 'setPerRow', id, perRow: 10 });
+  f = act(f, { type: 'setTier', id, side: 'ins', item: 'Desc_Coal_C', tier: 'Mk2' });
+  f = act(f, { type: 'setTier', id, side: 'ins', item: 'Desc_Water_C', tier: 'Mk1' });
+  const g = f.blocks[0] as GeneratorBlock;
+  assert.deepEqual([g.layout, g.perRow, g.tiers], [{ kind: 'backToBack' }, 10, { 'in:Desc_Coal_C': 'Mk2', 'in:Desc_Water_C': 'Mk1' }]);
+  const back = decodeFactory(encodeFactory(f), data)!.blocks[0] as GeneratorBlock;
+  assert.deepEqual([back.layout, back.perRow, back.tiers], [g.layout, g.perRow, g.tiers]);
+  const r = solveFactory(f, data), s = rowStage(g, r.blocks[id], data);
+  assert.equal(blockGeo(s.stage, s.data).pieces.filter(p => p.kind === 'machine').length, 20);
+  f = setGenerator(f, data, id, { fuel: 'Desc_PetroleumCoke_C' });
+  assert.deepEqual((f.blocks[0] as GeneratorBlock).tiers, { 'in:Desc_Water_C': 'Mk1' });
 });

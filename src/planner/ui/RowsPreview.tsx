@@ -4,18 +4,18 @@
 import { useMemo } from 'react';
 import { t } from '../../i18n/index.js';
 import type { BlockFlow } from '../model/solve.ts';
-import type { GameData, MapPlace, RecipeBlock } from '../model/types.ts';
-import { solvedStage } from '../model/solved.ts';
+import type { GameData, MapPlace, RowBlock } from '../model/types.ts';
+import { rowStage } from '../model/solved.ts';
 import { previewBox, previewPieces, rowsArrangement, rowsExitText, rowsLinesText, rowsModelText } from './rowspreview.ts';
 
 export const PREVIEW_W = 260, PREVIEW_H = 160;
 
-export function RowsPreview({ block: b, bf, data, place, onOpen }: {
-  block: RecipeBlock; bf: BlockFlow | undefined; data: GameData; place: MapPlace; onOpen: () => void;
+export function RowsPreview({ block: b, bf, data: d, place, onOpen }: {
+  block: RowBlock; bf: BlockFlow | undefined; data: GameData; place: MapPlace; onOpen: () => void;
 }) {
   // Sem máquinas (parado) ou sem limite: nada para desenhar, só o modelo e o botão.
   const ok = !!bf && !bf.unbounded && (bf.machines ?? 0) >= 1;
-  const stage = useMemo(() => solvedStage(b, bf), [b, bf]);
+  const { stage, data } = useMemo(() => rowStage(b, bf, d), [b, bf, d]);
   const arr = useMemo(() => rowsArrangement(stage, data, place), [stage, data, place]);
   const geo = ok ? arr.geo : null;
   const pieces = useMemo(() => (geo ? previewPieces(geo.pieces) : []), [geo]);

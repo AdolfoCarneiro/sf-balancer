@@ -4,11 +4,11 @@
 // No desktop o MapView decide se o painel aparece; no celular (≤ 720 px) ele é uma folha de baixo com alça.
 import { useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import { isSource, type Factory, type GameData, type MapPlace, type StageId } from '../model/types.ts';
+import { hasRows, isSource, type Factory, type GameData, type MapPlace, type StageId } from '../model/types.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Action } from '../model/factorystate.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
-import type { Scene } from '../model/map/scene.ts';
+import { selectionBox, type Scene } from '../model/map/scene.ts';
 import { warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
 import type { MeioResult } from '../model/meioresult.ts';
@@ -112,7 +112,7 @@ export function MapPanel(p: Props) {
   if (block && place && selBlock) {
     body = (
       <BlockPanel key={block.stage} block={selBlock} flow={flow} factory={f} data={data} rect={block.rect} place={place}
-        onPlace={pl => p.onPlace(block.stage, pl)} onOpen={selBlock.kind === 'recipe' ? () => p.onOpenStage(block.stage) : null}
+        onPlace={pl => p.onPlace(block.stage, pl)} onOpen={hasRows(selBlock) ? () => p.onOpenStage(block.stage) : null}
         onDelete={() => p.onDelete(block.stage)} dispatch={p.dispatch} fixAt={p.fixAt} onCreate={p.onCreate}
         view={p.view} onScale={() => p.onScale(block.stage)} onMontar={p.onMontar} />
     );
@@ -141,11 +141,12 @@ export function MapPanel(p: Props) {
 
 // Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer), separar numa fábrica
 // nova e limpar a seleção.
-function ManyPanel({ ids, stageName, onDeleteMany, onClearSel, onSplit, onCopy, onPaste, onDuplicate }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
-  const n = fmt(ids.length, 0);
+function ManyPanel({ ids, stageName, scene, meioList, onDeleteMany, onClearSel, onSplit, onCopy, onPaste, onDuplicate }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
+  const n = fmt(ids.length, 0), box = selectionBox(scene, ids, meioList);
   return (
     <>
       <h2 className="pl-insp-title">{t('plSelMany', n)}</h2>
+      {box && <p className="pl-insp-sub">{t('plSelSize')}: <b>{sizeText(box)}</b></p>}
       <p className="pl-note">{t('plSelManyHint')}</p>
       <ul className="pl-sel-list">
         {ids.map(id => <li key={id}>{stageName(id)}</li>)}

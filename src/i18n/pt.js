@@ -494,7 +494,7 @@ export default {
   plChangeRecipe: 'Receita (trocar)', plDeleteBlock: 'Apagar bloco',
   plBalIn: 'Entra', plBalOut: 'Sai', plBalSink: 'Sink', plBalDeficits: n => `${n} ${n === '1' ? 'falta' : 'faltas'}`, plBalSurpluses: n => `${n} ${n === '1' ? 'sobra' : 'sobras'}`,
   plBalAria: 'Balanço da fábrica: o que entra, o que sai e o que vai pro sink', plBalGo: (kind, item, block, rate) => `${kind === 'surplus' ? 'Sobra' : kind === 'stalled' ? 'Travado' : 'Falta'} de ${item} em ${block}: ${rate}`,
-  plSelMany: n => `${n} blocos selecionados`,
+  plSelMany: n => `${n} blocos selecionados`, plSelSize: 'Na Planta ocupa',
   plSelManyHint: 'Arraste um deles para mover todos. Delete apaga todos; Esc limpa a seleção. Shift + clique põe ou tira um bloco.',
   plSelDelete: n => `Apagar ${n} blocos`, plSelClear: 'Limpar seleção', plSelAll: 'Selecionar tudo',
   plInviteTitle: 'Duplo clique para criar um bloco', plInviteSub: 'ou arraste de uma porta para cá', plNewBlock: 'Novo bloco', plLegendTitle: 'Legenda',

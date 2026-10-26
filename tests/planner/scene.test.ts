@@ -10,7 +10,7 @@ import { meioPlan } from '../../src/planner/model/meio.ts';
 import { meioGeo } from '../../src/planner/model/map/meiogeo.ts';
 import { blockGeo } from '../../src/planner/model/map/block.ts';
 import { cutsRect, type MeioGeo, type Pt, type Rect } from '../../src/planner/model/map/geo.ts';
-import { buildScene as build, hitTest, placesOf as places0, proposeMap as propose0, rotSize, toWorld, type Geos } from '../../src/planner/model/map/scene.ts';
+import { buildScene as build, hitTest, selectionBox, placesOf as places0, proposeMap as propose0, rotSize, toWorld, type Geos } from '../../src/planner/model/map/scene.ts';
 import { crossings, overlaps } from '../../src/planner/model/map/checks.ts';
 import { vf } from './fixtures.ts';
 import { MARK_H, MONTAR_REF } from '../../src/planner/model/map/cards.ts';
@@ -498,4 +498,18 @@ test('cena: center invertido: as saídas no vão entre os pares descem pelo vão
   const belts = s.belts.filter(b => b.role === 'main' && b.item === 'Desc_IronIngot_C' && outs.some(a => same(toWorld([a.x, a.y], sb.geo, sb.place), b.pts[0])));
   assert.equal(belts.length, 4);
   for (const b of belts) for (const m of machines) assert.ok(!cuts(b.pts, m), `esteira sobre máquina: ${JSON.stringify(b.pts)}`);
+});
+
+test('selectionBox: os blocos selecionados e as ligações só entre eles, na Planta', () => {
+  const geos: Geos = {}, pl = placesOf(ex, data, geos), sc = buildScene(ex, data, pl, geos), ms = meiosOf(ex);
+  const rectOf = (id: string) => sc.blocks.find(b => b.stage === id)!.rect;
+  const union = (rs: Rect[]) => {
+    const x = Math.min(...rs.map(r => r.x)), y = Math.min(...rs.map(r => r.y));
+    return { x, y, w: Math.max(...rs.map(r => r.x + r.w)) - x, h: Math.max(...rs.map(r => r.y + r.h)) - y };
+  };
+  // Aço e as duas consumidoras: entra a ligação do aço (as três pontas na seleção), não a do ferro (s1 fora).
+  const steel = sc.meios.find(m => m.meio === STEEL_MEIO)!;
+  assert.deepEqual(selectionBox(sc, ['s2', 's3', 's4'], ms), union([rectOf('s2'), rectOf('s3'), rectOf('s4'), steel.rect]));
+  assert.deepEqual(selectionBox(sc, ['s1'], ms), rectOf('s1'));
+  assert.equal(selectionBox(sc, ['nada'], ms), null);
 });

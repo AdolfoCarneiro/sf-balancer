@@ -4,9 +4,9 @@ import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { BALANCER_PATH, type Lang } from '../lang.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
 import { arrange, type ArrLine, type Arrangement } from './layout.ts';
-import { genPerRow, solvedStage } from './solved.ts';
+import { rowStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
-import type { Block, Factory, GameData, ItemId, Layout, Link, RecipeBlock, StageId } from './types.ts';
+import { hasRows, type Block, type Factory, type GameData, type ItemId, type Layout, type Link, type RowBlock, type StageId } from './types.ts';
 import { PURITY, extractorRate, genFuel } from './factory.ts';
 import { countPieces, type MeioGeo, type PieceCount } from './map/geo.ts';
 
@@ -95,11 +95,11 @@ export const meioUnbounded = (meio: Meio, flow: FlowResult): boolean =>
 
 // arrange de cada bloco guardado pelo objeto do bloco (o Factory é imutável) e pelas máquinas resolvidas: o cacheKey
 // chama o meioInput a cada mudança, para todos os meios, e só o bloco editado precisa montar de novo.
-const arrMemo = new WeakMap<RecipeBlock, { machines: number; d: GameData; a: Arrangement }>();
-function blockArrangement(b: RecipeBlock, bf: FlowResult['blocks'][string] | undefined, d: GameData): Arrangement {
-  const st = solvedStage(b, bf), m = arrMemo.get(b);
+const arrMemo = new WeakMap<RowBlock, { machines: number; d: GameData; a: Arrangement }>();
+function blockArrangement(b: RowBlock, bf: FlowResult['blocks'][string] | undefined, d: GameData): Arrangement {
+  const rs = rowStage(b, bf, d), st = rs.stage, m = arrMemo.get(b);
   if (m && m.machines === st.machines && m.d === d) return m.a;
-  const a = arrange(st, d, b.layout);
+  const a = arrange(st, rs.data, b.layout);
   arrMemo.set(b, { machines: st.machines, d, a });
   return a;
 }
@@ -114,7 +114,7 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   // com costas sem esteiras editadas nem junções: virar, espelhar e deslocar fileiras não mudam as linhas) e valem as
   // contas de hoje, por perRowOf (a última fileira incompleta continua "partial"). Uma vez por bloco e lado.
   const memo = new Map<string, ArrLine[] | null>();
-  const arranged = (b: RecipeBlock, id: StageId, side: 'ins' | 'outs'): ArrLine[] | null => {
+  const arranged = (b: RowBlock, id: StageId, side: 'ins' | 'outs'): ArrLine[] | null => {
     const k = `${id}|${side}`;
     if (!memo.has(k)) {
       const s = side === 'ins' ? 'in' : 'out';
@@ -133,10 +133,10 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   const sides = [...meio.producers.map(id => [id, 'outs'] as const), ...consumers.map(id => [id, 'ins'] as const)];
   for (const [id, side] of sides) {
     const b = blockOf(f, id);
-    if (b.kind !== 'recipe') continue;
+    if (!hasRows(b)) continue;
     // Com arranjo, o tier das linhas dele (um por porta); sem, o da porta pela fileira simples de hoje.
-    const lines = arranged(b, id, side);
-    const tr = lines ? lines[0]?.tier ?? defaultTier(it) : portTier(solvedStage(b, flow.blocks[id]), d, meio.item, side);
+    const lines = arranged(b, id, side), rs = lines ? null : rowStage(b, flow.blocks[id], d);
+    const tr = lines ? lines[0]?.tier ?? defaultTier(it) : portTier(rs!.stage, rs!.data, meio.item, side);
     const c = capOf(it, tr);
     if (c > cap) { cap = c; tier = tr; }
   }
@@ -144,14 +144,11 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   const src = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id], x = finite(bf?.x);
     switch (b.kind) {
-      case 'recipe': {
-        const st = solvedStage(b, bf), lines = arranged(b, id, 'outs');
-        const g = { driver: 'clock' as const, clock: 100 * x / st.machines, nominal: perMinOf(b.recipe, d, meio.item, 'outs') };
-        return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
-      }
-      case 'generator': {
-        const n = Math.max(1, finite(bf?.machines)), g = genFuel(d, b.building, b.fuel), each = g?.waste?.perMin ?? 1;
-        return [{ driver: 'clock', count: n, clock: 100 * x / n, nominal: each, per: genPerRow(d, b) }];
+      case 'recipe': case 'generator': {
+        // Gerador: o resíduo, pela receita do gerador (x = geradores a 100 %, como as máquinas da receita).
+        const { stage: st, data: rd } = rowStage(b, bf, d), lines = arranged(b, id, 'outs');
+        const g = { driver: 'clock' as const, clock: 100 * x / st.machines, nominal: perMinOf(st.recipe, rd, meio.item, 'outs') };
+        return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, rd) }];
       }
       case 'miner': case 'input': {
         // Linhas iguais, cada uma dentro da esteira.
@@ -169,19 +166,13 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   // Consumidora: o que ela quer (o que chega mais o que falta), sempre finito; a falta aparece como "short" no meio.
   const dst = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id];
-    if (b.kind === 'generator') {
-      // Gerador: cada um queima o combustível (ou a água) por minuto; uma linha por fileira do desenho (genPerRow).
-      const g = genFuel(d, b.building, b.fuel), nominal = meio.item === g?.item ? g.perMin : g?.water ?? 1;
-      const port = bf?.ins.find(p => p.item === meio.item), want = finite(port?.rate) + finite(port?.deficit);
-      const n = Math.max(1, finite(bf?.machines));
-      return [{ driver: 'clock', count: n, clock: 100 * want / (nominal * n), nominal, per: genPerRow(d, b) }];
-    }
-    if (b.kind !== 'recipe') throw new Error(`bloco ${id} não consome pelo meio`);
-    const st = solvedStage(b, bf), nominal = perMinOf(b.recipe, d, meio.item, 'ins');
+    // Gerador: o combustível e a água pela receita do gerador, como uma receita.
+    if (!hasRows(b)) throw new Error(`bloco ${id} não consome pelo meio`);
+    const { stage: st, data: rd } = rowStage(b, bf, d), nominal = perMinOf(st.recipe, rd, meio.item, 'ins');
     const port = bf?.ins.find(p => p.item === meio.item);
     const want = finite(port?.rate) + finite(port?.deficit);
     const g = { driver: 'clock' as const, clock: 100 * want / (nominal * st.machines), nominal }, lines = arranged(b, id, 'ins');
-    return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
+    return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, rd) }];
   };
   // Bloco de sobra no grupo: a sobra sai numa linha extra até ele; coleta numa produtora: pro sink; senão represa.
   // Fluido não vai pro sink: a sobra represa.

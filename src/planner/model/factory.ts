@@ -2,7 +2,7 @@
 // Funções puras; os números (quanto flui) ficam com o solver.
 import type {
   Block, BuildingId, ExtractorBlock, GenFuel, GeneratorBlock, Factory, GameData, ItemId, LigPlace, Limits, Link, MinerBlock, Purity, Recipe,
-  RecipeBlock, RecipeId, Side, Stage, StageId,
+  RecipeBlock, RecipeId, RowBlock, Side, Stage, StageId,
 } from './types.ts';
 import { suggestedPerRow, tierKey } from './stage.ts';
 import { groupLinks, type Meio } from './meio.ts';
@@ -16,6 +16,30 @@ export const genFuel = (d: GameData, building: unknown, fuel: unknown): GenFuel 
   typeof building === 'string' && typeof fuel === 'string' && d.generators && own(d.generators, building)
     ? d.generators[building].fuels.find(x => x.item === fuel && own(d.items, x.item)) : undefined;
 const WATER: ItemId = 'Desc_Water_C';
+// O gerador visto como receita, para as fileiras (arranjo, tiers, tela da etapa): id `gen:<prédio>:<combustível>`, o
+// combustível e a água (por gerador a 100 %) entrando e o resíduo saindo, feita no próprio gerador (w × l do prédio).
+// genData é o GameData com essa receita e esse prédio a mais (um por GameData e receita).
+export const genRecipeId = (b: { building: BuildingId; fuel: ItemId }): RecipeId => `gen:${b.building}:${b.fuel}`;
+const genMemo = new WeakMap<GameData, Map<RecipeId, GameData>>();
+export function genData(d: GameData, b: { building: BuildingId; fuel: ItemId }): GameData {
+  const id = genRecipeId(b);
+  let m = genMemo.get(d);
+  if (!m) genMemo.set(d, (m = new Map()));
+  const hit = m.get(id);
+  if (hit) return hit;
+  const g = d.generators?.[b.building], x = genFuel(d, b.building, b.fuel), name = g?.name ?? b.building;
+  const recipe: Recipe = {
+    id, name, alt: false, building: b.building,
+    ins: x ? [{ item: x.item, perMin: x.perMin }, ...(x.water ? [{ item: WATER, perMin: x.water }] : [])] : [],
+    outs: x?.waste ? [{ item: x.waste.item, perMin: x.waste.perMin }] : [],
+  };
+  const out: GameData = { ...d, recipes: { ...d.recipes, [id]: recipe }, buildings: { ...d.buildings, [b.building]: { id: b.building, name, w: g?.w ?? 8, l: g?.l ?? 8 } } };
+  m.set(id, out);
+  return out;
+}
+// A receita das fileiras do bloco (a dele, ou a do gerador).
+export const rowRecipe = (d: GameData, b: RowBlock): Recipe =>
+  b.kind === 'recipe' ? d.recipes[b.recipe] : genData(d, b).recipes[genRecipeId(b)];
 export const clockOk = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 250;
 // Vazão de um extrator (item/min): a do prédio, pela pureza do nó e pelo clock.
 export const extractorRate = (d: GameData, b: ExtractorBlock): number => {
@@ -45,6 +69,10 @@ export const nextLinkId = (f: Factory): string => nextId(f.links.map(l => l.id),
 const get = (f: Factory, id: StageId) => f.blocks.find(b => b.id === id);
 const editRecipe = (f: Factory, id: StageId, fn: (b: RecipeBlock) => RecipeBlock): Factory =>
   ({ ...f, blocks: f.blocks.map(b => (b.id === id && b.kind === 'recipe' ? fn(b) : b)) });
+// Receita ou gerador: só os campos das fileiras (perRow, tiers, layout), que os dois têm.
+type RowFields = Pick<RecipeBlock, 'perRow' | 'tiers' | 'layout'>;
+export const editRows = (f: Factory, id: StageId, fn: (b: RowFields) => Partial<RowFields>): Factory =>
+  ({ ...f, blocks: f.blocks.map(b => (b.id === id && (b.kind === 'recipe' || b.kind === 'generator') ? { ...b, ...fn({ perRow: b.perRow ?? null, tiers: b.tiers ?? {}, layout: b.layout }) } : b)) });
 const own = <T>(o: Record<string, T>, k: string) => Object.hasOwn(o, k);
 export const rateOk = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= MAX_RATE;
 export const countOk = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_EXTRACTORS;
@@ -237,19 +265,19 @@ export const setLimits = (f: Factory, id: StageId, limits: Limits | null): Facto
 export const setClock = (f: Factory, id: StageId, clock: number): Factory =>
   Number.isFinite(clock) ? editRecipe(f, id, b => ({ ...b, clock: Math.min(250, Math.max(1, clock)) })) : f;
 export const setPerRow = (f: Factory, id: StageId, perRow: number | null): Factory =>
-  perRow === null || perRowOk(perRow) ? editRecipe(f, id, b => ({ ...b, perRow })) : f;
+  perRow === null || perRowOk(perRow) ? editRows(f, id, () => ({ perRow })) : f;
 // `null` tira a escolha (volta ao automático). Só porta da receita naquele lado, e tier que existe para ela
 // (esteira para sólido, cano para fluido); o resto não muda nada.
 export function setTier(f: Factory, d: GameData, id: StageId, side: Side, item: ItemId, tier: string | null): Factory {
   const b = get(f, id);
-  if (b?.kind !== 'recipe' || (side !== 'ins' && side !== 'outs') || !d.recipes[b.recipe][side].some(x => x.item === item)) return f;
+  if (!b || (b.kind !== 'recipe' && b.kind !== 'generator') || (side !== 'ins' && side !== 'outs') || !rowRecipe(d, b)[side].some(x => x.item === item)) return f;
   const k = tierKey(side, item);
   if (tier === null) {
-    if (!Object.hasOwn(b.tiers, k)) return f;
-    return editRecipe(f, id, x => { const tiers = { ...x.tiers }; delete tiers[k]; return { ...x, tiers }; });
+    if (!Object.hasOwn(b.tiers ?? {}, k)) return f;
+    return editRows(f, id, x => { const tiers = { ...x.tiers }; delete tiers[k]; return { tiers }; });
   }
   if (typeof tier !== 'string' || !(isFluid(d, item) ? PIPES : BELTS).some((t: { id: string }) => t.id === tier)) return f;
-  return editRecipe(f, id, x => ({ ...x, tiers: { ...x.tiers, [k]: tier } }));
+  return editRows(f, id, x => ({ tiers: { ...x.tiers, [k]: tier } }));
 }
 
 // Marca a saída sólida para coletar o excesso; saída fluida ou que não é da receita: nada muda.
@@ -274,7 +302,14 @@ export function setGenerator(f: Factory, d: GameData, id: StageId, v: { fuel?: I
   const b = get(f, id);
   if (b?.kind !== 'generator') return f;
   const next: GeneratorBlock = { ...b };
-  if (v.fuel !== undefined && genFuel(d, b.building, v.fuel)) next.fuel = v.fuel;
+  if (v.fuel !== undefined && genFuel(d, b.building, v.fuel)) {
+    next.fuel = v.fuel;
+    // Tier escolhido de um item que deixou de ser porta (o combustível antigo) sai.
+    if (next.tiers) {
+      const r = rowRecipe(d, next), keep = new Set([...r.ins.map(x => tierKey('ins', x.item)), ...r.outs.map(x => tierKey('outs', x.item))]);
+      next.tiers = Object.fromEntries(Object.entries(next.tiers).filter(([k]) => keep.has(k)));
+    }
+  }
   if (v.count !== undefined) next.count = machinesOk(v.count) ? v.count : null;
   if (v.clock !== undefined && clockOk(v.clock)) { if (v.clock === 100) delete next.clock; else next.clock = v.clock; }
   let g: Factory = { ...f, blocks: f.blocks.map(x => (x.id === id ? next : x)) };

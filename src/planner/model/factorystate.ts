@@ -7,7 +7,7 @@ import { cleanLayout } from './layout.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, clockOk, countOk, machinesOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
-  genFuel, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
+  genData, genFuel, genRecipeId, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
@@ -158,9 +158,14 @@ function cleanBlock(r: Record<string, any>, id: StageId, data: GameData): Block 
       const purity: Purity = data.extractors[r.building].purity && typeof r.purity === 'string' && Object.hasOwn(PURITY, r.purity) ? r.purity as Purity : 'normal';
       return { id, kind: 'extractor', building: r.building, item: r.item, purity, count: countOk(r.count) ? r.count : null, ...(clockOk(r.clock) && r.clock !== 100 ? { clock: r.clock } : {}) };
     }
-    case 'generator':
-      return genFuel(data, r.building, r.fuel)
-        ? { id, kind: 'generator', building: r.building, fuel: r.fuel, count: machinesOk(r.count) ? r.count : null, ...(clockOk(r.clock) && r.clock !== 100 ? { clock: r.clock } : {}) } : null;
+    case 'generator': {
+      if (!genFuel(data, r.building, r.fuel)) return null;
+      const g = { building: r.building as string, fuel: r.fuel as string }, tiers = cleanTiers(r.tiers, genRecipeId(g), genData(data, g)), layout = cleanLayout(r.layout);
+      return {
+        id, kind: 'generator', ...g, count: machinesOk(r.count) ? r.count : null, ...(clockOk(r.clock) && r.clock !== 100 ? { clock: r.clock } : {}),
+        ...(perRowOk(r.perRow) ? { perRow: r.perRow } : {}), ...(Object.keys(tiers).length ? { tiers } : {}), ...(layout ? { layout } : {}),
+      };
+    }
     case 'input':
       return typeof r.item === 'string' && Object.hasOwn(data.items, r.item) && (r.rate === null || rateOk(r.rate))
         ? { id, kind: 'input', item: r.item, rate: r.rate } : null;
@@ -246,7 +251,7 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' |
       const lay = a.layout === null ? null : cleanLayout(a.layout);
       if (a.layout !== null && !lay) return f;
       return { ...f, blocks: f.blocks.map(b => {
-        if (b.id !== a.id || b.kind !== 'recipe') return b;
+        if (b.id !== a.id || (b.kind !== 'recipe' && b.kind !== 'generator')) return b;
         const { layout: _l, ...rest } = b;
         return lay ? { ...rest, layout: lay } : rest;
       }) };

@@ -56,6 +56,8 @@ export interface DrawOpts {
   icon: (item: ItemId) => HTMLImageElement | null;
   // Camadas ligadas (desligada: não desenha; o MapView também tira do clique).
   layers: MapLayers;
+  // Seleção de vários blocos: o que ela ocupa na Planta (mundo, m) e a medida já no idioma ("96 × 72 m · 12 × 9 fundações").
+  selBox: { r: Rect; text: string } | null;
 }
 
 const near = (r: Rect, vw: number, vh: number, m: number) => r.x + r.w >= -m && r.y + r.h >= -m && r.x <= vw + m && r.y <= vh + m;
@@ -158,6 +160,16 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
     const L = makeLabels(ctx, vw, vh, th, o.icon, boxes);
     L.placed.push(...portLabels, ...chipRects);
     drawRuler(ctx, z, th, L);
+    // Seleção de vários blocos: o contorno tracejado do que ela ocupa e a medida em fundações, antes dos nomes.
+    if (o.selBox) {
+      const s = o.selBox.r, r = { x: sx(s.x), y: sy(s.y), w: s.w * z, h: s.h * z };
+      ctx.save();
+      ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = th.ficsit;
+      ctx.strokeRect(r.x - 0.5, r.y - 0.5, r.w + 1, r.h + 1);
+      ctx.restore();
+      const line = { s: o.selBox.text, font: `600 12px ${th.body}`, color: th.ficsit, h: 18 };
+      L.put([line], [[r.x, r.y - 18 - 4], [r.x, r.y + r.h + 4], [r.x + 4, r.y + 4]], null, true, true);
+    }
     drawPlantLabels(ctx, scene, cam, vw, vh, blocks, meios, o, L, new Map(boxes.map(b => [b.id, b.r])));
     ctx.globalAlpha = 1;
   }

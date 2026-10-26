@@ -9,7 +9,7 @@ import { MAX_EXTRACTORS, MAX_MACHINES, clockOk, countOk, machinesOk, rateOk } fr
 import { blockBadges, limitView } from '../model/badges.ts';
 import type { BlockFlow, FlowResult } from '../model/solve.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
-import { isSource } from '../model/types.ts';
+import { hasRows, isSource } from '../model/types.ts';
 import type {
   Block, ExtractorBlock, Factory, GameData, GeneratorBlock, InputBlock, ItemId, Limits, MapPlace, MinerBlock, Purity, RecipeBlock, Rot,
 } from '../model/types.ts';
@@ -152,7 +152,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
           </div>
         );
       })}
-      {b.kind === 'recipe' && onOpen && <RowsPreview block={b} bf={bf} data={data} place={place} onOpen={onOpen} />}
+      {hasRows(b) && onOpen && <RowsPreview block={b} bf={bf} data={data} place={place} onOpen={onOpen} />}
       {b.kind === 'recipe' && <RecipeFields b={b} bf={bf} f={f} data={data} dispatch={dispatch} />}
       {b.kind === 'miner' && <MinerFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}

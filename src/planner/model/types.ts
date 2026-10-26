@@ -49,12 +49,19 @@ export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: Buil
 export interface InputBlock { id: StageId; kind: 'input'; item: ItemId; rate: number | null }
 // Gerador queimando um combustível: count null = queima o que chegar (a ferramenta diz quantos); clock ausente = 100.
 // A potência segue o clock em linha reta (como o consumo).
-export interface GeneratorBlock { id: StageId; kind: 'generator'; building: BuildingId; fuel: ItemId; count: number | null; clock?: number }
+// perRow, tiers e layout: as fileiras, como no bloco de receita (ausentes = automático e fileira simples).
+export interface GeneratorBlock {
+  id: StageId; kind: 'generator'; building: BuildingId; fuel: ItemId; count: number | null; clock?: number;
+  perRow?: number | null; tiers?: Record<string, string>; layout?: Layout;
+}
 export interface OutletBlock { id: StageId; kind: 'sink' | 'container' | 'export' }
 export type Block = RecipeBlock | MinerBlock | ExtractorBlock | InputBlock | GeneratorBlock | OutletBlock;
 // Origem: um bloco sem entradas que entrega um item (Miner, extrator, Entrada).
 export const isSource = (b: Block): b is MinerBlock | ExtractorBlock | InputBlock =>
   b.kind === 'miner' || b.kind === 'extractor' || b.kind === 'input';
+// Bloco com fileiras de máquinas (arranjo, tiers, tela da etapa): receita e gerador.
+export type RowBlock = RecipeBlock | GeneratorBlock;
+export const hasRows = (b: Block): b is RowBlock => b.kind === 'recipe' || b.kind === 'generator';
 // Posição livre da ligação (meio) no mapa, presa na grade de 8 m.
 export interface LigPlace { x: number; y: number; rot: Rot }
 // map: posição de cada bloco no mapa; alts: id do meio -> `key` da montagem escolhida; mapGap: vão entre peças ligadas

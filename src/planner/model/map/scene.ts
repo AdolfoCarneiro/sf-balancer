@@ -1,10 +1,11 @@
 // A cena do mapa, no mundo (metros): blocos da fábrica (receitas em escala, origens e sobras como marcadores), meios
 // (as ligações) onde foram postos ou colados na primeira produtora, esteiras entre eles, sobreposições e cruzamentos. Puro: o canvas só desenha o que sai
 // daqui.
-import type { Block, Factory, GameData, MapPlace, Rot, StageId } from '../types.ts';
+import { hasRows, type Block, type Factory, type GameData, type MapPlace, type Rot, type StageId } from '../types.ts';
 import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
-import { markerGeo, solvedStage } from '../solved.ts';
+import { markerGeo, rowStage } from '../solved.ts';
+import { rowRecipe } from '../factory.ts';
 import { blockGeo } from './block.ts';
 import { clean, cutsRect, dirWorld, gateOf, rotSize, toWorld, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
@@ -12,7 +13,7 @@ import { crossings, intersects, overlaps } from './checks.ts';
 import { blockCardSize, MONTAR_REF } from './cards.ts';
 import { montarLig } from '../views.ts';
 
-// marker: origem ou sobra, desenhada fora de escala (o gerador não: fica no tamanho dele). card: canto do cartão na Montar (a posição dela, senão a da Planta).
+// marker: origem ou sobra, desenhada fora de escala. card: canto do cartão na Montar (a posição dela, senão a da Planta).
 export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean; card: Pt }
 // geo null = calculando (faixa 16 × 8). chip: centro do chip na Montar quando a ligação tem posição lá (null: no meio
 // das portas, calculado na tela).
@@ -81,9 +82,11 @@ function attach(list: Meio[], geos: Geos, sizeOf: (id: StageId) => Size): Map<st
   return out;
 }
 
-// Geometria do bloco: receita em escala (máquinas resolvidas), o resto como marcador.
+// Geometria do bloco: receita e gerador em escala (máquinas resolvidas), o resto como marcador.
 function geoOf(b: Block, d: GameData, flow: FlowResult, place?: MapPlace): BlockGeo {
-  return b.kind === 'recipe' ? blockGeo(solvedStage(b, flow.blocks[b.id]), d, place) : markerGeo(b, flow.blocks[b.id], d);
+  if (!hasRows(b)) return markerGeo(b, flow.blocks[b.id], d);
+  const s = rowStage(b, flow.blocks[b.id], d);
+  return blockGeo(s.stage, s.data, place);
 }
 
 // Posto de cada bloco: a maior distância desde um bloco sem produtor (num loop, o ciclo é cortado).
@@ -125,9 +128,9 @@ export function proposeMap(f: Factory, data: GameData, geos: Geos, flow: FlowRes
   for (const b of f.blocks) { const r = rk.get(b.id)!; const l = cols.get(r); if (l) l.push(b); else cols.set(r, [b]); }
   // Coluna com entrada sem ligação: os tocos de RAW_STUB chegam pela esquerda e precisam de lugar antes dela.
   const hasRaw = (b: Block) => {
-    if (b.kind !== 'recipe') return false;
+    if (!hasRows(b)) return false;
     const linked = new Set(f.links.filter(l => l.to === b.id).map(l => l.item));
-    return (data.recipes[b.recipe]?.ins ?? []).some(x => !linked.has(x.item));
+    return (rowRecipe(data, b)?.ins ?? []).some(x => !linked.has(x.item));
   };
   const out: Record<StageId, MapPlace> = {};
   let x = 0;
@@ -150,7 +153,7 @@ function layout(f: Factory, data: GameData, places: Record<StageId, MapPlace>, g
   const blocks: SceneBlock[] = list0.map(b => {
     const place = places[b.id] ?? ORIGIN, geo = geoOf(b, data, flow, place);
     const mp = f.montar && Object.hasOwn(f.montar, b.id) ? f.montar[b.id] : place;
-    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe' && b.kind !== 'generator', card: [mp.x, mp.y] };
+    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: !hasRows(b), card: [mp.x, mp.y] };
   });
   const byId = new Map(blocks.map(b => [b.stage, b]));
   const list = groupLinks(f.links).filter(m => byId.has(m.producers[0]));
@@ -175,6 +178,17 @@ function boundsOf(rects: Rect[], belts: BeltPath[] = []): Rect {
   for (const r of rects) { x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); }
   for (const b of belts) for (const [x, y] of b.pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   return x0 === Infinity ? { x: 0, y: 0, w: 0, h: 0 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// O que a seleção ocupa na Planta (para fazer a base no jogo): os blocos e as ligações que ficam entre eles (todas as
+// produtoras e consumidoras na seleção). Sem nenhum bloco na cena: null.
+export function selectionBox(scene: Scene, ids: readonly StageId[], meios: readonly Meio[]): Rect | null {
+  const set = new Set(ids);
+  const rects = scene.blocks.filter(b => set.has(b.stage)).map(b => b.rect);
+  if (!rects.length) return null;
+  const inside = new Set(meios.filter(m => [...m.producers, ...m.consumers].every(id => set.has(id))).map(m => m.id));
+  for (const m of scene.meios) if (inside.has(m.meio)) rects.push(m.rect);
+  return boundsOf(rects);
 }
 
 // Posições usadas pelo mapa: as salvas; bloco sem posição recebe a proposta se ela não sobrepuser nada já
