@@ -4,7 +4,8 @@
 // Ctrl+Z desfaz a última; (na Montar) clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco
 // no canvas; Desligar some com a ligação e Ctrl+Z a traz de volta; o botão Planta em escala troca a vista e as portas
 // continuam pegáveis (arrastar para o vazio abre o seletor); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
-// Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; /#s= antigo cai em /balancer.
+// Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
+// Camadas "Machines only" tira portas e chips; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
 import { chromium } from 'playwright';
@@ -187,6 +188,34 @@ await step('Ctrl+A seleciona tudo, Delete apaga todos, um Ctrl+Z traz todos de v
   await pg.keyboard.press('Control+z');
   await nBlocks(n);
   await nMeios(1);
+});
+await step('etapa do Pure Iron: "Mergers no meio" muda as linhas da ligação; volta à cadeia', async () => {
+  await settled();
+  const geoOf = () => pg.evaluate(() => { const m = window.__sfPlanner.scene.meios[0]; return m && JSON.stringify([m.rect, m.geo?.pieces.length]); });
+  const before = await geoOf();
+  const b = await box(), r = await pg.evaluate(id => window.__sfPlanner.view.blocks.find(x => x.id === id).rect, first);
+  await pg.mouse.dblclick(b.x + r.x + r.w / 2, b.y + r.y + r.h / 2);
+  await pg.waitForSelector('input[type=radio][value=center]', { timeout: 10000 }).catch(() => { throw new Error('a tela da etapa não abriu'); });
+  await pg.locator('input[type=radio][value=center]').check({ force: true });
+  await pg.getByRole('button', { name: 'Back to the chain' }).first().click();
+  await pg.waitForSelector('canvas.pl-map-canvas', { timeout: 5000 });
+  await settled();
+  await waitFor(b0 => { const m = window.__sfPlanner.scene.meios[0]; return JSON.stringify([m.rect, m.geo?.pieces.length]) !== b0; }, before, 'a ligação mudar com o modelo Mergers no meio');
+});
+await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', async () => {
+  await settled();
+  await pg.locator('.pl-layers-btn').click();
+  await pg.getByRole('button', { name: 'Machines only' }).click();
+  const saved = () => pg.evaluate(() => JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}'));
+  await waitFor(() => Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}')).length === 4 && Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers'))).every(v => v === false), null, 'as quatro camadas desligadas');
+  // Chip escondido não pega o clique: o mini painel não abre.
+  const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);
+  if (ch) { await pg.mouse.click(b.x + ch.x, b.y + ch.y); must(await pg.locator('.pl-chip-pop').count() === 0, 'o chip escondido abriu o mini painel'); }
+  if (!await pg.locator('.pl-layers-pop').count()) await pg.locator('.pl-layers-btn').click();
+  for (const c of await pg.locator('.pl-layers-pop input[type=checkbox]').all()) await c.check();
+  await pg.waitForTimeout(150);
+  must(Object.values(await saved()).every(v => v === true), 'as camadas não voltaram');
+  await pg.keyboard.press('Escape');
 });
 await step('/#s= antigo cai em /balancer', async () => {
   const { shareHash } = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));
