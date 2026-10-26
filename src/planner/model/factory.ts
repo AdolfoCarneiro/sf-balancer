@@ -173,6 +173,12 @@ export function connect(f: Factory, d: GameData, from: StageId, to: StageId, ite
 export const disconnect = (f: Factory, linkId: string): Factory =>
   f.links.some(l => l.id === linkId) ? pruneMeios({ ...f, links: f.links.filter(l => l.id !== linkId) }) : f;
 
+// Tira vários links de uma vez (a ligação inteira); o grupo some e leva `ligs`/`alts` junto.
+export function disconnectMany(f: Factory, linkIds: string[]): Factory {
+  const ids = new Set(linkIds);
+  return f.links.some(l => ids.has(l.id)) ? pruneMeios({ ...f, links: f.links.filter(l => !ids.has(l.id)) }) : f;
+}
+
 export function setRecipe(f: Factory, d: GameData, id: StageId, recipe: RecipeId): Factory {
   const b = get(f, id);
   if (b?.kind !== 'recipe' || typeof recipe !== 'string' || !own(d.recipes, recipe)) return f;

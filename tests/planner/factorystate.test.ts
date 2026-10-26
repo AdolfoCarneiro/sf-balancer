@@ -205,3 +205,18 @@ test('estado v2: propor o mapa de novo troca as posições e solta as ligações
   assert.equal(h.past.length, steps + 1);
   assert.equal(reduce(h, { type: 'undo' }, data).present, before);
 });
+
+test('disconnectMeio tira todos os links e um undo volta todos', () => {
+  let h: History<Factory> = historyNew(ex);
+  h = reduce(h, { type: 'placeLig', meio: 'Desc_IronIngot_C:s1>s2', place: { x: 8, y: 8, rot: 0 } }, data);
+  h = reduce(h, { type: 'setMeioAlt', meio: 'Desc_IronIngot_C:s1>s2', key: 'k' }, data);
+  const ids = ex.links.filter(l => l.from === 's1' && l.to === 's2').map(l => l.id);
+  assert.ok(ids.length > 0);
+  const before = h.past.length, withLinks = h.present;
+  h = reduce(h, { type: 'disconnectMeio', linkIds: ids }, data);
+  assert.equal(h.past.length, before + 1);
+  assert.ok(!h.present.links.some(l => ids.includes(l.id)));
+  assert.equal(h.present.ligs, undefined); assert.equal(h.present.alts, undefined);
+  h = reduce(h, { type: 'undo' }, data);
+  assert.deepEqual(h.present, withLinks);
+});

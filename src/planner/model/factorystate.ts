@@ -4,7 +4,7 @@ import type {
 } from './types.ts';
 import { tierKey } from './stage.ts';
 import {
-  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect,
+  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, setClock, setCollect, setExtractor, setLimits,
   setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
@@ -49,6 +49,7 @@ export type Action =
   | { type: 'removeBlock'; id: StageId }
   | { type: 'connect'; from: StageId; to: StageId; item: ItemId }
   | { type: 'disconnect'; linkId: string }
+  | { type: 'disconnectMeio'; linkIds: string[] }
   | { type: 'setRecipe'; id: StageId; recipe: RecipeId }
   | { type: 'setLimits'; id: StageId; limits: Limits | null }
   | { type: 'setClock'; id: StageId; clock: number }
@@ -218,6 +219,7 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     case 'removeBlock': return removeBlock(f, a.id);
     case 'connect': return connect(f, d, a.from, a.to, a.item);
     case 'disconnect': return disconnect(f, a.linkId);
+    case 'disconnectMeio': return disconnectMany(f, a.linkIds);
     case 'setRecipe': return setRecipe(f, d, a.id, a.recipe);
     case 'setLimits': {
       // Só as entradas da receita do bloco.
