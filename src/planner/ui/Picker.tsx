@@ -1,5 +1,5 @@
-// Seletor do mapa (como o Recipe Chooser do Modeler): abre no ponto clicado, busca com foco, especiais (origens e
-// sobras) e receitas em cartões com ícone, prédio e ingredientes; setas + Enter escolhem, Esc fecha.
+// Seletor do mapa (como o Recipe Chooser do Modeler): abre no ponto clicado, busca com foco, receitas e depois as
+// especiais (origens e sobras) em cartões com ícone, prédio e ingredientes; setas + Enter escolhem, Esc fecha.
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { pickerEntries, pickerGroups, type PickerEntry, type PickerFilter } from '../model/picker.ts';
@@ -42,7 +42,7 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  // Vindo de uma porta, as receitas primeiro; sem filtro, as especiais primeiro (pickerGroups).
+  // As receitas sempre primeiro e as especiais depois (pickerGroups), vindo de uma porta ou do vazio.
   const groups = useMemo(() => pickerGroups(pickerEntries(data, query, filter), filter), [data, query, filter]);
   const all = useMemo(() => groups.flatMap(g => g.entries), [groups]);
 

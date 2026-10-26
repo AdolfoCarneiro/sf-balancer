@@ -7,6 +7,8 @@ import {
   type History, encodeFactory, decodeFactory, migrateV1, exampleFactory, initialHistory, reduce, shouldPersist, PLANNER_STORE,
 } from '../../src/planner/model/factorystate.ts';
 import { historyNew, encodeShare } from '../../src/logic/index.js';
+import { addBlock, connect } from '../../src/planner/model/factory.ts';
+import { groupLinks } from '../../src/planner/model/meio.ts';
 
 const data = game as GameData;
 const ex = exampleFactory(data);
@@ -219,4 +221,25 @@ test('disconnectMeio tira todos os links e um undo volta todos', () => {
   assert.equal(h.present.ligs, undefined); assert.equal(h.present.alts, undefined);
   h = reduce(h, { type: 'undo' }, data);
   assert.deepEqual(h.present, withLinks);
+});
+
+test('disconnectMeio com um grupo de várias ligações (2 produtores, 2 consumidores): tira todas, um undo volta todas', () => {
+  // s1 → s2 do exemplo, mais sA (outra refinaria) → s2 e s1 → sB (outra fundição): um grupo só, de 3 ligações.
+  let f = addBlock(ex, data, { kind: 'recipe', recipe: 'Recipe_Alternate_PureIronIngot_C' }, [-400, 400]);
+  const sA = f.blocks[f.blocks.length - 1].id;
+  f = addBlock(f, data, { kind: 'recipe', recipe: 'Recipe_Alternate_IngotSteel_1_C' }, [400, 400]);
+  const sB = f.blocks[f.blocks.length - 1].id;
+  f = connect(connect(f, data, sA, 's2', 'Desc_IronIngot_C'), data, 's1', sB, 'Desc_IronIngot_C');
+  const g = groupLinks(f.links).find(m => m.item === 'Desc_IronIngot_C' && m.producers.includes(sA))!;
+  assert.deepEqual([...g.producers].sort(), ['s1', sA].sort());
+  assert.deepEqual([...g.consumers].sort(), ['s2', sB].sort());
+  assert.equal(g.links.length, 3);
+  let h: History<Factory> = historyNew(f);
+  const steps = h.past.length, others = f.links.filter(l => !g.links.includes(l.id));
+  h = reduce(h, { type: 'disconnectMeio', linkIds: g.links }, data);
+  assert.equal(h.past.length, steps + 1);
+  assert.ok(!h.present.links.some(l => g.links.includes(l.id)));
+  assert.deepEqual(h.present.links, others);
+  h = reduce(h, { type: 'undo' }, data);
+  assert.deepEqual(h.present, f);
 });
