@@ -7,6 +7,7 @@
 // continuam pegáveis (arrastar para o vazio abre o seletor); arrastar um bloco na Planta não mexe no cartão da Montar
 // (cada vista com as suas posições); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
 // Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
+// importar duo.sfmd (input de arquivo) cria os 6 blocos e um Ctrl+Z volta;
 // Camadas "Machines only" tira portas e chips; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
@@ -277,6 +278,19 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   await pg.waitForTimeout(150);
   must(Object.values(await saved()).every(v => v === true), 'as camadas não voltaram');
   await pg.keyboard.press('Escape');
+});
+await step('importar duo.sfmd pelo input de arquivo cria os blocos; um Ctrl+Z volta', async () => {
+  await pg.goto(`${base}/?debug=1`, { waitUntil: 'load' });
+  await waitFor(() => !!window.__sfPlanner, null, 'window.__sfPlanner');
+  await settled();
+  const before = (await state()).blocks.length;
+  await pg.setInputFiles('input[type=file][accept*=".sfmd"]', path.join(here, '../../docs/superpowers/research/2026-10-26-fase5/sfmd/duo.sfmd'));
+  await pg.waitForSelector('dialog.pl-imp[open]', { timeout: 5000 }).catch(() => { throw new Error('o resumo da importação não abriu'); });
+  await pg.locator('dialog.pl-imp .pl-primary').click();
+  await nBlocks(6);
+  await pg.locator('.pl-imp-done').waitFor({ state: 'attached' });
+  await pg.keyboard.press('Control+z');
+  await nBlocks(before);
 });
 await step('/#s= antigo cai em /balancer', async () => {
   const { shareHash } = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));

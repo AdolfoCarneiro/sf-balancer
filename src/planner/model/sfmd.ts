@@ -254,8 +254,8 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
     }
   });
 
-  // Posições do Modeler: hoje no mapa das duas vistas (a troca para as posições só da Montar é aqui).
-  if (pts.length) f = { ...f, map: modelerPlaces(pts) };
+  // Posições do Modeler só na Montar; a Planta (`map` vazio) fica com a proposta automática.
+  if (pts.length) f = { ...f, montar: modelerPlaces(pts) };
   report.blocks = f.blocks.length;
   report.links = f.links.length;
   return { factory: f, report };

@@ -46,8 +46,9 @@ test('duo.sfmd: Miner de Iron Ore 180/min, 2 Iron Ingot livres, 3 Iron Rod fixad
 });
 
 test('duo.sfmd: posições do Modeler na grade de 8 m, mesma ordem relativa, sem dois blocos no mesmo ponto', () => {
+  assert.equal(ok(fixture('duo.sfmd')).factory.map, undefined);
   const { factory: f } = ok(fixture('duo.sfmd'));
-  const pos = f.blocks.map(b => f.map![b.id]);
+  const pos = f.blocks.map(b => f.montar![b.id]);
   assert.equal(pos.length, 6);
   for (const p of pos) { assert.equal(p.x % MAP_GRID, 0); assert.equal(p.y % MAP_GRID, 0); assert.equal(p.rot, 0); }
   // X do Modeler: minério (-261) < lingotes (-18, -10) < barras (212, 215, 208); Y: o lingote de baixo (122) abaixo do de cima (-31).
