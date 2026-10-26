@@ -26,7 +26,7 @@ test('desenho: fluido não tem peças', () => {
   assert.equal(w.fluid, true); assert.equal(w.marks, 0);
 });
 test('setTier com null volta ao automático', () => {
-  const a = setTier(ex, 's2', 'outs', 'Desc_SteelIngot_C', 'Mk4');
+  const a = setTier(ex, data, 's2', 'outs', 'Desc_SteelIngot_C', 'Mk4');
   assert.equal((a.blocks[1] as RecipeBlock).tiers['out:Desc_SteelIngot_C'], 'Mk4');
-  assert.deepEqual((setTier(a, 's2', 'outs', 'Desc_SteelIngot_C', null).blocks[1] as RecipeBlock).tiers, {});
+  assert.deepEqual((setTier(a, data, 's2', 'outs', 'Desc_SteelIngot_C', null).blocks[1] as RecipeBlock).tiers, {});
 });

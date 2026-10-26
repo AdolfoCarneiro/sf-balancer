@@ -8,12 +8,17 @@ import { suggestedPerRow, tierKey } from './stage.ts';
 import { groupLinks, type Meio } from './meio.ts';
 import { cleanPlace } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
+import { BELTS, PIPES } from '../../logic/index.js';
 
 export const PURITY: Record<Purity, number> = { impure: 0.5, normal: 1, pure: 2 };
 export const MINER_DEFAULT = 60;   // Miner Mk.1 em nó normal (Docs) = padrão do Modeler
 export const MAX_EXTRACTORS = 1000, MAX_RATE = 1e6;
 // Limite de máquinas por bloco: o mesmo na leitura, nos campos e na etapa derivada.
 export const MAX_MACHINES = 10000;
+// Limites da fábrica: a leitura corta no mesmo número, então criar ou ligar além dele é recusado (sumiria ao recarregar).
+export const MAX_STAGES = 200, MAX_LINKS = 2000;
+export const blocksFull = (f: Factory): boolean => f.blocks.length >= MAX_STAGES;
+export const linksFull = (f: Factory): boolean => f.links.length >= MAX_LINKS;
 
 export type BlockSpec =
   | { kind: 'recipe'; recipe: RecipeId }
@@ -105,12 +110,14 @@ const placeAt = (f: Factory, id: StageId, at: Pt): Factory => {
 };
 
 export function addBlock(f: Factory, d: GameData, spec: BlockSpec, at: Pt): Factory {
+  if (blocksFull(f)) return f;
   const b = makeBlock(f, d, spec, false);
   return b ? placeAt({ ...f, blocks: [...f.blocks, b] }, b.id, at) : f;
 }
 
 // Bloco novo já ligado à porta: `out` = a porta produz o item e o novo consome; `in` = o novo alimenta a porta.
 export function addLinkedBlock(f: Factory, d: GameData, spec: BlockSpec, port: { block: StageId; item: ItemId; side: 'out' | 'in' }, at: Pt): Factory {
+  if (blocksFull(f) || linksFull(f)) return f;
   const b = makeBlock(f, d, spec, true);
   if (!b || !get(f, port.block)) return f;
   const f2: Factory = { ...f, blocks: [...f.blocks, b] };
@@ -145,7 +152,7 @@ export function removeBlock(f: Factory, id: StageId): Factory {
 
 // Loops liberados: só a ligação de um bloco com ele mesmo é proibida.
 export function canConnect(f: Factory, d: GameData, from: StageId, to: StageId, item: ItemId):
-  { ok: true } | { ok: false; reason: 'self' | 'item' | 'dup' | 'fluidSink' } {
+  { ok: true } | { ok: false; reason: 'self' | 'item' | 'dup' | 'fluidSink' | 'full' } {
   if (from === to) return { ok: false, reason: 'self' };
   const a = get(f, from), b = get(f, to);
   if (!a || !b || typeof item !== 'string' || !own(d.items, item) || !portsOf(a, d).outs.includes(item)) return { ok: false, reason: 'item' };
@@ -153,6 +160,7 @@ export function canConnect(f: Factory, d: GameData, from: StageId, to: StageId, 
   if (ins === 'solid' && d.items[item].fluid) return { ok: false, reason: 'fluidSink' };
   if (Array.isArray(ins) && !ins.includes(item)) return { ok: false, reason: 'item' };
   if (f.links.some(l => l.from === from && l.to === to && l.item === item)) return { ok: false, reason: 'dup' };
+  if (linksFull(f)) return { ok: false, reason: 'full' };
   return { ok: true };
 }
 
@@ -187,12 +195,19 @@ export const setClock = (f: Factory, id: StageId, clock: number): Factory =>
   Number.isFinite(clock) ? editRecipe(f, id, b => ({ ...b, clock: Math.min(250, Math.max(1, clock)) })) : f;
 export const setPerRow = (f: Factory, id: StageId, perRow: number | null): Factory =>
   perRow === null || perRowOk(perRow) ? editRecipe(f, id, b => ({ ...b, perRow })) : f;
-// `null` tira a escolha (volta ao automático).
-export const setTier = (f: Factory, id: StageId, side: Side, item: ItemId, tier: string | null): Factory => editRecipe(f, id, b => {
-  const tiers = { ...b.tiers }, k = tierKey(side, item);
-  if (tier === null) delete tiers[k]; else tiers[k] = tier;
-  return { ...b, tiers };
-});
+// `null` tira a escolha (volta ao automático). Só porta da receita naquele lado, e tier que existe para ela
+// (esteira para sólido, cano para fluido); o resto não muda nada.
+export function setTier(f: Factory, d: GameData, id: StageId, side: Side, item: ItemId, tier: string | null): Factory {
+  const b = get(f, id);
+  if (b?.kind !== 'recipe' || (side !== 'ins' && side !== 'outs') || !d.recipes[b.recipe][side].some(x => x.item === item)) return f;
+  const k = tierKey(side, item);
+  if (tier === null) {
+    if (!Object.hasOwn(b.tiers, k)) return f;
+    return editRecipe(f, id, x => { const tiers = { ...x.tiers }; delete tiers[k]; return { ...x, tiers }; });
+  }
+  if (typeof tier !== 'string' || !(isFluid(d, item) ? PIPES : BELTS).some((t: { id: string }) => t.id === tier)) return f;
+  return editRecipe(f, id, x => ({ ...x, tiers: { ...x.tiers, [k]: tier } }));
+}
 
 // Marca a saída sólida para coletar o excesso; saída fluida ou que não é da receita: nada muda.
 export function setCollect(f: Factory, d: GameData, id: StageId, item: ItemId, on: boolean): Factory {

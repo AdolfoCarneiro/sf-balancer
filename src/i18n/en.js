@@ -343,6 +343,7 @@ export default {
   plPickNone: 'Nothing found.', plPickFor: n => `For ${n}`, plPickAlt: 'ALT',
   plLinkWhySelf: 'A block cannot link to itself.', plLinkWhyItem: 'That port does not carry the same item (or is on the same side).',
   plLinkWhyDup: 'These ports are already linked.', plLinkWhyFluidSink: 'The Awesome Sink does not take fluids.',
+  plLinkWhyFull: n => `The factory has reached the limit of ${n} links.`, plBlocksFull: n => `The factory has reached the limit of ${n} blocks.`,
   plCanvasHint: 'Double-click or right-click empty space to add a block · drag from a port to link or add the next one · Delete removes the selected one',
   plLegend: 'Legend',
   plLegDots: 'far away: stalled (square) and loop deadlock (diamond)',

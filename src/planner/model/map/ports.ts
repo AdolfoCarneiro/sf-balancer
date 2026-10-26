@@ -11,7 +11,7 @@ export interface ScenePort { block: StageId; item: ItemId; side: 'in' | 'out'; x
 export type DropTarget =
   | { kind: 'connect'; from: StageId; to: StageId; item: ItemId }
   | { kind: 'picker'; filter: PickerFilter }
-  | { kind: 'none'; reason: 'self' | 'item' | 'dup' | 'fluidSink' };
+  | { kind: 'none'; reason: 'self' | 'item' | 'dup' | 'fluidSink' | 'full' };
 
 // Saída aponta no sentido do fluxo dentro do bloco; entrada, ao contrário.
 const DIR: Pt[] = [[1, 0], [0, 1], [-1, 0], [0, -1]];

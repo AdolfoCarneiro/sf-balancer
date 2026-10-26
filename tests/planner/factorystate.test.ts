@@ -190,3 +190,18 @@ test('estado v2: setMeioAlt só em ligação que existe e com chave curta; setLi
   h = reduce(h, { type: 'setLimits', id: 's2', limits: { inputs: { Desc_Water_C: 5 } } }, data);
   assert.equal(rb(h.present, 's2').limits, undefined);
 });
+
+test('estado v2: propor o mapa de novo troca as posições e solta as ligações postas, num passo só do desfazer', () => {
+  const meio = 'Desc_IronIngot_C:s1>s2';
+  let h: History<Factory> = historyNew(ex);
+  h = reduce(h, { type: 'placeLig', meio, place: { x: 40, y: 8, rot: 1 } }, data);
+  h = reduce(h, { type: 'placeBlock', id: 's1', place: { x: 100, y: 100, rot: 0 } }, data);
+  assert.deepEqual(h.present.ligs, { [meio]: { x: 40, y: 8, rot: 1 } });
+  const before = h.present, steps = h.past.length;
+  h = reduce(h, { type: 'proposeMap', places: { s1: { x: 0, y: 0, rot: 0 }, s2: { x: 64, y: 0, rot: 0 }, nope: { x: 0, y: 0, rot: 0 } } }, data);
+  assert.equal(h.present.ligs, undefined);
+  assert.ok(!('ligs' in h.present));
+  assert.deepEqual(h.present.map, { s1: { x: 0, y: 0, rot: 0 }, s2: { x: 64, y: 0, rot: 0 } });
+  assert.equal(h.past.length, steps + 1);
+  assert.equal(reduce(h, { type: 'undo' }, data).present, before);
+});

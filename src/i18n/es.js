@@ -343,6 +343,7 @@ export default {
   plPickNone: 'No se encontró nada.', plPickFor: n => `Para ${n}`, plPickAlt: 'ALT',
   plLinkWhySelf: 'Un bloque no se conecta consigo mismo.', plLinkWhyItem: 'Ese puerto no lleva el mismo ítem (o es del mismo lado).',
   plLinkWhyDup: 'Esos puertos ya están conectados.', plLinkWhyFluidSink: 'El Awesome Sink no acepta fluidos.',
+  plLinkWhyFull: n => `La fábrica llegó al límite de ${n} conexiones.`, plBlocksFull: n => `La fábrica llegó al límite de ${n} bloques.`,
   plCanvasHint: 'Doble clic o clic derecho en el vacío crea un bloque · arrastra desde un puerto para conectar o crear el siguiente · Supr borra el seleccionado',
   plLegend: 'Leyenda',
   plLegDots: 'de lejos: detenido (cuadrado) y bucle bloqueado (rombo)',

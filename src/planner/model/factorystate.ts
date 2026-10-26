@@ -4,7 +4,7 @@ import type {
 } from './types.ts';
 import { tierKey } from './stage.ts';
 import {
-  MAX_MACHINES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect,
+  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect,
   extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, setClock, setCollect, setExtractor, setLimits,
   setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
@@ -14,7 +14,8 @@ import { exampleChain } from './example.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
 export const PLANNER_STORE = 'sf-balancer:planner';
-export const MAX_STAGES = 200, MAX_LINKS = 2000, ALT_KEY_MAX = 40;
+export { MAX_LINKS, MAX_STAGES };
+export const ALT_KEY_MAX = 40;
 // Id seguro para chave de objeto.
 export const safeId = (v: unknown): string | null => {
   if (typeof v !== 'string') return null;
@@ -59,6 +60,7 @@ export type Action =
   | { type: 'placeLig'; meio: string; place: LigPlace | null }
   | { type: 'placeBlock'; id: StageId; place: MapPlace }
   | { type: 'setPlaces'; places: Record<StageId, MapPlace> }
+  | { type: 'proposeMap'; places: Record<StageId, MapPlace> }   // propor de novo: posições novas e ligações soltas
   | { type: 'setMeioAlt'; meio: string; key: string | null }
   | { type: 'setMapGap'; gap: number | null }
   | { type: 'undo' }
@@ -197,6 +199,16 @@ function cleanFactory(raw: unknown, data: GameData): Factory | null {
   return f;
 }
 
+// Só posições válidas de blocos que existem.
+function cleanPlaces(f: Factory, places: Record<StageId, MapPlace>): Record<StageId, MapPlace> {
+  const map: Record<StageId, MapPlace> = {};
+  for (const [id, v] of Object.entries(places)) {
+    const place = cleanPlace(v);
+    if (place && f.blocks.some(b => b.id === id)) map[id] = place;
+  }
+  return map;
+}
+
 const omitAlts = (f: Factory): Factory => { const { alts: _a, ...rest } = f; return rest; };
 
 function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>, d: GameData): Factory {
@@ -215,7 +227,7 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     }
     case 'setClock': return setClock(f, a.id, a.clock);
     case 'setPerRow': return setPerRow(f, a.id, a.perRow);
-    case 'setTier': return setTier(f, a.id, a.side, a.item, a.tier);
+    case 'setTier': return setTier(f, d, a.id, a.side, a.item, a.tier);
     case 'setCollect': return setCollect(f, d, a.id, a.item, a.on);
     case 'setMinerRate': return setMinerRate(f, a.id, a.rate);
     case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity });
@@ -224,13 +236,11 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
       const place = cleanPlace(a.place);
       return place && f.blocks.some(b => b.id === a.id) ? { ...f, map: { ...f.map, [a.id]: place } } : f;
     }
-    case 'setPlaces': {
-      const map: Record<StageId, MapPlace> = {};
-      for (const [id, v] of Object.entries(a.places)) {
-        const place = cleanPlace(v);
-        if (place && f.blocks.some(b => b.id === id)) map[id] = place;
-      }
-      return { ...f, map };
+    case 'setPlaces': return { ...f, map: cleanPlaces(f, a.places) };
+    case 'proposeMap': {
+      // As ligações postas também voltam ao lugar automático: o mapa inteiro é proposto de novo.
+      const { ligs: _l, ...rest } = f;
+      return { ...rest, map: cleanPlaces(f, a.places) };
     }
     case 'setMeioAlt': {
       // Como na leitura: só meio que existe e chave curta.

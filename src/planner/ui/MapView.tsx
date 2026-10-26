@@ -17,7 +17,7 @@ import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap } from '../model/map/scene.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, portAt, scenePorts, type ScenePort } from '../model/map/ports.ts';
-import { nextBlockId } from '../model/factory.ts';
+import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
 import { iconImage } from './icons.ts';
@@ -54,7 +54,7 @@ const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
 // ?debug=1 ou no servidor de desenvolvimento.
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 const NOTICE_MS = 3500;
-const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink' } as const;
+const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink', full: 'plLinkWhyFull' } as const;
 export const portKey = (p: ScenePort): string => `${p.block}|${p.side}|${p.item}`;
 
 // Seletor aberto: onde (tela e mundo) e, vindo de uma porta, o filtro e a porta que o bloco novo liga.
@@ -102,7 +102,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const [picker, setPicker] = useState<PickerAt | null>(null);
   const [wire, setWire] = useState<{ from: ScenePort; to: Pt } | null>(null);
   const [hoverPort, setHoverPort] = useState<ScenePort | null>(null);
-  const [notice, setNotice] = useState<(typeof WHY)[keyof typeof WHY] | null>(null);   // a chave: o texto segue o idioma
+  const [notice, setNotice] = useState<(typeof WHY)[keyof typeof WHY] | 'plBlocksFull' | null>(null);   // a chave: o texto segue o idioma
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(null), NOTICE_MS);
@@ -114,7 +114,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     [wireFrom, ports, f, data]);
   // Toda edição grava todas as posições de uma vez: o mapa inteiro fica fixo num passo só do desfazer.
   const place = (id: StageId, p: MapPlace) => dispatch({ type: 'setPlaces', places: withPlace(basePlaces, id, p) });
-  const propose = () => dispatch({ type: 'setPlaces', places: proposeMap(f, data, geos, flow) });
+  // Propor de novo: o mapa inteiro, inclusive as ligações postas (voltam a colar na origem), num passo só.
+  const propose = () => dispatch({ type: 'proposeMap', places: proposeMap(f, data, geos, flow) });
   const placeLig = (id: string, p: LigPlace | null) => dispatch({ type: 'placeLig', meio: id, place: p });
   // Onde a ligação está agora (posta ou colada): o canto do retângulo e o giro, como na cena.
   const ligAt = (id: string): LigPlace | null => {
@@ -292,6 +293,9 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const openPicker = (x: number, y: number, extra: Pick<PickerAt, 'filter' | 'port'> = {}) => {
     const c = cam.current;
     if (!c) return;
+    // No limite de blocos (ou de ligações, vindo de uma porta) não abre: o bloco novo seria recusado.
+    if (blocksFull(f)) { setNotice('plBlocksFull'); return; }
+    if (extra.port && linksFull(f)) { setNotice(WHY.full); return; }
     setPicker({ x, y, at: screenToWorld(c, x, y), ...extra });
   };
   const closePicker = useCallback((refocus: boolean) => {
@@ -300,6 +304,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   }, []);
   const pick = (e: PickerEntry) => {
     if (!picker) return;
+    if (blocksFull(f) || (picker.port && linksFull(f))) { setNotice(picker.port && !blocksFull(f) ? WHY.full : 'plBlocksFull'); closePicker(true); return; }
     const id = nextBlockId(f);
     dispatch(picker.port
       ? { type: 'addLinkedBlock', spec: e.spec, port: picker.port, at: picker.at }
@@ -464,7 +469,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
             onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); } }}
             onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onKeyDown={canvasKey} />
           {!f.blocks.length && !picker && <p className="pl-map-empty">{t('plCanvasHint')}</p>}
-          {notice && <p className="pl-map-notice" role="status">{t(notice)}</p>}
+          {notice && <p className="pl-map-notice" role="status">{t(notice, fmt(notice === 'plBlocksFull' ? MAX_STAGES : MAX_LINKS, 0))}</p>}
           {picker && (
             <Picker data={data} filter={picker.filter} x={picker.x} y={picker.y} area={size.current} onPick={pick} onClose={closePicker} />
           )}

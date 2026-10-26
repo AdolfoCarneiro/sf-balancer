@@ -7,6 +7,7 @@ import {
   setClock, setPerRow, setTier, setCollect, setMinerRate, setExtractor, placeLig, meiosOf,
 } from '../../src/planner/model/factory.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
+import { MAX_LINKS, MAX_STAGES } from '../../src/planner/model/factory.ts';
 
 const data = game as GameData;
 const empty: Factory = { v: 2, blocks: [], links: [] };
@@ -110,8 +111,8 @@ test('fábrica: fluido não vai para o Awesome Sink; vai para Container e Saída
 test('fábrica: setRecipe poda ligações, tiers, limites de entrada e coleta que não cabem na receita nova', () => {
   let f = setLimits(ex, 's2', { machines: 60, inputs: { Desc_IronIngot_C: 2400, Desc_Coal_C: 2400 } });
   f = setCollect(f, data, 's2', 'Desc_SteelIngot_C', true);
-  f = setTier(f, 's2', 'ins', 'Desc_Coal_C', 'Mk5');
-  f = setTier(f, 's2', 'ins', 'Desc_IronIngot_C', 'Mk5');
+  f = setTier(f, data, 's2', 'ins', 'Desc_Coal_C', 'Mk5');
+  f = setTier(f, data, 's2', 'ins', 'Desc_IronIngot_C', 'Mk5');
   f = setRecipe(f, data, 's2', 'Recipe_IngotSteel_C');   // Steel Ingot: minério de ferro + carvão → aço (sai a barra de ferro)
   const b = rb(f, 's2');
   assert.equal(b.recipe, 'Recipe_IngotSteel_C');
@@ -134,11 +135,11 @@ test('fábrica: setLimits null ou {} volta ao livre; valores inválidos somem', 
 });
 
 test('fábrica: clock, por fileira e tier mudam só o bloco, sem recálculo', () => {
-  const f = setClock(setPerRow(setTier(ex, 's3', 'outs', 'Desc_SteelPlate_C', 'Mk2'), 's3', 4), 's3', 300);
+  const f = setClock(setPerRow(setTier(ex, data, 's3', 'outs', 'Desc_SteelPlate_C', 'Mk2'), 's3', 4), 's3', 300);
   const b = rb(f, 's3');
   assert.equal(b.clock, 250); assert.equal(b.perRow, 4); assert.deepEqual(b.tiers, { 'out:Desc_SteelPlate_C': 'Mk2' });
   assert.deepEqual(rb(f, 's2'), rb(ex, 's2'));
-  assert.deepEqual(rb(setTier(f, 's3', 'outs', 'Desc_SteelPlate_C', null), 's3').tiers, {});
+  assert.deepEqual(rb(setTier(f, data, 's3', 'outs', 'Desc_SteelPlate_C', null), 's3').tiers, {});
 });
 
 test('fábrica: setCollect ignora saída fluida; setExtractor ignora pureza no Water Extractor', () => {
@@ -181,4 +182,40 @@ test('fábrica: removeBlock leva ligações, posição e a ligação salva do gr
   assert.deepEqual(g.map, { s1: { x: 0, y: 0, rot: 0 } });
   assert.deepEqual(g.ligs, { 'Desc_IronIngot_C:s1>s2': { x: 0, y: 0, rot: 0 } });
   assert.deepEqual(disconnect(g, 'l1').ligs, undefined);
+});
+
+test('fábrica: setTier só aceita tier que existe, do tipo da porta (esteira ou cano), de porta da receita', () => {
+  const tiers = (f: Factory, id: string) => rb(f, id).tiers;
+  assert.equal(setTier(ex, data, 's2', 'ins', 'Desc_IronIngot_C', 'Mk9'), ex);            // tier que não existe
+  assert.equal(setTier(ex, data, 's2', 'ins', 'Desc_IronIngot_C', 'toString'), ex);
+  assert.equal(setTier(ex, data, 's2', 'outs', 'Desc_IronIngot_C', 'Mk2'), ex);           // a barra de ferro entra, não sai
+  assert.equal(setTier(ex, data, 's2', 'ins', 'Desc_Water_C', 'Mk2'), ex);               // item que não é da receita
+  assert.equal(setTier(ex, data, 's2', 'up' as never, 'Desc_IronIngot_C', 'Mk2'), ex);   // lado inválido
+  assert.equal(setTier(ex, data, 'nope', 'ins', 'Desc_IronIngot_C', 'Mk2'), ex);
+  assert.deepEqual(tiers(setTier(ex, data, 's2', 'ins', 'Desc_IronIngot_C', 'Mk6'), 's2'), { 'in:Desc_IronIngot_C': 'Mk6' });
+  // Cano só tem Mk1 e Mk2.
+  let f = addBlock(empty, data, { kind: 'recipe', recipe: 'Recipe_AluminumScrap_C' }, [0, 0]);
+  assert.equal(setTier(f, data, 's1', 'outs', 'Desc_Water_C', 'Mk5'), f);
+  f = setTier(f, data, 's1', 'outs', 'Desc_Water_C', 'Mk2');
+  assert.deepEqual(tiers(f, 's1'), { 'out:Desc_Water_C': 'Mk2' });
+});
+
+test('fábrica: no limite de blocos (MAX_STAGES) ou de ligações (MAX_LINKS), criar e ligar não mudam nada', () => {
+  let full: Factory = empty;
+  for (let i = 0; i < MAX_STAGES; i++) full = addBlock(full, data, { kind: 'sink' }, [0, 0]);
+  assert.equal(full.blocks.length, MAX_STAGES);
+  assert.equal(addBlock(full, data, { kind: 'sink' }, [0, 0]), full);
+  // Com o exemplo cheio de blocos: criar ligado também recusa.
+  const many: Factory = { ...ex, blocks: [...ex.blocks, ...full.blocks.slice(ex.blocks.length).map((b, i) => ({ ...b, id: 'x' + i }))] };
+  assert.equal(many.blocks.length, MAX_STAGES);
+  assert.equal(addLinkedBlock(many, data, { kind: 'sink' }, { block: 's3', item: 'Desc_SteelPlate_C', side: 'out' }, [0, 0]), many);
+  // Ligações no limite: connect e addLinkedBlock recusam, e canConnect diz o motivo.
+  const pad = Array.from({ length: MAX_LINKS - ex.links.length }, (_, i) => ({ id: 'p' + i, item: 'Desc_SteelIngot_C', from: 'zz' + i, to: 'yy' + i }));
+  const linked: Factory = { ...addBlock(ex, data, { kind: 'sink' }, [0, 0]), links: [...ex.links, ...pad] };
+  assert.deepEqual(canConnect(linked, data, 's3', 's5', 'Desc_SteelPlate_C'), { ok: false, reason: 'full' });
+  assert.equal(connect(linked, data, 's3', 's5', 'Desc_SteelPlate_C'), linked);
+  assert.equal(addLinkedBlock(linked, data, { kind: 'sink' }, { block: 's3', item: 'Desc_SteelPlate_C', side: 'out' }, [0, 0]), linked);
+  // Um abaixo do limite ainda liga.
+  const room: Factory = { ...linked, links: linked.links.slice(0, -1) };
+  assert.equal(connect(room, data, 's3', 's5', 'Desc_SteelPlate_C').links.length, MAX_LINKS);
 });
