@@ -27,7 +27,7 @@ import { EmptyInvite, FirstHint } from './FirstHint.tsx';
 import { Legend } from './Legend.tsx';
 import { ChipPopover } from './ChipPopover.tsx';
 import { iconImage } from './icons.ts';
-import { PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
+import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel, type Sheet } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { blockBadges, type Badge } from '../model/badges.ts';
@@ -76,7 +76,7 @@ const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('d
 // Transição Montar <-> Planta.
 const TRANS_MS = 250;
 // Ir até um problema: a câmera anda em FOCUS_MS e o cartão e a porta piscam por FLASH_MS.
-const FOCUS_MS = 300, FLASH_MS = 1200;
+const FOCUS_MS = 300;
 const easeInOut = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -320,17 +320,18 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só. A Montar anima o tracejado
   // das esteiras (até 30 quadros/s) enquanto alguma aparece, parado com movimento reduzido, com a aba escondida ou se um
   // quadro passar de 12 ms. Tudo que o quadro lê vem daqui (o timer da animação chama um draw de um render antigo).
-  const latest = useRef({ scene, opts, f: shown, data, flow, popId });
-  latest.current = { scene, opts, f: shown, data, flow, popId };
+  const latest = useRef({ scene, opts, f: shown, data, flow, popId, meios: meioById });
+  latest.current = { scene, opts, f: shown, data, flow, popId, meios: meioById };
   const lastView = useRef<ViewGeo | null>(null);
-  // A geometria de tela só muda com a cena, a câmera, t, o celular e o tamanho: guardada entre os quadros da animação.
+  // A geometria de tela só muda com a cena, a câmera, t, o celular, as ligações e o tamanho: guardada entre os quadros
+  // da animação (a chave usa o mapa das ligações, estável, e não a função o.meio, refeita a cada hover ou arraste).
   const geoMemo = useRef<{ key: unknown[]; v: ViewGeo; belts: boolean } | null>(null);
-  const geoFor = (sc: Scene, c: Camera, T: number, fs: Factory, dt: GameData, fl: FlowResult, o: DrawOpts) => {
-    const { w, h } = size.current, key = [sc, c, T, phone.current, fs, dt, fl, o.meio, w, h];
+  const geoFor = (sc: Scene, c: Camera, T: number, fs: Factory, dt: GameData, fl: FlowResult, meios: Map<string, Meio>) => {
+    const { w, h } = size.current, key = [sc, c, T, phone.current, fs, dt, fl, meios, w, h];
     const g = geoMemo.current;
     if (g && g.key.length === key.length && g.key.every((k, i) => k === key[i])) return g;
     const v = viewGeo(sc, c, T, phone.current, fs, dt, fl);
-    return (geoMemo.current = { key, v, belts: T < 1 && beltsOnScreen(v, o.meio, w, h) });
+    return (geoMemo.current = { key, v, belts: T < 1 && beltsOnScreen(v, id => meios.get(id), w, h) });
   };
   // Mini painel abaixo do chip (ou acima, se não couber), dentro da área do mapa; some se o chip sumir ou sair da tela.
   // O tamanho dele vem guardado (medido ao abrir e pelo ResizeObserver), sem ler o layout a cada quadro.
@@ -353,13 +354,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const anim = useRef({ timer: 0, slow: false, time: 0 });
   const draw = () => {
     frame.current = 0;
-    const el = canvas.current, c = cam.current, { scene: sc, opts: o, f: fs, data: dt, flow: fl } = latest.current;
+    const el = canvas.current, c = cam.current, { scene: sc, opts: o, f: fs, data: dt, flow: fl, meios } = latest.current;
     const ctx = el?.getContext('2d');
     if (!el || !ctx || !c || !o || !size.current.w) return;
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const T = tNow.current, A = anim.current;
-    const { v: view, belts } = geoFor(sc, c, T, fs, dt, fl, o);
+    const { v: view, belts } = geoFor(sc, c, T, fs, dt, fl, meios);
     lastView.current = view;
     const moving = belts && !document.hidden && !reduced.current;
     if (moving && !A.slow) A.time = performance.now();
@@ -802,10 +803,21 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     onView('planta');
   };
   // Da lista ou de um aviso do painel: seleciona, leva a câmera até lá e o foco vai para o mapa.
+  // Na Montar o cartão e o chip ficam onde o último quadro os desenhou (o cartão pendurado no canto do bloco, o chip sem
+  // posição salva entre as portas dos cartões), não no retângulo da Planta: a câmera anda até o centro deles na tela,
+  // como focusPort, para o chip e o mini painel ficarem à vista.
   const goTo = (s: Selection) => {
     onSelect(s);
-    const r = s?.kind === 'stage' ? scene.blocks.find(b => b.stage === s.id)?.rect : s ? scene.meios.find(m => m.meio === s.id)?.rect : undefined;
-    if (r) focus(r);
+    const c = cam.current, v = lastView.current, { w, h } = size.current;
+    const onScreen = s && v && c && w && modeRef.current === 'montar' && tNow.current === 0
+      ? (s.kind === 'stage' ? v.blocks.find(b => b.id === s.id)?.rect : v.chips.find(x => x.meio === s.id)) : undefined;
+    if (onScreen && c) {
+      const sx = 'meio' in onScreen ? onScreen.x : onScreen.x + onScreen.w / 2, sy = 'meio' in onScreen ? onScreen.y : onScreen.y + onScreen.h / 2;
+      moveCam({ x: c.x + (sx - w / 2) / c.zoom, y: c.y + (sy - h / 2) / c.zoom, zoom: c.zoom });
+    } else {
+      const r = s?.kind === 'stage' ? scene.blocks.find(b => b.stage === s.id)?.rect : s ? scene.meios.find(m => m.meio === s.id)?.rect : undefined;
+      if (r) focus(r);
+    }
     canvas.current?.focus();
   };
 

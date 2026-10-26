@@ -52,8 +52,8 @@ export function drawChips(ctx: CanvasRenderingContext2D, chips: ViewChip[], o: D
     if (on) { ctx.strokeRect(x - 3, y - 3, c.w + 6, c.h + 6); }
 
     // Em cima: ícone, taxa e a unidade.
-    const rate = lab.rate === null ? '—' : fmt(lab.rate);
-    const unit = t(o.fluid(lab.item) ? 'plPerMinFluid' : 'plPerMin', '').trim();
+    const rate = lab.rate === null ? t('plUnbounded') : fmt(lab.rate);
+    const unit = lab.rate === null ? '' : t(o.fluid(lab.item) ? 'plPerMinFluid' : 'plPerMin', '').trim();
     ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     ctx.font = `600 12px ${th.body}`;
     const rw = ctx.measureText(rate).width;

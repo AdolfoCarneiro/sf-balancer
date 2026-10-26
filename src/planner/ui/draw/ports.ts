@@ -11,6 +11,7 @@ import type { MapTheme } from './theme.ts';
 
 export const PORT_ZOOM = 0.5;    // na Planta, de longe as portas somem (a não ser puxando uma) e não pegam o ponteiro
 export const PORT_R = PORT_D / 2, PORT_ICON = 28;
+export const FLASH_MS = 1200;   // quanto dura o destaque de um cartão e de uma porta (ir até um problema)
 export const viewPortId = (p: { block: string; side: string; item: string }): string => `${p.block}|${p.side}|${p.item}`;
 
 const RING = 3, LABEL_H = 22, LABEL_FONT = (th: MapTheme) => `600 12px ${th.body}`;
@@ -71,7 +72,7 @@ export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: D
     const ic = PORT_ICON * (r / PORT_R);
     if (img) ctx.drawImage(img, p.x - ic / 2, p.y - ic / 2, ic, ic);
     if (o.flash && (o.flash.port ?? o.flash.id) === key && now < o.flash.until) {
-      const f = Math.min(1, (o.flash.until - now) / 1200);
+      const f = Math.min(1, (o.flash.until - now) / FLASH_MS);
       ctx.globalAlpha = a * f; ctx.strokeStyle = th.ink; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(p.x, p.y, r + (1 - f) * 18, 0, Math.PI * 2); ctx.stroke();
     }

@@ -146,15 +146,31 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
 }
 
 // Fundo da Montar: chapa escura com pontos a cada 6 m (24 px a 100 %), presos ao mundo; de longe demais, só a chapa.
+// Os pontos vêm de um ladrilho de um ponto (refeito quando o zoom, a escala da tela ou a cor mudam) repetido por um
+// padrão, em vez de um fillRect por ponto (perto de 30 mil por quadro no zoom mínimo).
+let floorTile: { key: string; pat: CanvasPattern; n: number } | null = null;
 export function drawMontarFloor(ctx: CanvasRenderingContext2D, cam: { x: number; y: number; zoom: number }, vw: number, vh: number, th: MapTheme): void {
   ctx.fillStyle = th.paper;
   ctx.fillRect(0, 0, vw, vh);
-  const k = cam.zoom / MONTAR_REF, f = 24 * k;
-  if (f < 8) return;
-  const r = Math.min(1.6, Math.max(0.8, 1.3 * k)), step = 6;
-  ctx.fillStyle = th.dot;
-  for (let x = Math.ceil(cam.x / step) * step; (x - cam.x) * cam.zoom <= vw + r; x += step) {
-    const px = (x - cam.x) * cam.zoom;
-    for (let y = Math.ceil(cam.y / step) * step; (y - cam.y) * cam.zoom <= vh + r; y += step) ctx.fillRect(px - r, (y - cam.y) * cam.zoom - r, 2 * r, 2 * r);
+  const k = cam.zoom / MONTAR_REF, step = 6, f = step * cam.zoom;   // f: px de tela entre dois pontos
+  if (24 * k < 8) return;
+  const r = Math.min(1.6, Math.max(0.8, 1.3 * k));
+  const dpr = ctx.getTransform().a || 1, n = Math.max(1, Math.round(f * dpr)), d = 2 * r * n / f;
+  const key = `${n}|${d.toFixed(2)}|${th.dot}`;
+  if (!floorTile || floorTile.key !== key) {
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = n;
+    const tc = tile.getContext('2d');
+    if (!tc) return;
+    tc.fillStyle = th.dot;
+    tc.fillRect(n / 2 - d / 2, n / 2 - d / 2, d, d);
+    const pat = ctx.createPattern(tile, 'repeat');
+    if (!pat) return;
+    floorTile = { key, pat, n };
   }
+  // O centro do ladrilho cai sobre os pontos do mundo (múltiplos de `step`).
+  const ox = ((((-cam.x) % step) + step) % step) * cam.zoom - f / 2, oy = ((((-cam.y) % step) + step) % step) * cam.zoom - f / 2;
+  floorTile.pat.setTransform(new DOMMatrix().translate(ox, oy).scale(f / floorTile.n));
+  ctx.fillStyle = floorTile.pat;
+  ctx.fillRect(0, 0, vw, vh);
 }

@@ -16,11 +16,11 @@ import { drawCard, drawMontarFloor, type CardText } from './draw/cards.ts';
 import { drawChips } from './draw/chips.ts';
 import { drawPlantLabels, makeLabels } from './draw/labels.ts';
 import { drawPlantFloor, drawPlantWorld, drawRuler } from './draw/plant.ts';
-import { PORT_R, PORT_ZOOM, drawPorts, viewPortId } from './draw/ports.ts';
+import { FLASH_MS, PORT_R, PORT_ZOOM, drawPorts, viewPortId } from './draw/ports.ts';
 import type { MapTheme } from './draw/theme.ts';
 
 export { readTheme, type MapTheme } from './draw/theme.ts';
-export { PORT_ZOOM } from './draw/ports.ts';
+export { FLASH_MS, PORT_ZOOM } from './draw/ports.ts';
 export type { CardText } from './draw/cards.ts';
 
 export interface DrawOpts {
@@ -53,7 +53,6 @@ export interface DrawOpts {
   icon: (item: ItemId) => HTMLImageElement | null;
 }
 
-const FLASH_MS = 1200;
 const near = (r: Rect, vw: number, vh: number, m: number) => r.x + r.w >= -m && r.y + r.h >= -m && r.x <= vw + m && r.y <= vh + m;
 const boxOfPts = (pts: Pt[]): Rect => {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;

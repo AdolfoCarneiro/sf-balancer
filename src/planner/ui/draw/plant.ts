@@ -139,7 +139,8 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   }
 }
 
-// Régua de escala no canto de cima à esquerda, abaixo da Legenda (embaixo fica a dica de navegação).
+// Régua de escala no canto de cima à esquerda (a Legenda fica com os controles do mapa, embaixo à direita, e a dica de
+// navegação embaixo à esquerda).
 export function drawRuler(ctx: CanvasRenderingContext2D, z: number, th: DrawOpts['theme'], L: Labels): void {
   const meters = [...SCALES].reverse().find(s => s * z <= SCALE_MAX_PX) ?? SCALES[0];
   // No canto de cima à esquerda do mapa, 12 px de margem (a placa começa em ry - 22).
