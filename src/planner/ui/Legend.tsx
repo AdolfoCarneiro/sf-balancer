@@ -45,7 +45,7 @@ function ChipSvg({ kind }: { kind: ChipKind }) {
 function StripSvg() {
   const note = { fontSize: 11, fill: 'var(--ink-mid)', fontFamily: 'var(--body)' } as const;
   return (
-    <svg className="pl-leg-strip" viewBox="0 0 280 120" role="img" aria-label={`${t('plLegStripIn')}, ${t('plLegStripMachine')}, ${t('plLegStripOut')}`}>
+    <svg className="pl-leg-strip" viewBox="0 0 330 120" role="img" aria-label={`${t('plLegStripIn')}, ${t('plLegStripMachine')}, ${t('plLegStripOut')}`}>
       <rect x="1" y="1" width="150" height="104" fill="var(--plate-2)" stroke="var(--line)" />
       <rect x="10" y="12" width="132" height="6" fill="var(--ficsit)" />
       {[0, 1, 2, 3, 4, 5].map(i => <rect key={i} x={10 + i * 22} y="24" width="18" height="18" fill="var(--ink)" opacity=".85" />)}

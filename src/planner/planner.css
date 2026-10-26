@@ -331,7 +331,7 @@ select.pl-field { width: auto; }
 .pl-leg li { display: grid; grid-template-columns: 80px 1fr; gap: 14px; align-items: center; font-size: 14px; }
 .pl-leg-ic { display: flex; justify-content: center; }
 .pl-leg-d { color: var(--ink-dim); font-size: 13px; }
-.pl-leg-strip { width: 100%; max-width: 360px; height: auto; align-self: center; }
+.pl-leg-strip { width: 100%; max-width: 420px; height: auto; align-self: center; }
 
 /* A dica de primeiro uso (embaixo à esquerda) sobe acima dos controles do mapa quando os dois não cabem lado a lado
    (depois da regra-base da .pl-hint, de propósito); no celular os controles quebram em duas linhas. */
