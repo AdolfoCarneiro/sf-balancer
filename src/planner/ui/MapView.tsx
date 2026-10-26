@@ -697,7 +697,9 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       ? Object.fromEntries(selMany.filter(id => viewBase[id]).map(id => [id, viewBase[id]])) : null;
     drag.current = {
       id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null, port,
-      chip: ch ? [ch.x, ch.y] : null, shift: e.shiftKey, group, moved2: null, marquee: e.button === 0 && e.shiftKey && !h,
+      // Shift ou Ctrl/⌘ + clique põe ou tira o bloco da seleção; Shift ou Ctrl/⌘ + arrastar no vazio, o retângulo.
+      chip: ch ? [ch.x, ch.y] : null, shift: e.shiftKey || e.ctrlKey || e.metaKey, group, moved2: null,
+      marquee: e.button === 0 && (e.shiftKey || e.ctrlKey || e.metaKey) && !h,
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {

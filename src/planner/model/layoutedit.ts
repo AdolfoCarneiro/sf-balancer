@@ -46,11 +46,22 @@ export function moveRow(cur: Layout | undefined, i: number, ddx: number, ddy: nu
   const clampS = (v: number) => Math.max(-SHIFT_MAX, Math.min(SHIFT_MAX, Math.round(v)));
   const g8 = (v: number) => Math.round(v / 8) * 8;
   const step = (old: number, d: number, pos: number | undefined) => clampS(pos === undefined ? g8(old + d) : old + g8(pos + d) - pos);
-  const moved = withRow(cur, i, e => ({ ...e, dx: step(e.dx ?? 0, ddx, at?.x), dy: step(e.dy ?? 0, ddy, at?.y) }));
+  const old = cur?.rows?.[i] ?? {};
+  const nx = step(old.dx ?? 0, ddx, at?.x), ny = step(old.dy ?? 0, ddy, at?.y);
+  // Mergers no meio: as duas fileiras do par dividem a linha de Mergers, então andam juntas (o mesmo deslocamento).
+  if (cur?.kind === 'center') {
+    const j = i ^ 1, ddj = { x: nx - (old.dx ?? 0), y: ny - (old.dy ?? 0) };
+    const both = withRow(withRow(cur, i, e => ({ ...e, dx: nx, dy: ny })), j, e => ({ ...e, dx: clampS((e.dx ?? 0) + ddj.x), dy: clampS((e.dy ?? 0) + ddj.y) }));
+    return normLayout(both);
+  }
+  const moved = withRow(cur, i, e => ({ ...e, dx: nx, dy: ny }));
   return normLayout(dropJoinsOf(moved, i));
 }
-export const resetRowPlace = (cur: Layout | undefined, i: number): Layout | null =>
-  normLayout(withRow(cur, i, e => ({ ...e, dx: 0, dy: 0 })));
+// Volta a fileira ao lugar do modelo (no Mergers no meio, o par todo).
+export const resetRowPlace = (cur: Layout | undefined, i: number): Layout | null => {
+  const one = withRow(cur, i, e => ({ ...e, dx: 0, dy: 0 }));
+  return normLayout(cur?.kind === 'center' ? withRow(one, i ^ 1, e => ({ ...e, dx: 0, dy: 0 })) : one);
+};
 
 // Esteira de um item (chave tierKey): cut/exit null = o padrão do modelo.
 export function setBelt(cur: Layout | undefined, key: string, patch: { cut?: number | null; exit?: LayoutExit | null }): Layout | null {

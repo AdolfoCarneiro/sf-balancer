@@ -263,7 +263,8 @@ function arrangeWith(stage: Stage, data: GameData, layout: Layout | undefined, p
   });
   const planOf = new Map(plans.map(rp => [rp.index, rp]));
 
-  // Junções: a esteira do item da fileira r (embaixo dela) e a da r+1 (em cima dela), sem deslocamento, viram uma só.
+  // Junções: a esteira do item da fileira r (embaixo dela) e a da r+1 (em cima dela), coladas (as duas com o mesmo
+  // deslocamento: um par movido junto continua dividindo a esteira), viram uma só.
   const shared = new Map<string, Shared>(), skip = new Set<string>();
   const parse = (key: string) => {
     const side: Side = key.startsWith('in:') ? 'ins' : 'outs', item = key.slice(key.indexOf(':') + 1);
@@ -271,7 +272,7 @@ function arrangeWith(stage: Stage, data: GameData, layout: Layout | undefined, p
   };
   const joinable = (key: string, r: number): Shared | null => {
     const f = parse(key), top = planOf.get(r), bot = planOf.get(r + 1);
-    if (!f || !top || !bot || top.dx || top.dy || bot.dx || bot.dy) return null;
+    if (!f || !top || !bot || top.dx !== bot.dx || top.dy !== bot.dy) return null;
     if (center && r % 2 === 1) return null;   // no center só o par divide o corredor
     const faces = f.side === 'outs' ? !top.flip && bot.flip : top.flip && !bot.flip;
     return faces ? { key, ...f, top, bot } : null;

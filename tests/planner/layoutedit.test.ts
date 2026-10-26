@@ -160,3 +160,25 @@ test('mover com a posição atual: o destino encaixa na grade de 8 m do bloco, e
   // Lê de volta o deslocamento que não é múltiplo de 8.
   assert.deepEqual(cleanLayout(JSON.parse(JSON.stringify(lay)))?.rows?.[1], { dx: 40, dy: -28 });
 });
+
+test('Mergers no meio: mover uma fileira leva o par junto e a linha de Mergers continua dividida; voltar ao lugar volta as duas', () => {
+  const stage = { id: 's1', recipe: 'Recipe_Alternate_PolymerResin_C', machines: 42, clock: 100, perRow: null, tiers: {} };
+  const arr = (lay: Layout) => arrange({ ...stage, layout: lay }, data, lay);
+  const base: Layout = { kind: 'center' };
+  const a0 = arr(base);
+  const lay = moveRow(base, 5, 64, 16, a0.rows.find(r => r.index === 5))!;
+  // As duas com o mesmo deslocamento (o destino encaixa na grade de 8 m do bloco).
+  assert.deepEqual(lay.rows?.[4], lay.rows?.[5]);
+  assert.equal(lay.rows?.[5]?.dx, 64);
+  const a1 = arr(lay);
+  // A mesma quantidade de saídas de Polymer Resin e de Mergers: o par segue com a linha do meio.
+  const outs = (a: ReturnType<typeof arr>) => a.lines.filter(l => l.side === 'out' && l.item === 'Desc_PolymerResin_C').length;
+  assert.equal(outs(a1), outs(a0));
+  assert.equal(a1.pieces.mergers, a0.pieces.mergers);
+  assert.ok(!a1.warnings.some(w => w.kind === 'badJoin'));
+  // Uma fileira sozinha fora do lugar (estado antigo) e depois colada de volta: a linha volta a ser dividida.
+  const alone: Layout = { kind: 'center', rows: { 5: { dy: 16 } } };
+  assert.ok(arr(alone).warnings.some(w => w.kind === 'badJoin'));
+  assert.equal(outs(arr(resetRowPlace(alone, 5) ?? base)), outs(a0));
+  assert.deepEqual(resetRowPlace(lay, 4), { kind: 'center' });
+});
