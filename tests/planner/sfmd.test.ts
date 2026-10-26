@@ -42,7 +42,7 @@ test('duo.sfmd: Miner de Iron Ore 180/min, 2 Iron Ingot livres, 3 Iron Rod fixad
     `${ore.id}>${i1.id}:Iron Ore`, `${ore.id}>${i2.id}:Iron Ore`,
     `${i1.id}>${r1.id}:Iron Ingot`, `${i2.id}>${r1.id}:Iron Ingot`, `${i2.id}>${r2.id}:Iron Ingot`, `${i2.id}>${r3.id}:Iron Ingot`,
   ].sort());
-  assert.deepEqual(report, { blocks: 6, links: 6, skipped: [], asExport: [], ignored: [] });
+  assert.deepEqual(report, { blocks: 6, links: 6, skipped: [], asExport: [], ignored: [], adjusted: [] });
 });
 
 test('duo.sfmd: posições do Modeler na grade de 8 m, mesma ordem relativa, sem dois blocos no mesmo ponto', () => {
@@ -66,7 +66,7 @@ test('simple pure ingot.sfmd: Water Extractor calculado, Miner Mk.3 780/min, Pur
   assert.deepEqual(water, { id: water.id, kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C', purity: 'normal', count: null } satisfies ExtractorBlock);
   assert.equal((ore as MinerBlock).rate, 780);
   assert.equal(f.links.length, 4);
-  assert.deepEqual(report, { blocks: 4, links: 4, skipped: [], asExport: [], ignored: [] });
+  assert.deepEqual(report, { blocks: 4, links: 4, skipped: [], asExport: [], ignored: [], adjusted: [] });
 });
 
 test('simple coal generator.sfmd: o gerador vira Saída (listado), Water com Max = 5 extratores', () => {
@@ -87,9 +87,14 @@ test('rocket fuel factory.sfmd: Outpost/Parent/ClockSpeed ignorados e listados, 
   assert.equal(report.blocks, 24);
   assert.deepEqual(report.skipped, []);
   assert.deepEqual(report.asExport, ['Rocket Fuel Generator']);
-  assert.ok(report.ignored.includes('Outpost "Power factory"'));
-  assert.ok(report.ignored.includes('Parent'));
-  assert.ok(report.ignored.includes('Capacity'));   // a esteira do AWESOME Sink
+  // Estruturado: o tipo e o nome cru do Modeler (o texto em volta é da interface, nos três idiomas).
+  assert.deepEqual(report.ignored, [
+    { kind: 'outpost', name: 'Power factory' }, { kind: 'field', name: 'Parent' },
+    { kind: 'field', name: 'Capacity' },   // a esteira do AWESOME Sink
+    { kind: 'max', name: 'Rocket Fuel Generator' },
+  ]);
+  // 200 m³/min no Resource Well Extractor (60 cada): 4 extratores dão 240, e o resumo diz.
+  assert.deepEqual(report.adjusted, [{ kind: 'extractorRate', name: 'Nitrogen Gas', rate: 200, count: 4, total: 240 }]);
   const byName = (n: string) => f.blocks.filter(b => b.kind === 'recipe' && data.recipes[b.recipe].name === n) as RecipeBlock[];
   // "13 1/3" Blenders: 14 máquinas a 95,24 % (a mesma vazão).
   for (const b of byName('Turbo Blend Fuel')) {
@@ -145,8 +150,8 @@ test('Inputs com pontos de curva e aninhamento extra: a ligação fica, os ponto
   ] });
   const { factory: f, report } = ok(text);
   assert.equal(f.links.length, 2);
-  assert.ok(report.ignored.includes('waypoints'));
-  assert.ok(report.ignored.includes('Outpost "Base"'));
+  // Os nós são lidos antes das ligações: o Outpost entra antes dos pontos de curva.
+  assert.deepEqual(report.ignored, [{ kind: 'outpost', name: 'Base' }, { kind: 'waypoints', name: '' }]);
   assert.deepEqual(report.skipped, []);
 });
 
@@ -181,4 +186,24 @@ test('a fábrica importada sobrevive à leitura do estado salvo (#p= e localStor
     const { factory: f } = ok(fixture(name));
     assert.deepEqual(decodeFactory(encodeFactory(f), data), f, name);
   }
+});
+
+test('números ajustados: contagem fracionária, vazão acima do que os extratores fecham e cortes nos limites', () => {
+  const text = JSON.stringify({ Data: [
+    { Name: 'Water', Max: '5/2' },
+    { Name: 'Crude Oil', Max: '130', Capacity: 'Pure' },
+    { Name: 'Iron Rod', Max: '20000' },
+    { Name: 'Nitrogen Gas', Max: '1000000' },
+    { Name: 'Iron Ore', Max: '2000000' },
+    { Name: 'Crude Oil', Max: '480', Capacity: 'Pure' },
+  ] });
+  const { factory: f, report } = ok(text);
+  assert.deepEqual(report.adjusted, [
+    { kind: 'extractorCount', name: 'Water', asked: 2.5, count: 3 },
+    { kind: 'extractorRate', name: 'Crude Oil', rate: 130, count: 1, total: 240 },
+    { kind: 'clamp', name: 'Iron Rod', asked: 20000, max: 10000 },
+    { kind: 'clamp', name: 'Nitrogen Gas', asked: 1000000 / 60, max: 1000 },
+    { kind: 'clamp', name: 'Iron Ore', asked: 2000000, max: 1e6 },
+  ]);
+  assert.deepEqual(f.blocks.map(b => (b.kind === 'extractor' ? b.count : b.kind === 'miner' ? b.rate : (b as RecipeBlock).limits?.machines)), [3, 1, 10000, 1000, 1e6, 2]);
 });

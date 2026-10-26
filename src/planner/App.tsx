@@ -3,13 +3,15 @@ import { getLang, setLang, t } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
 import { BUILDER_PATH, type Lang } from './lang.ts';
 import game from './data/game.json';
-import type { GameData } from './model/types.ts';
+import type { Factory, GameData } from './model/types.ts';
+import type { SfmdReport } from './model/sfmd.ts';
 import { meiosOf } from './model/factory.ts';
 import { solvedStage } from './model/solved.ts';
 import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
+import { ImportDialog, useImportToast } from './ui/ImportModeler.tsx';
 import { stagesSel, type Selection, type ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView, type MapViewHandle } from './ui/MapView.tsx';
@@ -111,6 +113,14 @@ export function App() {
   const balance = useMemo(() => factoryBalance(f, flow, data), [f, flow]);
   const probIdx = useRef({ deficit: -1, surplus: -1 });
   const mapRef = useRef<MapViewHandle>(null);
+  // Importar do Modeler: o arquivo escolhido (no topo ou no painel), o resumo e o aviso moram aqui.
+  const [impFile, setImpFile] = useState<File | null>(null);
+  const impToast = useImportToast();
+  const importFactory = (nf: Factory, r: SfmdReport) => {
+    setOpenStage(null);
+    mapRef.current?.importFactory(nf);
+    impToast.show(r);
+  };
   const goProblem = (kind: 'deficit' | 'surplus'): PortState | null => {
     const n = nextProblem(balance.problems, kind, probIdx.current[kind]);
     if (!n) return null;
@@ -145,11 +155,12 @@ export function App() {
     <div className="pl-app">
       <Header lang={lang} onLang={change} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
-        view={view} onView={setView} data={data} onImport={nf => { setOpenStage(null); mapRef.current?.importFactory(nf); }} />
+        view={view} onView={setView} onImportFile={setImpFile} />
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
-          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} problems={balance.problems} />
+          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} problems={balance.problems}
+          onImportFile={setImpFile} />
       </div>
       {openStage && (
         <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
@@ -161,6 +172,8 @@ export function App() {
             dispatch={dispatch} onClose={closeLig} onUnlink={unlinkIn} />
         </Suspense>
       )}
+      {impFile && <ImportDialog key={impFile.name + impFile.lastModified + impFile.size} file={impFile} data={data} onImport={importFactory} onClose={() => setImpFile(null)} />}
+      {impToast.toast}
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>
   );

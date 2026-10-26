@@ -11,7 +11,7 @@
 //   ClockSpeed, Parent, Outpost/Title e o que mais vier: ignorados e listados no resumo.
 import type { Block, BuildingId, Factory, GameData, ItemId, MapPlace, Purity, RecipeId, StageId } from './types.ts';
 import {
-  MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, minable, portsOf, rateOk,
+  MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_RATE, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, minable, portsOf,
 } from './factory.ts';
 import { MAP_GRID, cleanPlace } from './map/sizes.ts';
 import { MONTAR_REF } from './map/cards.ts';
@@ -21,8 +21,19 @@ export interface SfmdReport {
   // unknown: nome que o builder não conhece; badLink: ligação que não fecha (índice, peça); limit: além do máximo da fábrica.
   skipped: { name: string; reason: 'unknown' | 'badLink' | 'limit' }[];
   asExport: string[];   // geradores e afins que viraram Saída (nome original, sem repetir)
-  ignored: string[];    // campos e agrupamentos do Modeler sem equivalente (sem repetir)
+  ignored: SfmdIgnored[];    // o que o Modeler tem e aqui não tem equivalente (sem repetir); o texto em volta é da interface
+  adjusted: SfmdAdjusted[];  // números que mudaram na importação (arredondados para cima ou cortados no limite)
 }
+// field: campo de nó; setting: chave do topo do arquivo; outpost: agrupamento (name = Title, '' sem título); max: o Max de
+// um nó que virou Saída; noFlow: prédio sem item (Geothermal…); waypoints: pontos de curva das ligações (name '').
+// name: sempre o nome cru do Modeler.
+export interface SfmdIgnored { kind: 'field' | 'setting' | 'outpost' | 'max' | 'noFlow' | 'waypoints'; name: string }
+// extractorRate: vazão pedida que não fecha em extratores inteiros (count × per = total); extractorCount: contagem
+// fracionária arredondada; clamp: acima do máximo da ferramenta (máquinas, extratores ou vazão).
+export type SfmdAdjusted =
+  | { kind: 'extractorRate'; name: string; rate: number; count: number; total: number }
+  | { kind: 'extractorCount'; name: string; asked: number; count: number }
+  | { kind: 'clamp'; name: string; asked: number; max: number };
 export type SfmdResult = { factory: Factory; report: SfmdReport } | { error: 'json' | 'format' };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -87,42 +98,57 @@ const purityOf = (cap: unknown): Purity => {
   return k === 'impure' || k === 'pure' ? k : 'normal';
 };
 
-// Bloco de um nó, sem id ainda. used: campos além de READ que ele leu (não entram em ignored).
+// Bloco de um nó, sem id ainda. used: campos além de READ que ele leu (não entram em ignored); adj: números que mudaram.
 type NewBlock = Block extends infer B ? (B extends Block ? Omit<B, 'id'> : never) : never;
-type Made = { kind: 'block'; block: NewBlock; used: string[]; export?: true } | { kind: 'ignore'; note: string } | { kind: 'unknown' };
+type Made = { kind: 'block'; block: NewBlock; used: string[]; adj: SfmdAdjusted[]; export?: true } | { kind: 'ignore'; note: SfmdIgnored } | { kind: 'unknown' };
+const EPS = 1e-9;
+// Inteiro para cima, até `hi`; o que não é o pedido vai em adj.
+function upTo(asked: number, hi: number, name: string, adj: SfmdAdjusted[]): number {
+  if (asked > hi + EPS) { adj.push({ kind: 'clamp', name, asked, max: hi }); return hi; }
+  return clamp(Math.ceil(asked - EPS), 1, hi);
+}
 function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: GameData): Made {
-  const k = low(name), max = parseMax(node.Max);
-  if (k === 'outpost') return { kind: 'ignore', note: typeof node.Title === 'string' && node.Title ? `Outpost "${node.Title}"` : 'Outpost' };
-  if (NO_FLOW.has(k)) return { kind: 'ignore', note: name };
+  const k = low(name), max = parseMax(node.Max), adj: SfmdAdjusted[] = [];
+  if (k === 'outpost') return { kind: 'ignore', note: { kind: 'outpost', name: typeof node.Title === 'string' ? node.Title.slice(0, 80) : '' } };
+  if (NO_FLOW.has(k)) return { kind: 'ignore', note: { kind: 'noFlow', name } };
   const ex = EXTRACT[k];
   if (ex) {
     const building = L.extractors.get(low(ex.building)), item = L.items.get(low(ex.item));
     if (!building || !item) return { kind: 'unknown' };
     const pur = d.extractors[building].purity ? purityOf(node.Capacity) : 'normal';
-    const rate = ex.ppm ? max ?? ex.def : null;
-    const n = rate !== null ? rate / (d.extractors[building].perMin * PURITY[pur]) : max;
-    const count = n === null ? null : clamp(Math.ceil(n - 1e-9), 1, MAX_EXTRACTORS);
-    return { kind: 'block', block: { kind: 'extractor', building, item, purity: pur, count }, used: d.extractors[building].purity ? ['Capacity'] : [] };
+    const per = d.extractors[building].perMin * PURITY[pur];
+    let count: number | null = null;
+    if (ex.ppm) {
+      // Vazão: extratores inteiros que dão pelo menos o pedido; sobrando, diz quanto dá.
+      const rate = max ?? ex.def!;
+      count = upTo(rate / per, MAX_EXTRACTORS, name, adj);
+      if (!adj.length && count * per > rate + EPS) adj.push({ kind: 'extractorRate', name, rate, count, total: count * per });
+    } else if (max !== null) {
+      count = upTo(max, MAX_EXTRACTORS, name, adj);
+      if (!adj.length && count > max + EPS) adj.push({ kind: 'extractorCount', name, asked: max, count });
+    }
+    return { kind: 'block', block: { kind: 'extractor', building, item, purity: pur, count }, used: d.extractors[building].purity ? ['Capacity'] : [], adj };
   }
   const ore = L.items.get(k);
   if (ore && minable(d, ore)) {
     // A vazão já considera o Mk do Miner, a pureza e o clock.
-    const rate = max !== null && rateOk(max) ? max : MINER_DEFAULT;
-    return { kind: 'block', block: { kind: 'miner', item: ore, rate }, used: ['Machine', 'Capacity', 'ClockSpeed'] };
+    let rate = max ?? MINER_DEFAULT;
+    if (rate > MAX_RATE) { adj.push({ kind: 'clamp', name, asked: rate, max: MAX_RATE }); rate = MAX_RATE; }
+    return { kind: 'block', block: { kind: 'miner', item: ore, rate }, used: ['Machine', 'Capacity', 'ClockSpeed'], adj };
   }
   const recipe = L.recipes.get(k);
   if (recipe) {
     // Máquinas fracionárias (o Modeler aceita): arredonda para cima e baixa o clock, para a mesma vazão.
     let machines: number | null = null, clock = 100;
     if (max !== null) {
-      machines = clamp(Math.ceil(max - 1e-9), 1, MAX_MACHINES);
+      machines = upTo(max, MAX_MACHINES, name, adj);
       if (max < machines) clock = clamp(Math.round(max / machines * 1e6) / 1e4, 1, 250);
     }
-    return { kind: 'block', block: { kind: 'recipe', recipe, clock, perRow: null, tiers: {}, ...(machines !== null ? { limits: { machines } } : {}) }, used: [] };
+    return { kind: 'block', block: { kind: 'recipe', recipe, clock, perRow: null, tiers: {}, ...(machines !== null ? { limits: { machines } } : {}) }, used: [], adj };
   }
-  if (SINKS.has(k)) return { kind: 'block', block: { kind: 'sink' }, used: [] };
-  if (CONTAINERS.has(k)) return { kind: 'block', block: { kind: 'container' }, used: ['Machine'] };
-  if (EXPORT_RE.test(k)) return { kind: 'block', block: { kind: 'export' }, used: [], export: true };
+  if (SINKS.has(k)) return { kind: 'block', block: { kind: 'sink' }, used: [], adj };
+  if (CONTAINERS.has(k)) return { kind: 'block', block: { kind: 'container' }, used: ['Machine'], adj };
+  if (EXPORT_RE.test(k)) return { kind: 'block', block: { kind: 'export' }, used: [], adj, export: true };
   return { kind: 'unknown' };
 }
 
@@ -177,9 +203,12 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
   if (nodes.length && !nodes.some(n => isObj(n) && typeof n.Name === 'string')) return { error: 'format' };
 
   const L = lookup(d);
-  const report: SfmdReport = { blocks: 0, links: 0, skipped: [], asExport: [], ignored: [] };
-  const note = (s: string) => { if (!report.ignored.includes(s)) report.ignored.push(s); };
-  for (const k of Object.keys(raw)) if (!TOP_READ.has(k)) note(k);
+  const report: SfmdReport = { blocks: 0, links: 0, skipped: [], asExport: [], ignored: [], adjusted: [] };
+  const note = (kind: SfmdIgnored['kind'], name: string) => {
+    const n = name.slice(0, 80);
+    if (!report.ignored.some(x => x.kind === kind && x.name === n)) report.ignored.push({ kind, name: n });
+  };
+  for (const k of Object.keys(raw)) if (!TOP_READ.has(k)) note('setting', k);
 
   const ids: (StageId | null)[] = [], names: string[] = [], pts: { id: StageId; x: number; y: number }[] = [];
   let f: Factory = { v: 2, blocks: [], links: [] };
@@ -189,15 +218,16 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
     names.push(name || `#${i}`);
     if (!isObj(node) || !name) { report.skipped.push({ name: `#${i}`, reason: 'unknown' }); return; }
     const m = makeBlock(node, name, L, d);
-    if (m.kind === 'ignore') { note(m.note); return; }
+    if (m.kind === 'ignore') { note(m.note.kind, m.note.name); return; }
     if (m.kind === 'unknown') { report.skipped.push({ name, reason: 'unknown' }); return; }
     if (f.blocks.length >= MAX_STAGES) { report.skipped.push({ name, reason: 'limit' }); return; }
     const id = `s${f.blocks.length + 1}`;
     ids[i] = id;
     f = { ...f, blocks: [...f.blocks, { ...m.block, id } as Block] };
     if (m.export && !report.asExport.includes(name)) report.asExport.push(name);
-    if (m.export && node.Max !== undefined) note(`Max (${name})`);
-    for (const key of Object.keys(node)) if (!READ.has(key) && !m.used.includes(key)) note(key);
+    if (m.export && node.Max !== undefined) note('max', name);
+    for (const key of Object.keys(node)) if (!READ.has(key) && !m.used.includes(key)) note('field', key);
+    report.adjusted.push(...m.adj);
     const x = typeof node.X === 'number' && Number.isFinite(node.X) ? node.X : 0, y = typeof node.Y === 'number' && Number.isFinite(node.Y) ? node.Y : 0;
     pts.push({ id, x, y });
   });
@@ -207,7 +237,7 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
     const to = ids[j];
     if (!to || !isObj(node)) return;
     const { refs, extra } = inputRefs(node.Inputs);
-    if (extra) note('waypoints');
+    if (extra) note('waypoints', '');
     for (const r of refs) {
       const ok = typeof r.idx === 'number' && Number.isInteger(r.idx) && r.idx >= 0 && r.idx < nodes.length;
       const from = ok ? ids[r.idx as number] : null;

@@ -20,7 +20,7 @@ import { NumField } from './NumField.tsx';
 import { blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { iconUrl } from './icons.ts';
 import { BlockPanel } from './BlockPanel.tsx';
-import { ImportModeler } from './ImportModeler.tsx';
+import { ImportButton } from './ImportModeler.tsx';
 import { LigActions, ligInfo } from './ChipPopover.tsx';
 import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
 import { selKey, type Selection, type ViewMode } from './selection.ts';
@@ -52,7 +52,7 @@ interface Props {
   fixAt: (p: PortState) => Pt; onCreate: (p: PortState) => void;
   onScale: (id: StageId) => void; onMontar: () => void;
   onSeeLig: (id: string) => void; onSwap: (id: string, key: string) => void; onUnlink: (id: string) => void;
-  onImport: (f: Factory) => void;   // importar do Modeler: substitui a fábrica
+  onImportFile: (f: File) => void;   // importar do Modeler (o App mostra o resumo)
 }
 
 export function MapPanel(p: Props) {
@@ -307,7 +307,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
       <h3 className="pl-insp-h">{t('plBpMap')}</h3>
       <button type="button" className="pl-btn" onClick={p.onPropose}>{t('plMapPropose')}</button>
       <NumField label={t('plMapPieceGap')} value={pieceGap(f)} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={p.onGap} className="pl-row" />
-      <div className="pl-ov-import"><ImportModeler data={data} onImport={p.onImport} /></div>
+      <div className="pl-ov-import"><ImportButton onFile={p.onImportFile} /></div>
     </>
   );
 }

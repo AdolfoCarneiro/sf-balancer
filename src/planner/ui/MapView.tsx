@@ -42,6 +42,7 @@ interface Props {
   factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação
+  onImportFile: (f: File) => void;   // importar do Modeler (botão do painel)
   onView: (v: ViewMode) => void;   // "Ver em escala" / "Voltar a montar" no painel
   problems: PortState[];   // faltas, sobras e travados do Balanço (o App já calcula), para os avisos do painel
   ref?: Ref<MapViewHandle>;
@@ -151,7 +152,7 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
   };
 }
 
-export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, ref }: Props) {
+export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, onImportFile, ref }: Props) {
   // Destacados no desenho: os blocos (um ou vários) ou a ligação.
   const selected = useMemo(() => selIds(selection), [selection]);
   const selStage = selection?.kind === 'stage' ? selection.id : null;
@@ -967,7 +968,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })}
         fixAt={fixAt} onCreate={createFor} onScale={toScale} onMontar={() => onView('montar')}
         onSeeLig={id => { setPopId(null); onOpenLig(id); }} onSwap={(id, key) => dispatch({ type: 'setMeioAlt', meio: id, key })}
-        onUnlink={unlink} onImport={importFactory} />
+        onUnlink={unlink} onImportFile={onImportFile} />
     </>
   );
 }
