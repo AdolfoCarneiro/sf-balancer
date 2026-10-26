@@ -250,7 +250,7 @@ test('aviso over: tier forçado pequeno dá o conserto (tier e corte)', () => {
 });
 
 test('0 máquinas: arranjo vazio, sem NaN', () => {
-  for (const kind of ['simple', 'backToBack'] as const) {
+  for (const kind of ['simple', 'backToBack', 'center'] as const) {
     const a = arrange(st(0), data, { kind, rows: { 0: { flip: true } }, belts: { [`out:${INGOT}`]: { cut: 3, exit: 'down' } } });
     assert.deepEqual(a.rows, []); assert.deepEqual(a.lines, []);
     assert.deepEqual(a.area, { w: 0, d: 0 });
@@ -258,4 +258,159 @@ test('0 máquinas: arranjo vazio, sem NaN', () => {
     assert.equal(a.geo.w, 0); assert.equal(a.geo.h, 0);
     assert.ok(!/null|NaN/.test(JSON.stringify(a)));
   }
+});
+
+// ---- arrange: center (Mergers no meio), linha compartilhada e junções ----
+
+const outLines = (a: Arrangement, item = INGOT) => a.lines.filter(l => l.side === 'out' && l.item === item);
+
+test('center: a fábrica do dono (42 Pure Iron, 2 pares, 6 saídas de 455 descendo)', () => {
+  const a = arrange(st(42), data, { kind: 'center' });
+  assert.equal(a.kind, 'center');
+  assert.deepEqual(a.rows.map(r => r.machines), [11, 10, 11, 10]);
+  assert.deepEqual(a.rows.map(r => r.flip), [false, true, false, true]);
+  assert.deepEqual(a.rows.map(r => r.mirror), [false, false, true, true], 'par da direita alimentado pela direita');
+  assert.equal(recommendedPerRow(st(42), data, 'center'), 11);
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
+  assert.ok(outLines(a).every(l => l.rate === 455 && l.exit === 'down' && l.tier === 'Mk4' && l.cap === 480));
+  assert.deepEqual(outLines(a).map(l => l.rows), [[0, 1], [0, 1], [0, 1], [2, 3], [2, 3], [2, 3]]);
+  assert.equal(a.pieces.lifts, 6);
+  // Minério pelas pontas de fora: par esquerdo em x = 0, direito em x = w.
+  const ore = a.lines.filter(l => l.item === ORE);
+  assert.deepEqual(ore.map(l => l.machines), [11, 10, 11, 10]);
+  assert.ok(ore.every(l => l.exit === 'end' && l.rows.length === 1));
+  assert.deepEqual(ore.map(l => l.at[0]), [0, 0, a.geo.w, a.geo.w]);
+  // Água: 4 canos, sem corte, pela mesma ponta do minério.
+  const water = a.lines.filter(l => l.item === WATER);
+  assert.deepEqual(water.map(l => l.machines), [11, 10, 11, 10]);
+  assert.ok(water.every(l => l.fluid && l.exit === 'end'));
+  assert.deepEqual(water.map(l => l.at[0]), [0, 0, a.geo.w, a.geo.w]);
+  // Mergers da linha compartilhada, por par (colunas de 10 m a partir da ponta de fora, de cima para baixo):
+  //   trecho 1: colunas 0-2 (6) + a de cima da 3 (7) → 4 colunas, a primeira dá 2 → 4 Mergers;
+  //   trecho 2: a de baixo da 3 + colunas 4-6 (7) → 4 colunas, a primeira dá 1 (inicia a esteira) → 3 Mergers;
+  //   trecho 3: colunas 7-9 (6) + a 10, só em cima (7) → 4 colunas, a primeira dá 2 → 4 Mergers.
+  //   4 + 3 + 4 = 11 por par, × 2 pares = 22.
+  assert.equal(a.pieces.mergers, 22);
+  assert.equal(a.geo.pieces.filter(p => p.kind === 'merger').length, 22);
+  // Splitters: o minério continua por fileira, k−1: 10 + 9 + 10 + 9.
+  assert.equal(a.pieces.splitters, 38);
+  // Elevadores no fim de cada trecho: o corte no meio da coluna 3 fica no meio dela (35 m).
+  const w = a.geo.w;   // 2 × 110 + 4 do vão entre os pares
+  assert.equal(w, 224);
+  assert.deepEqual(outLines(a).map(l => l.at[0]), [35, 70, 110, w - 35, w - 70, w - 110]);
+  lifts(a).forEach((p, k) => assert.deepEqual([p.x + 1, p.y + 1], outLines(a)[k].at));
+  // A linha passa no corredor, entre as máquinas de cima e as de baixo.
+  const m = machinesOf(a), top = m[0], bot = m[11];
+  const cy = outLines(a)[0].at[1];
+  assert.ok(top.y + top.h < cy && cy < bot.y);
+  assert.equal(a.geo.outs.length, 6);
+  assert.deepEqual(a.warnings, []);
+  assert.deepEqual(a.area, { w: Math.ceil(a.geo.w / 8) * 8, d: Math.ceil(a.geo.h / 8) * 8 });
+});
+
+test('center: saída pela ponta avisa centerEnd; corte 8 estoura com o conserto 7', () => {
+  const end = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: { exit: 'end' } } });
+  assert.ok(end.warnings.some(w => w.kind === 'centerEnd' && w.item === INGOT));
+  assert.deepEqual(arrangementLines(end, 'out', INGOT), [21, 21]);
+  assert.equal(end.pieces.lifts, 0);
+
+  const c8 = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 8 } } });
+  assert.deepEqual(arrangementLines(c8, 'out', INGOT), [8, 8, 5, 8, 8, 5]);
+  assert.deepEqual(c8.warnings, [{ kind: 'over', side: 'out', item: INGOT, rate: 520, cap: 480, fixTier: 'Mk5', fixCut: 7 }]);
+});
+
+test('center com invert: a entrada principal no corredor, saídas por fileira', () => {
+  const a = arrange(st(42), data, { kind: 'center', invert: true });
+  assert.deepEqual(a.rows.map(r => r.flip), [true, false, true, false]);
+  // Minério: 35/min, corte padrão floor(480 / 35) = 13 → 21 por par = 13 + 8.
+  assert.deepEqual(arrangementLines(a, 'in', ORE), [13, 8, 13, 8]);
+  assert.ok(a.lines.filter(l => l.item === ORE).every(l => l.exit === 'down' && l.rows.length === 2));
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [11, 10, 11, 10]);
+  const m = machinesOf(a), top = m[0], bot = m[11];
+  const cy = a.lines.find(l => l.item === ORE)!.at[1];
+  assert.ok(top.y + top.h < cy && cy < bot.y, 'minério no corredor');
+  assert.ok(belt(a, 'out', INGOT, 0).pts[0][1] < top.y, 'saída de cima por fora');
+  // Entrada: o elevador fica no começo do trecho (ponta de fora).
+  assert.equal(a.lines.find(l => l.item === ORE)!.at[0], 0);
+  assert.equal(a.pieces.splitters, 2 * (7 + 4));   // 13: colunas 0-5 + a de cima da 6 → 7; 8: a de baixo da 6 + 7-9 + a 10 → 5 − 1
+  assert.deepEqual(a.warnings, []);
+});
+
+test('center com subproduto: a saída principal compartilhada, o subproduto por fileira', () => {
+  const RUBBER = 'Desc_Rubber_C', HOR = 'Desc_HeavyOilResidue_C', OIL = 'Desc_LiquidOil_C';
+  const s: Stage = { id: 'r', recipe: 'Recipe_Rubber_C', machines: 40, clock: 100, perRow: null, tiers: {} };
+  const a = arrange(s, data, { kind: 'center' });
+  // Sem entrada sólida: o petróleo (30/min, cano Mk2 600) decide: 2 fileiras de 20 cabem.
+  assert.deepEqual(a.rows.map(r => r.machines), [20, 20]);
+  assert.deepEqual(arrangementLines(a, 'out', RUBBER), [24, 16]);   // 20/min: corte floor(480 / 20) = 24
+  assert.deepEqual(arrangementLines(a, 'out', HOR), [20, 20]);
+  assert.ok(a.lines.filter(l => l.item === HOR).every(l => l.fluid && l.exit === 'end' && l.rows.length === 1));
+  assert.deepEqual(arrangementLines(a, 'in', OIL), [20, 20]);
+  assert.deepEqual(a.warnings, []);
+  // A borracha passa no meio do corredor, com o resíduo de cada fileira entre ela e as máquinas.
+  const ry = a.lines.find(l => l.item === RUBBER)!.at[1];
+  const [h0, h1] = a.geo.belts.filter(b => b.item === HOR).map(b => b.pts[0][1]);
+  assert.ok(h0 < ry && ry < h1);
+});
+
+test('joins no simple: fileiras coladas dividem a esteira; avisos badJoin, over e merger3', () => {
+  const s = st(6, { perRow: 3 });
+  const a = arrange(s, data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`] });
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [6]);
+  assert.deepEqual(outLines(a)[0].rows, [0, 1]);
+  assert.equal(outLines(a)[0].rate, 390);
+  assert.equal(a.pieces.mergers, 3);   // 3 colunas de 2: um Merger por coluna
+  assert.equal(a.pieces.splitters, 4);
+  assert.deepEqual(a.warnings, []);
+  const m = machinesOf(a), cy = outLines(a)[0].at[1];
+  assert.ok(m[0].y + m[0].h < cy && cy < m[3].y);
+  assert.ok(a.geo.h < arrange(s, data, { kind: 'simple', rows: { 1: { flip: true } } }).geo.h, 'uma faixa a menos');
+
+  // Não coladas (as duas com a saída embaixo) e fileira que não existe: badJoin, ignoradas.
+  const bad = arrange(s, data, { kind: 'simple', joins: [`out:${INGOT}@0`, `out:${INGOT}@7`, `in:${WATER}@0`] });
+  assert.deepEqual(arrangementLines(bad, 'out', INGOT), [3, 3]);
+  assert.deepEqual(bad.warnings, [
+    { kind: 'badJoin', key: `out:${INGOT}@0` }, { kind: 'badJoin', key: `out:${INGOT}@7` }, { kind: 'badJoin', key: `in:${WATER}@0` },
+  ]);
+  assert.deepEqual(bad.geo, arrange(s, data, { kind: 'simple' }).geo);
+
+  // Juntar 7 + 7: 910 > 480.
+  const big = arrange(st(14), data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`] });
+  assert.deepEqual(arrangementLines(big, 'out', INGOT), [14]);
+  assert.deepEqual(big.warnings, [{ kind: 'over', side: 'out', item: INGOT, rate: 910, cap: 480, fixTier: 'Mk6', fixCut: 7 }]);
+  // Cortando a linha juntada (sai por baixo) volta a caber.
+  const cut = arrange(st(14), data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`], belts: { [`out:${INGOT}`]: { cut: 7, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(cut, 'out', INGOT), [7, 7]);
+  assert.deepEqual(cut.warnings, []);
+
+  // A 1 já divide com a 0; juntar também com a 2 poria 3 fileiras na linha (Merger com 4 entradas).
+  const three = arrange(st(9, { perRow: 3 }), data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`, `out:${INGOT}@1`] });
+  assert.deepEqual(arrangementLines(three, 'out', INGOT), [6, 3]);
+  assert.deepEqual(three.warnings, [{ kind: 'merger3', item: INGOT }]);
+});
+
+test('joins no backToBack: o par junta as saídas do corredor', () => {
+  const a = arrange(st(14), data, { kind: 'backToBack', joins: [`out:${INGOT}@0`], belts: { [`out:${INGOT}`]: { cut: 7, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7]);
+  assert.ok(outLines(a).every(l => l.rows.length === 2));
+  // 7 + 7 cortado em 7: colunas 0-2 + a de cima da 3 → 4 Mergers; a de baixo da 3 + 4-6 → 3.
+  assert.equal(a.pieces.mergers, 7);
+  assert.deepEqual(a.warnings, []);
+});
+
+test('center órfão: salvo com 42, a etapa recalculada para 20 máquinas', () => {
+  const layout: Layout = {
+    kind: 'center', rows: { 3: { flip: true }, 2: { dx: 8 } },
+    belts: { [`out:${INGOT}`]: { cut: 7, exit: 'down' } }, joins: [`out:${INGOT}@2`],
+  };
+  const a = arrange(st(20), data, layout);
+  assert.deepEqual(a.rows.map(r => r.machines), [10, 10]);
+  assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7, 6]);
+  assert.deepEqual(a.warnings, [{ kind: 'badJoin', key: `out:${INGOT}@2` }]);
+  assert.ok(!/null|NaN/.test(JSON.stringify(a)));
+  // 1 máquina: só a fileira de cima.
+  const one = arrange(st(1), data, layout);
+  assert.deepEqual(one.rows.map(r => r.machines), [1]);
+  assert.deepEqual(arrangementLines(one, 'out', INGOT), [1]);
+  assert.ok(!/null|NaN/.test(JSON.stringify(one)));
 });
