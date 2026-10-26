@@ -2,7 +2,7 @@
 // mesmos botões do chip; sem seleção, a visão geral: área, totais, avisos clicáveis (sobreposição, cruzamento e as
 // faltas e sobras do Balanço) e a lista de blocos e de ligações (o caminho do teclado até cada um no mapa).
 // No desktop o MapView decide se o painel aparece; no celular (≤ 720 px) ele é uma folha de baixo com alça.
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import type { Factory, GameData, MapPlace, StageId } from '../model/types.ts';
 import type { FlowResult } from '../model/solve.ts';

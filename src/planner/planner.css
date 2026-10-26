@@ -10,8 +10,9 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); min-width: 0; }
 .pl-brand { font: 700 18px var(--display); letter-spacing: .02em; color: var(--ficsit); white-space: nowrap; }
 .pl-brand span { color: var(--ink-dim); font-weight: 500; }
-.pl-view { display: flex; gap: 3px; padding: 3px; background: var(--plate); }
-.pl-view button { min-height: 38px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-mid); font: 600 14px var(--display); cursor: pointer; }
+/* Montar | Planta: alvos de 44 px; o grupo sem padding fica da altura das abas (38 + 2 × 3). */
+.pl-view { display: flex; gap: 3px; padding: 0; background: var(--plate); }
+.pl-view button { min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-mid); font: 600 14px var(--display); cursor: pointer; }
 .pl-view button:hover { color: var(--ink); background: var(--plate-2); }
 .pl-view button[aria-pressed="true"] { background: var(--view-on); color: #fff; }
 .pl-view button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
@@ -31,7 +32,7 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-pair { display: flex; }
 .pl-pair .pl-btn + .pl-btn { border-left: 0; }
 .pl-langs { display: flex; border: 1px solid var(--line); }
-.pl-langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 5px 10px; font: 600 13px var(--display); }
+.pl-langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; min-height: 44px; padding: 0 10px; font: 600 13px var(--display); }
 .pl-langs button:first-child { border-left: 0; }
 .pl-langs button:hover { color: var(--ink); }
 .pl-langs button[aria-pressed="true"] { background: var(--plate); color: var(--ficsit); }
@@ -313,7 +314,7 @@ select.pl-field { width: auto; }
   .pl-bal-pb { padding: 0 10px; }
 }
 
-/* Dica de primeiro uso, convite da fábrica vazia e Legenda (ainda sem lugar no mapa: a tarefa de montagem posiciona). */
+/* Dica de primeiro uso, convite da fábrica vazia e Legenda. */
 .pl-hint { position: absolute; left: 12px; bottom: 12px; max-width: min(520px, calc(100% - 24px)); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; background: rgba(10, 27, 45, .94); border: 1px solid var(--line); z-index: 4; }
 .pl-hint p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-mid); }
 .pl-hint button { flex: none; min-height: 44px; padding: 0 16px; font: 600 14px var(--body); color: var(--paper); background: var(--ficsit); border: 0; cursor: pointer; }
