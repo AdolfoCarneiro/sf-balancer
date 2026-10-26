@@ -96,25 +96,7 @@ function build(f: Factory, d: GameData) {
     const ls = es.map(e => ({ p: local(pm, prods, edges[e].from, edges[e].out), c: local(cm, cons, edges[e].to, edges[e].inp), e }));
     groups.push({ prods, cons, ls });
   }
-  return { nodes, edges, groups: upstreamFirst(groups) };
-}
-
-// Meios de cima para baixo: um meio vem antes dos meios que as consumidoras dele alimentam. Loop fica na ordem em que veio.
-function upstreamFirst(groups: Group[]): Group[] {
-  const feeds = groups.map(g => {
-    const cons = new Set(g.cons.map(([a]) => a));
-    return groups.flatMap((h, k) => (h !== g && h.prods.some(([a]) => cons.has(a)) ? [k] : []));
-  });
-  const indeg = groups.map(() => 0);
-  for (const fs of feeds) for (const k of fs) indeg[k]++;
-  const out: number[] = [], done = new Set<number>();
-  while (out.length < groups.length) {
-    let k = indeg.findIndex((d, i) => d === 0 && !done.has(i));
-    if (k < 0) k = groups.findIndex((_, i) => !done.has(i));   // loop: o primeiro que falta
-    done.add(k); out.push(k);
-    for (const m of feeds[k]) indeg[m]--;
-  }
-  return out.map(k => groups[k]);
+  return { nodes, edges, groups };
 }
 
 // Alocação max-min justa (enchimento progressivo) nos links `ls` (índices locais `p`, `c`), com sobras `remP`/`remC`.
@@ -143,8 +125,12 @@ const REL = 1e-7;
 const tidy = (v: number, scale: number) => (v <= REL * Math.max(1, Math.abs(scale)) ? 0 : v);
 const ceilTol = (v: number) => Math.ceil(v * (1 - REL));
 
-export function solveFactory(f: Factory, d: GameData): FlowResult {
-  const { nodes, edges, groups } = build(f, d);
+type Net = ReturnType<typeof build>;
+
+// Ponto fixo a partir do máximo, todo bloco com o estado da volta anterior (Jacobi). damp: fração do passo que o tamanho
+// anda por volta (1 = inteiro). Para cedo quando o estado volta exatamente ao de duas voltas atrás (ciclo de período 2:
+// não converge nunca).
+function iterate({ nodes, edges, groups }: Net, damp: number) {
   const n = nodes.length;
   // Estado: começa no máximo. intake/accOut por porta; o que não é ligado não muda.
   const x = new Float64Array(n);
@@ -160,6 +146,8 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
     return snap(Math.min(nd.U0, supOf(i), accOf(i)));
   };
   for (let i = 0; i < n; i++) x[i] = nodes[i].outlet ? 0 : nodes[i].U0;
+  const snapshot = () => [...x, ...intake.flat(), ...accOut.flat()];
+  let back2: number[] | null = null, back1: number[] | null = null;
 
   let iterations = 0, converged = false;
   while (iterations < MAX_ITER) {
@@ -176,19 +164,16 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
         cap[i][k] = p.a * Math.min(nd.U0, supEx, acc);
       });
     }
-    // 2. Fluxo dos links, meio a meio de cima para baixo: fase 1 para consumidoras com limite, fase 2 o resto para as sem
-    // limite. A produtora oferece o tamanho que o que já chegou nela nesta volta deixa (não o da volta anterior): com o
-    // tamanho velho, o que entra e o que sai de um bloco vêm de voltas diferentes e o fluxo oscila sem convergir.
+    // 2. Fluxo dos links: fase 1 para consumidoras com limite, fase 2 o resto para as sem limite.
     const next = new Float64Array(edges.length);
     for (const g of groups) {
-      const remP = g.prods.map(([a, j]) => { const v = xOf(a); return v === INF ? INF : nodes[a].outs[j].b * v; });
+      const remP = g.prods.map(([a, j]) => (x[a] === INF ? INF : nodes[a].outs[j].b * x[a]));
       const remC = g.cons.map(([a, j]) => cap[a][j]);
       fill(g.ls.filter(l => remC[l.c] !== INF), remP, remC, next);
       fill(g.ls.filter(l => remC[l.c] === INF), remP, remC, next);
-      // 3a. O que chega em cada entrada deste meio (as ligações de uma entrada estão todas no mesmo meio).
-      for (const [a, k] of g.cons) intake[a][k] = nodes[a].ins[k].links.reduce((s, e) => s + next[e], 0);
     }
-    // 3b. O que escoa em cada saída ligada.
+    // 3. O que chega e o que escoa em cada porta ligada.
+    for (let i = 0; i < n; i++) nodes[i].ins.forEach((p, k) => { if (p.links.length) intake[i][k] = p.links.reduce((s, e) => s + next[e], 0); });
     for (let i = 0; i < n; i++) nodes[i].outs.forEach((p, j) => {
       if (p.mode !== 'linked') return;
       let acc = 0;
@@ -200,17 +185,34 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
       }
       accOut[i][j] = Math.max(0, acc);
     });
-    // 4. Novo tamanho de cada bloco.
+    // 4. Novo tamanho de cada bloco (com `damp` < 1, anda só uma fração do caminho; o ponto fixo é o mesmo).
     let stable = true;
     for (let i = 0; i < n; i++) {
       const v = xOf(i);
       if (!same(v, x[i])) stable = false;
-      x[i] = v;
+      x[i] = damp < 1 && Number.isFinite(v) && Number.isFinite(x[i]) ? x[i] + damp * (v - x[i]) : v;
     }
     for (let e = 0; e < edges.length && stable; e++) if (!same(next[e], flow[e])) stable = false;
     flow = next;
     if (stable) { converged = true; break; }
+    const now = snapshot();
+    if (back2 && now.every((v, k) => v === back2![k])) break;
+    back2 = back1; back1 = now;
   }
+  return { x, intake, accOut, flow, converged, iterations, supOf, accOf };
+}
+
+export function solveFactory(f: Factory, d: GameData): FlowResult {
+  const net = build(f, d), { nodes, edges } = net;
+  // Passo inteiro primeiro (o resultado de sempre). Se não converge (duas produtoras dividindo consumidoras limitadas
+  // podem pular entre dois pontos fixos, uma volta em cada), de novo com meio passo: amortece a oscilação.
+  let st = iterate(net, 1), iterations = st.iterations;
+  if (!st.converged) {
+    const alt = iterate(net, 0.5);
+    iterations += alt.iterations;
+    if (alt.converged) st = alt;
+  }
+  const { x, intake, flow, converged, supOf, accOf } = st;
 
   // Resultado.
   const blocks: Record<StageId, BlockFlow> = {};

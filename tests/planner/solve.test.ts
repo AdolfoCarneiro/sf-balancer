@@ -276,18 +276,20 @@ function conserves(f: Factory, r: FlowResult): void {
   }
 }
 
+// duo.sfmd: s1 minério → s2, s3 barras (sem limite) → s4, s5, s6 vergalhões fixados em 8, 2 e 2 (s2 só alimenta o s4).
+const duo = (ore: number) => fac([
+  { id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: ore },
+  recipe('s2', 'Recipe_IngotIron_C'), recipe('s3', 'Recipe_IngotIron_C'),
+  recipe('s4', 'Recipe_IronRod_C', { machines: 8 }), recipe('s5', 'Recipe_IronRod_C', { machines: 2 }),
+  recipe('s6', 'Recipe_IronRod_C', { machines: 2 }),
+], [
+  link('a', 'Desc_OreIron_C', 's1', 's2'), link('b', 'Desc_OreIron_C', 's1', 's3'),
+  link('c', 'Desc_IronIngot_C', 's2', 's4'), link('d', 'Desc_IronIngot_C', 's3', 's4'),
+  link('e', 'Desc_IronIngot_C', 's3', 's5'), link('g', 'Desc_IronIngot_C', 's3', 's6'),
+]);
+
 test('solver: duas produtoras para três consumidoras limitadas (duo.sfmd): todo o minério vira barra, nada some', () => {
-  const f = fac([
-    { id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: 180 },
-    recipe('s2', 'Recipe_IngotIron_C'), recipe('s3', 'Recipe_IngotIron_C'),
-    recipe('s4', 'Recipe_IronRod_C', { machines: 8 }), recipe('s5', 'Recipe_IronRod_C', { machines: 2 }),
-    recipe('s6', 'Recipe_IronRod_C', { machines: 2 }),
-  ], [
-    link('a', 'Desc_OreIron_C', 's1', 's2'), link('b', 'Desc_OreIron_C', 's1', 's3'),
-    link('c', 'Desc_IronIngot_C', 's2', 's4'), link('d', 'Desc_IronIngot_C', 's3', 's4'),
-    link('e', 'Desc_IronIngot_C', 's3', 's5'), link('g', 'Desc_IronIngot_C', 's3', 's6'),
-  ]);
-  const r = solveFactory(f, data);
+  const f = duo(180), r = solveFactory(f, data);
   assert.equal(r.converged, true);
   close(r.blocks.s2.x! + r.blocks.s3.x!, 6);                       // 180 de barra (30/min por máquina)
   close(r.blocks.s4.x, 8); close(r.blocks.s5.x, 2); close(r.blocks.s6.x, 2);
@@ -295,14 +297,66 @@ test('solver: duas produtoras para três consumidoras limitadas (duo.sfmd): todo
   close(r.blocks.s1.outs[0].held, 0);
   conserves(f, r); finite(r);
   // Com 200 de minério as barras param em 180 (o que as 12 máquinas consomem) e a mineradora represa 20.
-  const g = setMinerRate(f, 's1', 200), q = solveFactory(g, data);
+  const g = duo(200), q = solveFactory(g, data);
   assert.equal(q.converged, true);
   close(q.blocks.s2.x! + q.blocks.s3.x!, 6); close(q.blocks.s1.outs[0].held, 20);
   conserves(g, q);
 });
 
+// Fábricas do fuzz da revisão: mineradoras de minério de ferro, receitas (máquinas fixadas opcionais) e ligações "de>para"
+// (o item é a saída da origem).
+function fuzzed(blocks: [string, number | string, number?][], links: string[]): Factory {
+  const bs: Block[] = blocks.map(([id, v, m]) =>
+    typeof v === 'number' ? { id, kind: 'miner', item: 'Desc_OreIron_C', rate: v } : recipe(id, v, m === undefined ? undefined : { machines: m }));
+  const item = (id: string) => {
+    const b = bs.find(x => x.id === id)!;
+    return b.kind === 'miner' ? b.item : data.recipes[(b as RecipeBlock).recipe].outs[0].item;
+  };
+  return fac(bs, links.map((l, k) => { const [from, to] = l.split('>'); return link(`l${k}`, item(from), from, to); }));
+}
+const IN = 'Recipe_IngotIron_C', RO = 'Recipe_IronRod_C', SC = 'Recipe_Screw_C';
+const c1284 = () => fuzzed(
+  [['m0', 90], ['R0_1', IN], ['R0_2', RO, 1], ['R1_3', RO, 3], ['R2_4', RO], ['R3_5', RO, 2], ['R0_6', SC, 2], ['R1_7', SC, 1], ['R2_8', SC]],
+  ['m0>R0_1', 'R0_1>R0_2', 'R0_1>R1_3', 'R0_1>R2_4', 'R0_1>R3_5', 'R3_5>R0_6', 'R2_4>R1_7', 'R0_2>R2_8', 'R0_2>R1_7', 'R1_3>R2_8',
+    'R2_4>R0_6', 'R3_5>R1_7', 'R1_3>R0_6']);
+const c203 = () => fuzzed(
+  [['m0', 90], ['R0_1', IN], ['R1_2', IN, 2], ['R0_3', RO, 3], ['R1_4', RO, 2], ['R2_5', RO, 3], ['R3_6', RO], ['R0_7', SC], ['R1_8', SC, 3],
+    ['R2_9', SC, 4]],
+  ['m0>R0_1', 'm0>R1_2', 'R1_2>R0_3', 'R1_2>R1_4', 'R0_1>R2_5', 'R0_1>R3_6', 'R1_2>R2_5', 'R1_4>R0_7', 'R1_4>R1_8', 'R2_5>R2_9', 'R0_3>R1_8',
+    'R2_5>R1_8', 'R3_6>R1_8', 'R3_6>R2_9', 'R2_5>R0_7']);
+const c255 = () => fuzzed(
+  [['m0', 60], ['m1', 180], ['R0_2', IN], ['R1_3', IN], ['R2_4', IN], ['R0_5', RO, 5], ['R1_6', RO], ['R2_7', RO], ['R0_8', SC, 5], ['R1_9', SC, 2]],
+  ['m0>R0_2', 'm1>R1_3', 'm0>R2_4', 'm1>R2_4', 'm0>R1_3', 'R0_2>R0_5', 'R1_3>R1_6', 'R1_3>R2_7', 'R0_2>R1_6', 'R2_4>R1_6', 'R2_7>R0_8',
+    'R2_7>R1_9', 'R0_5>R0_8', 'R1_6>R1_9']);
+
+test('solver: onde o passo inteiro converge, o resultado é o de sempre (divisão justa, como o Merger)', () => {
+  // Valores do solver antes do meio passo de reserva (6caa781).
+  const pins: [Factory, Record<string, number>, number[]][] = [
+    [c1284(), { m0: 80, R0_1: 8 / 3, R0_2: 1, R1_3: 3, R2_4: 2 / 3, R3_5: 2 / 3, R0_6: 2, R1_7: 1, R2_8: 5 },
+      [80, 15, 45, 10, 10, 20 / 3, 10 / 3, 35 / 3, 10 / 3, 115 / 3, 20 / 3, 10 / 3, 20 / 3]],
+    [c203(), { m0: 90, R0_1: 1.25, R1_2: 1.75, R0_3: 0.5, R1_4: 1.5, R2_5: 3, R3_6: 1, R0_7: 2, R1_8: 3, R2_9: 4 },
+      [37.5, 52.5, 7.5, 22.5, 22.5, 15, 22.5, 15, 7.5, 32.5, 7.5, 7.5, 7.5, 7.5, 5]],
+  ];
+  for (const [f, xs, flows] of pins) {
+    const r = solveFactory(f, data);
+    assert.equal(r.converged, true);
+    for (const [id, v] of Object.entries(xs)) close(r.blocks[id].x, v);
+    flows.forEach((v, k) => close(r.links[`l${k}`], v));
+    conserves(f, r);
+  }
+});
+
+test('solver: duas mineradoras, três barras e vergalhões dividindo consumidoras: converge e conserva', () => {
+  const f = c255(), r = solveFactory(f, data);
+  assert.equal(r.converged, true);
+  close(r.blocks.R0_8.x, 5); close(r.blocks.R1_9.x, 2);                 // os parafusos fixados rodam cheios
+  for (const b of Object.values(r.blocks)) for (const p of b.ins) close(p.deficit, 0);
+  conserves(f, r); finite(r);
+});
+
 test('solver: conservação nas fábricas de teste: o que entra e sai de cada porta ligada bate com as ligações', () => {
-  for (const f of [vf(), semFramework(), setLimits(vf(), 's4', { machines: 8 }), setLimits(semFramework(), 's3', { machines: 15 })]) {
+  for (const f of [vf(), semFramework(), setLimits(vf(), 's4', { machines: 8 }), setLimits(semFramework(), 's3', { machines: 15 }),
+    duo(180), duo(200), loop({ machines: 1 }, true)]) {
     const r = solveFactory(f, data);
     assert.equal(r.converged, true); conserves(f, r);
   }
