@@ -2,7 +2,7 @@
 // sobras) e receitas em cartões com ícone, prédio e ingredientes; setas + Enter escolhem, Esc fecha.
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { t } from '../../i18n/index.js';
-import { pickerEntries, type PickerEntry, type PickerFilter } from '../model/picker.ts';
+import { pickerEntries, pickerGroups, type PickerEntry, type PickerFilter } from '../model/picker.ts';
 import type { GameData, ItemId } from '../model/types.ts';
 import { iconUrl } from './icons.ts';
 
@@ -37,8 +37,9 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const { special, recipes } = useMemo(() => pickerEntries(data, query, filter), [data, query, filter]);
-  const all = useMemo(() => [...special, ...recipes], [special, recipes]);
+  // Vindo de uma porta, as receitas primeiro; sem filtro, as especiais primeiro (pickerGroups).
+  const groups = useMemo(() => pickerGroups(pickerEntries(data, query, filter), filter), [data, query, filter]);
+  const all = useMemo(() => groups.flatMap(g => g.entries), [groups]);
 
   useEffect(() => { input.current?.focus(); }, []);
   useEffect(() => setActive(0), [all]);
@@ -84,18 +85,15 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
         role="combobox" aria-expanded={all.length > 0} aria-controls={listId} aria-autocomplete="list"
         aria-activedescendant={all.length ? `${uid}-o${active}` : undefined} />
       <ul id={listId} className="pl-pick-list" role="listbox" aria-label={title}>
-        {special.length > 0 && (
-          <li role="group" aria-labelledby={`${uid}-gs`}>
-            <p id={`${uid}-gs`} className="pl-pick-h">{t('plPickSpecial')}</p>
-            <ul role="presentation">{special.map((e, i) => option(e, i))}</ul>
-          </li>
-        )}
-        {recipes.length > 0 && (
-          <li role="group" aria-labelledby={`${uid}-gr`}>
-            <p id={`${uid}-gr`} className="pl-pick-h">{t('plPickRecipes')}</p>
-            <ul role="presentation">{recipes.map((e, i) => option(e, special.length + i))}</ul>
-          </li>
-        )}
+        {groups.map((g, gi) => {
+          const start = groups.slice(0, gi).reduce((n, x) => n + x.entries.length, 0), hid = `${uid}-g${g.kind}`;
+          return (
+            <li key={g.kind} role="group" aria-labelledby={hid}>
+              <p id={hid} className="pl-pick-h">{t(g.kind === 'special' ? 'plPickSpecial' : 'plPickRecipes')}</p>
+              <ul role="presentation">{g.entries.map((e, i) => option(e, start + i))}</ul>
+            </li>
+          );
+        })}
       </ul>
       {!all.length && <p className="pl-note" role="status">{t('plPickNone')}</p>}
     </div>

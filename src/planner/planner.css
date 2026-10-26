@@ -149,10 +149,6 @@ select.pl-field { width: auto; }
 .pl-map-hint button { flex: none; padding: 0 6px; font: 15px/1.2 var(--body); color: var(--ink-dim); background: none; border: 1px solid transparent; cursor: pointer; }
 .pl-map-hint button:hover { color: var(--ink); border-color: var(--line); }
 .pl-map-hint button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
-@media (max-width: 600px) {
-  .pl-map-hint { left: 12px; bottom: 56px; max-width: calc(100% - 24px); }
-  .pl-map-legend { top: 52px; }
-}
 .pl-map-ctrl { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
 .pl-map-ctrl .pl-btn { min-width: 34px; background: var(--bench); }
 .pl-map-ctrl .pl-map-add { color: var(--ficsit); border-color: var(--ficsit); }
@@ -178,9 +174,15 @@ select.pl-field { width: auto; }
 .pl-lg-clash { border: 2px solid var(--sink); }
 .pl-lg-stalled { width: 18px; height: 10px; border: 3px solid; border-image: repeating-linear-gradient(45deg, var(--ficsit) 0 4px, var(--bench) 4px 8px) 3; }
 .pl-lg-deadlock { width: 18px; height: 10px; border: 3px solid; border-image: repeating-linear-gradient(45deg, var(--lock) 0 4px, var(--bench) 4px 8px) 3; }
+.pl-lg-dots { width: auto; height: 10px; display: inline-flex; align-items: center; gap: 4px; }
+.pl-lg-dots b { display: block; width: 8px; height: 8px; background: var(--ficsit); }
+.pl-lg-dots b + b { width: 7px; height: 7px; margin: 0 1px; background: var(--lock); transform: rotate(45deg); }
+/* Celular: a dica sobe acima da régua e a legenda desce abaixo dos botões do mapa (depois das regras-base, de propósito). */
+@media (max-width: 600px) {
+  .pl-map-hint { left: 12px; bottom: 56px; max-width: calc(100% - 24px); }
+  .pl-map-legend { top: 52px; }
+}
 
-.pl-map-sides { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; border: 0; }
-.pl-map-sides legend { width: 100%; margin-bottom: 6px; }
 .pl-map-blocks, .pl-map-warns { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .pl-map-block, .pl-map-warns button { width: 100%; padding: 5px 10px; text-align: left; background: none; color: var(--ink); border: 1px solid var(--line); border-left-width: 3px; font: 13px var(--body); cursor: pointer; }
 .pl-map-block:hover, .pl-map-warns button:hover { border-color: var(--ink-dim); }
@@ -191,9 +193,9 @@ select.pl-field { width: auto; }
 .pl-map-empty { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: min(90%, 460px); margin: 0; padding: 12px 16px; text-align: center; color: var(--ink); background: rgba(10, 27, 45, .9); border: 1px dashed var(--ficsit); pointer-events: none; }
 .pl-map-notice { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); margin: 0; padding: 6px 12px; font-size: 13px; color: var(--sink); background: var(--bench); border: 1px solid var(--sink); border-left-width: 4px; }
 
-/* Seletor do mapa (duplo clique, botão direito ou soltar uma porta no vazio): uma placa chanfrada, como o Recipe
-   Chooser do jogo. */
-.pl-pick { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bench); border-top: 3px solid var(--ficsit); box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0, 0, 0, .55); clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
+/* Seletor do mapa (duplo clique, botão direito ou soltar uma porta no vazio): placa escura com a faixa laranja no topo,
+   contorno e sombra (sem clip-path, que cortaria os dois). */
+.pl-pick { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bench); border-top: 3px solid var(--ficsit); box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0, 0, 0, .55); }
 .pl-pick-title { margin: 0; font: 600 14px var(--display); color: var(--ficsit); }
 .pl-pick-in { padding: 7px 8px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font: 14px var(--body); }
 .pl-pick-in:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
@@ -248,7 +250,7 @@ select.pl-field { width: auto; }
 .pl-seg-opt:has(input:focus-visible) { outline: 2px solid var(--ficsit); outline-offset: -2px; }
 
 /* Modal da ligação: lateral com números, montagens e ligações; à direita o desenho do fluxo ou o passo a passo. */
-.pl-lig { width: min(1320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 0; border-top: 3px solid var(--ficsit); background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 18px 48px rgba(0, 0, 0, .6); clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); }
+.pl-lig { width: min(1320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 0; border-top: 3px solid var(--ficsit); background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 18px 48px rgba(0, 0, 0, .6); }
 .pl-lig::backdrop { background: rgba(4, 12, 22, .78); }
 .pl-lig-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 28px 12px 18px; border-bottom: 1px solid var(--line); background: var(--bench); }
 .pl-lig-head h2 { margin: 0; font: 600 22px var(--display); }

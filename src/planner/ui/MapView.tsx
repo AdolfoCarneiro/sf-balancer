@@ -46,9 +46,9 @@ const fitAll = (b: Rect, w: number, h: number): Camera =>
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
-const CLICK_PX = 4;
+const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 const HINT_STORE = 'sf-balancer:planner-map-hint';
-const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)   // até aqui o ponteiro só clicou; passou disso, arrasta
+const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)
 const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
 const NOTICE_MS = 3500;
 const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink' } as const;
@@ -486,12 +486,13 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   );
 }
 
-// Legenda do mapa, recolhível, no canto de cima à esquerda. Os sinais repetem a forma do canvas (falta e represado em
-// círculo, travado em quadrado, loop travado em losango).
+// Legenda do mapa, recolhível, no canto de cima à esquerda. Os sinais repetem o canvas: de perto a faixa de perigo
+// (travado, loop travado); de longe os sinais no canto do bloco (falta e represado em círculo, travado em quadrado,
+// loop travado em losango, sem limite em anel).
 const LEGEND: [string, string][] = [
   ['machine', 'plLegMachine'], ['belt', 'plLegBelt'], ['pipe', 'plLegPipe'], ['meio', 'plLegMeio'], ['marker', 'plLegMarker'],
   ['port', 'plLegPort'], ['short', 'plLegShort'], ['held', 'plLegHeld'], ['stalled', 'plLegStalled'], ['deadlock', 'plLegDeadlock'],
-  ['unbounded', 'plLegUnbounded'], ['clash', 'plLegClash'],
+  ['unbounded', 'plLegUnbounded'], ['clash', 'plLegClash'], ['dots', 'plLegDots'],
 ];
 function MapLegend() {
   const [open, setOpen] = useState(() => { try { return localStorage.getItem(LEGEND_STORE) === '1'; } catch { return false; } });
@@ -504,7 +505,9 @@ function MapLegend() {
     <details className="pl-map-legend" open={open} onToggle={toggle}>
       <summary>{t('plLegend')}</summary>
       <ul>
-        {LEGEND.map(([k, key]) => <li key={k}><i className={'pl-lg pl-lg-' + k} aria-hidden="true" />{t(key)}</li>)}
+        {LEGEND.map(([k, key]) => (
+          <li key={k}><i className={'pl-lg pl-lg-' + k} aria-hidden="true">{k === 'dots' && <><b /><b /></>}</i>{t(key)}</li>
+        ))}
       </ul>
     </details>
   );

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { GameData } from '../../src/planner/model/types.ts';
-import { pickerEntries } from '../../src/planner/model/picker.ts';
+import { pickerEntries, pickerGroups } from '../../src/planner/model/picker.ts';
 import { setLang } from '../../src/i18n/index.js';
 
 const data = game as GameData;
@@ -87,4 +87,18 @@ test('seletor de uma saída: receitas comuns primeiro, alternativas depois, Conv
   assert.equal(pickerEntries(data, 'iron ingot').recipes[0].title, 'Iron Ingot');
   const orn = pickerEntries(data, 'ornament').recipes.map(e => e.title);
   assert.ok(orn.length > 0 && orn.every(n => /FICSMAS/.test(n)));
+});
+
+test('seletor vindo de uma porta: receitas primeiro, depois Sink, Container e Saída; sem filtro, especiais primeiro', () => {
+  const from = pickerGroups(pickerEntries(data, '', { consumes: 'Desc_IronIngot_C' }), { consumes: 'Desc_IronIngot_C' });
+  assert.deepEqual(from.map(g => g.kind), ['recipes', 'special']);
+  const flat = from.flatMap(g => g.entries.map(e => e.spec.kind === 'recipe' ? e.title : e.spec.kind));
+  assert.deepEqual(flat.slice(0, 2), ['Iron Plate', 'Iron Rod']);
+  assert.deepEqual(flat.slice(-3), ['sink', 'container', 'export']);
+  const up = pickerGroups(pickerEntries(data, '', { produces: 'Desc_Water_C' }), { produces: 'Desc_Water_C' });
+  assert.deepEqual(up.map(g => g.kind), ['recipes', 'special']);
+  assert.deepEqual(pickerGroups(pickerEntries(data, ''), undefined).map(g => g.kind), ['special', 'recipes']);
+  // Grupo vazio não aparece.
+  const miner = pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special;
+  assert.deepEqual(pickerGroups({ special: miner, recipes: [] }, { produces: 'Desc_OreIron_C' }).map(g => g.kind), ['special']);
 });

@@ -8,7 +8,7 @@ const norm = (s: string) => s.trim().toLowerCase();
 const EVENT_ITEM = /^Desc_(Xmas|Snow|CandyCane|Fireworks|Gift)/;
 const CONVERTER = 'Build_Converter_C';
 // 0 normal, 1 alternativa, 2 Converter, 3 FICSMAS.
-export function recipeTier(r: Recipe): number {
+function recipeTier(r: Recipe): number {
   if ([...r.ins, ...r.outs].some(f => EVENT_ITEM.test(f.item))) return 3;
   if (r.building === CONVERTER) return 2;
   return r.alt ? 1 : 0;

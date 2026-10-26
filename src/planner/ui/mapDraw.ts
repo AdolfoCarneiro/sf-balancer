@@ -272,7 +272,14 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
 
   const NAME = `600 13px ${th.display}`, SMALL = `11px ${th.body}`, BADGE = `600 12px ${th.body}`;
   const PAD = 5, CUT = 5, GAP = 3;
-  const measure = (s: string, font: string) => { ctx.font = font; return ctx.measureText(s).width; };
+  // Larguras medidas uma vez por quadro (o posicionador mede o mesmo texto em vários candidatos).
+  const widths = new Map<string, number>();
+  const measure = (s: string, font: string) => {
+    const key = font + '\n' + s;
+    let w = widths.get(key);
+    if (w === undefined) { ctx.font = font; w = ctx.measureText(s).width; widths.set(key, w); }
+    return w;
+  };
   // Uma linha de rótulo: texto numa chapa escura com o canto de cima chanfrado (as placas do site); icon: ícone antes
   // do texto; accent: filete à esquerda (o selecionado).
   interface Line { s: string; font: string; color: string; h: number; icon?: string | null; accent?: string | null }
@@ -348,14 +355,20 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
   // 1. Avisos do fluxo. De perto, o texto na ponta de cada porta (falta em vermelho por dentro da entrada; represado
   // por dentro da saída; saída da fábrica e saída parada por fora, onde não há ligação); de longe, os sinais no canto.
   const portOf = new Map(o.ports.map(p => [portId(p), p]));
+  const dots: { k: BadgeKind; x: number; y: number }[] = [];
   for (const b of blocks) {
     const bs = o.badges(b.stage);
     if (!bs.length) continue;
     if (!near) {
+      // Centrados no canto de cima à direita (cabem até em bloco pequeno); entram no posicionador para nenhum nome
+      // cobri-los e são desenhados por último, por cima de tudo.
       const kinds = DOT_KINDS.filter(k => bs.some(x => x.kind === k));
       const x1 = sx(b.rect.x + b.rect.w), y0 = sy(b.rect.y);
-      if (b.rect.w * z < 8) continue;
-      kinds.forEach((k, i) => dot(k, x1 - 7 - i * (2 * DOT_PX + 4), y0 + 7));
+      kinds.forEach((k, i) => {
+        const x = x1 - i * (2 * DOT_PX + 4), y = y0;
+        dots.push({ k, x, y });
+        placed.push({ x: x - DOT_PX - 2, y: y - DOT_PX - 2, w: 2 * DOT_PX + 4, h: 2 * DOT_PX + 4 });
+      });
       continue;
     }
     const stack = new Map<string, number>();
@@ -375,7 +388,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
       let ty = sy(p.y) + dy * (off + 4) - 9 + k * step;
       // Portas vizinhas (fluido e sólido na mesma borda): um aviso não cobre o outro.
       for (let i = 0; i < 4 && placed.some(r => hit(r, rectsAt([line], tx, ty, align)[0])); i++) ty += step || 20;
-      const r = rectsAt([line], tx, ty, align)[0];
+      // Sempre dentro da tela (uma porta na borda não empurra o aviso para fora).
+      const r0 = rectsAt([line], tx, ty, align)[0];
+      const r = { ...r0, x: Math.max(0, Math.min(r0.x, vw - r0.w)), y: Math.max(0, Math.min(r0.y, vh - r0.h)) };
       drawLine(line, r); placed.push(r);
     }
   }
@@ -397,10 +412,13 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
     let done: Rect[] | null = null;
     if (wantSub) done = put([title, sub], around(r, [title, sub], !detail), b.stage);
     if (!done) done = put([title], around(r, [title], !detail), b.stage, detail || on || hov, on || hov);
-    if (!done && !detail) {
-      // De longe e sem lugar inteiro: por dentro, cortado na largura do bloco.
+    if (!done) {
+      // Sem lugar inteiro: por dentro, cortado na largura do bloco. O bloco de receita sempre mostra o nome (por dentro
+      // mesmo cobrindo, ou, sem altura para isso, no primeiro lugar de fora); origem e sobra podem ficar sem.
+      const must = !b.marker;
       const cut = fit(title, r.w - 2 * GAP);
-      if (cut && 20 <= r.h - 2 * GAP) done = put([cut], [[r.x + GAP, r.y + GAP]], b.stage);
+      if (cut && 20 <= r.h - 2 * GAP) done = put([cut], [[r.x + GAP, r.y + GAP]], b.stage, must, must);
+      if (!done && must) done = put([title], around(r, [title], !detail), b.stage, true, true);
     }
   }
   for (const m of meios) {
@@ -470,6 +488,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, cam: Came
       }
     }
   }
+
+  for (const d of dots) dot(d.k, d.x, d.y);
 
   // Régua de escala no canto inferior esquerdo.
   const meters = [...SCALES].reverse().find(s => s * z <= SCALE_MAX_PX) ?? SCALES[0];

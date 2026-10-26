@@ -345,6 +345,7 @@ export default {
   plLinkWhyDup: 'Essas portas já estão ligadas.', plLinkWhyFluidSink: 'O Awesome Sink não aceita fluido.',
   plCanvasHint: 'Duplo clique ou botão direito no vazio cria um bloco · arraste de uma porta para ligar ou criar o próximo · Delete apaga o selecionado',
   plLegend: 'Legenda',
+  plLegDots: 'de longe: travado (quadrado) e trava em loop (losango)',
   plLegMachine: 'máquina, em escala', plLegBelt: 'esteira, na cor do item', plLegPipe: 'cano', plLegMeio: 'ligação entre blocos (clique abre)',
   plLegMarker: 'origem ou sobra, fora de escala', plLegPort: 'porta: arraste para ligar ou criar o próximo bloco', plLegShort: 'falta numa entrada',
   plLegHeld: 'represado, ou saindo da fábrica', plLegStalled: 'travado: uma saída não tem para onde ir', plLegDeadlock: 'trava em loop',

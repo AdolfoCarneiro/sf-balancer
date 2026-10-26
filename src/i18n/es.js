@@ -345,6 +345,7 @@ export default {
   plLinkWhyDup: 'Esos puertos ya están conectados.', plLinkWhyFluidSink: 'El Awesome Sink no acepta fluidos.',
   plCanvasHint: 'Doble clic o clic derecho en el vacío crea un bloque · arrastra desde un puerto para conectar o crear el siguiente · Supr borra el seleccionado',
   plLegend: 'Leyenda',
+  plLegDots: 'de lejos: detenido (cuadrado) y bucle bloqueado (rombo)',
   plLegMachine: 'máquina, a escala', plLegBelt: 'cinta, en el color del ítem', plLegPipe: 'tubería', plLegMeio: 'conexión entre bloques (clic para abrir)',
   plLegMarker: 'origen o sobrante, fuera de escala', plLegPort: 'puerto: arrastra para conectar o crear el siguiente bloque', plLegShort: 'falta en una entrada',
   plLegHeld: 'retenido, o saliendo de la fábrica', plLegStalled: 'detenido: una salida no tiene adónde ir', plLegDeadlock: 'bucle bloqueado',
