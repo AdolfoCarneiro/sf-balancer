@@ -468,6 +468,20 @@ test('center órfão: salvo com 42, a etapa recalculada para 20 máquinas', () =
 
 const COPPER = 'Desc_CopperIngot_C', COPPER_ORE = 'Desc_OreCopper_C';
 const copper = (machines: number): Stage => ({ id: 's', recipe: 'Recipe_IngotCopper_C', machines, clock: 100, perRow: null, tiers: {} });
+// Elevador sem encostar em Merger/Splitter, em cima do ponto da linha e na ponta da esteira dela; máquinas sem se cobrir.
+const hit = (u: { x: number; y: number; w: number; h: number }, v: typeof u) => u.x < v.x + v.w && v.x < u.x + u.w && u.y < v.y + v.h && v.y < u.y + u.h;
+function liftsClear(a: Arrangement, side: 'in' | 'out', item: string) {
+  const ps = a.geo.pieces.filter(p => p.kind === 'merger' || p.kind === 'splitter');
+  for (const l of lifts(a)) assert.ok(!ps.some(q => hit(l, q)), `elevador em cima de ${ps.find(q => hit(l, q))?.kind} em x = ${l.x}`);
+  const ls = a.lines.filter(l => l.side === side && l.item === item && l.exit !== 'end');
+  assert.deepEqual(lifts(a).map(p => [p.x + 1, p.y + 1]), ls.map(l => l.at));
+  const bs = a.geo.belts.filter(b => b.role === side && b.item === item);
+  ls.forEach((l, k) => assert.deepEqual(bs[k].pts[side === 'in' ? 0 : bs[k].pts.length - 1], l.at));
+  assert.ok(lifts(a).every(p => p.x + 1 >= 0 && p.x + 1 <= a.geo.w), 'elevador na borda ou dentro do bloco');
+  const ms = machinesOf(a);
+  ms.forEach((m, i) => assert.ok(!ms.slice(i + 1).some(q => hit(m, q)), `máquinas sobrepostas em x = ${m.x}`));
+  assert.ok(a.area.w >= a.geo.w && a.area.d >= a.geo.h, 'a área cobre o desenho');
+}
 
 test('center: Copper Ingot 40 atravessa os dois pares (3 saídas, não 4)', () => {
   const a = arrange(copper(40), data, { kind: 'center' });
@@ -481,7 +495,8 @@ test('center: Copper Ingot 40 atravessa os dois pares (3 saídas, não 4)', () =
   // Uma esteira só, da esquerda para a direita: cada trecho sai onde termina, o último na borda da direita.
   const W = Math.max(...a.rows.map(r => r.w)), xs = ls.map(l => l.at[0]);
   assert.deepEqual([...xs].sort((u, v) => u - v), xs);
-  assert.equal(xs[2], a.geo.w);
+  const ms = machinesOf(a), right = Math.max(...ms.map(m => m.x + m.w));
+  assert.ok(xs[2] > right - 1e-9 && xs[2] < a.geo.w, 'o último depois da última máquina, dentro do bloco');
   const bs = a.geo.belts.filter(b => b.role === 'out' && b.item === COPPER);
   assert.equal(bs.length, 3);
   assert.ok(bs[1].pts[0][0] < W && bs[1].pts[1][0] > W + 4, 'o trecho do meio passa pelo vão');
@@ -490,7 +505,8 @@ test('center: Copper Ingot 40 atravessa os dois pares (3 saídas, não 4)', () =
   assert.equal(a.pieces.mergers, 20);
   assert.equal(a.geo.pieces.filter(p => p.kind === 'merger').length, 20);
   assert.equal(a.pieces.splitters, 36);
-  lifts(a).forEach((p, k) => assert.deepEqual([p.x + 1, p.y + 1], ls[k].at));
+  liftsClear(a, 'out', COPPER);
+  liftsClear(arrange(copper(40), data, { kind: 'center', belts: { [`out:${COPPER}`]: { even: true } } }), 'out', COPPER);
 });
 
 test('center: Dividir igual divide o mesmo número de saídas o mais igual possível', () => {
@@ -523,12 +539,15 @@ test('center invertido: a linha de Splitters da entrada atravessa os pares pela 
   assert.deepEqual(arrangementLines(a, 'in', COPPER_ORE), [16, 16, 8]);
   const ls = a.lines.filter(l => l.side === 'in' && l.item === COPPER_ORE);
   assert.deepEqual(ls.map(l => l.rows), [[0, 1], [0, 1, 2, 3], [2, 3]]);
-  assert.equal(ls[0].at[0], 0, 'entra pela borda da esquerda');
+  assert.ok(ls[0].at[0] < Math.min(...machinesOf(a).map(m => m.x)), 'entra pela borda da esquerda');
   assert.deepEqual([...ls.map(l => l.at[0])].sort((u, v) => u - v), ls.map(l => l.at[0]));
   assert.deepEqual(arrangementLines(a, 'out', COPPER), [10, 10, 10, 10]);
   assert.equal(a.pieces.lifts, 3);
   assert.deepEqual(a.warnings, []);
-  assert.deepEqual(arrangementLines(arrange(copper(40), data, { kind: 'center', invert: true, belts: { [`in:${COPPER_ORE}`]: { even: true } } }), 'in', COPPER_ORE), [14, 13, 13]);
+  liftsClear(a, 'in', COPPER_ORE);
+  const ev = arrange(copper(40), data, { kind: 'center', invert: true, belts: { [`in:${COPPER_ORE}`]: { even: true } } });
+  assert.deepEqual(arrangementLines(ev, 'in', COPPER_ORE), [14, 13, 13]);
+  liftsClear(ev, 'in', COPPER_ORE);
 });
 
 test('Dividir igual: corte numa fileira; sem efeito com uma saída só e em cano', () => {
@@ -549,4 +568,21 @@ test('cleanLayout: even só true; o resto some', () => {
   assert.deepEqual(cleanLayout({ kind: 'center', belts: { [`out:${INGOT}`]: { even: true, cut: 7 } } }),
     { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 7, even: true } } });
   assert.deepEqual(cleanLayout({ kind: 'center', belts: { 'out:A': { even: 'yes' }, 'out:B': { even: 1 }, 'out:C': { even: false } } }), { kind: 'center' });
+});
+
+test('máquina estreita: vão só na divisa onde o elevador não cabe entre os Mergers', () => {
+  // Smelter de 5 m com Merger de 4 m: sobra 1 m entre as peças, o elevador tem 2. O bloco alarga um pouco.
+  const a = arrange(copper(40), data, { kind: 'center' });
+  const W = Math.max(...a.rows.map(r => r.w));
+  assert.ok(W > 50, `fileira de ${W} m`);
+  assert.ok(W < 50 + 3 * 3 + 1e-9, `fileira de ${W} m`);
+  // Fileira simples cortada (sem atravessar): também abre vão, e as linhas são as de sempre.
+  const row = arrange(copper(10), data, { kind: 'simple', belts: { [`out:${COPPER}`]: { cut: 4, exit: 'down' } } });
+  assert.deepEqual(arrangementLines(row, 'out', COPPER), [4, 4, 2]);
+  liftsClear(row, 'out', COPPER);
+  // Sem elevador: nada muda.
+  assert.equal(Math.max(...arrange(copper(40), data, { kind: 'simple' }).rows.map(r => r.w)), 16 * 5);
+  // Refinery (10 m): sobra espaço, nenhum vão (o ferro do dono fica igual, já fixado acima).
+  liftsClear(arrange(st(42), data, { kind: 'center' }), 'out', INGOT);
+  liftsClear(arrange(st(42), data, { kind: 'center', invert: true }), 'in', ORE);
 });

@@ -87,7 +87,7 @@ export interface Arrangement {
 const E = 1e-9;
 const floorE = (x: number) => Math.floor(x + E);
 const ceil8 = (x: number) => Math.ceil(x / 8 - E) * 8;
-const LIFT = 2;
+const LIFT = 2, LIFT_CLEAR = 1;   // elevador; folga mínima dele até um Merger/Splitter quando abre vão
 const sideOf = (s: Side): 'in' | 'out' => (s === 'ins' ? 'in' : 'out');
 
 // Fileiras do center, na ordem do modelo (cima, baixo de cada par): R = o menor par ≥ 2 em que
@@ -173,7 +173,18 @@ const pieceCols = (sg: SharedSeg, side: Side) => {
 interface RowPlan { index: number; n: number; flip: boolean; mirror: boolean; bx: number; dx: number; dy: number; gapAfter: boolean; pairStart: boolean }
 interface Shared { key: string; side: Side; item: ItemId; top: RowPlan; bot: RowPlan }
 
-export function arrange(stage: Stage, data: GameData, layout: Layout | undefined, place?: Pick<MapPlace, 'gapRow' | 'gapMachine'>): Arrangement {
+type Place = Pick<MapPlace, 'gapRow' | 'gapMachine'>;
+
+// Máquina estreita (Smelter, 5 m): entre dois Mergers vizinhos sobra menos que o elevador. A primeira passada marca as
+// divisas de coluna onde um elevador ficou em cima de uma peça; a segunda abre um vão ali (em todas as fileiras, para as
+// colunas continuarem alinhadas). Máquina larga (Refinery) não abre vão: o desenho é o de antes.
+export function arrange(stage: Stage, data: GameData, layout: Layout | undefined, place?: Place): Arrangement {
+  const first = arrangeWith(stage, data, layout, place, new Set());
+  return first.need.size ? arrangeWith(stage, data, layout, place, first.need).arr : first.arr;
+}
+
+// gaps: divisas g (entre a máquina g−1 e a g, contando da ponta de entrada da fileira; 0 = antes da primeira) com vão.
+function arrangeWith(stage: Stage, data: GameData, layout: Layout | undefined, place: Place | undefined, gaps: ReadonlySet<number>): { arr: Arrangement; need: Set<number> } {
   const kind: LayoutKind = layout?.kind ?? 'simple';
   const center = kind === 'center', invert = !!layout?.invert;
   const gapRow = place?.gapRow ?? 0, gapMachine = place?.gapMachine ?? 0;
@@ -183,7 +194,12 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const estimate = [...recipe.ins, ...recipe.outs].some(f => fluidOf(f.item));
   const counts = modelRows(stage, data, kind);
   const pitch = b.w + gapMachine;
-  const rowW = (n: number) => n * b.w + Math.max(0, n - 1) * gapMachine;
+  // Vão logo depois da máquina g−1: largo o bastante para o elevador com folga dos dois lados.
+  const G = gaps.size ? LIFT + 2 * LIFT_CLEAR - (gapMachine + b.w - PIECE) : 0;
+  const gapList = [...gaps].sort((u, v) => u - v);
+  const colX = (m: number) => { let x = m * pitch; for (const g of gapList) { if (g > m) break; x += G; } return x; };
+  const rowW = (n: number) => (n > 0 ? colX(n - 1) + b.w + (gaps.has(n) ? G : 0) : 0);
+  const gapMid = (g: number) => (g === 0 ? G / 2 : colX(g - 1) + b.w + G / 2);   // meio do vão, na fileira sem espelho
   const W = counts.reduce((m, n) => Math.max(m, rowW(n)), 0);
   const ports = [...recipe.ins.map(f => ({ side: 'ins' as Side, item: f.item })), ...recipe.outs.map(f => ({ side: 'outs' as Side, item: f.item }))];
   const flows = (side: Side) => (side === 'ins' ? recipe.ins : recipe.outs).map(f => f.item);
@@ -302,10 +318,14 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const rows: ArrRow[] = [], lines: ArrLine[] = [];
   const count = { splitters: 0, mergers: 0, lifts: 0 };
   let shifted = false, y = 0, maxBottom = -Infinity, bandTop = 0, bandBottom = 0;
-  const machX = (rp: RowPlan, m: number) => (rp.mirror ? W - m * pitch - b.w : m * pitch) + rp.bx + rp.dx;
-  const lift = (a: Pt, exit: LayoutExit, item: ItemId) => {
+  const machX = (rp: RowPlan, m: number) => (rp.mirror ? W - colX(m) - b.w : colX(m)) + rp.bx + rp.dx;
+  const gapX = (rp: RowPlan, g: number) => (rp.mirror ? W - gapMid(g) : gapMid(g)) + rp.bx + rp.dx;
+  // Cada elevador com a divisa de coluna dele (g), para a primeira passada saber onde abrir vão.
+  const liftAt: { p: Piece; g: number }[] = [];
+  const lift = (a: Pt, exit: LayoutExit, item: ItemId, g: number) => {
     count.lifts++;
-    pieces.push({ kind: 'lift', x: a[0] - LIFT / 2, y: a[1] - LIFT / 2, w: LIFT, h: LIFT, item, ...(exit === 'up' ? { above: true } : {}) });
+    const p: Piece = { kind: 'lift', x: a[0] - LIFT / 2, y: a[1] - LIFT / 2, w: LIFT, h: LIFT, item, ...(exit === 'up' ? { above: true } : {}) };
+    pieces.push(p); liftAt.push({ p, g });
   };
 
   // A linha compartilhada de um par (ou de dois, atravessando a faixa da esquerda para a direita), numa faixa de
@@ -315,14 +335,19 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     const { exit, cut, even } = beltOf.get(gs[0].key)!;
     const tier = tierOf(side, item), cap = capOf(data.items[item], tier);
     const dir = gs.length === 1 && top.mirror ? -1 : 1;
-    const byX = new Map<number, number[]>();
+    const byX = new Map<number, { rows: number[]; m: number; rp: RowPlan }>();
     for (const rp of gs.flatMap(g => [g.top, g.bot])) {
       for (let m = 0; m < rp.n; m++) {
-        const x = machX(rp, m);
-        byX.set(x, [...(byX.get(x) ?? []), rp.index]);
+        const x = machX(rp, m), c = byX.get(x);
+        if (c) c.rows.push(rp.index); else byX.set(x, { rows: [rp.index], m, rp });
       }
     }
-    const cols = [...byX].sort((u, v) => (u[0] - v[0]) * dir).map(([x, rs]) => ({ x, rows: rs }));
+    const cols = [...byX].sort((u, v) => (u[0] - v[0]) * dir).map(([x, c]) => ({ x, ...c }));
+    // Divisa logo depois (after) ou antes da coluna ci, no sentido da linha, em índice de máquina da fileira dela.
+    const divisa = (ci: number, after: boolean) => {
+      const c = cols[ci], inc = (c.rp.mirror ? -1 : 1) === dir;
+      return after === inc ? c.m + 1 : c.m;
+    };
     const ends = (ci: number) => (dir > 0 ? [cols[ci].x, cols[ci].x + b.w] : [cols[ci].x + b.w, cols[ci].x]);
     const mid = (ci: number) => cols[ci].x + b.w / 2;
     const rowStart = top.bx + (dir > 0 ? 0 : W), rowEnd = top.bx + (dir > 0 ? W : 0);
@@ -333,8 +358,11 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       const first = sg.cols[0], last = sg.cols[sg.cols.length - 1];
       // Corte no meio da coluna: o elevador anda uma peça ao longo da esteira, para fora da peça da coluna (depois dela
       // na saída, antes dela na entrada), e a esteira vai até ele.
-      const xs = exit === 'end' ? rowStart : first.from > 0 ? mid(first.ci) - (side === 'ins' ? dir * PIECE : 0) : ends(first.ci)[0];
-      const xe = exit === 'end' ? rowEnd : last.from + last.k < cols[last.ci].rows.length ? mid(last.ci) + (side === 'outs' ? dir * PIECE : 0) : ends(last.ci)[1];
+      let xs = exit === 'end' ? rowStart : first.from > 0 ? mid(first.ci) - (side === 'ins' ? dir * PIECE : 0) : ends(first.ci)[0];
+      let xe = exit === 'end' ? rowEnd : last.from + last.k < cols[last.ci].rows.length ? mid(last.ci) + (side === 'outs' ? dir * PIECE : 0) : ends(last.ci)[1];
+      // Elevador numa divisa com vão: no meio do vão.
+      const lc = side === 'ins' ? first.ci : last.ci, g = divisa(lc, side === 'outs');
+      if (exit !== 'end' && gaps.has(g)) { if (side === 'ins') xs = gapX(cols[lc].rp, g); else xe = gapX(cols[lc].rp, g); }
       const a: Pt = side === 'ins' ? [xs, cy] : [xe, cy];
       const rate = p * sg.machines;
       const segRows = [...new Set(sg.cols.flatMap(c => cols[c.ci].rows.slice(c.from, c.from + c.k)))].sort((u, v) => u - v);
@@ -344,7 +372,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       const withPiece = pieceCols(sg, side);
       count[side === 'ins' ? 'splitters' : 'mergers'] += withPiece.length;
       for (const c of withPiece) perCol.set(c.ci, (perCol.get(c.ci) ?? 0) + 1);
-      if (exit !== 'end') lift(a, exit, item);
+      if (exit !== 'end') lift(a, exit, item, g);
     }
     // Coluna cortada no meio leva duas peças, uma de cada trecho, lado a lado.
     for (const [ci, k] of perCol) {
@@ -389,7 +417,9 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
           a = side === 'ins' ? pt(0, cy) : pt(W, cy);
           pts = [pt(0, cy), side === 'ins' ? pt(end, cy) : pt(W, cy)];
         } else {
-          const xs = sg.start * pitch, xe = xs + rowW(sg.count);
+          const g = side === 'ins' ? sg.start : sg.start + sg.count, at = gaps.has(g) ? gapMid(g) : null;
+          const xs = side === 'ins' && at !== null ? at : colX(sg.start);
+          const xe = side === 'outs' && at !== null ? at : colX(sg.start + sg.count - 1) + b.w;
           a = side === 'ins' ? pt(xs, cy) : pt(xe, cy);
           pts = [pt(xs, cy), pt(xe, cy)];
         }
@@ -398,11 +428,11 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
         (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row, stage: stage.id, ...(exit !== 'end' ? { exit } : {}) });
         lines.push({ side: s, item, machines: sg.count, rate, rows: [row], exit, at: a, tier, cap, fluid });
         if (!fluid) count[side === 'ins' ? 'splitters' : 'mergers'] += Math.max(0, sg.count - 1);
-        if (exit !== 'end') lift(a, exit, item);
+        if (exit !== 'end') lift(a, exit, item, side === 'ins' ? sg.start : sg.start + sg.count);
       }
       if (h === PIECE) {
         for (let m = 0; m < n; m++) {
-          const x = m * pitch + (b.w - PIECE) / 2;
+          const x = colX(m) + (b.w - PIECE) / 2;
           pieces.push({ kind: side === 'ins' ? 'splitter' : 'merger', x: tx(mirror ? x + PIECE : x), y: ly, w: PIECE, h: PIECE });
         }
       }
@@ -463,6 +493,16 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     }
   }
 
+  // Elevador em cima de Merger/Splitter da mesma faixa: a divisa dele precisa de vão.
+  const need = new Set<number>();
+  if (liftAt.length) {
+    const byY = new Map<number, Piece[]>();
+    for (const q of pieces) if (q.kind === 'merger' || q.kind === 'splitter') { const k = q.y + q.h / 2, l = byY.get(k); if (l) l.push(q); else byY.set(k, [q]); }
+    for (const { p: l, g } of liftAt) {
+      if ((byY.get(l.y + l.h / 2) ?? []).some(q => l.x < q.x + q.w - E && q.x < l.x + l.w - E)) need.add(g);
+    }
+  }
+
   // Ajustes podem levar fileiras para x/y negativos: o bloco recomeça no canto (0, 0).
   const minX = rows.reduce((m, r) => Math.min(m, r.x), Infinity), minY = rows.reduce((m, r) => Math.min(m, r.y), Infinity);
   const w = rows.length ? rows.reduce((m, r) => Math.max(m, r.x + W), -Infinity) - minX : 0;
@@ -492,10 +532,10 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
   const drawn = { w: ceil8(w), d: ceil8(h) };
   const today = rows.length && kind === 'simple' ? stageArea(stage, data) : null;
   const area = !rows.length ? { w: 0, d: 0 }
-    : today && !shifted ? today
+    : today && !shifted && !gaps.size ? today
       : today ? { w: Math.max(today.w, drawn.w), d: Math.max(today.d, drawn.d) } : drawn;
 
-  return { kind, rows, lines, pieces: count, area, warnings, geo: { w, h, pieces, belts, ins, outs, estimate } };
+  return { arr: { kind, rows, lines, pieces: count, area, warnings, geo: { w, h, pieces, belts, ins, outs, estimate } }, need };
 }
 
 // Peças da etapa pelo arranjo do bloco: Splitters, Mergers (k−1 por linha) e Conveyor Lifts.
