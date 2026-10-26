@@ -10,23 +10,21 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); min-width: 0; }
 .pl-brand { font: 700 18px var(--display); letter-spacing: .02em; color: var(--ficsit); white-space: nowrap; }
 .pl-brand span { color: var(--ink-dim); font-weight: 500; }
-.pl-nav { padding: 4px 10px; color: var(--ink-dim); text-decoration: none; font: 600 13px var(--display); border: 1px solid var(--line); }
-.pl-nav:hover { color: var(--ink); border-color: var(--ink-dim); }
-.pl-seg { display: flex; gap: 3px; padding: 3px; background: var(--plate); }
-.pl-seg button { min-height: 38px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-mid); font: 600 14px var(--display); cursor: pointer; }
-.pl-seg button:hover { color: var(--ink); background: var(--plate-2); }
-.pl-seg button[aria-pressed="true"] { background: #1d4670; color: #fff; }
-.pl-seg button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+.pl-view { display: flex; gap: 3px; padding: 3px; background: var(--plate); }
+.pl-view button { min-height: 38px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-mid); font: 600 14px var(--display); cursor: pointer; }
+.pl-view button:hover { color: var(--ink); background: var(--plate-2); }
+.pl-view button[aria-pressed="true"] { background: var(--view-on); color: #fff; }
+.pl-view button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
 .pl-top .pl-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
 @media (max-width: 720px) {
   .pl-top { gap: 8px; padding: 8px 12px; }
   .pl-grow { display: none; }
-  .pl-seg button, .navtabs a { padding: 0 10px; font-size: 13px; }
+  .pl-view button, .navtabs a { padding: 0 10px; font-size: 13px; }
   .pl-top .pl-btn { padding: 0 10px; }
   .pl-lbl { display: none; }
   .pl-brand { font-size: 16px; }
 }
-.pl-nav:focus-visible, .pl-langs button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
+.pl-langs button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
 .pl-grow { flex: 1 1 auto; }
 .pl-totals { color: var(--ink-dim); font: 500 14px var(--display); font-variant-numeric: tabular-nums; }
 .pl-status { color: var(--ficsit); font-size: 12px; }

@@ -40,7 +40,7 @@ export function Header({ lang, onLang, blocks, machines, status, canUndo, canRed
         <a href={BUILDER_PATH[lang]} aria-current="page">{t('navFactory')}</a>
         <a href={BALANCER_PATH[lang]}>{t('navBalancer')}</a>
       </nav>
-      <div className="pl-seg" role="group" aria-label={t('plViewAria')}>
+      <div className="pl-view" role="group" aria-label={t('plViewAria')}>
         <button type="button" aria-pressed={view === 'montar'} onClick={() => onView('montar')}>{t('plViewMontar')}</button>
         <button type="button" aria-pressed={view === 'planta'} onClick={() => onView('planta')}>{t('plViewPlanta')}</button>
       </div>
