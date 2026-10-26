@@ -305,10 +305,12 @@ select.pl-field { width: auto; }
 .pl-bal-pb.zero { background: transparent; color: var(--ink-dim); border-color: var(--line); cursor: default; }
 .pl-bal-pb:not(:disabled):hover { filter: brightness(1.2); }
 .pl-bal-pb:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+/* No celular o balanço é uma linha só: os totais rolam de lado e os dois botões ficam presos à direita. */
 @media (max-width: 720px) {
-  .pl-bal { padding: 6px 12px; gap: 6px 14px; }
-  .pl-bal-probs { margin-left: 0; width: 100%; }
-  .pl-bal-pb { flex: 1; }
+  .pl-bal { position: relative; flex-wrap: nowrap; overflow-x: auto; padding: 6px 0 6px 12px; gap: 14px; scrollbar-width: thin; }
+  .pl-bal-grp { flex: none; flex-wrap: nowrap; }
+  .pl-bal-probs { position: sticky; right: 0; flex: none; margin-left: auto; padding: 0 12px 0 8px; background: var(--paper); box-shadow: -10px 0 10px -4px var(--paper); }
+  .pl-bal-pb { padding: 0 10px; }
 }
 
 /* Dica de primeiro uso, convite da fábrica vazia e Legenda (ainda sem lugar no mapa: a tarefa de montagem posiciona). */
