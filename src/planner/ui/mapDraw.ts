@@ -24,7 +24,8 @@ export { FLASH_MS, PORT_ZOOM } from './draw/ports.ts';
 export type { CardText } from './draw/cards.ts';
 
 export interface DrawOpts {
-  selected: string | null; hover: string | null;
+  // Selecionados: os blocos (um ou vários) ou a ligação.
+  selected: ReadonlySet<string>; hover: string | null;
   colors: Record<string, string>; names: (item: ItemId) => string;
   theme: MapTheme;
   // t: 0 Montar, 1 Planta (a transição no meio); time: ms, para o tracejado das esteiras andar (fixo quando parado).
@@ -102,7 +103,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       const g = o.meio(c.meio), lab = o.chip(c.meio);
       if (!g) continue;
       const m: Pt = [c.x, c.y], dm: Pt = [1, 0];
-      const look = { color: o.colors[g.item] ?? th.flow, fluid: o.fluid(g.item), short: !!lab?.short, selected: o.selected === c.meio };
+      const look = { color: o.colors[g.item] ?? th.flow, fluid: o.fluid(g.item), short: !!lab?.short, selected: o.selected.has(c.meio) };
       // De longe, a esteira vira uma linha fina na cor do item (a de 12 px cobriria os cartões pequenos).
       const belt = (path: Path2D) => {
         if (!far) { strokeBelt(ctx, path, look, o.time, th); return; }
@@ -123,7 +124,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       const bs = o.badges(b.id);
       const flash = o.flash && o.flash.id === b.id && now < o.flash.until ? (o.flash.until - now) / FLASH_MS : 0;
       drawCard(ctx, b, o.card(b.id), {
-        selected: o.selected === b.id, hover: o.hover === b.id, flash: Math.min(1, flash),
+        selected: o.selected.has(b.id), hover: o.hover === b.id, flash: Math.min(1, flash),
         lock: bs.some(x => x.kind === 'deadlock' || x.kind === 'stalled'), bad: bs.some(x => x.kind === 'deficit'),
       }, th, o.colors, o.icon);
     }

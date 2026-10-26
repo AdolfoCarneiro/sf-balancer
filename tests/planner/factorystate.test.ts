@@ -243,3 +243,21 @@ test('disconnectMeio com um grupo de várias ligações (2 produtores, 2 consumi
   h = reduce(h, { type: 'undo' }, data);
   assert.deepEqual(h.present, f);
 });
+
+test('removeBlocks apaga 3 blocos e as ligações deles num passo só, e um undo traz tudo', () => {
+  let h: History<Factory> = historyNew(ex);
+  h = reduce(h, { type: 'placeLig', meio: 'Desc_IronIngot_C:s1>s2', place: { x: 8, y: 8, rot: 0 } }, data);
+  h = reduce(h, { type: 'setPlaces', places: { s1: { x: 0, y: 0, rot: 0 }, s2: { x: 64, y: 0, rot: 0 }, s3: { x: 128, y: 0, rot: 0 }, s4: { x: 128, y: 64, rot: 0 } } }, data);
+  const before = h.past.length, full = h.present;
+  const ids = ['s1', 's2', 's3'];
+  h = reduce(h, { type: 'removeBlocks', ids: [...ids, 'nada'] }, data);
+  assert.equal(h.past.length, before + 1);
+  assert.deepEqual(h.present.blocks.map(b => b.id), full.blocks.map(b => b.id).filter(id => !ids.includes(id)));
+  assert.ok(!h.present.links.some(l => ids.includes(l.from) || ids.includes(l.to)));
+  assert.deepEqual(Object.keys(h.present.map ?? {}), ['s4']);
+  assert.equal(h.present.ligs, undefined);
+  h = reduce(h, { type: 'undo' }, data);
+  assert.deepEqual(h.present, full);
+  // Nenhum id que existe: a fábrica não muda.
+  assert.equal(reduce(historyNew(ex), { type: 'removeBlocks', ids: ['x'] }, data).present, ex);
+});

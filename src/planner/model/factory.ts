@@ -150,6 +150,15 @@ export function removeBlock(f: Factory, id: StageId): Factory {
   return pruneMeios(g);
 }
 
+// Apaga vários blocos de uma vez (seleção múltipla), com as ligações deles; ids que não existem são ignorados.
+export function removeBlocks(f: Factory, ids: readonly StageId[]): Factory {
+  const gone = new Set(ids.filter(id => get(f, id)));
+  if (!gone.size) return f;
+  let g: Factory = { ...f, blocks: f.blocks.filter(b => !gone.has(b.id)), links: f.links.filter(l => !gone.has(l.from) && !gone.has(l.to)) };
+  if (g.map && Object.keys(g.map).some(id => gone.has(id))) g = { ...g, map: Object.fromEntries(Object.entries(g.map).filter(([id]) => !gone.has(id))) };
+  return pruneMeios(g);
+}
+
 // Loops liberados: só a ligação de um bloco com ele mesmo é proibida.
 export function canConnect(f: Factory, d: GameData, from: StageId, to: StageId, item: ItemId):
   { ok: true } | { ok: false; reason: 'self' | 'item' | 'dup' | 'fluidSink' | 'full' } {

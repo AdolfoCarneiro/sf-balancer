@@ -41,7 +41,7 @@ export function drawChips(ctx: CanvasRenderingContext2D, chips: ViewChip[], o: D
   for (const c of chips) {
     const lab = o.chip(c.meio);
     if (!lab) continue;
-    const on = o.selected === c.meio, hov = o.hover === c.meio;
+    const on = o.selected.has(c.meio), hov = o.hover === c.meio;
     const x = c.x - c.w / 2, y = c.y - c.h / 2;
     ctx.fillStyle = on ? '#2b2010' : th.bench;
     ctx.fillRect(x, y, c.w, c.h);

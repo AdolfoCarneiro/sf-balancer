@@ -5,7 +5,7 @@ import type {
 import { tierKey } from './stage.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
-  extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, setClock, setCollect, setExtractor, setLimits,
+  extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
   setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
@@ -47,6 +47,7 @@ export type Action =
   | { type: 'addBlock'; spec: BlockSpec; at: Pt }
   | { type: 'addLinkedBlock'; spec: BlockSpec; port: { block: StageId; item: ItemId; side: 'out' | 'in' }; at: Pt }
   | { type: 'removeBlock'; id: StageId }
+  | { type: 'removeBlocks'; ids: StageId[] }   // seleção múltipla: todos num passo só do desfazer
   | { type: 'connect'; from: StageId; to: StageId; item: ItemId }
   | { type: 'disconnect'; linkId: string }
   | { type: 'disconnectMeio'; linkIds: string[] }
@@ -217,6 +218,7 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     case 'addBlock': return addBlock(f, d, a.spec, a.at);
     case 'addLinkedBlock': return addLinkedBlock(f, d, a.spec, a.port, a.at);
     case 'removeBlock': return removeBlock(f, a.id);
+    case 'removeBlocks': return Array.isArray(a.ids) ? removeBlocks(f, a.ids) : f;
     case 'connect': return connect(f, d, a.from, a.to, a.item);
     case 'disconnect': return disconnect(f, a.linkId);
     case 'disconnectMeio': return disconnectMany(f, a.linkIds);

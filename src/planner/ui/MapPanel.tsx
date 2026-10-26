@@ -22,7 +22,7 @@ import { iconUrl } from './icons.ts';
 import { BlockPanel } from './BlockPanel.tsx';
 import { LigActions, ligInfo } from './ChipPopover.tsx';
 import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
-import type { Selection, ViewMode } from './selection.ts';
+import { selKey, type Selection, type ViewMode } from './selection.ts';
 
 export type Sheet = 'peek' | 'half' | 'full';
 const SHEET_NEXT: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'peek' };
@@ -42,6 +42,7 @@ interface Props {
   sheet: Sheet; onSheet: (s: Sheet) => void;
   chip: (id: string) => ChipLabel | null; results: Map<string, MeioResult | null>;
   dispatch: (a: Action) => void; onDelete: (id: StageId) => void;
+  onDeleteMany: (ids: StageId[]) => void; onSelectAll: () => void; onClearSel: () => void;   // seleção múltipla
   onPlace: (id: StageId, place: MapPlace) => void; onPropose: () => void; onFocus: (r: Rect) => void;
   onGo: (s: Selection) => void;   // seleciona, centraliza no mapa e põe o foco no canvas (lista e avisos)
   onGoPort: (p: PortState) => void;   // aviso de falta/sobra: como a faixa Balanço (câmera e destaque na porta)
@@ -69,12 +70,13 @@ export function MapPanel(p: Props) {
   const place = selected ? places[selected] : undefined;
   const selBlock = selected ? f.blocks.find(x => x.id === selected) : undefined;
   const meio = selection?.kind === 'meio' ? meioList.find(m => m.id === selection.id) : undefined;
+  const many = selection?.kind === 'stages' ? selection.ids : null;
 
   // Título da alça no celular: o que está aberto.
   const bf = selBlock ? flow.blocks[selBlock.id] : undefined;
   const sheetTitle = selBlock
     ? stageName(selBlock.id) + (selBlock.kind === 'recipe' && bf?.machines != null ? `, ${fmt(bf.machines, 0)} ${t('plCardMachines')}` : '')
-    : meio ? t('plLigOf', itemName(meio.item)) : t('plPanelFactory');
+    : meio ? t('plLigOf', itemName(meio.item)) : many ? t('plSelMany', fmt(many.length, 0)) : t('plPanelFactory');
 
   // Alça: clique (ou Enter/Espaço) passa para o próximo tamanho; arrastar mais de 30 px para cima abre mais, para baixo
   // fecha. O arraste decide no pointerup (com o ponteiro capturado, para valer mesmo saindo da alça) e o clique que o
@@ -111,6 +113,8 @@ export function MapPanel(p: Props) {
     );
   } else if (meio) {
     body = <LigPanel meio={meio} {...p} />;
+  } else if (many) {
+    body = <ManyPanel ids={many} {...p} stageName={stageName} />;
   } else {
     body = (
       <Overview {...p} nameOf={nameOf} />
@@ -125,8 +129,26 @@ export function MapPanel(p: Props) {
         <span>{sheetTitle}</span><i aria-hidden="true" />
       </button>
       {/* key: outra seleção começa do topo (o que estava rolado na visão geral não vale para o bloco). */}
-      <div className="pl-insp" id="pl-insp-body" key={selection ? selection.kind + ':' + selection.id : ''}>{body}</div>
+      <div className="pl-insp" id="pl-insp-body" key={selKey(selection) ?? ''}>{body}</div>
     </aside>
+  );
+}
+
+// Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer) e limpar a seleção.
+function ManyPanel({ ids, stageName, onDeleteMany, onClearSel }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
+  const n = fmt(ids.length, 0);
+  return (
+    <>
+      <h2 className="pl-insp-title">{t('plSelMany', n)}</h2>
+      <p className="pl-note">{t('plSelManyHint')}</p>
+      <ul className="pl-sel-list">
+        {ids.map(id => <li key={id}>{stageName(id)}</li>)}
+      </ul>
+      <div className="pl-sel-acts">
+        <button type="button" className="pl-btn pl-danger" onClick={() => onDeleteMany(ids)}>{t('plSelDelete', n)}</button>
+        <button type="button" className="pl-btn" onClick={onClearSel}>{t('plSelClear')}</button>
+      </div>
+    </>
   );
 }
 
@@ -225,7 +247,10 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
           </ul>
         )
         : <p className="pl-note">{t('plMapNoWarnings')}</p>}
-      <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
+      <div className="pl-insp-hrow">
+        <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
+        {f.blocks.length > 0 && <button type="button" className="pl-btn" onClick={p.onSelectAll}>{t('plSelAll')}</button>}
+      </div>
       {f.blocks.length > 0 && <p className="pl-note">{t('plMapListHint')}</p>}
       {f.blocks.length
         ? (

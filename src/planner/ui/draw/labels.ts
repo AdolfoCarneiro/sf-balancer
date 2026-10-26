@@ -149,12 +149,12 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
   // 2. Nomes dos blocos (o selecionado primeiro; a ligação tem o chip). De perto o nome vai por fora (em cima, embaixo) e só
   // por dentro se couber; de longe, por dentro primeiro.
   // Ordem: o selecionado, os blocos de receita (os maiores antes), as origens e sobras (marcadores fora de escala).
-  const order = [...blocks].sort((a, b) => +(b.stage === o.selected) - +(a.stage === o.selected) || +!!a.marker - +!!b.marker
+  const order = [...blocks].sort((a, b) => +o.selected.has(b.stage) - +o.selected.has(a.stage) || +!!a.marker - +!!b.marker
     || b.rect.w * b.rect.h - a.rect.w * a.rect.h);
   for (const b of order) {
     const r = boxOfId.get(b.stage)!;
     if (r.w < 12) continue;
-    const on = o.selected === b.stage, hov = o.hover === b.stage, txt = o.blockText(b.stage);
+    const on = o.selected.has(b.stage), hov = o.hover === b.stage, txt = o.blockText(b.stage);
     // Placa de nome: ícone, receita e o número de máquinas em laranja.
     const title: Line = { s: txt.title, font: NAME, color: on ? th.ficsit : th.ink, h: 28, icon: txt.icon, iconPx: 22, accent: on ? th.ficsit : null, num: txt.num };
     // De perto o motivo do travado fica só na porta parada; de longe ele vai no lugar das fileiras.
@@ -176,7 +176,7 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
   // 3. Secundário: medida do bloco (de perto, ou selecionado), medida da ligação selecionada, entradas brutas e o nome
   // das peças grandes.
   for (const b of order) {
-    const r = boxOfId.get(b.stage)!, on = o.selected === b.stage, hov = o.hover === b.stage;
+    const r = boxOfId.get(b.stage)!, on = o.selected.has(b.stage), hov = o.hover === b.stage;
     if (r.w < 24 || !(on || hov || z >= SIZE_ZOOM)) continue;
     const size = b.marker ? t('plNotToScale')
       : plantSize(b.rect) + (b.geo.estimate ? ` · ${t('plMapEstimate')}` : '');
@@ -184,7 +184,7 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
     put([line], [[r.x, r.y + r.h + GAP], [r.x + GAP, r.y + r.h - 15 - GAP]], b.stage);
   }
   for (const m of meios) {
-    const on = o.selected === m.meio, hov = o.hover === m.meio;
+    const on = o.selected.has(m.meio), hov = o.hover === m.meio;
     if (!(on || hov) || !m.geo || m.geo.tooLarge) continue;
     const r = boxOfId.get(m.meio)!;
     const extra = [plantSize(m.rect), m.geo.floors > 1 ? t('plMapFloors', fmt(m.geo.floors, 0)) : '', m.geo.estimate ? t('plMapEstimate') : ''].filter(Boolean).join(' · ');

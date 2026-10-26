@@ -3,6 +3,8 @@
 // uma ligação o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista
 // os avisos. Montar como no Modeler: duplo clique ou botão direito no vazio abre o seletor ali; arrastar de uma porta
 // liga (soltando numa porta) ou cria o próximo bloco já ligado (soltando no vazio); Delete apaga o bloco.
+// Seleção múltipla: Shift+clique põe ou tira um bloco, Shift+arrastar no vazio desenha o retângulo, Ctrl/⌘+A pega todos;
+// arrastar um dos selecionados move todos e Delete apaga todos (um passo só do desfazer em cada caso).
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenGeo, type MeioResult } from '../model/meioresult.ts';
@@ -31,7 +33,7 @@ import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts
 import { MapPanel, type Sheet } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { blockBadges, type Badge } from '../model/badges.ts';
-import type { Selection, ViewMode } from './selection.ts';
+import { selIds, selKey as keyOfSel, stagesSel, toggleStage, type Selection, type ViewMode } from './selection.ts';
 
 interface Props {
   view: ViewMode;   // Montar (cartões) ou Planta em escala; a troca anima
@@ -150,8 +152,10 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
 }
 
 export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, ref }: Props) {
-  const selected = selection?.id ?? null;
+  // Destacados no desenho: os blocos (um ou vários) ou a ligação.
+  const selected = useMemo(() => selIds(selection), [selection]);
   const selStage = selection?.kind === 'stage' ? selection.id : null;
+  const selMany = selection?.kind === 'stages' ? selection.ids : null;
   const montar = mode === 'montar';
   // A montagem escolhida de cada meio; null enquanto calcula, sem montagem, sem limite ou grande demais.
   const geos = useMemo(() => {
@@ -165,8 +169,11 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Posições mostradas: as salvas e, para quem não tem, a derivada (que pode mudar quando os meios chegam). Arrastando,
   // o bloco ou a ligação usa a posição provisória (a cena é refeita sem recalcular meio nem fluxo).
   const basePlaces = useMemo(() => placesOf(f, data, geos, flow), [f, data, geos, flow]);
-  const [moving, setMoving] = useState<{ kind: 'block'; id: StageId; place: MapPlace } | { kind: 'meio'; id: string; place: LigPlace } | null>(null);
-  const places = useMemo(() => (moving?.kind === 'block' ? withPlace(basePlaces, moving.id, moving.place) : basePlaces), [basePlaces, moving]);
+  // Arrastando vários blocos (seleção múltipla): as posições provisórias de todos.
+  const [moving, setMoving] = useState<{ kind: 'block'; id: StageId; place: MapPlace } | { kind: 'meio'; id: string; place: LigPlace }
+    | { kind: 'blocks'; places: Record<StageId, MapPlace> } | null>(null);
+  const places = useMemo(() => (moving?.kind === 'block' ? withPlace(basePlaces, moving.id, moving.place)
+    : moving?.kind === 'blocks' ? { ...basePlaces, ...moving.places } : basePlaces), [basePlaces, moving]);
   const shown = useMemo(() => (moving?.kind === 'meio' ? { ...f, ligs: { ...f.ligs, [moving.id]: moving.place } } : f), [f, moving]);
   const scene = useMemo(() => buildScene(shown, data, places, geos, flow), [shown, data, places, geos, flow]);
   // Portas de cada bloco (lado e item, na ordem do cartão), para saber quais aceitam a porta puxada.
@@ -205,7 +212,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const [panelPref, setPanelPref] = useState(() => { try { return localStorage.getItem(PANEL_STORE) === '1'; } catch { return false; } });
   const [panelSel, setPanelSel] = useState<boolean | null>(null);
   const [sheet, setSheet] = useState<Sheet>('peek');
-  const selKey = selection ? `${selection.kind}:${selection.id}` : null;
+  const selKey = keyOfSel(selection);
   const [seenSel, setSeenSel] = useState(selKey);
   if (seenSel !== selKey) {
     setSeenSel(selKey);
@@ -486,7 +493,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Seleção foi para outra coisa (clique, painel, desfazer): o painel não volta sozinho depois.
   useEffect(() => {
     if (popId && !(selection?.kind === 'meio' && selection.id === popId)) setPopId(null);
-  }, [selection?.kind, selection?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selection?.kind, selection?.kind === 'meio' ? selection.id : null]);   // eslint-disable-line react-hooks/exhaustive-deps
   const closePop = (refocus: boolean) => { setPopId(null); if (refocus) canvas.current?.focus(); };
   // Desligar: todas as esteiras do grupo num passo só do desfazer.
   const unlink = (id: string) => {
@@ -521,8 +528,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const drag = useRef<{
     id: number; button: number; x0: number; y0: number; x: number; y: number; moved: boolean;
     hit: Hit; from: LigPlace | null; to: LigPlace | null; port: ScenePort | null; chip: Pt | null;
+    shift: boolean;   // Shift no aperto: clique põe ou tira da seleção; no vazio, arrastar desenha o retângulo
+    group: Record<StageId, MapPlace> | null; moved2: Record<StageId, MapPlace> | null;   // vários blocos: de onde e para onde
+    marquee: boolean;
   } | null>(null);
-  const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | null>(null);
+  const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | 'marquee' | null>(null);
+  // Retângulo de seleção (Shift + arrastar no vazio), em px do mapa.
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const local = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
     const r = e.currentTarget.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top] as Pt;
@@ -590,9 +602,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const hit: Hit = h?.kind === 'block' ? { kind: 'block', id: h.id } : h?.kind === 'chip' ? { kind: 'meio', id: h.meio } : null;
     const from = hit?.kind === 'block' ? basePlaces[hit.id] ?? null : hit?.kind === 'meio' ? ligAt(hit.id) : null;
     const ch = hit?.kind === 'meio' ? lastView.current?.chips.find(x => x.meio === hit.id) : undefined;
+    // Bloco que faz parte da seleção múltipla: arrastar leva todos.
+    const group = hit?.kind === 'block' && selMany?.includes(hit.id)
+      ? Object.fromEntries(selMany.filter(id => basePlaces[id]).map(id => [id, basePlaces[id]])) : null;
     drag.current = {
       id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null, port,
-      chip: ch ? [ch.x, ch.y] : null,
+      chip: ch ? [ch.x, ch.y] : null, shift: e.shiftKey, group, moved2: null, marquee: e.button === 0 && e.shiftKey && !h,
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -602,10 +617,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       if (!d.moved) {
         if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK_PX) return;
         d.moved = true;
-        setDragging(d.port ? 'link' : d.from ? 'block' : 'pan');
+        setDragging(d.marquee ? 'marquee' : d.port ? 'link' : d.from ? 'block' : 'pan');
         if (d.hit?.kind === 'meio') setPopId(null);
       }
-      if (d.port) {
+      if (d.marquee) {
+        const r = e.currentTarget.getBoundingClientRect();
+        setMarquee({ x0: d.x0 - r.left, y0: d.y0 - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top });
+      } else if (d.port) {
         const w = worldAt(e);
         if (w) setWire({ from: d.port, to: w });
         const over = portUnder(e);
@@ -613,6 +631,17 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       } else if (d.from && d.hit) {
         const dx = e.clientX - d.x0, dy = e.clientY - d.y0, { id, kind } = d.hit;
         let p: LigPlace;
+        if (kind === 'block' && d.group) {
+          // Vários: o bloco puxado vai preso na grade e os outros andam o mesmo tanto (mantêm a distância entre si).
+          const a = dragged(d.from as MapPlace, dx / c.zoom, dy / c.zoom), mx = a.x - d.from.x, my = a.y - d.from.y;
+          if (!d.moved2 || d.moved2[id]?.x !== a.x || d.moved2[id]?.y !== a.y) {
+            const next = Object.fromEntries(Object.entries(d.group).map(([k, q]) => [k, { ...q, x: q.x + mx, y: q.y + my }]));
+            d.moved2 = next;
+            setMoving({ kind: 'blocks', places: next });
+          }
+          d.x = e.clientX; d.y = e.clientY;
+          return;
+        }
         if (kind === 'block') p = dragged(d.from as MapPlace, dx / c.zoom, dy / c.zoom);
         else {
           // O centro do chip segue o ponteiro; o retângulo da ligação vai junto, preso na grade, com o giro dela.
@@ -621,7 +650,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
           p = { ...chipWorld(c, cx + dx, cy + dy, sz), rot: d.from.rot };
         }
         d.to = p;
-        setMoving(m => (m && m.id === id && m.place.x === p.x && m.place.y === p.y ? m
+        setMoving(m => (m && m.kind !== 'blocks' && m.id === id && m.place.x === p.x && m.place.y === p.y ? m
           : kind === 'block' ? { kind, id, place: p as MapPlace } : { kind, id, place: p }));
       } else {
         moveCam(pan(c, d.x - e.clientX, d.y - e.clientY));
@@ -657,9 +686,24 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     setDragging(null);
     setMoving(null);
     setWire(null);
+    setMarquee(null);
     if (cancel) return;
+    if (d.marquee) {
+      // Shift + arrastar no vazio: os blocos cujo retângulo na tela cruza o retângulo; Shift + clique no vazio não muda nada.
+      if (!d.moved) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      const x0 = Math.min(d.x0, e.clientX) - r.left, x1 = Math.max(d.x0, e.clientX) - r.left;
+      const y0 = Math.min(d.y0, e.clientY) - r.top, y1 = Math.max(d.y0, e.clientY) - r.top;
+      const ids = (lastView.current?.blocks ?? []).filter(b => b.rect.x <= x1 && b.rect.x + b.rect.w >= x0 && b.rect.y <= y1 && b.rect.y + b.rect.h >= y0).map(b => b.id);
+      setPopId(null);
+      onSelect(stagesSel(ids));
+      return;
+    }
     if (!d.moved) {
       if (d.button !== 0) return;
+      // Shift + clique num bloco (ou numa porta dele): põe ou tira da seleção.
+      const shiftId = d.shift ? (d.port ? d.port.block : d.hit?.kind === 'block' ? d.hit.id : null) : null;
+      if (shiftId) { setPopId(null); onSelect(toggleStage(selection, shiftId)); return; }
       // Clique numa porta seleciona o bloco dela; no chip, seleciona a ligação e abre (ou fecha) o mini painel.
       if (d.hit?.kind === 'meio') {
         const id = d.hit.id;
@@ -677,6 +721,9 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       if (d.hit.kind === 'meio') {
         if (changed) placeLig(d.hit.id, d.to);
         onSelect({ kind: 'meio', id: d.hit.id });
+      } else if (d.group) {
+        // Vários: todas as posições num passo só do desfazer; a seleção continua.
+        if (d.moved2) dispatch({ type: 'setPlaces', places: { ...basePlaces, ...d.moved2 } });
       } else {
         if (changed) place(d.hit.id, d.to as MapPlace);
         onSelect({ kind: 'stage', id: d.hit.id });
@@ -701,6 +748,29 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     dispatch({ type: 'removeBlock', id });
     onSelect(null);
     canvas.current?.focus();
+  };
+  // Vários de uma vez: um passo só do desfazer.
+  const removeMany = (ids: StageId[]) => {
+    dispatch({ type: 'removeBlocks', ids });
+    onSelect(null);
+    canvas.current?.focus();
+  };
+  // Ctrl/⌘+A ou o botão do painel: todos os blocos (sem blocos, nada).
+  const selectAll = () => {
+    if (!f.blocks.length) return;
+    setPopId(null);
+    onSelect(stagesSel(f.blocks.map(b => b.id)));
+  };
+  // Teclado com vários blocos: setas movem todos 8 m (um passo do desfazer), Delete ou Backspace apaga todos, Esc solta.
+  const manyKey = (e: React.KeyboardEvent, ids: StageId[]) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { e.preventDefault(); onSelect(null); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeMany(ids); return; }
+    const moved: Record<StageId, MapPlace> = {};
+    for (const id of ids) { const n = basePlaces[id] ? nudged(basePlaces[id], e.key) : null; if (n) moved[id] = n; }
+    if (!Object.keys(moved).length) return;
+    e.preventDefault();
+    dispatch({ type: 'setPlaces', places: { ...basePlaces, ...moved } });
   };
 
   // Teclado no bloco (na lista do painel ou no canvas): setas movem 8 m, R gira, Enter abre a etapa, Delete ou
@@ -737,7 +807,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     e.preventDefault();
     placeLig(id, next);
   };
-  const canvasKey = (e: React.KeyboardEvent) => (selection?.kind === 'meio' ? ligKey(e, selection.id) : blockKey(e, selStage));
+  const canvasKey = (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
+    if (selection?.kind === 'meio') ligKey(e, selection.id);
+    else if (selection?.kind === 'stages') manyKey(e, selection.ids);
+    else blockKey(e, selStage);
+  };
 
   // Aviso clicado no painel: a câmera vai até ele.
   const focus = (r: Rect) => { const c = cam.current; if (c && size.current.w) moveCam(centerOn(c, r, size.current.w, size.current.h)); };
@@ -809,6 +884,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // como focusPort, para o chip e o mini painel ficarem à vista.
   const goTo = (s: Selection) => {
     onSelect(s);
+    if (s?.kind === 'stages') { canvas.current?.focus(); return; }
     const c = cam.current, v = lastView.current, { w, h } = size.current;
     const onScreen = s && v && c && w && modeRef.current === 'montar' && tNow.current === 0
       ? (s.kind === 'stage' ? v.blocks.find(b => b.id === s.id)?.rect : v.chips.find(x => x.meio === s.id)) : undefined;
@@ -828,11 +904,17 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plViewMap')}>
         <div className="pl-map" ref={wrap}>
           <canvas ref={canvas} tabIndex={0} role="img"
-            className={'pl-map-canvas' + (dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : dragging === 'link' || hoverPort ? ' linking' : hover ? ' over' : '')}
+            className={'pl-map-canvas' + (dragging === 'marquee' ? ' marquee' : dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : dragging === 'link' || hoverPort ? ' linking' : hover ? ' over' : '')}
             aria-label={t('plMapAria', fmt(f.blocks.length, 0), area)}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
             onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); } }}
             onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onKeyDown={canvasKey} />
+          {marquee && (
+            <div className="pl-marquee" aria-hidden="true" style={{
+              left: Math.min(marquee.x0, marquee.x1), top: Math.min(marquee.y0, marquee.y1),
+              width: Math.abs(marquee.x1 - marquee.x0), height: Math.abs(marquee.y1 - marquee.y0),
+            }} />
+          )}
           {!f.blocks.length && !picker && <EmptyInvite />}
           {notice && <p className="pl-map-notice" role="status">{t(notice, fmt(notice === 'plBlocksFull' ? MAX_STAGES : MAX_LINKS, 0))}</p>}
           {picker && (
@@ -857,7 +939,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
           </div>
         </div>
       </main>
-      <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places}
+      <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} onDeleteMany={removeMany} onSelectAll={selectAll}
+        onClearSel={() => { onSelect(null); canvas.current?.focus(); }} meioList={meioList} scene={scene} places={places}
         selection={selection} problems={problems} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
         chip={id => chips.get(id) ?? null} results={results}
         onPlace={place} onPropose={propose} onFocus={focus} onGo={goTo}

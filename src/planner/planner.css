@@ -158,6 +158,16 @@ select.pl-field { width: auto; }
 .pl-map-canvas.over { cursor: pointer; }
 .pl-map-canvas.moving { cursor: move; }
 .pl-map-canvas.linking { cursor: crosshair; }
+.pl-map-canvas.marquee { cursor: crosshair; }
+/* Retângulo de seleção (Shift + arrastar no vazio): tracejado na cor da seleção, fundo translúcido. */
+.pl-marquee { position: absolute; pointer-events: none; border: 1px dashed var(--ficsit); background: color-mix(in srgb, var(--ficsit) 12%, transparent); }
+/* Seleção múltipla no painel: a lista dos blocos e os botões de apagar e limpar; "Selecionar tudo" ao lado do título da lista. */
+.pl-sel-list { margin: 0; padding-left: 18px; max-height: 40vh; overflow: auto; font-size: 13px; color: var(--ink-mid); }
+.pl-sel-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.pl-sel-acts .pl-btn { flex: 1 1 auto; min-height: 44px; }
+.pl-insp-hrow { display: flex; align-items: center; gap: 8px; }
+.pl-insp-hrow .pl-insp-h { flex: 1; }
+.pl-insp-hrow .pl-btn { min-height: 44px; margin-top: 6px; }
 .pl-map-canvas:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
 /* Controles do mapa: o grupo de baixo à direita (Novo bloco, Legenda, −, +, Mostrar tudo), todos com 44 px. */
 .pl-map-ctrl { position: absolute; right: 12px; bottom: 12px; z-index: 4; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: calc(100% - 24px); }

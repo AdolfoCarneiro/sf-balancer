@@ -63,7 +63,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
 
   // Blocos: chapa, contorno e, de perto, o conteúdo em escala.
   for (const b of blocks) {
-    const r = b.rect, on = o.selected === b.stage, hov = o.hover === b.stage;
+    const r = b.rect, on = o.selected.has(b.stage), hov = o.hover === b.stage;
     ctx.globalAlpha = A * PANEL_ALPHA; ctx.fillStyle = th.paper; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
     if (detail) { ctx.save(); enterLocal(ctx, b.place, b.geo); drawPieces(b.geo); ctx.restore(); }
     ctx.strokeStyle = on ? th.ficsit : hov ? th.ink : th.inkDim;
@@ -98,7 +98,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   strokeBelts(w, scene.belts, true);
   // Meios: faixa tracejada; de perto, as peças.
   for (const m of meios) {
-    const r = m.rect, on = o.selected === m.meio, hov = o.hover === m.meio;
+    const r = m.rect, on = o.selected.has(m.meio), hov = o.hover === m.meio;
     ctx.globalAlpha = A * 0.8; ctx.fillStyle = th.bench; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = A;
     if (detail && m.geo && !m.geo.tooLarge) { ctx.save(); enterLocal(ctx, { x: r.x, y: r.y, rot: m.rot }, m.geo); drawPieces(m.geo); ctx.restore(); }
     ctx.strokeStyle = th.ficsit;

@@ -3,7 +3,8 @@
 // arrastar da saída para o vazio -> "Solid Steel Ingot" cria o próximo já ligado; segunda perna "Steel Pipe";
 // Ctrl+Z desfaz a última; (na Montar) clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco
 // no canvas; Desligar some com a ligação e Ctrl+Z a traz de volta; o botão Planta em escala troca a vista e as portas
-// continuam pegáveis (arrastar para o vazio abre o seletor); /#s= antigo cai em /balancer.
+// continuam pegáveis (arrastar para o vazio abre o seletor); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
+// Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
 import { chromium } from 'playwright';
@@ -154,6 +155,38 @@ await step('Planta em escala troca a vista e as portas continuam pegáveis', asy
   must((await state()).blocks.length === 2, 'o seletor fechado criou bloco');
   await pg.locator('.pl-view button').nth(0).click();
   await waitFor(() => window.__sfPlanner?.mode === 'montar', null, "mode === 'montar'");
+});
+await step('Shift + arrastar no vazio seleciona os blocos dentro do retângulo; Esc limpa', async () => {
+  await settled();
+  const b = await box(), rs = await pg.evaluate(() => window.__sfPlanner.view.blocks.map(x => x.rect));
+  must(rs.length === 2, 'esperava 2 blocos na tela');
+  const x0 = Math.min(...rs.map(r => r.x)) - 60, y0 = Math.min(...rs.map(r => r.y)) - 60;
+  const x1 = Math.max(...rs.map(r => r.x + r.w)) + 20, y1 = Math.max(...rs.map(r => r.y + r.h)) + 20;
+  await pg.keyboard.down('Shift');
+  await pg.mouse.move(b.x + x0, b.y + y0);
+  await pg.mouse.down();
+  await pg.mouse.move(b.x + x1, b.y + y1, { steps: 8 });
+  must(await pg.locator('.pl-marquee').count() === 1, 'o retângulo de seleção não apareceu');
+  await pg.mouse.up();
+  await pg.keyboard.up('Shift');
+  await pg.locator('#pl-inspector .pl-sel-acts').waitFor({ timeout: 5000 }).catch(() => { throw new Error('o painel não mostrou a seleção múltipla'); });
+  await pg.locator('canvas.pl-map-canvas').focus();
+  await pg.keyboard.press('Escape');
+  await pg.locator('#pl-inspector .pl-sel-acts').waitFor({ state: 'detached', timeout: 5000 }).catch(() => { throw new Error('Esc não limpou a seleção'); });
+});
+await step('Ctrl+A seleciona tudo, Delete apaga todos, um Ctrl+Z traz todos de volta', async () => {
+  const n = (await state()).blocks.length;
+  must(n >= 2, 'esperava 2+ blocos');
+  await pg.locator('canvas.pl-map-canvas').focus();
+  await pg.keyboard.press('Control+a');
+  await pg.locator('#pl-inspector .pl-sel-acts').waitFor({ timeout: 5000 }).catch(() => { throw new Error('Ctrl+A não selecionou tudo'); });
+  await pg.keyboard.press('Delete');
+  await nBlocks(0);
+  await nMeios(0);
+  await pg.locator('canvas.pl-map-canvas').focus();
+  await pg.keyboard.press('Control+z');
+  await nBlocks(n);
+  await nMeios(1);
 });
 await step('/#s= antigo cai em /balancer', async () => {
   const { shareHash } = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));

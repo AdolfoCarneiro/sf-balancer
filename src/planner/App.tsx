@@ -10,7 +10,7 @@ import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
-import type { Selection, ViewMode } from './ui/selection.ts';
+import { stagesSel, type Selection, type ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView, type MapViewHandle } from './ui/MapView.tsx';
 import { BalanceBar } from './ui/BalanceBar.tsx';
@@ -102,9 +102,11 @@ export function App() {
   // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
   const meioResults = useMeioResults(f, flow, data, lang, meioList, pending);
   // Depois de desfazer, o bloco ou o meio selecionado pode não existir mais: aí não há seleção.
-  const selection: Selection = !picked ? null
+  // Com vários, ficam os que ainda existem (um só volta a ser o bloco de sempre).
+  const selection: Selection = useMemo(() => !picked ? null
     : picked.kind === 'stage' ? (f.blocks.some(b => b.id === picked.id) ? picked : null)
-    : (meioList.some(m => m.id === picked.id) ? picked : null);
+    : picked.kind === 'stages' ? (picked.ids.every(id => f.blocks.some(b => b.id === id)) ? picked : stagesSel(picked.ids.filter(id => f.blocks.some(b => b.id === id))))
+    : (meioList.some(m => m.id === picked.id) ? picked : null), [picked, f.blocks, meioList]);
   // Faixa Balanço: o que entra, sai e vai pro sink; os botões passam pelas faltas e sobras em círculo.
   const balance = useMemo(() => factoryBalance(f, flow, data), [f, flow]);
   const probIdx = useRef({ deficit: -1, surplus: -1 });
