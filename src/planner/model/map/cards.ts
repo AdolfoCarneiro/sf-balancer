@@ -155,14 +155,14 @@ export function viewGeo(scene: Scene, cam: Camera, t: number, phone: boolean, f:
 
 export type ViewHit = { kind: 'port'; port: ViewPort } | { kind: 'chip'; meio: string } | { kind: 'block'; id: StageId } | null;
 
-// Porta antes de chip antes de bloco; dentro de cada um, o último desenhado ganha.
+// O que está desenhado por cima ganha: chip antes de porta antes de bloco; dentro de cada um, o último desenhado ganha.
 export function viewHit(v: ViewGeo, sx: number, sy: number): ViewHit {
-  const r = PORT_D / 2 + 6;
-  for (let i = v.ports.length - 1; i >= 0; i--) if (Math.hypot(v.ports[i].x - sx, v.ports[i].y - sy) <= r) return { kind: 'port', port: v.ports[i] };
   for (let i = v.chips.length - 1; i >= 0; i--) {
     const c = v.chips[i];
     if (Math.abs(sx - c.x) <= c.w / 2 && Math.abs(sy - c.y) <= c.h / 2) return { kind: 'chip', meio: c.meio };
   }
+  const r = PORT_D / 2 + 6;
+  for (let i = v.ports.length - 1; i >= 0; i--) if (Math.hypot(v.ports[i].x - sx, v.ports[i].y - sy) <= r) return { kind: 'port', port: v.ports[i] };
   for (let i = v.blocks.length - 1; i >= 0; i--) {
     const b = v.blocks[i].rect;
     if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) return { kind: 'block', id: v.blocks[i].id };

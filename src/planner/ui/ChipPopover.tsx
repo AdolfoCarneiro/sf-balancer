@@ -53,6 +53,8 @@ export function ChipPopover({ meio, label, result, factory: f, flow, data, popRe
   const alts = plan && !plan.unbounded ? plan.alternatives : [];
   const altKey = plan ? chosenAlt(plan, f.alts && Object.hasOwn(f.alts, meio.id) ? f.alts[meio.id] : undefined) : null;
   const canSwap = !fluid && alts.length > 0;
+  // Por que não dá para trocar: fluido, ainda calculando, ou sem montagens (sem limite, grande demais).
+  const swapWhy = canSwap ? undefined : fluid ? t('plChipSwapFluid') : !result ? t('plMeioCalc') : t('plChipSwapNone');
   const kind = label ? titleOf(label, item) : t('plChipCalc');
   const icon = iconUrl(meio.item);
 
@@ -70,7 +72,7 @@ export function ChipPopover({ meio, label, result, factory: f, flow, data, popRe
       <div className="pl-chip-pop-row">
         <button ref={see} type="button" className="pl-btn pl-primary" onClick={onSee}>{t('plChipSee')}</button>
         <button type="button" className="pl-btn" aria-expanded={canSwap ? opts : undefined} disabled={!canSwap}
-          title={fluid ? t('plChipSwapFluid') : undefined} onClick={() => setOpts(o => !o)}>{t('plChipSwap')}</button>
+          title={swapWhy} onClick={() => setOpts(o => !o)}>{t('plChipSwap')}</button>
         <button type="button" className="pl-btn pl-chip-pop-unlink" onClick={onUnlink}>{t('plChipUnlink')}</button>
       </div>
       {fluid && <p className="pl-chip-pop-note">{t('plChipSwapFluid')}</p>}

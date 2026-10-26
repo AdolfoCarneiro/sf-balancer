@@ -386,6 +386,7 @@ export default {
   plChipSentence: (rate, of, item, from, to) => `${rate} de ${of} de ${item}, de ${from} a ${to}.`, plChipShort: 'El otro extremo todavía pide más.',
   plChipSee: 'Ver montaje', plChipSwap: 'Cambiar montaje', plChipUnlink: 'Desconectar',
   plChipSwapFluid: 'Los fluidos no tienen balanceador: la Pipeline Junction divide sin garantizar partes iguales.',
+  plChipSwapNone: 'Esta conexión no tiene montajes para elegir.',
   plChipAria: (item, rate, kind) => `Conexión de ${item}, ${rate}, ${kind}`,
   plPlantSize: (w, h, fw, fh) => `${w} × ${h} m, ${fw} × ${fh} cimientos`, plPlantScale: m => `${m} m; cada cuadro es un cimiento de 8 m`,
   plMapEstimate: 'estimación', plMapFloors: n => `${n} pisos`, plMapCalc: 'calculando…',

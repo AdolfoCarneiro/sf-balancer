@@ -386,6 +386,7 @@ export default {
   plChipSentence: (rate, of, item, from, to) => `${rate} de ${of} de ${item}, de ${from} para ${to}.`, plChipShort: 'A ponta de lá ainda pede mais.',
   plChipSee: 'Ver montagem', plChipSwap: 'Trocar montagem', plChipUnlink: 'Desligar',
   plChipSwapFluid: 'Fluido não tem balancer: a Pipeline Junction divide sem garantir partes iguais.',
+  plChipSwapNone: 'Esta ligação não tem montagens para escolher.',
   plChipAria: (item, rate, kind) => `Ligação de ${item}, ${rate}, ${kind}`,
   plPlantSize: (w, h, fw, fh) => `${w} × ${h} m, ${fw} × ${fh} fundações`, plPlantScale: m => `${m} m; cada quadrado é uma fundação de 8 m`,
   plMapEstimate: 'estimativa', plMapFloors: n => `${n} andares`, plMapCalc: 'calculando…',

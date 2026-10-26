@@ -139,7 +139,7 @@ test('chip no meio da esteira; com ligs, no lugar salvo; ligs de grupo que mudou
   near(cs.x, (o2.x + i3.x) / 2); near(cs.y, (o2.y + i3.y) / 2);
 });
 
-test('hit: porta ganha do bloco embaixo dela', () => {
+test('hit: porta ganha do bloco embaixo dela; chip ganha de tudo', () => {
   const { v } = view(ex, 0);
   const b = v.blocks.find(x => x.id === 's2')!, p = v.ports.find(x => x.block === 's2' && x.side === 'in')!;
   // Um pouco para dentro do cartão: ainda é a porta.
@@ -148,6 +148,16 @@ test('hit: porta ganha do bloco embaixo dela', () => {
   const c = v.chips[0];
   assert.deepEqual(viewHit(v, c.x + CHIP_W / 2 - 2, c.y), { kind: 'chip', meio: c.meio });
   assert.equal(viewHit(v, -1e5, -1e5), null);
+});
+
+test('hit: chip desenhado por cima de uma porta ganha dela; a porta fora do chip ainda ganha do bloco', () => {
+  const { v } = view(ex, 0);
+  const p = v.ports.find(x => x.block === 's1' && x.side === 'out')!, c = v.chips[0];
+  // O chip em cima da porta (como no celular, no zoom mínimo da Montar).
+  const over = { ...v, chips: [{ ...c, x: p.x + CHIP_W / 2 - 10, y: p.y }] };
+  assert.deepEqual(viewHit(over, p.x, p.y), { kind: 'chip', meio: c.meio });
+  // Do outro lado da porta, fora do chip: a porta.
+  assert.deepEqual(viewHit(over, p.x - 20, p.y), { kind: 'port', port: p });
 });
 
 test('chipWorld: o canto do meio na grade para o centro ficar no ponto', () => {

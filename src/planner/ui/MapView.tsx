@@ -301,14 +301,17 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const v = viewGeo(sc, c, T, phone.current, fs, dt, fl);
     return (geoMemo.current = { key, v, belts: T < 1 && beltsOnScreen(v, o.meio, w, h) });
   };
-  // Mini painel abaixo do chip (ou acima, se não couber), dentro da área do mapa; some se o chip sumir.
+  // Mini painel abaixo do chip (ou acima, se não couber), dentro da área do mapa; some se o chip sumir ou sair da tela.
+  // O tamanho dele vem guardado (medido ao abrir e pelo ResizeObserver), sem ler o layout a cada quadro.
+  const popSize = useRef({ w: 0, h: 0 });
   const placePop = () => {
     const el = popEl.current, v = lastView.current, id = latest.current.popId;
     if (!el || !v || !id) return;
     const ch = v.chips.find(x => x.meio === id), { w, h } = size.current;
-    el.hidden = !ch;
-    if (!ch) return;
-    const pw = el.offsetWidth, ph = el.offsetHeight, gap = 8;
+    const off = !ch || ch.x < 0 || ch.y < 0 || ch.x > w || ch.y > h;
+    if (el.hidden !== off) el.hidden = off;
+    if (off) return;
+    const { w: pw, h: ph } = popSize.current, gap = 8;
     const x = clamp(ch.x - pw / 2, 8, Math.max(8, w - pw - 8));
     let y = ch.y + ch.h / 2 + gap;
     if (y + ph > h - 8) y = ch.y - ch.h / 2 - gap - ph;
@@ -397,7 +400,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       if (k < 1) id = requestAnimationFrame(step);
     };
     id = requestAnimationFrame(step);
-    return () => { cancelAnimationFrame(id); tNow.current = to; };
+    // Trocou de novo no meio: a próxima animação parte do t de agora.
+    return () => cancelAnimationFrame(id);
   }, [mode]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -437,11 +441,20 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   useLayoutEffect(() => {
     const el = popEl.current;
     if (!el) return;
+    popSize.current = { w: el.offsetWidth, h: el.offsetHeight };
     placePop();
-    const ro = new ResizeObserver(() => placePop());
+    // Escondido mede 0: guarda só tamanho de verdade.
+    const ro = new ResizeObserver(([en]) => {
+      const b = en?.borderBoxSize?.[0], pw = b ? b.inlineSize : el.offsetWidth, ph = b ? b.blockSize : el.offsetHeight;
+      if (pw && ph) { popSize.current = { w: pw, h: ph }; placePop(); }
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, [popMeio?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Seleção foi para outra coisa (clique, painel, desfazer): o painel não volta sozinho depois.
+  useEffect(() => {
+    if (popId && !(selection?.kind === 'meio' && selection.id === popId)) setPopId(null);
+  }, [selection?.kind, selection?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const closePop = (refocus: boolean) => { setPopId(null); if (refocus) canvas.current?.focus(); };
   // Desligar: todas as esteiras do grupo num passo só do desfazer.
   const unlink = (id: string) => {
