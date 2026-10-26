@@ -6,10 +6,15 @@
 //   Extractor (ShowPpm no game_data do Modeler) é a vazão por minuto; para as receitas comuns (Water Extractor também)
 //   é o número de máquinas. Sem Max: receita livre; Miner 60/min, Oil Extractor 120, Resource Well 60 (DefaultMax).
 // - Inputs: as ligações, guardadas no consumidor: { peça: [índice do produtor, ...] } ou, no AWESOME Sink,
-//   [[ [índice, peça], ... ]]. X/Y: a posição do nó na tela do Modeler.
+//   [[ [índice, peça], ... ]]. Cada referência é o índice solto ou [índice, peça ou nº da saída do produtor, ...pontos
+//   de curva]. X/Y: a posição do nó na tela do Modeler.
+// - Splurger (e os de prioridade) e Storage Container de onde alguém puxa só passam item adiante: viram ligação direta
+//   de quem entra neles para quem puxa deles. Container sem entrada nenhuma é o que vem de fora (o "-675" do Modeler):
+//   vira um bloco Entrada sem limite no lugar dele, um por item puxado.
 // - Machine: o Mk do Miner (a vazão já vem no Max). Capacity: a pureza do nó de extração ou a esteira do Sink.
-//   ClockSpeed, Parent, Outpost/Title e o que mais vier: ignorados e listados no resumo.
-import type { Block, BuildingId, Factory, GameData, ItemId, MapPlace, Purity, RecipeId, StageId } from './types.ts';
+//   ClockSpeed: o clock das máquinas da receita (no Miner e nos extratores de vazão já vem no Max). Parent,
+//   Outpost/Title e o que mais vier: ignorados e listados no resumo.
+import { isSource, type Block, type BuildingId, type Factory, type GameData, type ItemId, type MapPlace, type Purity, type RecipeId, type StageId } from './types.ts';
 import {
   MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_RATE, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, minable, portsOf,
 } from './factory.ts';
@@ -27,7 +32,8 @@ export interface SfmdReport {
 // field: campo de nó; setting: chave do topo do arquivo; outpost: agrupamento (name = Title, '' sem título); max: o Max de
 // um nó que virou Saída; noFlow: prédio sem item (Geothermal…); waypoints: pontos de curva das ligações (name '').
 // name: sempre o nome cru do Modeler.
-export interface SfmdIgnored { kind: 'field' | 'setting' | 'outpost' | 'max' | 'noFlow' | 'waypoints'; name: string }
+// relay: Splurger/Container que virou ligação direta; emptyRelay: Container sem entrada nenhuma, que virou Entrada.
+export interface SfmdIgnored { kind: 'field' | 'setting' | 'outpost' | 'max' | 'noFlow' | 'waypoints' | 'relay' | 'emptyRelay'; name: string }
 // extractorRate: vazão pedida que não fecha em extratores inteiros (count × per = total); extractorCount: contagem
 // fracionária arredondada; machines: máquinas fracionárias arredondadas para cima com o clock baixado (a mesma vazão);
 // clamp: acima do máximo da ferramenta (máquinas, extratores ou vazão).
@@ -74,6 +80,8 @@ const EXTRACT: Record<string, { building: string; item: string; ppm: boolean; de
   'oil well': { building: 'Resource Well Extractor', item: 'Crude Oil', ppm: true, def: 60 },
 };
 const SINKS = new Set(['awesome sink']);
+// Peças que só passam item adiante (Splurger, Priority Splitter/Merger/Splurger).
+const isRelayName = (k: string) => k.includes('splurger') || /^priority (splitter|merger)$/.test(k);
 const CONTAINERS = new Set(['dimensional depot uploader', 'dimensional depot', 'storage container', 'industrial storage container', 'fluid buffer', 'industrial fluid buffer']);
 // Geradores e o Space Elevator: consomem e não produzem item; viram Saída (a energia fica fora).
 const EXPORT_RE = /^(.*(generator|biomass burner|nuclear power plant)|space elevator phase \d+|alien power augmenter)$/;
@@ -140,16 +148,18 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
   }
   const recipe = L.recipes.get(k);
   if (recipe) {
-    // Máquinas fracionárias (o Modeler aceita): arredonda para cima e baixa o clock, para a mesma vazão.
-    let machines: number | null = null, clock = 100;
+    // ClockSpeed: o clock de cada máquina (100 sem ele). Máquinas fracionárias (o Modeler aceita): arredonda para cima
+    // e baixa o clock, para a mesma vazão.
+    const cs = clamp(parseMax(node.ClockSpeed) ?? 100, 1, 250);
+    let machines: number | null = null, clock = Math.round(cs * 1e4) / 1e4;
     if (max !== null) {
       machines = upTo(max, MAX_MACHINES, name, adj);
       if (max < machines - EPS) {
-        clock = clamp(Math.round(max / machines * 1e6) / 1e4, 1, 250);
+        clock = clamp(Math.round(cs * max / machines * 1e4) / 1e4, 1, 250);
         adj.push({ kind: 'machines', name, asked: max, count: machines, clock });
       }
     }
-    return { kind: 'block', block: { kind: 'recipe', recipe, clock, perRow: null, tiers: {}, ...(machines !== null ? { limits: { machines } } : {}) }, used: [], adj };
+    return { kind: 'block', block: { kind: 'recipe', recipe, clock, perRow: null, tiers: {}, ...(machines !== null ? { limits: { machines } } : {}) }, used: ['ClockSpeed'], adj };
   }
   if (SINKS.has(k)) return { kind: 'block', block: { kind: 'sink' }, used: [], adj };
   if (CONTAINERS.has(k)) return { kind: 'block', block: { kind: 'container' }, used: ['Machine'], adj };
@@ -157,21 +167,30 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
   return { kind: 'unknown' };
 }
 
-// Referências de Inputs: { peça: [i, ...] } ou [[ [i, "peça"], ... ]]; [i, "peça", ...resto]: o resto são pontos de curva.
-interface Ref { idx: unknown; part: string | null }
+// Referências de Inputs: { peça: [ref, ...] } ou [[ref, ...]]; cada ref é o índice ou [índice, peça | nº da saída do
+// produtor, ...pontos de curva]. Os pontos de curva (e o que mais vier) só marcam `extra`.
+interface Ref { idx: unknown; part: string | null; out: number | null }
 function inputRefs(raw: unknown): { refs: Ref[]; extra: boolean } {
   const refs: Ref[] = [];
   let extra = false;
+  const ref = (v: unknown[], part: string | null) => {
+    const r: Ref = { idx: v[0], part, out: null };
+    v.slice(1).forEach((x, i) => {
+      if (typeof x === 'string') r.part = x;
+      else if (i === 0 && typeof x === 'number') r.out = x;
+      else extra = true;
+    });
+    refs.push(r);
+  };
+  // Dentro de uma lista: número é ref, lista começando por número também; lista de listas desce um nível.
   const walk = (v: unknown, part: string | null, depth: number) => {
-    if (refs.length > MAX_LINKS) return;
-    if (typeof v === 'number') { refs.push({ idx: v, part }); return; }
     if (!Array.isArray(v) || depth > 4) { extra = true; return; }
-    if (typeof v[0] === 'number' && typeof v[1] === 'string') {
-      refs.push({ idx: v[0], part: v[1] });
-      if (v.length > 2) extra = true;
-      return;
+    for (const c of v) {
+      if (refs.length > MAX_LINKS) return;
+      if (typeof c === 'number') refs.push({ idx: c, part, out: null });
+      else if (Array.isArray(c) && typeof c[0] === 'number') ref(c, part);
+      else walk(c, part, depth + 1);
     }
-    for (const c of v) walk(c, part, depth + 1);
   };
   if (isObj(raw)) for (const [part, v] of Object.entries(raw)) walk(v, part, 0);
   else if (Array.isArray(raw)) walk(raw, null, 0);
@@ -225,9 +244,17 @@ export function modelerPlaces(pts: { id: StageId; x: number; y: number; w?: numb
 function importedCard(f: Factory, b: Block, d: GameData): { w: number; h: number } {
   const uniq = (xs: string[]) => new Set(xs).size;
   if (b.kind === 'recipe') { const r = d.recipes[b.recipe]; return cardSize('recipe', uniq(r.ins.map(x => x.item)), uniq(r.outs.map(x => x.item))); }
-  if (b.kind === 'miner' || b.kind === 'extractor') return cardSize('marker', 0, 1);
+  if (isSource(b)) return cardSize('marker', 0, 1);
   return cardSize('marker', uniq(f.links.filter(l => l.to === b.id).map(l => l.item)), 0);
 }
+
+// Posição do nó na tela do Modeler (0 sem número).
+const xyOf = (n: unknown): [number, number] => {
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  return isObj(n) ? [num(n.X), num(n.Y)] : [0, 0];
+};
+// Entradas do mesmo Container, uma embaixo da outra (px do Modeler).
+const INPUT_STEP = 100;
 
 export function parseSfmd(text: string, d: GameData): SfmdResult {
   let raw: unknown;
@@ -245,6 +272,15 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
   };
   for (const k of Object.keys(raw)) if (!TOP_READ.has(k)) note('setting', k);
 
+  // Referências de cada nó e quem só passa item adiante: Splurger, ou Container de onde alguém puxa.
+  const refsOf = nodes.map(n => (isObj(n) ? inputRefs(n.Inputs) : { refs: [], extra: false }));
+  const consumed = new Set(refsOf.flatMap(r => r.refs.map(x => x.idx)));
+  const relay = nodes.map((n, i) => {
+    if (!isObj(n) || typeof n.Name !== 'string') return false;
+    const k = low(n.Name);
+    return isRelayName(k) || (CONTAINERS.has(k) && consumed.has(i));
+  });
+
   const ids: (StageId | null)[] = [], names: string[] = [], pts: { id: StageId; x: number; y: number }[] = [];
   let f: Factory = { v: 2, blocks: [], links: [] };
   nodes.forEach((node, i) => {
@@ -252,6 +288,7 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
     const name = isObj(node) && typeof node.Name === 'string' ? node.Name.slice(0, 80) : '';
     names.push(name || `#${i}`);
     if (!isObj(node) || !name) { report.skipped.push({ name: `#${i}`, reason: 'unknown' }); return; }
+    if (relay[i]) { note(refsOf[i].refs.length ? 'relay' : 'emptyRelay', name); return; }
     const m = makeBlock(node, name, L, d);
     if (m.kind === 'ignore') { note(m.note.kind, m.note.name); return; }
     if (m.kind === 'unknown') { report.skipped.push({ name, reason: 'unknown' }); return; }
@@ -263,29 +300,80 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
     if (m.export && node.Max !== undefined) note('max', name);
     for (const key of Object.keys(node)) if (!READ.has(key) && !m.used.includes(key)) note('field', key);
     report.adjusted.push(...m.adj);
-    const x = typeof node.X === 'number' && Number.isFinite(node.X) ? node.X : 0, y = typeof node.Y === 'number' && Number.isFinite(node.Y) ? node.Y : 0;
+    const [x, y] = xyOf(node);
     pts.push({ id, x, y });
   });
+
+  const inputAt = new Map<string, StageId>();   // `${índice do Container}|${item}` -> a Entrada criada
+  const validIdx = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < nodes.length;
+  const itemOf = (part: string | null) => (part !== null ? L.items.get(low(part)) : undefined);
+  // O item que sai de um bloco por uma ref: a peça, o nº da saída ou a única saída; sem nada disso, `want` se ele faz.
+  const outItem = (from: StageId, r: Ref, want?: ItemId): ItemId | undefined => {
+    const outs = portsOf(f.blocks.find(b => b.id === from)!, d).outs;
+    const it = r.part !== null ? itemOf(r.part) : r.out !== null ? outs[r.out] : outs.length === 1 ? outs[0] : undefined;
+    return it ?? (want && outs.includes(want) ? want : undefined);
+  };
+  // Os produtores de verdade por trás de um Splurger/Container (descendo pelos encadeados), só do item `want` se dado.
+  const sources = (i: number, want: ItemId | undefined, seen: Set<number>): { from: StageId; item: ItemId }[] => {
+    const out: { from: StageId; item: ItemId }[] = [];
+    for (const r of refsOf[i].refs) {
+      if (!validIdx(r.idx)) continue;
+      const it = itemOf(r.part);
+      if (it && want && it !== want) continue;
+      if (relay[r.idx]) {
+        if (!seen.has(r.idx)) out.push(...sources(r.idx, want ?? it, new Set([...seen, r.idx])));
+        continue;
+      }
+      const from = ids[r.idx];
+      const item = from ? outItem(from, r, want) : undefined;
+      if (from && item && (!want || item === want)) out.push({ from, item });
+    }
+    return out;
+  };
 
   // Ligações: no consumidor, apontando para o índice do produtor. Nó pulado ou ignorado leva as ligações junto, calado.
   nodes.forEach((node, j) => {
     const to = ids[j];
     if (!to || !isObj(node)) return;
-    const { refs, extra } = inputRefs(node.Inputs);
+    const { refs, extra } = refsOf[j];
     if (extra) note('waypoints', '');
     for (const r of refs) {
-      const ok = typeof r.idx === 'number' && Number.isInteger(r.idx) && r.idx >= 0 && r.idx < nodes.length;
-      const from = ok ? ids[r.idx as number] : null;
+      const ok = validIdx(r.idx);
       const label = `${ok ? names[r.idx as number] : `#${String(r.idx)}`} → ${names[j]}${r.part ? ` (${r.part})` : ''}`;
       if (!ok) { report.skipped.push({ name: label, reason: 'badLink' }); continue; }
-      if (!from) continue;
-      // Sem a peça (lista solta no Sink): a única saída do produtor.
-      const outs = portsOf(f.blocks.find(b => b.id === from)!, d).outs;
-      const item = r.part !== null ? L.items.get(low(r.part)) : outs.length === 1 ? outs[0] : undefined;
-      const can = item ? canConnect(f, d, from, to, item) : { ok: false as const, reason: 'item' as const };
-      if (can.ok) f = connect(f, d, from, to, item!);
-      else if (can.reason === 'full') report.skipped.push({ name: label, reason: 'limit' });
-      else if (can.reason !== 'dup') report.skipped.push({ name: label, reason: 'badLink' });
+      const i = r.idx as number;
+      let pairs: { from: StageId; item: ItemId | undefined }[];
+      if (relay[i]) {
+        if (!refsOf[i].refs.length) {
+          // Container sem entrada: uma Entrada sem limite por item, no lugar dele (um item embaixo do outro).
+          const item = itemOf(r.part);
+          if (!item) { report.skipped.push({ name: label, reason: 'badLink' }); continue; }
+          let from = inputAt.get(`${i}|${item}`);
+          if (!from) {
+            if (f.blocks.length >= MAX_STAGES) { report.skipped.push({ name: label, reason: 'limit' }); continue; }
+            from = `s${f.blocks.length + 1}`;
+            const k = [...inputAt.keys()].filter(x => x.startsWith(`${i}|`)).length, [x, y] = xyOf(nodes[i]);
+            inputAt.set(`${i}|${item}`, from);
+            f = { ...f, blocks: [...f.blocks, { id: from, kind: 'input', item, rate: null }] };
+            pts.push({ id: from, x, y: y + k * INPUT_STEP });
+          }
+          pairs = [{ from, item }];
+        } else {
+          pairs = sources(i, itemOf(r.part), new Set([i]));
+          if (!pairs.length) { report.skipped.push({ name: label, reason: 'badLink' }); continue; }
+        }
+      } else {
+        const from = ids[i];
+        if (!from) continue;
+        // Sem a peça (lista solta no Sink): o nº da saída ou a única saída do produtor.
+        pairs = [{ from, item: outItem(from, r) }];
+      }
+      for (const { from, item } of pairs) {
+        const can = item ? canConnect(f, d, from, to, item) : { ok: false as const, reason: 'item' as const };
+        if (can.ok) f = connect(f, d, from, to, item!);
+        else if (can.reason === 'full') report.skipped.push({ name: label, reason: 'limit' });
+        else if (can.reason !== 'dup') report.skipped.push({ name: label, reason: 'badLink' });
+      }
     }
   });
 

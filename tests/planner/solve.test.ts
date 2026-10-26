@@ -361,3 +361,87 @@ test('solver: conservação nas fábricas de teste: o que entra e sai de cada po
     assert.equal(r.converged, true); conserves(f, r);
   }
 });
+
+// Recorte de uma fábrica de usuário importada do Modeler: o Miner de quartzo divide entre Cheap Silica e Pure Quartz
+// Crystal. O Silicon Circuit Board só pedia Silica até onde chegava Copper Sheet (e o contrário), e as duas entradas
+// do High-Speed Connector se seguravam do mesmo jeito: o bloco ficava em falta com quartzo sobrando. O Modeler fecha 8.
+test("entradas que começam baixas não se travam: com quartzo sobrando, o High-Speed Connector fecha as 8 máquinas", () => {
+  const f = fac([
+    recipe("cable", "Recipe_Cable_C"), recipe("hsc", "Recipe_HighSpeedConnector_C", { machines: 8 }),
+    recipe("osc", "Recipe_CrystalOscillator_C", { machines: 30 }), recipe("sil", "Recipe_Alternate_Silica_C"),
+    recipe("scb", "Recipe_Alternate_CircuitBoard_1_C"), { id: "qz", kind: "miner", item: "Desc_RawQuartz_C", rate: 480 },
+    recipe("xtal", "Recipe_Alternate_PureQuartzCrystal_C"),
+  ], [
+    link("l1", "Desc_Cable_C", "cable", "hsc"), link("l2", "Desc_CircuitBoard_C", "scb", "hsc"),
+    link("l3", "Desc_QuartzCrystal_C", "xtal", "osc"), link("l4", "Desc_RawQuartz_C", "qz", "sil"),
+    link("l5", "Desc_Silica_C", "sil", "scb"), link("l6", "Desc_RawQuartz_C", "qz", "xtal"),
+  ]);
+  const r = solveFactory(f, data);
+  assert.ok(r.converged);
+  close(r.blocks.hsc.x!, 8);
+  for (const p of r.blocks.hsc.ins) assert.equal(p.deficit, 0, p.item);
+  // O Oscillator continua curto de verdade: o quartzo não dá para os dois.
+  assert.ok(port(r.blocks.osc.ins, "Desc_QuartzCrystal_C").deficit > 0);
+});
+
+// Recorte da mesma fábrica: o Smart Plating pede placa só até onde chega Rotor e vice-versa, e um degrau acima o mesmo
+// (os dois dividem o Cast Screws). Sem destravar, sobrava minério no Miner com o Smart Plating curto.
+test('trava em degraus: com minério sobrando, os blocos crescem até o minério acabar', () => {
+  const f = fac([
+    { id: 'ore', kind: 'miner', item: 'Desc_OreIron_C', rate: 480 },
+    recipe('alloy', 'Recipe_Alternate_IngotIron_C'), recipe('screw', 'Recipe_Alternate_Screw_C'),
+    recipe('rotor', 'Recipe_Rotor_C'), recipe('rip', 'Recipe_IronPlateReinforced_C'),
+    recipe('sp', 'Recipe_SpaceElevatorPart_1_C', { machines: 56 }),
+  ], [
+    link('l1', 'Desc_OreIron_C', 'ore', 'alloy'), link('l2', 'Desc_IronIngot_C', 'alloy', 'screw'),
+    link('l3', 'Desc_IronScrew_C', 'screw', 'rotor'), link('l4', 'Desc_IronScrew_C', 'screw', 'rip'),
+    link('l5', 'Desc_IronPlateReinforced_C', 'rip', 'sp'), link('l6', 'Desc_Rotor_C', 'rotor', 'sp'),
+  ]);
+  const r = solveFactory(f, data);
+  assert.ok(r.converged);
+  // O minério acaba (antes sobravam ~35/min) e o Smart Plating vai até onde ele dá; a falta que fica é de verdade.
+  assert.ok(r.blocks.ore.outs[0].held < 0.5, `represado ${r.blocks.ore.outs[0].held}`);
+  assert.ok(r.blocks.sp.x! > 48.5, `Smart Plating ${r.blocks.sp.x}`);
+  assert.ok(r.blocks.sp.ins.every(p => p.deficit > 0));
+});
+
+test('trava em degraus com uma Saída (trem) puxando o minério que sobra: a fábrica é servida primeiro, a Saída leva o resto', () => {
+  const blocks: Block[] = [
+    { id: 'ore', kind: 'miner', item: 'Desc_OreIron_C', rate: 600 },
+    recipe('alloy', 'Recipe_Alternate_IngotIron_C'), recipe('screw', 'Recipe_Alternate_Screw_C'),
+    recipe('rotor', 'Recipe_Rotor_C'), recipe('rip', 'Recipe_IronPlateReinforced_C'),
+    recipe('sp', 'Recipe_SpaceElevatorPart_1_C', { machines: 56 }), { id: 'train', kind: 'export' },
+  ];
+  const links = [
+    link('l1', 'Desc_OreIron_C', 'ore', 'alloy'), link('l2', 'Desc_IronIngot_C', 'alloy', 'screw'),
+    link('l3', 'Desc_IronScrew_C', 'screw', 'rotor'), link('l4', 'Desc_IronScrew_C', 'screw', 'rip'),
+    link('l5', 'Desc_IronPlateReinforced_C', 'rip', 'sp'), link('l6', 'Desc_Rotor_C', 'rotor', 'sp'),
+  ];
+  const alone = solveFactory(fac(blocks.filter(b => b.id !== 'train'), links), data);
+  const r = solveFactory(fac(blocks, [...links, link('l7', 'Desc_OreIron_C', 'ore', 'train')]), data);
+  assert.ok(r.converged);
+  // Com ou sem o trem, o Smart Plating chega ao mesmo ponto; o trem leva só o que a fábrica não usa.
+  close(r.blocks.sp.x!, alone.blocks.sp.x!);
+  close(r.links.l1!, alone.links.l1!);
+  close(r.links.l7!, 600 - alone.links.l1!);
+});
+
+test('falta só na entrada curta de verdade, mesmo com um Container levando o resto da outra', () => {
+  // Parafusos curtos (Miner de 60); a placa vem de uma produtora que também enche um Container. A placa não falta: se o
+  // Reinforced Iron Plate pedisse mais, viria antes do Container (ele só leva o resto).
+  const f = fac([
+    { id: 'oreA', kind: 'miner', item: 'Desc_OreIron_C', rate: 60 }, { id: 'oreB', kind: 'miner', item: 'Desc_OreIron_C', rate: 480 },
+    recipe('ingA', 'Recipe_IngotIron_C'), recipe('ingB', 'Recipe_IngotIron_C'), recipe('screw', 'Recipe_Alternate_Screw_C'),
+    recipe('plate', 'Recipe_IronPlate_C'), recipe('rip', 'Recipe_IronPlateReinforced_C', { machines: 10 }), { id: 'box', kind: 'container' },
+  ], [
+    link('l1', 'Desc_OreIron_C', 'oreA', 'ingA'), link('l2', 'Desc_IronIngot_C', 'ingA', 'screw'), link('l3', 'Desc_IronScrew_C', 'screw', 'rip'),
+    link('l4', 'Desc_OreIron_C', 'oreB', 'ingB'), link('l5', 'Desc_IronIngot_C', 'ingB', 'plate'), link('l6', 'Desc_IronPlate_C', 'plate', 'rip'),
+    link('l7', 'Desc_IronPlate_C', 'plate', 'box'),
+  ]);
+  const r = solveFactory(f, data);
+  assert.ok(r.converged);
+  assert.ok(r.blocks.rip.x! < 10);
+  assert.ok(port(r.blocks.rip.ins, 'Desc_IronScrew_C').deficit > 0);
+  assert.equal(port(r.blocks.rip.ins, 'Desc_IronPlate_C').deficit, 0);
+  assert.ok(r.links.l7! > 0);
+});

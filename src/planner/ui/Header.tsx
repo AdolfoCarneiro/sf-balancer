@@ -12,9 +12,10 @@ interface Props {
   shareUrl: () => string;
   view: ViewMode; onView: (v: ViewMode) => void;
   onImportFile: (f: File) => void;   // importar do Modeler (o App mostra o resumo)
+  factoryName: string; onFactories: () => void;   // a fábrica aberta e a lista ("Fábricas")
 }
 
-export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView, onImportFile }: Props) {
+export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView, onImportFile, factoryName, onFactories }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -45,6 +46,10 @@ export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo,
         <button type="button" aria-pressed={view === 'montar'} onClick={() => onView('montar')}>{t('plViewMontar')}</button>
         <button type="button" aria-pressed={view === 'planta'} onClick={() => onView('planta')}>{t('plViewPlanta')}</button>
       </div>
+      <button type="button" className="pl-btn pl-libs-btn" onClick={onFactories} aria-haspopup="dialog" title={t('plFactories')}
+        aria-label={`${t('plFactories')}: ${factoryName}`}>
+        {ico('M2 15V7l4 3V7l4 3V4h6v11z')}<span className="pl-libs-cur">{factoryName}</span>
+      </button>
       <div className="pl-grow" />
       <div className="pl-status" role="status" title={status.join(' · ') || undefined}>{status.join(' · ')}</div>
       <div className="pl-pair">

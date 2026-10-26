@@ -1,6 +1,6 @@
 // A fábrica resolvida vista pelas contas da fase 1 e 2: o bloco de receita vira etapa (fileiras, tiers, desenho) e os
 // outros blocos viram marcadores fora de escala. Puro.
-import type { ExtractorBlock, Factory, GameData, MinerBlock, OutletBlock, RecipeBlock, Stage } from './types.ts';
+import { isSource, type Block, type Factory, type GameData, type RecipeBlock, type Stage } from './types.ts';
 import type { BlockFlow, FlowResult } from './solve.ts';
 import { MAX_MACHINES } from './factory.ts';
 import type { Anchor, BeltPath, BlockGeo, Piece } from './map/geo.ts';
@@ -26,16 +26,16 @@ export function factoryTotals(f: Factory, flow: FlowResult): { blocks: number; m
 
 const rateOf = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-// Marcador de origem (Miner, extrator) ou de sobra (Awesome Sink, Container, Saída): 8 × 8 m (o Awesome Sink no
+// Marcador de origem (Miner, extrator, Entrada) ou de sobra (Awesome Sink, Container, Saída): 8 × 8 m (o Awesome Sink no
 // tamanho dele, 16 × 13), sempre estimativa (as medidas reais ainda são pergunta ao dono). Origem: uma saída na borda
 // direita; sobra: uma entrada por item que chega, na borda esquerda.
-export function markerGeo(b: MinerBlock | ExtractorBlock | OutletBlock, bf: BlockFlow | undefined, d: GameData): BlockGeo {
+export function markerGeo(b: Exclude<Block, RecipeBlock>, bf: BlockFlow | undefined, d: GameData): BlockGeo {
   const sink = b.kind === 'sink';
   const w = sink ? SINK.w : FOUNDATION, h = sink ? SINK.l : FOUNDATION;
   const pieces: Piece[] = [{ kind: sink ? 'sink' : 'machine', x: 0, y: 0, w, h }];
   const belts: BeltPath[] = [], ins: Anchor[] = [], outs: Anchor[] = [];
   const fluid = (item: string) => d.items[item]?.fluid ?? false;
-  if (b.kind === 'miner' || b.kind === 'extractor') {
+  if (isSource(b)) {
     outs.push({ x: w, y: h / 2, item: b.item, row: 0, stage: b.id });
     belts.push({ pts: [[w / 2, h / 2], [w, h / 2]], item: b.item, rate: rateOf(bf?.outs[0]?.rate), role: 'out', fluid: fluid(b.item) });
   } else {

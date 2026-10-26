@@ -13,7 +13,7 @@ export interface Sentence { key: 'plWhyDeficit' | 'plWhySurplus' | 'plWhyStalled
 export interface Fix { key: 'plFixSink' | 'plFixReduce' | 'plFixRaise' | 'plFixCreate'; n?: number; action: Action | null }
 
 const OUTLET_NAME = { sink: 'Awesome Sink', container: 'Container', export: 'Export' } as const;
-const blockName = (b: Block, d: GameData): string => (b.kind === 'recipe' ? d.recipes[b.recipe]?.name ?? b.recipe : b.kind === 'miner' ? 'Miner' : b.kind === 'extractor' ? d.extractors[b.building]?.name ?? b.building : OUTLET_NAME[b.kind]);
+const blockName = (b: Block, d: GameData): string => (b.kind === 'recipe' ? d.recipes[b.recipe]?.name ?? b.recipe : b.kind === 'miner' ? 'Miner' : b.kind === 'input' ? 'Input' : b.kind === 'extractor' ? d.extractors[b.building]?.name ?? b.building : OUTLET_NAME[b.kind]);
 const itemName = (d: GameData, id: string): string => d.items[id]?.name ?? id;
 const num = (v: number | null): number => (v !== null && Number.isFinite(v) ? v : 0);
 const ceilTol = (v: number): number => Math.ceil(v - 1e-9);
@@ -72,6 +72,11 @@ function raiseSource(src: Block, item: string, need: number, d: GameData): Fix |
     case 'miner': {
       const rate = src.rate + need;
       return rateOk(rate) ? { key: 'plFixRaise', n: rate, action: { type: 'setMinerRate', id, rate } } : null;
+    }
+    case 'input': {
+      if (src.rate === null) return null;
+      const rate = src.rate + need;
+      return rateOk(rate) ? { key: 'plFixRaise', n: rate, action: { type: 'setInputRate', id, rate } } : null;
     }
     case 'extractor': {
       const e = d.extractors[src.building];

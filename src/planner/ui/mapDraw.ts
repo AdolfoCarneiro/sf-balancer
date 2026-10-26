@@ -112,17 +112,21 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       const m: Pt = [c.x, c.y], dm: Pt = [1, 0];
       const look = { color: o.colors[g.item] ?? th.flow, fluid: o.fluid(g.item), short: !!lab?.short, selected: o.selected.has(c.meio) };
       // De longe, a esteira vira uma linha fina na cor do item (a de 12 px cobriria os cartões pequenos).
-      const belt = (path: Path2D) => {
-        if (!far) { strokeBelt(ctx, path, look, o.time, th); return; }
-        ctx.strokeStyle = look.short ? th.deficit : look.color; ctx.lineWidth = 2; ctx.stroke(path);
+      // Do lado das produtoras, vermelha se alguma consumidora da ligação fica com falta; a perna até cada consumidora,
+      // só se aquela consumidora está com falta (a vizinha curta não pinta a que está cheia).
+      const belt = (path: Path2D, short: boolean) => {
+        const lk = { ...look, short };
+        if (!far) { strokeBelt(ctx, path, lk, o.time, th); return; }
+        ctx.strokeStyle = lk.short ? th.deficit : lk.color; ctx.lineWidth = 2; ctx.stroke(path);
       };
       for (const id of g.producers) {
         const p = byKey.get(`${id}|out|${g.item}`);
-        if (p && near(curveBox([p.x, p.y], m), vw, vh, 0)) belt(beltCurve([p.x, p.y], p.dir, m, dm));
+        if (p && near(curveBox([p.x, p.y], m), vw, vh, 0)) belt(beltCurve([p.x, p.y], p.dir, m, dm), look.short);
       }
       for (const id of g.consumers) {
         const p = byKey.get(`${id}|in|${g.item}`);
-        if (p && near(curveBox(m, [p.x, p.y]), vw, vh, 0)) belt(beltCurve(m, dm, [p.x, p.y], [-p.dir[0], -p.dir[1]]));
+        const short = look.short && o.portState(id, 'in', g.item)?.kind === 'deficit';
+        if (p && near(curveBox(m, [p.x, p.y]), vw, vh, 0)) belt(beltCurve(m, dm, [p.x, p.y], [-p.dir[0], -p.dir[1]]), short);
       }
     }
     // Cartões.

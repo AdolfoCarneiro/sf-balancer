@@ -149,7 +149,7 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
         const g = { driver: 'clock' as const, clock: 100 * x / st.machines, nominal: perMinOf(b.recipe, d, meio.item, 'outs') };
         return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
       }
-      case 'miner': {
+      case 'miner': case 'input': {
         // Linhas iguais, cada uma dentro da esteira.
         const n = Math.max(1, Math.ceil(x / cap - E));
         return [{ driver: 'clock', count: n, clock: 100, nominal: x / n, per: 1 }];

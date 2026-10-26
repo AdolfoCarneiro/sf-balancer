@@ -2,24 +2,28 @@
 // (ou "sem limite"/"travado", "fixado" quando é limite meu) e o clock quando ≠ 100 %. As fileiras ficam na miniatura do
 // painel. Marcador (origem e sobra): ícone, nome e a taxa grande.
 // Desenhado no tamanho de 100 % (CARD_W, MARK_W) e escalado para o retângulo da vista (na transição ele encolhe ou
-// cresce até o bloco real, sumindo).
+// cresce até o bloco real, sumindo). Pequeno na tela (de longe, para ver a fábrica inteira), vira o nó do Modeler: só o
+// ícone e o número, grandes, sem os textos miúdos.
 import { t } from '../../../i18n/index.js';
 import { MARK_W, MONTAR_REF, PORT_D, cardSize, type ViewBlock } from '../../model/map/cards.ts';
 import type { ItemId } from '../../model/types.ts';
 import type { MapTheme } from './theme.ts';
 import { fitText, wrapText } from './text.ts';
 
-// O que o cartão mostra, já no idioma da tela (montado no MapView). count: o número (ou "sem limite"/"travado");
-// fixed: as máquinas fixadas; clock: "150%" quando ≠ 100; ins/outs: itens na ordem das portas; marker: origem ou
+// O que o cartão mostra, já no idioma da tela (montado no MapView). count: o número grande, como no Modeler: as
+// máquinas rodando, quebradas ("29,15"), ou "sem limite"/"travado"; sub: a linha pequena embaixo (o fixado, "de 30 ·
+// fixado", ou quantas construir, "10 máquinas"); fixed: as máquinas fixadas; clock: "150%" quando ≠ 100; ins/outs: itens na ordem das portas; marker: origem ou
 // sobra; rate: a taxa grande do marcador e unit, a unidade pequena ao lado (campo a mais que o plano: o protótipo põe
 // "/min" menor que o número).
 export interface CardText {
-  title: string; building: string; icon: string | null; count: string; fixed: boolean; clock: string | null; alt: boolean;
+  title: string; building: string; icon: string | null; count: string; sub: string; fixed: boolean; clock: string | null; alt: boolean;
   ins: ItemId[]; outs: ItemId[]; marker: boolean; rate: string; unit: string;
 }
 export interface CardLook { selected: boolean; hover: boolean; lock: boolean; bad: boolean; flash: number }
 
 const HEAD = 62, ICON = 42, PAD_X = 14;
+// Abaixo desta escala na tela o cartão é desenhado enxuto (ícone e número).
+const COMPACT = 0.45;
 
 export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardText, look: CardLook, th: MapTheme,
   icon: (id: string) => HTMLImageElement | null): void {
@@ -52,6 +56,19 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
     ctx.restore();
   }
 
+  if (Math.min(kx, ky) < COMPACT) {
+    // Enxuto: o ícone na altura do cartão, à esquerda, e o número (máquinas ou a taxa) ocupando o resto.
+    const img = c.icon ? icon(c.icon) : null, gap = 8, s = H - 2 * gap;
+    if (img) ctx.drawImage(img, gap, gap, s, s);
+    const x = (img ? s + gap : 0) + gap, max = W - x - gap;
+    const num = fitText(ctx, c.marker ? c.rate : c.count, max, p => `700 ${p}px ${th.display}`, Math.round(H * 0.62), 14);
+    ctx.font = num.font; ctx.fillStyle = c.fixed && !c.marker ? th.ficsitSoft : th.ink;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(num.s, x + max / 2, H / 2);
+    ctx.restore();
+    return;
+  }
+
   // Cabeçalho: ícone do prédio, nome (até 2 linhas) e o prédio com o selo Alt; à direita o número. Na receita as portas
   // ficam na altura do cabeçalho: a folga dos lados é a metade da porta (44 px de tela) que entra no cartão, mais 6 px,
   // no referencial do cartão (de longe as portas somem: no máximo 44).
@@ -66,7 +83,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
     ctx.fillText(num.s, W - pad, 34);
     const nw = ctx.measureText(num.s).width;
     ctx.font = `11px ${th.body}`; ctx.fillStyle = c.fixed ? th.ficsitSoft : th.inkSoft;
-    const lab = t(c.fixed ? 'plCardFixed' : 'plCardMachines');
+    const lab = c.sub || t(c.fixed ? 'plCardFixed' : 'plCardMachines');
     ctx.fillText(lab, W - pad, 47);
     if (c.clock) { ctx.fillStyle = th.holo; ctx.fillText(c.clock, W - pad, 58); }
     right = W - pad - Math.max(nw, ctx.measureText(lab).width) - 8;

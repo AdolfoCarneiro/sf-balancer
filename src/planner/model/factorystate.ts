@@ -7,7 +7,7 @@ import { cleanLayout } from './layout.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
-  setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
+  setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
@@ -61,6 +61,7 @@ export type Action =
   | { type: 'setTier'; id: StageId; side: Side; item: ItemId; tier: string | null }
   | { type: 'setCollect'; id: StageId; item: ItemId; on: boolean }
   | { type: 'setMinerRate'; id: StageId; rate: number }
+  | { type: 'setInputRate'; id: StageId; rate: number | null }
   | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity }
   // Posições: na vista dada (sem ela, a Planta). together: "Mover junto" (o mesmo deslocamento na outra vista); auto e
   // shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
@@ -72,7 +73,9 @@ export type Action =
   | { type: 'setMapGap'; gap: number | null }
   | { type: 'undo' }
   | { type: 'redo' }
-  | { type: 'load'; factory: Factory };
+  | { type: 'load'; factory: Factory }
+  // Abrir outra fábrica da lista: o histórico começa de novo (desfazer não volta para a outra).
+  | { type: 'reset'; factory: Factory };
 
 export const encodeFactory = (f: Factory): string => encodeShare(f);
 
@@ -154,6 +157,9 @@ function cleanBlock(r: Record<string, any>, id: StageId, data: GameData): Block 
       const purity: Purity = data.extractors[r.building].purity && typeof r.purity === 'string' && Object.hasOwn(PURITY, r.purity) ? r.purity as Purity : 'normal';
       return { id, kind: 'extractor', building: r.building, item: r.item, purity, count: countOk(r.count) ? r.count : null };
     }
+    case 'input':
+      return typeof r.item === 'string' && Object.hasOwn(data.items, r.item) && (r.rate === null || rateOk(r.rate))
+        ? { id, kind: 'input', item: r.item, rate: r.rate } : null;
     case 'sink': case 'container': case 'export': return { id, kind: r.kind };
     default: return null;
   }
@@ -216,7 +222,7 @@ const view = (v: unknown): PlaceView => (v === 'montar' ? 'montar' : 'planta');
 
 const omitAlts = (f: Factory): Factory => { const { alts: _a, ...rest } = f; return rest; };
 
-function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }>, d: GameData): Factory {
+function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' | 'reset' }>, d: GameData): Factory {
   switch (a.type) {
     case 'addBlock': return addBlock(f, d, a.spec, a.at);
     case 'addLinkedBlock': return addLinkedBlock(f, d, a.spec, a.port, a.at);
@@ -246,6 +252,7 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     case 'setTier': return setTier(f, d, a.id, a.side, a.item, a.tier);
     case 'setCollect': return setCollect(f, d, a.id, a.item, a.on);
     case 'setMinerRate': return setMinerRate(f, a.id, a.rate);
+    case 'setInputRate': return setInputRate(f, a.id, a.rate);
     case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity });
     case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { together: a.together === true, shown: a.shown });
     case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { together: a.together === true, auto: a.auto });
@@ -273,6 +280,7 @@ export function reduce(hist: History<Factory>, action: Action, data: GameData): 
     case 'undo': return historyUndo(hist);
     case 'redo': return historyRedo(hist);
     case 'load': return historyPush(hist, action.factory);
+    case 'reset': return historyNew(action.factory);
     default: return historyPush(hist, apply(hist.present, action, data));
   }
 }

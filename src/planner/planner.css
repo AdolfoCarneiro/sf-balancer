@@ -379,6 +379,29 @@ select.pl-field { width: auto; }
 .pl-pick-item { display: inline-flex; align-items: center; gap: 4px; }
 .pl-pick-item b { font: 600 12px var(--display); color: var(--ink); }
 .pl-pick-item img { display: block; }
+.pl-pick-list ul.pl-pick-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 3px; }
+.pl-pick-tile { gap: 8px; min-height: 44px; padding: 5px 8px; }
+.pl-pick-tile b { font-size: 13px; line-height: 1.2; }
+.pl-pick-tile .pl-pick-sub { font-size: 11px; }
+.pl-pick-title { display: flex; align-items: center; gap: 10px; }
+/* Fábricas: o botão no topo (a aberta) e a lista. */
+.pl-libs-btn { max-width: 220px; }
+.pl-libs-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-libs { width: min(640px, calc(100vw - 32px)); }
+.pl-libs-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; }
+.pl-libs-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px; background: var(--plate); border-left: 3px solid transparent; }
+.pl-libs-list li.cur { border-left-color: var(--ficsit); }
+.pl-libs-open { flex: 1 1 200px; min-height: 44px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 6px; background: transparent; border: 0; color: var(--ink); text-align: left; cursor: pointer; min-width: 0; }
+.pl-libs-open b { font: 600 15px var(--display); overflow-wrap: anywhere; }
+.pl-libs-open span { font-size: 12px; color: var(--ink-soft); }
+.pl-libs-open:hover b { color: var(--ficsit); }
+.pl-libs-open:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+.pl-libs-name { flex: 1 1 200px; display: flex; gap: 6px; }
+.pl-libs-name input { flex: 1; min-height: 44px; padding: 0 10px; background: var(--paper); border: 1px solid var(--ficsit); color: var(--ink); font: 15px var(--body); }
+.pl-libs-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-pick-back { min-height: 44px; padding: 0 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); font: 600 13px var(--body); cursor: pointer; }
+.pl-pick-back:hover { border-color: var(--ink-dim); }
+.pl-pick-back:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
 
 /* Painel do bloco: cabeçalho com ícone, avisos do fluxo e limites (calculado em texto normal; fixado em destaque). */
 .pl-bp-head { display: flex; align-items: center; gap: 12px; }
@@ -473,27 +496,26 @@ select.pl-field { width: auto; }
   .pl-chip-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 64px; width: auto; max-width: none; }
 }
 
-/* Faixa Balanço: o que entra, sai e vai pro sink; à direita, os botões de faltas e sobras. */
+/* Faixa Balanço: o que entra, sai e vai pro sink numa linha só (os totais rolam de lado, para o mapa ficar com a altura);
+   à direita, presos, os botões de faltas e sobras. */
 .pl-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.pl-bal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; padding: 6px 16px; background: var(--paper); border-bottom: 1px solid var(--line); min-width: 0; }
-.pl-bal-grp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+.pl-bal { position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 22px; padding: 4px 0 4px 16px; overflow-x: auto; background: var(--paper); border-bottom: 1px solid var(--line); min-width: 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.pl-bal-grp { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 12px; }
 .pl-bal-lbl { font: 600 13px var(--display); color: var(--ink-soft); }
 .pl-bal-none { color: var(--ink-dim); }
 .pl-bal-it { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .pl-bal-it img, .pl-bal-noicon { width: 22px; height: 22px; flex: none; }
 .pl-bal-it b { font: 600 14px var(--display); color: var(--ink); }
-.pl-bal-probs { display: flex; gap: 8px; margin-left: auto; }
+.pl-bal-probs { position: sticky; right: 0; display: flex; flex: none; gap: 8px; margin-left: auto; padding: 0 16px 0 8px; background: var(--paper); box-shadow: -10px 0 10px -4px var(--paper); }
 .pl-bal-pb { min-height: 44px; padding: 0 14px; font: 600 14px var(--body); border: 1px solid; cursor: pointer; }
 .pl-bal-pb.def { background: var(--deficit-bg); color: var(--deficit); border-color: var(--deficit); }
 .pl-bal-pb.sur { background: var(--surplus-bg); color: var(--surplus); border-color: var(--surplus); }
 .pl-bal-pb.zero { background: transparent; color: var(--ink-dim); border-color: var(--line); cursor: default; }
 .pl-bal-pb:not(:disabled):hover { filter: brightness(1.2); }
 .pl-bal-pb:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
-/* No celular o balanço é uma linha só: os totais rolam de lado e os dois botões ficam presos à direita. */
 @media (max-width: 720px) {
-  .pl-bal { position: relative; flex-wrap: nowrap; overflow-x: auto; padding: 6px 0 6px 12px; gap: 14px; scrollbar-width: thin; }
-  .pl-bal-grp { flex: none; flex-wrap: nowrap; }
-  .pl-bal-probs { position: sticky; right: 0; flex: none; margin-left: auto; padding: 0 12px 0 8px; background: var(--paper); box-shadow: -10px 0 10px -4px var(--paper); }
+  .pl-bal { padding-left: 12px; gap: 14px; }
+  .pl-bal-probs { padding-right: 12px; }
   .pl-bal-pb { padding: 0 10px; }
 }
 

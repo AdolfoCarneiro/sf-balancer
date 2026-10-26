@@ -17,7 +17,7 @@ export type Rot = 0 | 1 | 2 | 3;
 export interface MapPlace { x: number; y: number; rot: Rot; gapRow?: number; gapMachine?: number }
 
 // Estado v2 (fase 3): a fábrica em blocos.
-export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'sink' | 'container' | 'export';
+export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'input' | 'sink' | 'container' | 'export';
 export type Purity = 'impure' | 'normal' | 'pure';
 // Valores fixados pelo usuário; ausente = livre (o solver calcula). Os dois podem coexistir.
 export interface Limits { machines?: number; inputs?: Record<ItemId, number> }
@@ -39,8 +39,13 @@ export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; cl
 export interface MinerBlock { id: StageId; kind: 'miner'; item: ItemId; rate: number }
 // count null = a ferramenta calcula quantos extratores.
 export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null }
+// Entrada (Container ou trem): qualquer item vindo de fora da fábrica; rate null = sem limite (dá o que pedirem).
+export interface InputBlock { id: StageId; kind: 'input'; item: ItemId; rate: number | null }
 export interface OutletBlock { id: StageId; kind: 'sink' | 'container' | 'export' }
-export type Block = RecipeBlock | MinerBlock | ExtractorBlock | OutletBlock;
+export type Block = RecipeBlock | MinerBlock | ExtractorBlock | InputBlock | OutletBlock;
+// Origem: um bloco sem entradas que entrega um item (Miner, extrator, Entrada).
+export const isSource = (b: Block): b is MinerBlock | ExtractorBlock | InputBlock =>
+  b.kind === 'miner' || b.kind === 'extractor' || b.kind === 'input';
 // Posição livre da ligação (meio) no mapa, presa na grade de 8 m.
 export interface LigPlace { x: number; y: number; rot: Rot }
 // map: posição de cada bloco no mapa; alts: id do meio -> `key` da montagem escolhida; mapGap: vão entre peças ligadas

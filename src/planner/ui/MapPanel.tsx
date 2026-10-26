@@ -4,7 +4,7 @@
 // No desktop o MapView decide se o painel aparece; no celular (≤ 720 px) ele é uma folha de baixo com alça.
 import { useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import type { Factory, GameData, MapPlace, StageId } from '../model/types.ts';
+import { isSource, type Factory, type GameData, type MapPlace, type StageId } from '../model/types.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Action } from '../model/factorystate.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
@@ -54,6 +54,7 @@ interface Props {
   onScale: (id: StageId) => void; onMontar: () => void;
   onSeeLig: (id: string) => void; onSwap: (id: string, key: string) => void; onUnlink: (id: string) => void;
   onImportFile: (f: File) => void;   // importar do Modeler (o App mostra o resumo)
+  onSplit: (ids: StageId[]) => void;   // separar a seleção numa fábrica nova
 }
 
 export function MapPanel(p: Props) {
@@ -137,8 +138,9 @@ export function MapPanel(p: Props) {
   );
 }
 
-// Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer) e limpar a seleção.
-function ManyPanel({ ids, stageName, onDeleteMany, onClearSel }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
+// Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer), separar numa fábrica
+// nova e limpar a seleção.
+function ManyPanel({ ids, stageName, onDeleteMany, onClearSel, onSplit }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
   const n = fmt(ids.length, 0);
   return (
     <>
@@ -149,8 +151,10 @@ function ManyPanel({ ids, stageName, onDeleteMany, onClearSel }: Props & { ids: 
       </ul>
       <div className="pl-sel-acts">
         <button type="button" className="pl-btn pl-danger" onClick={() => onDeleteMany(ids)}>{t('plSelDelete', n)}</button>
+        <button type="button" className="pl-btn" onClick={() => onSplit(ids)}>{t('plSplit')}</button>
         <button type="button" className="pl-btn" onClick={onClearSel}>{t('plSelClear')}</button>
       </div>
+      <p className="pl-note">{t('plSplitHint')}</p>
     </>
   );
 }
@@ -262,7 +266,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
               const bf = flow.blocks[b.id], ic = b.kind === 'recipe' ? data.recipes[b.recipe]?.building ?? null : blockIcon(b, data);
               const url = ic ? iconUrl(ic) : null, k = dot(b.id);
               const sub = b.kind === 'recipe' ? data.buildings[data.recipes[b.recipe]?.building]?.name ?? ''
-                : (b.kind === 'miner' || b.kind === 'extractor' ? bf?.outs : bf?.ins)?.map(x => (x.rate === null ? t('plUnbounded') : rateText(data.items[x.item], x.rate))).join(', ') ?? '';
+                : (isSource(b) ? bf?.outs : bf?.ins)?.map(x => (x.rate === null ? t('plUnbounded') : rateText(data.items[x.item], x.rate))).join(', ') ?? '';
               return (
                 <li key={b.id}>
                   <button type="button" className="pl-map-block" onClick={() => onGo({ kind: 'stage', id: b.id })}

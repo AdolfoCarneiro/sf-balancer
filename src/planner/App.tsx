@@ -12,6 +12,8 @@ import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
 import { ImportDialog, useImportToast } from './ui/ImportModeler.tsx';
+import { FactoriesDialog } from './ui/Factories.tsx';
+import { splitFactory } from './model/library.ts';
 import { stagesSel, type Selection, type ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { Tour } from './ui/Tour.tsx';
@@ -50,7 +52,8 @@ export function App() {
     setLangState(l);
   };
 
-  const { factory: f, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
+  const { factory: f, dispatch, canUndo, canRedo, shareUrl, lib, libOps } = usePlanner(data);
+  const [libsOpen, setLibsOpen] = useState(false);
   if (DEBUG && (window as unknown as { __sfPlannerCrash?: boolean }).__sfPlannerCrash) throw new Error('debug: __sfPlannerCrash');
   // O fluxo: no worker, com cache por componente; enquanto calcula, o último pronto.
   const { flow, pending } = useFlowState(f, data);
@@ -118,10 +121,24 @@ export function App() {
   const [impFile, setImpFile] = useState<File | null>(null);
   // O loop travado só conta com o fluxo da fábrica nova já calculado (pending: ainda é o da anterior).
   const impToast = useImportToast(!pending && flow.deadlock.length > 0);
+  // Outra fábrica da lista aberta: o mapa carrega (histórico novo) e enquadra tudo.
+  const loadFactory = (nf: Factory) => { setOpenStage(null); mapRef.current?.openFactory(nf); };
+  // Importar do Modeler cria uma fábrica nova na lista, com o nome do arquivo; a de antes fica salva lá.
   const importFactory = (nf: Factory, r: SfmdReport) => {
-    setOpenStage(null);
-    mapRef.current?.importFactory(nf);
+    const name = (impFile?.name ?? '').replace(/\.sfmd$/i, '').trim() || t('plFactoryNewName');
+    const made = libOps.create(name, nf);
+    if (!made) { alert(t('plFactoryFull')); return; }
+    loadFactory(made);
     impToast.show(r);
+  };
+  // Separar a seleção: a parte vira uma fábrica nova (aberta) e a de agora fica sem ela, com Entrada e Saída no corte.
+  const splitSel = (ids: string[]) => {
+    const r = splitFactory(f, ids, data);
+    if (!r) return;
+    const cur = lib.items.find(e => e.id === lib.current)?.name ?? '';
+    const made = libOps.create(t('plSplitName', cur), r.part, r.rest);
+    if (!made) { alert(t('plFactoryFull')); return; }
+    loadFactory(made);
   };
   const goProblem = (kind: 'deficit' | 'surplus'): PortState | null => {
     const n = nextProblem(balance.problems, kind, probIdx.current[kind]);
@@ -157,12 +174,13 @@ export function App() {
     <div className="pl-app">
       <Header lang={lang} onLang={change} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
-        view={view} onView={setView} onImportFile={setImpFile} />
+        view={view} onView={setView} onImportFile={setImpFile}
+        factoryName={lib.items.find(e => e.id === lib.current)?.name ?? ''} onFactories={() => setLibsOpen(true)} />
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} problems={balance.problems}
-          onImportFile={setImpFile} />
+          onImportFile={setImpFile} onSplit={splitSel} />
       </div>
       {openStage && (
         <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}
@@ -174,6 +192,7 @@ export function App() {
             dispatch={dispatch} onClose={closeLig} mapView={view} onUnlink={unlinkIn} />
         </Suspense>
       )}
+      {libsOpen && <FactoriesDialog lib={lib} ops={libOps} data={data} onLoad={loadFactory} onClose={() => setLibsOpen(false)} />}
       {impFile && <ImportDialog key={impFile.name + impFile.lastModified + impFile.size} file={impFile} data={data} onImport={importFactory} onClose={() => setImpFile(null)} />}
       {impToast.toast}
       <Tour />

@@ -7,7 +7,7 @@
 // continuam pegáveis (arrastar para o vazio abre o seletor); arrastar um bloco na Planta não mexe no cartão da Montar
 // (cada vista com as suas posições); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
 // Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
-// importar duo.sfmd (input de arquivo) cria os 6 blocos e um Ctrl+Z volta;
+// importar duo.sfmd (input de arquivo) cria os 6 blocos numa fábrica nova e "Factories" volta para a de antes;
 // Camadas "Machines only" tira portas e chips; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
@@ -279,7 +279,7 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   must(Object.values(await saved()).every(v => v === true), 'as camadas não voltaram');
   await pg.keyboard.press('Escape');
 });
-await step('importar duo.sfmd pelo input de arquivo cria os blocos; um Ctrl+Z volta', async () => {
+await step('importar duo.sfmd pelo input de arquivo cria uma fábrica nova; Factories volta para a de antes', async () => {
   await pg.goto(`${base}/?debug=1`, { waitUntil: 'load' });
   await waitFor(() => !!window.__sfPlanner, null, 'window.__sfPlanner');
   await settled();
@@ -289,7 +289,10 @@ await step('importar duo.sfmd pelo input de arquivo cria os blocos; um Ctrl+Z vo
   await pg.locator('dialog.pl-imp .pl-primary').click();
   await nBlocks(6);
   await pg.locator('.pl-imp-done').waitFor({ state: 'attached' });
-  await pg.keyboard.press('Control+z');
+  // A de antes continua na lista: abrir pelo botão Factories.
+  await pg.locator('.pl-libs-btn').click();
+  await pg.waitForSelector('dialog.pl-libs[open]', { timeout: 5000 });
+  await pg.locator('dialog.pl-libs .pl-libs-open:not([aria-current])').first().click();
   await nBlocks(before);
 });
 await step('/#s= antigo cai em /balancer', async () => {

@@ -24,6 +24,7 @@ export type BlockSpec =
   | { kind: 'recipe'; recipe: RecipeId }
   | { kind: 'miner'; item: ItemId }
   | { kind: 'extractor'; building: BuildingId; item: ItemId }
+  | { kind: 'input'; item: ItemId }
   | { kind: 'sink' | 'container' | 'export' };
 
 const nextId = (ids: string[], p: string) => p + (Math.max(0, ...ids.map(id => (id.match(new RegExp(`^${p}(\\d+)$`)) ?? [])[1]).filter(Boolean).map(Number)) + 1);
@@ -80,7 +81,7 @@ const withOpt = (b: RecipeBlock, limits: Limits | undefined, collect: ItemId[] |
 export function portsOf(b: Block, d: GameData): { ins: ItemId[] | 'any' | 'solid'; outs: ItemId[] } {
   switch (b.kind) {
     case 'recipe': { const r = d.recipes[b.recipe]; return { ins: r.ins.map(f => f.item), outs: r.outs.map(f => f.item) }; }
-    case 'miner': case 'extractor': return { ins: [], outs: [b.item] };
+    case 'miner': case 'extractor': case 'input': return { ins: [], outs: [b.item] };
     case 'sink': return { ins: 'solid', outs: [] };
     default: return { ins: 'any', outs: [] };
   }
@@ -99,6 +100,7 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
     case 'miner': return minable(d, spec.item) ? { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT } : null;
     case 'extractor': return extractable(d, spec.building, spec.item)
       ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: null } : null;
+    case 'input': return typeof spec.item === 'string' && own(d.items, spec.item) ? { id, kind: 'input', item: spec.item, rate: null } : null;
     case 'sink': case 'container': case 'export': return { id, kind: spec.kind };
     default: return null;
   }
@@ -246,6 +248,13 @@ export function setMinerRate(f: Factory, id: StageId, rate: number): Factory {
   const b = get(f, id);
   if (b?.kind !== 'miner' || !rateOk(rate)) return f;
   return { ...f, blocks: f.blocks.map(x => (x.id === id ? { ...(x as MinerBlock), rate } : x)) };
+}
+
+// Limite da Entrada: taxa válida ou null (sem limite).
+export function setInputRate(f: Factory, id: StageId, rate: number | null): Factory {
+  const b = get(f, id);
+  if (b?.kind !== 'input' || (rate !== null && !rateOk(rate))) return f;
+  return { ...f, blocks: f.blocks.map(x => (x.id === id ? { ...b, rate } : x)) };
 }
 
 // count: inteiro 1..MAX_EXTRACTORS ou null (a ferramenta calcula); purity só se o extrator tem pureza.

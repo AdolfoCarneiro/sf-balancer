@@ -244,3 +244,46 @@ test('rocket fuel factory.sfmd: nenhum cartão da Montar em cima de outro em zoo
     if (raw[i].X < raw[j].X) assert.ok(f.montar![a.id].x <= f.montar![b.id].x, `${a.id} à esquerda de ${b.id}`);
   }));
 });
+
+test('Splurger e Container com quem puxa viram ligação direta; Container vazio vira Entrada; [índice, nº da saída] não liga no nó 0', () => {
+  const { factory: f, report } = ok(JSON.stringify({ Data: [
+    { Name: 'Crude Oil', X: 0, Y: 0, Max: '120' },
+    { Name: 'Iron Ore', X: 0, Y: 100, Max: '480' },
+    { Name: 'Iron Ore', X: 0, Y: 200, Max: '480' },
+    { Name: 'Splurger', X: 100, Y: 100, Inputs: [[[1, 'Iron Ore'], [2, 'Iron Ore']]] },
+    { Name: 'Iron Ingot', X: 200, Y: 100, Inputs: { 'Iron Ore': [[3, 0]] } },
+    { Name: 'Storage Container', X: 300, Y: 100, Inputs: [[[4, 'Iron Ingot']]] },
+    { Name: 'Iron Rod', X: 400, Y: 100, Inputs: { 'Iron Ingot': [[5, 0, [[350, 120]]]] } },
+    { Name: 'Storage Container', X: 400, Y: 200, Inputs: [[[3, 0]]] },
+    { Name: 'Storage Container', X: 300, Y: 300, Inputs: [[]] },
+    { Name: 'Iron Plate', X: 400, Y: 300, Inputs: { 'Iron Ingot': [[8, [[350, 320]]]] } },
+  ] }));
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'miner', 'miner', 'Iron Ingot', 'Iron Rod', 'container', 'Iron Plate', 'input']);
+  const [, m1, m2, ingot, rod, box, plate, inp] = f.blocks;
+  assert.deepEqual(inp, { id: inp.id, kind: 'input', item: 'Desc_IronIngot_C', rate: null });
+  // No lugar do Container vazio.
+  assert.ok(f.montar![inp.id].x < f.montar![plate.id].x);
+  assert.deepEqual(edges(f), [
+    `${m1.id}>${ingot.id}:Iron Ore`, `${m2.id}>${ingot.id}:Iron Ore`, `${ingot.id}>${rod.id}:Iron Ingot`,
+    `${m1.id}>${box.id}:Iron Ore`, `${m2.id}>${box.id}:Iron Ore`, `${inp.id}>${plate.id}:Iron Ingot`,
+  ].sort());
+  assert.deepEqual(report.skipped, []);
+  assert.deepEqual(report.ignored, [
+    { kind: 'relay', name: 'Splurger' }, { kind: 'relay', name: 'Storage Container' },
+    { kind: 'emptyRelay', name: 'Storage Container' }, { kind: 'waypoints', name: '' },
+  ]);
+});
+
+test('ClockSpeed da receita vira o clock; com máquinas fracionárias, a mesma vazão', () => {
+  const { factory: f, report } = ok(JSON.stringify({ Data: [
+    { Name: 'Iron Rod', X: 0, Y: 0, Max: '1', ClockSpeed: '150' },
+    { Name: 'Iron Rod', X: 0, Y: 100, Max: '1 1/2', ClockSpeed: '200' },
+    { Name: 'Iron Rod', X: 0, Y: 200, ClockSpeed: '33.3333333333333' },
+  ] }));
+  const [a, b, c] = f.blocks as RecipeBlock[];
+  assert.deepEqual([a.limits?.machines, a.clock], [1, 150]);
+  // 1,5 máquina a 200 % = 2 máquinas a 150 %.
+  assert.deepEqual([b.limits?.machines, b.clock], [2, 150]);
+  assert.deepEqual([c.limits, c.clock], [undefined, 33.3333]);
+  assert.ok(!report.ignored.some(x => x.name === 'ClockSpeed'));
+});

@@ -58,7 +58,7 @@ export function cardSpec(b: Block, d: GameData, flow: FlowResult): CardSpec {
       const r = d.recipes[b.recipe];
       return { kind: 'recipe', ins: uniq(r.ins.map(x => x.item)), outs: uniq(r.outs.map(x => x.item)) };
     }
-    case 'miner': case 'extractor': return { kind: 'marker', ins: [], outs: [b.item] };
+    case 'miner': case 'extractor': case 'input': return { kind: 'marker', ins: [], outs: [b.item] };
     default: return { kind: 'marker', ins: uniq((bf?.ins ?? []).map(p => p.item)), outs: [] };
   }
 }
@@ -203,9 +203,10 @@ export function switchCam(v: ViewGeo, cam: Camera, vw: number, vh: number, sel: 
 // folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.
 export const PORT_LABEL_ROOM = 104;
 // Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas e os rótulos
-// delas por fora, e os chips postos (no lugar da Montar). Vazio sem blocos.
+// delas por fora (de longe, sem portas na tela, sem essa folga), e os chips postos (no lugar da Montar). Vazio sem blocos.
 export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: FlowResult, z: number, phone: boolean): Rect {
-  const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b])), m = (PORT_D / 2 + PORT_LABEL_ROOM) / z;
+  const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b]));
+  const m = montarFar(0, z) ? 0 : (PORT_D / 2 + PORT_LABEL_ROOM) / z;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const add = (ax: number, ay: number, bx: number, by: number) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, bx); y1 = Math.max(y1, by); };
   for (const sb of scene.blocks) {

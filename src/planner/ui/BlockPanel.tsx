@@ -9,8 +9,9 @@ import { MAX_EXTRACTORS, MAX_MACHINES, countOk, machinesOk, rateOk } from '../mo
 import { blockBadges, limitView } from '../model/badges.ts';
 import type { BlockFlow, FlowResult } from '../model/solve.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
+import { isSource } from '../model/types.ts';
 import type {
-  Block, ExtractorBlock, Factory, GameData, ItemId, Limits, MapPlace, MinerBlock, Purity, RecipeBlock, Rot,
+  Block, ExtractorBlock, Factory, GameData, InputBlock, ItemId, Limits, MapPlace, MinerBlock, Purity, RecipeBlock, Rot,
 } from '../model/types.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
 import { rotated } from '../model/map/edit.ts';
@@ -41,6 +42,7 @@ function buildingOf(b: Block, data: GameData): string {
   switch (b.kind) {
     case 'recipe': { const r = data.recipes[b.recipe]; return r ? data.buildings[r.building]?.name ?? r.building : ''; }
     case 'miner': return t('plMiner');
+    case 'input': return t('plInputSub');
     case 'extractor': return data.extractors[b.building]?.name ?? b.building;
     default: return '';
   }
@@ -86,7 +88,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       onCommit={n => onPlace({ ...place, [k]: n })} />
   );
   const building = buildingOf(b, data);
-  const title = b.kind === 'miner' || b.kind === 'extractor' ? data.items[b.item]?.name ?? b.item : blockName(b, data);
+  const title = isSource(b) ? data.items[b.item]?.name ?? b.item : blockName(b, data);
   const runFix = (p: PortState, x: Fix) => (x.action ? dispatch(x.action) : onCreate(p));
   const fixText = (p: PortState, x: Fix) => {
     switch (x.key) {
@@ -94,7 +96,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       case 'plFixRaise': {
         // A fonte a montante: a taxa da Miner (com unidade) ou a quantidade de extratores ou de máquinas.
         const up = f.blocks.find(s => s.id === (x.action && 'id' in x.action ? x.action.id : ''));
-        if (up?.kind === 'miner') return t('plFixRaise', rateText(data.items[p.item], x.n ?? 0));
+        if (up?.kind === 'miner' || up?.kind === 'input') return t('plFixRaise', rateText(data.items[p.item], x.n ?? 0));
         return t(up?.kind === 'extractor' ? 'plFixRaiseExtractors' : 'plFixRaiseMachines', fmt(x.n ?? 0, 0));
       }
       case 'plFixCreate': return t('plFixCreate', p.side);
@@ -153,6 +155,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       {b.kind === 'recipe' && <RecipeFields b={b} bf={bf} f={f} data={data} dispatch={dispatch} />}
       {b.kind === 'miner' && <MinerFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
+      {b.kind === 'input' && <InputFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       <section className="pl-bp-sec" aria-labelledby="pl-bp-map">
         <h3 className="pl-insp-h" id="pl-bp-map">{t('plBpMap')}</h3>
         <fieldset className="pl-seg">
@@ -267,6 +270,21 @@ function MinerFields({ b, bf, data, dispatch }: { b: MinerBlock; bf: BlockFlow |
       <NumField label={t('plMinerRate')} value={b.rate} valid={rateOk} bad={t('plRateBad')} className="pl-row"
         onCommit={n => dispatch({ type: 'setMinerRate', id: b.id, rate: n })} />
       {out && out.rate !== null && <p className="pl-note">{t('plPortOut', data.items[b.item]?.name ?? b.item)}: {rateText(data.items[b.item], out.rate)}</p>}
+    </>
+  );
+}
+
+// Entrada: sem limite (dá o que pedirem, e o campo mostra quanto está dando) ou com um limite por minuto.
+function InputFields({ b, bf, data, dispatch }: { b: InputBlock; bf: BlockFlow | undefined; data: GameData; dispatch: (a: Action) => void }) {
+  const fixed = b.rate !== null, out = bf?.outs[0], item = data.items[b.item];
+  const now = out && out.rate !== null ? out.rate : null;
+  return (
+    <>
+      <LimitField label={t('plInputRate')} value={fixed ? b.rate : now} fixed={fixed} valid={rateOk} bad={t('plRateBad')}
+        unbounded={!!bf?.unbounded} note={!fixed && now !== null ? t('plInputGives', rateText(item, now)) : undefined}
+        onCommit={n => dispatch({ type: 'setInputRate', id: b.id, rate: n })}
+        onReset={() => dispatch({ type: 'setInputRate', id: b.id, rate: null })} />
+      {fixed && now !== null && <p className="pl-note">{t('plPortOut', item?.name ?? b.item)}: {rateText(item, now)}</p>}
     </>
   );
 }

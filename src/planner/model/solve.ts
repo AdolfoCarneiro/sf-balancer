@@ -48,8 +48,8 @@ function build(f: Factory, d: GameData) {
           outs: r.outs.map(x => ({ item: x.item, b: x.perMin, links: [], mode: 'stall' as const })),
         };
       }
-      case 'miner':
-        return { block: b, U0: b.rate, outlet: false, limited: false, mult: 1, ins: [], outs: [{ item: b.item, b: 1, links: [], mode: 'stall' }] };
+      case 'miner': case 'input':
+        return { block: b, U0: b.rate ?? INF, outlet: false, limited: false, mult: 1, ins: [], outs: [{ item: b.item, b: 1, links: [], mode: 'stall' }] };
       case 'extractor': {
         const e = d.extractors[b.building];
         const mult = e.perMin * (e.purity ? PURITY[b.purity] : 1);
@@ -127,17 +127,26 @@ const ceilTol = (v: number) => Math.ceil(v * (1 - REL));
 
 type Net = ReturnType<typeof build>;
 
-// Ponto fixo a partir do máximo, todo bloco com o estado da volta anterior (Jacobi). damp: fração do passo que o tamanho
-// anda por volta (1 = inteiro). Para cedo quando o estado volta exatamente ao de duas voltas atrás (ciclo de período 2:
-// não converge nunca).
-function iterate({ nodes, edges, groups }: Net, damp: number) {
+// Estado de uma volta: tamanho de cada bloco, o que chega e o que escoa por porta, e o fluxo dos links.
+interface State { x: Float64Array; intake: number[][]; accOut: number[][]; flow: Float64Array }
+
+// Ponto fixo a partir do máximo (ou de `seed`), todo bloco com o estado da volta anterior (Jacobi). damp: fração do
+// passo que o tamanho anda por volta (1 = inteiro). Para cedo quando o estado volta exatamente ao de duas voltas atrás
+// (ciclo de período 2: não converge nunca).
+// pot: o quanto uma entrada pede olha o que as outras entradas do bloco *poderiam* receber (o potencial das produtoras:
+// o que fariam só pelo que existe antes delas, sem olhar quem aceita nem quem mais puxa delas), não só o que chega
+// agora. Sem isso, duas entradas que começam baixas seguram uma à outra (Silica só até onde chega Copper Sheet e
+// vice-versa, por vários blocos acima) e o bloco nunca cresce, mesmo com minério sobrando. É otimista de propósito e só
+// serve para achar o estado alto: o resultado sai de uma volta normal partindo dele (solveFactory).
+// ask: blocos (índice) que pedem, em cada entrada, um número fixo do que poderia chegar, em vez do que chega (destravar).
+function iterate({ nodes, edges, groups }: Net, damp: number, pot = false, seed?: State, ask?: Map<number, number[]>) {
   const n = nodes.length;
   // Estado: começa no máximo. intake/accOut por porta; o que não é ligado não muda.
-  const x = new Float64Array(n);
-  const intake = nodes.map(nd => nd.ins.map(p => (p.links.length ? INF : (p.limit ?? INF))));
-  const accOut = nodes.map(nd => nd.outs.map(p => (p.mode === 'stall' ? 0 : INF)));
+  const x = seed ? Float64Array.from(seed.x) : new Float64Array(n);
+  const intake = seed ? seed.intake.map(r => [...r]) : nodes.map(nd => nd.ins.map(p => (p.links.length ? INF : (p.limit ?? INF))));
+  const accOut = seed ? seed.accOut.map(r => [...r]) : nodes.map(nd => nd.outs.map(p => (p.mode === 'stall' ? 0 : INF)));
   const cap = nodes.map(nd => nd.ins.map(() => INF));
-  let flow = new Float64Array(edges.length);
+  let flow = seed ? Float64Array.from(seed.flow) : new Float64Array(edges.length);
   const supOf = (i: number) => nodes[i].ins.reduce((m, p, k) => Math.min(m, intake[i][k] / p.a), INF);
   const accOf = (i: number) => nodes[i].outs.reduce((m, p, j) => Math.min(m, accOut[i][j] / p.b), INF);
   const xOf = (i: number) => {
@@ -145,13 +154,31 @@ function iterate({ nodes, edges, groups }: Net, damp: number) {
     if (nd.outlet) return intake[i].reduce((s, v) => s + v, 0);
     return snap(Math.min(nd.U0, supOf(i), accOf(i)));
   };
-  for (let i = 0; i < n; i++) x[i] = nodes[i].outlet ? 0 : nodes[i].U0;
+  if (!seed) for (let i = 0; i < n; i++) x[i] = nodes[i].outlet ? 0 : nodes[i].U0;
+  // Potencial de cada bloco (só com `pot`, atualizado a cada volta pelo da volta anterior): o tamanho que ele teria
+  // só pelo que existe antes dele. reach: o que uma entrada ligada poderia receber, a soma do potencial das produtoras.
+  let potTop = nodes.map(nd => nd.U0);
+  const reachOf = (top: number[], i: number, k: number) => {
+    const p = nodes[i].ins[k];
+    if (!p.links.length) return intake[i][k];
+    let v = 0;
+    const seen = new Set<string>();
+    for (const e of p.links) {
+      const E = edges[e], key = `${E.from}:${E.out}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      v += nodes[E.from].outs[E.out].b * top[E.from];
+    }
+    return v;
+  };
+  const reach = (i: number, k: number) => (pot ? reachOf(potTop, i, k) : ask?.get(i)?.[k] ?? intake[i][k]);
   const snapshot = () => [...x, ...intake.flat(), ...accOut.flat()];
   let back2: number[] | null = null, back1: number[] | null = null;
 
   let iterations = 0, converged = false;
   while (iterations < MAX_ITER) {
     iterations++;
+    if (pot) potTop = nodes.map((nd, i) => (nd.outlet ? INF : nd.ins.reduce((m, p, k) => Math.min(m, reachOf(potTop, i, k) / p.a), nd.U0)));
     // 1. Capacidade de cada entrada ligada: o máximo que o bloco consome com as outras entradas e as saídas de agora.
     for (let i = 0; i < n; i++) {
       const nd = nodes[i];
@@ -160,7 +187,7 @@ function iterate({ nodes, edges, groups }: Net, damp: number) {
       nd.ins.forEach((p, k) => {
         if (!p.links.length) return;
         let supEx = INF;
-        nd.ins.forEach((q, m) => { if (m !== k) supEx = Math.min(supEx, intake[i][m] / q.a); });
+        nd.ins.forEach((q, m) => { if (m !== k) supEx = Math.min(supEx, reach(i, m) / q.a); });
         cap[i][k] = p.a * Math.min(nd.U0, supEx, acc);
       });
     }
@@ -172,7 +199,8 @@ function iterate({ nodes, edges, groups }: Net, damp: number) {
       fill(g.ls.filter(l => remC[l.c] !== INF), remP, remC, next);
       fill(g.ls.filter(l => remC[l.c] === INF), remP, remC, next);
     }
-    // 3. O que chega e o que escoa em cada porta ligada.
+    // 3. O que chega e o que escoa em cada porta ligada (o que muda no escoar também conta para parar).
+    let accMoved = false;
     for (let i = 0; i < n; i++) nodes[i].ins.forEach((p, k) => { if (p.links.length) intake[i][k] = p.links.reduce((s, e) => s + next[e], 0); });
     for (let i = 0; i < n; i++) nodes[i].outs.forEach((p, j) => {
       if (p.mode !== 'linked') return;
@@ -183,10 +211,12 @@ function iterate({ nodes, edges, groups }: Net, damp: number) {
         const E = edges[e], k = `${E.to}:${E.inp}`;
         if (!seen.has(k)) { seen.add(k); acc += cap[E.to][E.inp] === INF ? INF : cap[E.to][E.inp] - intake[E.to][E.inp]; }
       }
-      accOut[i][j] = Math.max(0, acc);
+      const v = Math.max(0, acc);
+      if (!same(v, accOut[i][j])) accMoved = true;
+      accOut[i][j] = v;
     });
     // 4. Novo tamanho de cada bloco (com `damp` < 1, anda só uma fração do caminho; o ponto fixo é o mesmo).
-    let stable = true;
+    let stable = !accMoved;
     for (let i = 0; i < n; i++) {
       const v = xOf(i);
       if (!same(v, x[i])) stable = false;
@@ -199,18 +229,83 @@ function iterate({ nodes, edges, groups }: Net, damp: number) {
     if (back2 && now.every((v, k) => v === back2![k])) break;
     back2 = back1; back1 = now;
   }
-  return { x, intake, accOut, flow, converged, iterations, supOf, accOf };
+  return { x, intake, accOut, flow, converged, iterations, supOf, accOf } as State & { converged: boolean; iterations: number; supOf: (i: number) => number; accOf: (i: number) => number };
+}
+
+// Até onde cada bloco iria se pedissem mais, num estado resolvido: o que chega nele mais o que as produtoras dele ainda
+// dariam, descendo pela cadeia até a sobra de verdade (Miner represando, Entrada sem limite). A sobra é o que a
+// produtora faria menos o que já entrega a todos, então não conta duas vezes. Parte do teto e só desce (para no maior
+// ponto fixo; loops sem limite ficam sem limite). avail(i, k): o que a entrada k do bloco i poderia receber.
+// reclaim: o que vai para Saída, Container ou Sink conta como sobra (para achar bloco travado e para a falta: eles levam
+// o resto e são servidos por último). Sem ele (o que a própria Saída mostra), conta como entregue.
+function reachOf({ nodes, edges }: Net, st: State, reclaim = false) {
+  const top = nodes.map(nd => nd.U0);
+  const sent = nodes.map(nd => nd.outs.map(q => q.links.reduce((t, e) => t + (reclaim && nodes[edges[e].to].outlet ? 0 : st.flow[e]), 0)));
+  const spare = (i: number, j: number) => (top[i] === INF ? INF : Math.max(0, nodes[i].outs[j].b * top[i] - sent[i][j]));
+  const avail = (i: number, k: number) => {
+    const p = nodes[i].ins[k];
+    let v = st.intake[i][k];
+    const seen = new Set<string>();
+    for (const e of p.links) {
+      const E = edges[e], key = `${E.from}:${E.out}`;
+      if (!seen.has(key)) { seen.add(key); v += spare(E.from, E.out); }
+    }
+    return v;
+  };
+  for (let it = 0; it < nodes.length + 2; it++) {
+    let moved = false;
+    nodes.forEach((nd, i) => {
+      if (nd.outlet || !nd.ins.length) return;
+      const v = nd.ins.reduce((m, p, k) => Math.min(m, avail(i, k) / p.a), nd.U0);
+      if (!same(v, top[i])) { top[i] = v; moved = true; }
+    });
+    if (!moved) break;
+  }
+  return { top, spare, avail };
+}
+
+// Há bloco travado? Roda abaixo do teto sem nenhuma entrada curta de verdade (todas ainda teriam de onde vir). Acontece
+// quando duas entradas do mesmo bloco se seguram na volta normal (Smart Plating pede placa só até onde chega Rotor e
+// vice-versa, e o mesmo um degrau acima), com minério sobrando antes. Devolve, para destravar, o que cada entrada de cada
+// bloco poderia receber (fixo, deste estado); null sem travado.
+function lockedOf(net: Net, st: State): { ask: Map<number, number[]>; locked: number[] } | null {
+  const { top, avail } = reachOf(net, st, true);
+  const locked: number[] = [];
+  net.nodes.forEach((nd, i) => {
+    if (nd.outlet || !nd.ins.length || !Number.isFinite(nd.U0) || st.x[i] >= nd.U0 * (1 - 1e-6)) return;
+    const short = nd.ins.some((p, k) => p.links.length && avail(i, k) / p.a <= st.x[i] * (1 + 1e-6) + EPS);
+    if (!short && top[i] > st.x[i] * (1 + 1e-6) + EPS) locked.push(i);
+  });
+  if (!locked.length) return null;
+  const ask = new Map<number, number[]>();
+  net.nodes.forEach((nd, i) => { if (!nd.outlet && nd.ins.length) ask.set(i, nd.ins.map((p, k) => (p.links.length ? avail(i, k) : st.intake[i][k]))); });
+  return { ask, locked };
 }
 
 export function solveFactory(f: Factory, d: GameData): FlowResult {
   const net = build(f, d), { nodes, edges } = net;
   // Passo inteiro primeiro (o resultado de sempre). Se não converge (duas produtoras dividindo consumidoras limitadas
   // podem pular entre dois pontos fixos, uma volta em cada), de novo com meio passo: amortece a oscilação.
-  let st = iterate(net, 1), iterations = st.iterations;
+  // Antes, uma volta olhando o que cada entrada poderia receber (`pot`) acha o estado alto; a volta normal parte dele.
+  // Se ela não converge, parte do máximo, como sempre.
+  const hi = iterate(net, 1, true);
+  let st = iterate(net, 1, false, hi.converged ? hi : undefined), iterations = hi.iterations + st.iterations;
   if (!st.converged) {
     const alt = iterate(net, 0.5);
     iterations += alt.iterations;
     if (alt.converged) st = alt;
+  }
+  // Destravar: os blocos travados pedem, em cada entrada, o que poderia chegar (um número fixo, do estado de agora) até a
+  // cadeia acima crescer; depois uma volta normal parte daí e assenta. Se havia sobra, eles crescem; senão a conta volta
+  // ao mesmo lugar. Fica só o que convergiu e melhorou.
+  for (let round = 0; round < 4 && st.converged; round++) {
+    const lk = lockedOf(net, st);
+    if (!lk) break;
+    const up = iterate(net, 1, false, st, lk.ask);
+    const nx = up.converged ? iterate(net, 1, false, up) : up;
+    iterations += up.iterations + (nx === up ? 0 : nx.iterations);
+    if (!nx.converged || !lk.locked.some(i => nx.x[i] > st.x[i] * (1 + 1e-6) + EPS)) break;
+    st = nx;
   }
   const { x, intake, flow, converged, supOf, accOf } = st;
 
@@ -221,15 +316,16 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
   edges.forEach((E, e) => { links[E.id] = fin(snap(flow[e])); });
   const delivered = (p: OutPort) => p.links.reduce((s, e) => s + flow[e], 0);
   const tops = nodes.map((nd, i) => Math.min(nd.U0, supOf(i)));
-  // O que a produtora ainda daria nesta saída e não foi entregue (represado ou saindo livre).
-  const spare = (i: number, j: number) => {
-    const p = nodes[i].outs[j];
-    return tops[i] === INF ? INF : Math.max(0, p.b * tops[i] - delivered(p));
-  };
+  // A falta olha até onde cada produtora iria se pedissem mais (reachOf), não só o tamanho de agora: um bloco livre do
+  // tamanho exato do que pedem parece não dar mais, e quem roda menos por falta de *outra* entrada mostraria falta em todas.
+  // O que vai para Saída, Container ou Sink conta como sobra para a falta (eles só levam o resto: se a consumidora pedisse
+  // mais, viria dali); para o que a própria Saída mostra, conta como entregue (senão contaria duas vezes).
+  const forOutlet = reachOf(net, st).spare, forDeficit = reachOf(net, st, true).spare;
   nodes.forEach((nd, i) => {
     const b = nd.block, xi = x[i], acc = accOf(i), top = tops[i], want = Math.min(nd.U0, acc);
     const ins: PortFlow[] = nd.ins.map((p, k) => {
       // Falta só o que as produtoras ligadas não tinham para dar: a entrada que não está curta mostra 0.
+      const spare = nd.outlet ? forOutlet : forDeficit;
       let avail = intake[i][k];
       const seen = new Set<string>();
       for (const e of p.links) {

@@ -1,5 +1,5 @@
 // Estado de cada porta (falta, sobra, saída, travada) e o balanço da fábrica inteira. Puro: o canvas e a barra só mostram.
-import type { Factory, GameData, ItemId, StageId } from './types.ts';
+import { isSource, type Factory, type GameData, type ItemId, type StageId } from './types.ts';
 import { EPS, type BlockFlow, type FlowResult } from './solve.ts';
 
 export type PortKind = 'ok' | 'deficit' | 'surplus' | 'exit' | 'stalled';
@@ -47,7 +47,7 @@ export function factoryBalance(f: Factory, flow: FlowResult, _d: GameData): Bala
   for (const b of f.blocks) {
     const bf = flow.blocks[b.id];
     if (!bf) continue;
-    if (b.kind === 'miner' || b.kind === 'extractor') for (const p of bf.outs) ins.push({ item: p.item, rate: num(p.rate) });
+    if (isSource(b)) for (const p of bf.outs) ins.push({ item: p.item, rate: num(p.rate) });
     if (b.kind === 'recipe') {
       for (const p of bf.ins) if (!f.links.some(l => l.to === b.id && l.item === p.item)) ins.push({ item: p.item, rate: num(p.rate) });
     }

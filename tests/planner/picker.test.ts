@@ -21,16 +21,18 @@ test('seletor de uma saída fluida não oferece o Awesome Sink', () => {
   assert.ok(r.recipes.length > 0 && r.recipes.every(e => e.ins.includes('Desc_Water_C')));
 });
 
-test('seletor de uma entrada de minério: Miner; de água: Water Extractor e Resource Well Extractor', () => {
-  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special.map(e => e.spec), [{ kind: 'miner', item: 'Desc_OreIron_C' }]);
+test('seletor de uma entrada de minério: Miner; de água: Water Extractor e Resource Well Extractor; sempre a Entrada', () => {
+  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special.map(e => e.spec), [
+    { kind: 'miner', item: 'Desc_OreIron_C' }, { kind: 'input', item: 'Desc_OreIron_C' },
+  ]);
   const w = pickerEntries(data, '', { produces: 'Desc_Water_C' });
-  assert.deepEqual(w.special.map(e => e.spec).sort((a: any, b: any) => a.building.localeCompare(b.building)), [
+  assert.deepEqual(w.special.filter(e => e.spec.kind !== 'input').map(e => e.spec).sort((a: any, b: any) => a.building.localeCompare(b.building)), [
     { kind: 'extractor', building: 'Build_FrackingExtractor_C', item: 'Desc_Water_C' },
     { kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C' },
   ]);
   assert.ok(w.recipes.some(e => e.title === 'Aluminum Scrap') && w.recipes.every(e => e.outs.includes('Desc_Water_C')));
-  // Item feito por receita: nenhuma origem.
-  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_IronIngot_C' }).special, []);
+  // Item feito por receita: só a Entrada (Container ou trem).
+  assert.deepEqual(pickerEntries(data, '', { produces: 'Desc_IronIngot_C' }).special.map(e => e.spec), [{ kind: 'input', item: 'Desc_IronIngot_C' }]);
 });
 
 test('seletor sem filtro: Miner por minério sólido, extrator por item, depois Sink, Container e Saída', () => {
@@ -89,20 +91,26 @@ test('seletor de uma saída: receitas comuns primeiro, alternativas depois, Conv
   assert.ok(orn.length > 0 && orn.every(n => /FICSMAS/.test(n)));
 });
 
-test('receitas sempre primeiro, fontes e sobras depois', () => {
+test('recursos primeiro (um por item, como no Modeler), receitas no meio, sobras no fim', () => {
   const from = pickerGroups(pickerEntries(data, '', { consumes: 'Desc_IronIngot_C' }), { consumes: 'Desc_IronIngot_C' });
-  assert.deepEqual(from.map(g => g.kind), ['recipes', 'special']);
+  assert.deepEqual(from.map(g => g.kind), ['recipes', 'outlets']);
   const flat = from.flatMap(g => g.entries.map(e => e.spec.kind === 'recipe' ? e.title : e.spec.kind));
   assert.deepEqual(flat.slice(0, 2), ['Iron Plate', 'Iron Rod']);
   assert.deepEqual(flat.slice(-3), ['sink', 'container', 'export']);
   const up = pickerGroups(pickerEntries(data, '', { produces: 'Desc_Water_C' }), { produces: 'Desc_Water_C' });
-  assert.deepEqual(up.map(g => g.kind), ['recipes', 'special']);
-  // Sem filtro (duplo clique no vazio), com e sem busca: receitas primeiro também.
-  assert.deepEqual(pickerGroups(pickerEntries(data, ''), undefined).map(g => g.kind), ['recipes', 'special']);
-  assert.deepEqual(pickerGroups(pickerEntries(data, 'iron'), undefined).map(g => g.kind), ['recipes', 'special']);
+  assert.deepEqual(up.map(g => g.kind), ['sources', 'recipes']);
+  // Sem filtro (duplo clique ou botão direito no vazio), com e sem busca: recursos primeiro também.
+  const all = pickerGroups(pickerEntries(data, ''), undefined);
+  assert.deepEqual(all.map(g => g.kind), ['sources', 'recipes', 'outlets']);
+  assert.deepEqual(pickerGroups(pickerEntries(data, 'iron'), undefined).map(g => g.kind), ['sources', 'recipes']);
+  // O recurso tem o nome e o ícone do item; o prédio vai no subtítulo.
+  const ore = all[0].entries.find(e => e.spec.kind === 'miner' && e.spec.item === 'Desc_OreIron_C')!;
+  assert.deepEqual([ore.title, ore.sub], ['Iron Ore', 'Miner']);
+  const oil = all[0].entries.filter(e => e.spec.kind === 'extractor' && e.title === 'Crude Oil').map(e => e.sub).sort();
+  assert.deepEqual(oil, ['Oil Extractor', 'Resource Well Extractor']);
   // Grupo vazio não aparece.
   const miner = pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special;
-  assert.deepEqual(pickerGroups({ special: miner, recipes: [] }, { produces: 'Desc_OreIron_C' }).map(g => g.kind), ['special']);
+  assert.deepEqual(pickerGroups({ special: miner, recipes: [] }, { produces: 'Desc_OreIron_C' }).map(g => g.kind), ['sources']);
 });
 
 test('seletor: dentro de cada grupo, as receitas de prédio mais simples vêm antes (relevância), depois o nome', () => {

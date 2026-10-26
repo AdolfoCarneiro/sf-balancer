@@ -37,6 +37,8 @@ const ignoredText = (x: SfmdIgnored): string => {
     case 'max': return t('plImportIgMax', x.name);
     case 'noFlow': return t('plImportIgNoFlow', x.name);
     case 'waypoints': return t('plImportIgWaypoints');
+    case 'relay': return t('plImportIgRelay', x.name);
+    case 'emptyRelay': return t('plImportIgEmptyRelay', x.name);
   }
 };
 const num = (n: number) => fmt(n, Number.isInteger(n) ? 0 : 2);

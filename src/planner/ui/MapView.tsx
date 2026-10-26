@@ -12,7 +12,7 @@ import type { Meio } from '../model/meio.ts';
 import { rowsSummary } from '../model/layout.ts';
 import { solvedStage } from '../model/solved.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Block, Factory, GameData, ItemId, LigPlace, MapPlace, StageId } from '../model/types.ts';
+import { isSource, type Block, type Factory, type GameData, type ItemId, type LigPlace, type MapPlace, type StageId } from '../model/types.ts';
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, clampCam, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
@@ -45,6 +45,7 @@ interface Props {
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação
   onImportFile: (f: File) => void;   // importar do Modeler (botão do painel)
+  onSplit: (ids: StageId[]) => void;   // separar a seleção numa fábrica nova (o App cuida da lista)
   onView: (v: ViewMode) => void;   // "Ver em escala" / "Voltar a montar" no painel
   problems: PortState[];   // faltas, sobras e travados do Balanço (o App já calcula), para os avisos do painel
   ref?: Ref<MapViewHandle>;
@@ -54,6 +55,7 @@ interface Props {
 export interface MapViewHandle {
   focusPort: (block: StageId, side: 'in' | 'out', item: ItemId) => void;
   importFactory: (f: Factory) => void;   // substitui a fábrica (desfazível) e enquadra tudo
+  openFactory: (f: Factory) => void;   // abre outra fábrica da lista (histórico novo) e enquadra tudo
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
@@ -125,7 +127,7 @@ function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, st
     r.ins.forEach((x, i) => { if (!out[x.item] || i === 0) out[x.item] = fluid(x.item) ? th.holo : i === 0 ? th.flow : th.held; });
   }
   for (const b of f.blocks) {
-    const outs = b.kind === 'recipe' ? (data.recipes[b.recipe]?.outs ?? []).map(x => x.item) : b.kind === 'miner' || b.kind === 'extractor' ? [b.item] : [];
+    const outs = b.kind === 'recipe' ? (data.recipes[b.recipe]?.outs ?? []).map(x => x.item) : isSource(b) ? [b.item] : [];
     for (const item of outs) out[item] ??= fluid(item) ? th.holo : th.ficsit;
   }
   return out;
@@ -135,29 +137,41 @@ function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, st
 function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): CardText {
   const spec = cardSpec(b, data, flow), bf = flow.blocks[b.id];
   const unitOf = (fluid: boolean) => t(fluid ? 'plPerMinFluid' : 'plPerMin', '').trim();
-  const base = { ins: spec.ins, outs: spec.outs, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', rate: '', unit: '' };
+  const base = { ins: spec.ins, outs: spec.outs, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', sub: '', rate: '', unit: '' };
   if (b.kind !== 'recipe') {
     // Origem: o que sai; sobra: a soma do que chega.
-    const src = b.kind === 'miner' || b.kind === 'extractor';
+    const src = isSource(b);
     const ports = (src ? bf?.outs : bf?.ins) ?? [];
     const rate = ports.some(p => p.rate === null) ? null : ports.reduce((s, p) => s + (p.rate ?? 0), 0);
     const fluid = ports.length > 0 && ports.every(p => !!data.items[p.item]?.fluid);
     const n = b.kind === 'extractor' ? bf?.extractors : null;
-    const building = b.kind === 'miner' ? t('plMiner') : b.kind === 'extractor'
+    const building = b.kind === 'miner' ? t('plMiner') : b.kind === 'input' ? t('plInputSub') : b.kind === 'extractor'
       ? (typeof n === 'number' ? `${fmt(n, 0)} × ` : '') + (data.extractors[b.building]?.name ?? b.building) : '';
     const title = src ? data.items[b.item]?.name ?? b.item : blockName(b, data);
     return { ...base, title, building, marker: true, rate: rate === null ? t('plUnbounded') : fmt(rate), unit: rate === null ? '' : unitOf(fluid) };
   }
   const s = solvedStage(b, bf), r = data.recipes[s.recipe];
   const stalled = bs.some(x => x.kind === 'stalled' || x.kind === 'deadlock');
-  const count = bf?.unbounded ? t('plUnbounded') : stalled ? t('plCardStalled') : fmt(s.machines, 0);
+  // Como no Modeler: o número grande são as máquinas rodando no clock do bloco, quebradas (29,15). Fixado: embaixo
+  // "de 30" quando roda menos; livre: quantas construir e o clock delas.
+  const fixedN = b.limits?.machines, run = bf?.x == null ? null : bf.x * 100 / b.clock;
+  const count = bf?.unbounded ? t('plUnbounded') : stalled ? t('plCardStalled') : fmt(run ?? 0, 2);
+  let sub: string, clock: string | null;
+  if (fixedN !== undefined) {
+    sub = run !== null && !stalled && run < fixedN - 0.005 ? t('plCardOf', fmt(fixedN, 0)) : t('plCardFixed');
+    clock = b.clock !== 100 ? `${fmt(b.clock)}%` : null;
+  } else {
+    sub = bf?.unbounded || stalled ? t('plCardMachines') : t('plCardBuild', fmt(s.machines, 0));
+    const rc = bf?.runClock;
+    clock = rc != null && s.machines > 0 && Math.abs(rc - 100) > 0.05 ? `${fmt(rc, 1)}%` : null;
+  }
   return {
     ...base, title: r.name, building: data.buildings[r.building]?.name ?? r.building, icon: r.building, alt: r.alt, marker: false,
-    count, fixed: b.limits?.machines !== undefined, clock: b.clock !== 100 ? `${fmt(b.clock)}%` : null,
+    count, sub, fixed: fixedN !== undefined, clock,
   };
 }
 
-export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, onImportFile, ref }: Props) {
+export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, problems, onImportFile, onSplit, ref }: Props) {
   // Destacados no desenho: os blocos (um ou vários) ou a ligação.
   const selected = useMemo(() => selIds(selection), [selection]);
   const selStage = selection?.kind === 'stage' ? selection.id : null;
@@ -357,7 +371,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         // Origem: o que sai; sobra: o que chega, por item.
         const n = b.kind === 'extractor' ? bf?.extractors : undefined;
         const title = blockName(b, data) + (typeof n === 'number' ? ` × ${fmt(n, 0)}` : '');
-        const ports = (b.kind === 'miner' || b.kind === 'extractor' ? bf?.outs : bf?.ins) ?? [];
+        const ports = (isSource(b) ? bf?.outs : bf?.ins) ?? [];
         const sub = ports.map(p => (p.rate === null ? t('plUnbounded') : rateText(data.items[p.item], p.rate))).join(' · ');
         return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, alert };
       }
@@ -929,7 +943,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     onSelect(null);
     dispatch({ type: 'load', factory: nf });
   };
-  useImperativeHandle(ref, () => ({ focusPort, importFactory }));
+  const openFactory = (nf: Factory) => {
+    fitNext.current = true; camMoved = false; refitted = false;
+    onSelect(null);
+    dispatch({ type: 'reset', factory: nf });
+  };
+  useImperativeHandle(ref, () => ({ focusPort, importFactory, openFactory }));
 
   // Retângulo do bloco na tela do último quadro (Montar: o cartão; Planta: o bloco).
   const viewRect = (id: StageId): Rect | null => lastView.current?.blocks.find(b => b.id === id)?.rect ?? null;
@@ -1053,7 +1072,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         </div>
       </main>
       <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} onDeleteMany={removeMany} onSelectAll={selectAll}
-        onClearSel={() => { onSelect(null); canvas.current?.focus(); }} meioList={meioList} scene={scene} places={places}
+        onClearSel={() => { onSelect(null); canvas.current?.focus(); }} onSplit={onSplit} meioList={meioList} scene={scene} places={places}
         selection={selection} problems={problems} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
         chip={id => chips.get(id) ?? null} results={results}
         onPlace={placePlanta} onPropose={propose} onFocus={focus} onGo={goTo}

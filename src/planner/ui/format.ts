@@ -21,6 +21,7 @@ export function blockName(b: Block, d: GameData): string {
     case 'recipe': return d.recipes[b.recipe]?.name ?? b.recipe;
     case 'miner': return `${t('plMiner')} · ${item(b.item)}`;
     case 'extractor': return `${d.extractors[b.building]?.name ?? b.building} · ${item(b.item)}`;
+    case 'input': return `${t('plInput')} · ${item(b.item)}`;
     case 'sink': return t('plSink');
     case 'container': return t('plContainer');
     default: return t('plExport');
@@ -42,12 +43,13 @@ export function badgeText(b: Badge, blk: Block, d: GameData, unit: boolean): str
   }
 }
 
-// Ícone do bloco: o produto principal da receita, ou o prédio da origem e da sobra.
+// Ícone do bloco: o produto principal da receita, o item da Entrada, ou o prédio da origem e da sobra.
 export function blockIcon(b: Block, d: GameData): string | null {
   switch (b.kind) {
     case 'recipe': return d.recipes[b.recipe]?.outs[0]?.item ?? null;
     case 'miner': return SPECIAL_ICON.miner;
     case 'extractor': return b.building;
+    case 'input': return b.item;
     default: return SPECIAL_ICON[b.kind];
   }
 }
