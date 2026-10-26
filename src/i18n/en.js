@@ -336,6 +336,7 @@ export default {
   lbBf: 'Instead of every input reaching every output, a butterfly mixes belts in pairs, over rounds: first 1 with 2 and 3 with 4, then one result from each pair. Since it’s the same block repeated, you can stack one round on top of the other and join the floors with lifts, which is the compact vertical balancer people build. With a count not made of 2s and 3s (5, 7) or with inputs ≠ outputs, it uses empty lanes or spare lanes that loop back.',
   plOpen: 'Planner', plMetaDesc: 'Free Satisfactory factory planner: chain recipe blocks on a map, see the belt flow between them and get the mergers, splitters and load balancers of each connection. No sign-up.',
   plPageTitle: 'Satisfactory Factory Planner & Belt Balancer', plBalancerLink: 'Balancer', plBrand: 'SF BALANCER / PLANNER',
+  navFactory: 'Factory', navBalancer: 'Balancer', navAria: 'Sections', plViewMontar: 'Build', plViewPlanta: 'Scale plan', plViewAria: 'View',
   plViewMap: 'Map',
   plTotals: (s, m) => `${s} ${s === '1' ? 'stage' : 'stages'} · ${m} ${m === '1' ? 'machine' : 'machines'}`,
   plUndo: 'Undo', plRedo: 'Redo', plShare: 'Share', plCopied: 'Link copied', plShareLink: 'Scenario link',

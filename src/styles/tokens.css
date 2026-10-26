@@ -24,5 +24,13 @@
     --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
     --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --cut: 14px;
+    /* Reforma visual do builder: falta (coral), sobra (turquesa) e tons de texto/chapa; nomes novos, os antigos ficam */
+    --deficit: #ff7a6b;
+    --deficit-bg: #3a1f24;
+    --surplus: #45d4c8;
+    --surplus-bg: #123a3c;
+    --ink-mid: #c3d3e3;
+    --ink-soft: #9fb6cc;
+    --plate-2: #13314f;
     color-scheme: dark;
   }

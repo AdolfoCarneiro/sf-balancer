@@ -25,9 +25,10 @@ import { PORT_ZOOM, drawScene, readTheme, type DrawOpts, type MapTheme } from '.
 import { MapPanel } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { blockBadges, type Badge } from '../model/badges.ts';
-import type { Selection } from './selection.ts';
+import type { Selection, ViewMode } from './selection.ts';
 
 interface Props {
+  view: ViewMode;   // ainda ignorada: a Task 5 troca a vista por ela
   factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação

@@ -10,7 +10,7 @@ import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
-import type { Selection } from './ui/selection.ts';
+import type { Selection, ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
 import { MapView } from './ui/MapView.tsx';
 import { blockName } from './ui/format.ts';
@@ -49,6 +49,7 @@ export function App() {
   if (DEBUG && (window as unknown as { __sfPlannerCrash?: boolean }).__sfPlannerCrash) throw new Error('debug: __sfPlannerCrash');
   // O fluxo: no worker, com cache por componente; enquanto calcula, o último pronto.
   const { flow, pending } = useFlowState(f, data);
+  const [view, setView] = useState<ViewMode>('montar');
   const [picked, setSelection] = useState<Selection>(null);
   // Bloco de receita aberto na vista de detalhe; some se o bloco deixar de existir (apagar, desfazer).
   const [openId, setOpenId] = useState<string | null>(null);
@@ -127,9 +128,10 @@ export function App() {
   return (
     <div className="pl-app">
       <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
-        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl} />
+        onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
+        view={view} onView={setView} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
-        <MapView factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
+        <MapView view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} />
       </div>
       {openStage && (

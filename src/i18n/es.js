@@ -336,6 +336,7 @@ export default {
   lbBf: 'En vez de que cada entrada llegue a todas las salidas, la mariposa mezcla las cintas de a pares, en rondas: primero 1 con 2 y 3 con 4, luego un resultado de cada par. Como es siempre el mismo bloque repetido, se puede apilar una ronda encima de la otra y unir los pisos con lifts, que es el balanceador vertical compacto que monta la gente. Con un número que no está hecho de 2 y 3 (5, 7) o con entradas ≠ salidas, usa carriles vacíos o carriles de más que vuelven por loop.',
   plOpen: 'Planificador', plMetaDesc: 'Planificador de fábricas para Satisfactory, gratis: arma bloques de recetas en un mapa, mira el flujo de las cintas entre ellos y los mergers, splitters y balanceadores de cada conexión. Sin registro.',
   plPageTitle: 'Planificador de Fábricas para Satisfactory, con Cintas y Balanceadores', plBalancerLink: 'Balancer', plBrand: 'SF BALANCER / PLANNER',
+  navFactory: 'Fábrica', navBalancer: 'Balancer', navAria: 'Secciones', plViewMontar: 'Montar', plViewPlanta: 'Plano a escala', plViewAria: 'Vista',
   plViewMap: 'Mapa',
   plTotals: (s, m) => `${s} ${s === '1' ? 'etapa' : 'etapas'} · ${m} ${m === '1' ? 'máquina' : 'máquinas'}`,
   plUndo: 'Deshacer', plRedo: 'Rehacer', plShare: 'Compartir', plCopied: 'Enlace copiado', plShareLink: 'Enlace del escenario',

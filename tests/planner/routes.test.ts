@@ -92,3 +92,12 @@ test('sitemap: seis páginas, sem /planner', () => {
     assert.deepEqual(hrefs, [`en=${P.en}`, `pt-BR=${P.pt}`, `es=${P.es}`, `x-default=${P.en}`], loc);
   }
 });
+
+test('as duas páginas têm as abas Fábrica | Balancer', () => {
+  const html = read('balancer.html');
+  assert.match(html, /class="navtabs"/);
+  assert.match(html, /data-i18n="navFactory"/);
+  assert.match(html, /data-i18n="navBalancer"/);
+  const header = read('src/planner/ui/Header.tsx');
+  assert.ok(header.includes("'navFactory'") && header.includes("'navBalancer'"));
+});

@@ -1,6 +1,13 @@
 /* Peças comuns à página Balancer e ao modal da ligação do builder: o desenho do fluxo (esteiras animadas, legenda),
    a bancada do passo a passo (.wb*, .ponder, .cands…), a tabela de conferência, os botões e a ajuda "?".
    Vem antes do resto do main.css (que a importa no topo); o builder importa só este arquivo. */
+  /* Abas Fábrica | Balancer, iguais nas duas páginas */
+  .navtabs { display: flex; gap: 3px; padding: 3px; background: var(--plate); }
+  .navtabs a { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; font: 600 14px var(--display); color: var(--ink-mid); text-decoration: none; }
+  .navtabs a:hover { color: var(--ink); background: var(--plate-2); }
+  .navtabs a[aria-current="page"] { background: var(--ficsit); color: var(--bench); }
+  .navtabs a:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  .navtabs a[aria-current="page"]:focus-visible { outline-color: var(--ink); }
   .num { font-variant-numeric: tabular-nums; }
   .hint { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
   .ext a { color: var(--ficsit); text-underline-offset: 3px; }

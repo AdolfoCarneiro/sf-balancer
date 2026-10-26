@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { I18N, LANGS, fmt, t } from '../../i18n/index.js';
 import { FLAGS } from '../../ui/flags.js';
-import { BALANCER_PATH, type Lang } from '../lang.ts';
+import { BALANCER_PATH, BUILDER_PATH, type Lang } from '../lang.ts';
+import type { ViewMode } from './selection.ts';
 
 interface Props {
   lang: Lang; onLang: (l: Lang) => void;
@@ -9,9 +10,10 @@ interface Props {
   status: string[];   // o que o fluxo tem a dizer (calculando, não estabilizou, loop travado)
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   shareUrl: () => string;
+  view: ViewMode; onView: (v: ViewMode) => void;
 }
 
-export function Header({ lang, onLang, blocks, machines, status, canUndo, canRedo, onUndo, onRedo, shareUrl }: Props) {
+export function Header({ lang, onLang, blocks, machines, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -30,18 +32,24 @@ export function Header({ lang, onLang, blocks, machines, status, canUndo, canRed
     }
   };
 
-  // A marca em duas partes: SF BALANCER e, apagado, o nome da página.
-  const brand = t('plBrand').split(' / ');
+  const ico = (d: string) => <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2" /></svg>;
   return (
     <header className="pl-top">
-      <div className="pl-brand">{brand[0]}{brand[1] && <span> / {brand[1]}</span>}</div>
-      <a className="pl-nav" href={BALANCER_PATH[lang]}>{t('plBalancerLink')}</a>
+      <div className="pl-brand">SF Balancer</div>
+      <nav className="navtabs" aria-label={t('navAria')}>
+        <a href={BUILDER_PATH[lang]} aria-current="page">{t('navFactory')}</a>
+        <a href={BALANCER_PATH[lang]}>{t('navBalancer')}</a>
+      </nav>
+      <div className="pl-seg" role="group" aria-label={t('plViewAria')}>
+        <button type="button" aria-pressed={view === 'montar'} onClick={() => onView('montar')}>{t('plViewMontar')}</button>
+        <button type="button" aria-pressed={view === 'planta'} onClick={() => onView('planta')}>{t('plViewPlanta')}</button>
+      </div>
       <div className="pl-grow" />
       <div className="pl-status" role="status">{status.join(' · ')}</div>
       <div className="pl-totals">{t('plTotals', fmt(blocks, 0), fmt(machines, 0))}</div>
       <div className="pl-pair">
-        <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{t('plUndo')}</button>
-        <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{t('plRedo')}</button>
+        <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{ico('M6 4L2 8l4 4M2 8h9a5 5 0 010 10H8')}<span className="pl-lbl">{t('plUndo')}</span></button>
+        <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{ico('M12 4l4 4-4 4M16 8H7a5 5 0 000 10h3')}<span className="pl-lbl">{t('plRedo')}</span></button>
       </div>
       <button type="button" className="pl-btn pl-primary" onClick={share}>{t('plShare')}</button>
       <span className="pl-copied" aria-live="polite">{copied ? t('plCopied') : ''}</span>

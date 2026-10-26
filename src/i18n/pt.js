@@ -336,6 +336,7 @@ export default {
   lbBf: 'Em vez de cada entrada falar com todas as saídas, a borboleta mistura as esteiras aos pares, em rodadas: na primeira, 1 com 2 e 3 com 4; na segunda, um resultado de cada par. Como é tudo o mesmo bloco repetido, dá para empilhar uma rodada em cima da outra e ligar os andares com lifts, que é o balancer vertical compacto que a galera monta. Com um número que não é feito de 2 e 3 (5, 7) ou com entradas ≠ saídas, ela usa faixas vazias ou faixas a mais que voltam por loop.',
   plOpen: 'Planejador', plMetaDesc: 'Planejador de fábrica para Satisfactory, grátis: monte blocos de receitas num mapa, veja o fluxo das esteiras entre eles e os mergers, splitters e balancers de cada ligação. Sem cadastro.',
   plPageTitle: 'Planejador de Fábrica para Satisfactory, com Esteiras e Balancers', plBalancerLink: 'Balancer', plBrand: 'SF BALANCER / PLANNER',
+  navFactory: 'Fábrica', navBalancer: 'Balancer', navAria: 'Seções', plViewMontar: 'Montar', plViewPlanta: 'Planta em escala', plViewAria: 'Vista',
   plViewMap: 'Mapa',
   plTotals: (s, m) => `${s} ${s === '1' ? 'etapa' : 'etapas'} · ${m} ${m === '1' ? 'máquina' : 'máquinas'}`,
   plUndo: 'Desfazer', plRedo: 'Refazer', plShare: 'Compartilhar', plCopied: 'Link copiado', plShareLink: 'Link do cenário',

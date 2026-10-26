@@ -24,7 +24,7 @@
   }
 
   /* Seletor de idioma */
-  .langbar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding-top: 14px; }
+  .langbar { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 14px; }
   .pl-link { color: var(--ficsit); font: 600 13px var(--display); text-decoration: none; border: 1px solid var(--line); padding: 5px 10px; }
   .pl-link:hover { background: var(--plate); }
   .pl-link:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
