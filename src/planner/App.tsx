@@ -145,7 +145,7 @@ export function App() {
     <div className="pl-app">
       <Header lang={lang} onLang={change} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
-        view={view} onView={setView} />
+        view={view} onView={setView} data={data} onImport={nf => { setOpenStage(null); mapRef.current?.importFactory(nf); }} />
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}

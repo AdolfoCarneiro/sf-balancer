@@ -50,6 +50,7 @@ interface Props {
 // O que o App pede ao mapa: ir até uma porta (a faixa Balanço, "N faltas"/"N sobras").
 export interface MapViewHandle {
   focusPort: (block: StageId, side: 'in' | 'out', item: ItemId) => void;
+  importFactory: (f: Factory) => void;   // substitui a fábrica (desfazível) e enquadra tudo
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
@@ -860,7 +861,16 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     };
     camAnim.current = requestAnimationFrame(step);
   };
-  useImperativeHandle(ref, () => ({ focusPort }));
+  // Importar (do Modeler): troca a fábrica num passo só do desfazer e enquadra tudo quando a cena nova chega (e de novo
+  // quando os meios chegam, como na abertura).
+  const fitNext = useRef(false);
+  useEffect(() => { if (fitNext.current && size.current.w) { fitNext.current = false; setCam(fitView()); } }, [scene]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const importFactory = (nf: Factory) => {
+    fitNext.current = true; camMoved = false; refitted = false;
+    onSelect(null);
+    dispatch({ type: 'load', factory: nf });
+  };
+  useImperativeHandle(ref, () => ({ focusPort, importFactory }));
 
   // Retângulo do bloco na tela do último quadro (Montar: o cartão; Planta: o bloco).
   const viewRect = (id: StageId): Rect | null => lastView.current?.blocks.find(b => b.id === id)?.rect ?? null;
@@ -957,7 +967,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })}
         fixAt={fixAt} onCreate={createFor} onScale={toScale} onMontar={() => onView('montar')}
         onSeeLig={id => { setPopId(null); onOpenLig(id); }} onSwap={(id, key) => dispatch({ type: 'setMeioAlt', meio: id, key })}
-        onUnlink={unlink} />
+        onUnlink={unlink} onImport={importFactory} />
     </>
   );
 }

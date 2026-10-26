@@ -3,6 +3,8 @@ import { I18N, LANGS, t } from '../../i18n/index.js';
 import { FLAGS } from '../../ui/flags.js';
 import { BALANCER_PATH, BUILDER_PATH, type Lang } from '../lang.ts';
 import type { ViewMode } from './selection.ts';
+import type { Factory, GameData } from '../model/types.ts';
+import { ImportModeler } from './ImportModeler.tsx';
 
 interface Props {
   lang: Lang; onLang: (l: Lang) => void;
@@ -10,9 +12,10 @@ interface Props {
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   shareUrl: () => string;
   view: ViewMode; onView: (v: ViewMode) => void;
+  data: GameData; onImport: (f: Factory) => void;   // importar do Modeler
 }
 
-export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
+export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView, data, onImport }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -49,6 +52,7 @@ export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo,
         <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{ico('M6 4L2 8l4 4M2 8h9a5 5 0 010 10H8')}<span className="pl-lbl">{t('plUndo')}</span></button>
         <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{ico('M12 4l4 4-4 4M16 8H7a5 5 0 000 10h3')}<span className="pl-lbl">{t('plRedo')}</span></button>
       </div>
+      <ImportModeler data={data} onImport={onImport} className="pl-import" />
       <button type="button" className="pl-btn pl-primary" onClick={share}>{t('plShare')}</button>
       <span className="pl-copied" aria-live="polite">{copied ? t('plCopied') : ''}</span>
       {manual && <input className="pl-url" readOnly value={manual} aria-label={t('plShareLink')} onFocus={e => e.currentTarget.select()} ref={el => el?.select()} />}
