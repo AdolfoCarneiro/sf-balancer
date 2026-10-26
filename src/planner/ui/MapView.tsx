@@ -3,7 +3,7 @@
 // uma ligação o muda de lugar (preso na grade), duplo clique abre o bloco; o painel ao lado gira, ajusta vãos e lista
 // os avisos. Montar como no Modeler: duplo clique ou botão direito no vazio abre o seletor ali; arrastar de uma porta
 // liga (soltando numa porta) ou cria o próximo bloco já ligado (soltando no vazio); Delete apaga o bloco.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import type { Meio } from '../model/meio.ts';
@@ -17,12 +17,14 @@ import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap, type Scene } from '../model/map/scene.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
-import { cardSpec, chipWorld, fitMontar, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
+import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
+import { EmptyInvite, FirstHint } from './FirstHint.tsx';
+import { Legend } from './Legend.tsx';
 import { ChipPopover } from './ChipPopover.tsx';
 import { iconImage } from './icons.ts';
 import { PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
@@ -36,6 +38,12 @@ interface Props {
   factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação
+  ref?: Ref<MapViewHandle>;
+}
+
+// O que o App pede ao mapa: ir até uma porta (a faixa Balanço, "N faltas"/"N sobras").
+export interface MapViewHandle {
+  focusPort: (block: StageId, side: 'in' | 'out', item: ItemId) => void;
 }
 
 // A câmera vale para a sessão: voltar ao mapa mantém o enquadramento; a primeira abertura mostra tudo.
@@ -52,8 +60,6 @@ const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
-const HINT_STORE = 'sf-balancer:planner-map-hint';
-const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)
 // Animação das esteiras da Montar: no máximo 30 quadros/s; um quadro acima de 12 ms deixa o desenho parado até o próximo
 // pedido de redesenho.
 const ANIM_MS = 1000 / 30, SLOW_MS = 12;
@@ -64,6 +70,8 @@ const media = (q: string) => (typeof matchMedia === 'function' ? matchMedia(q).m
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 // Transição Montar <-> Planta.
 const TRANS_MS = 250;
+// Ir até um problema: a câmera anda em FOCUS_MS e o cartão e a porta piscam por FLASH_MS.
+const FOCUS_MS = 300, FLASH_MS = 1200;
 const easeInOut = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -136,7 +144,7 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
   };
 }
 
-export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig }: Props) {
+export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, ref }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
   const montar = mode === 'montar';
@@ -186,9 +194,6 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return m ? { x: m.rect.x, y: m.rect.y, rot: m.rot } : null;
   };
 
-  // A dica de navegação fica até ser fechada (lembrado neste navegador).
-  const [hint, setHint] = useState(() => { try { return localStorage.getItem(HINT_STORE) !== '0'; } catch { return true; } });
-  const hideHint = () => { setHint(false); try { localStorage.setItem(HINT_STORE, '0'); } catch { /* sem storage */ } };
 
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -198,6 +203,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const [theme, setTheme] = useState<MapTheme | null>(null);
   // Mini painel do chip: a ligação dele (só vale enquanto ela é a selecionada).
   const [popId, setPopId] = useState<string | null>(null);
+  // Destaque passageiro do cartão e da porta (ir até um problema).
+  const [flash, setFlash] = useState<DrawOpts['flash']>(null);
   const popEl = useRef<HTMLDivElement>(null);
 
   // Celular e movimento reduzido: lidos uma vez e atualizados pelo evento de mudança (não a cada quadro).
@@ -257,7 +264,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     chip: id => chips.get(id) ?? null,
     meio: id => meioById.get(id),
     card: id => cards.get(id)!,
-    flash: null,
+    flash,
     blockText: id => {
       const b = byId.get(id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
       // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
@@ -278,7 +285,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       // Placa da Planta: o ícone do prédio, a receita e o número em laranja.
       return { title: r.name + lock, num, sub, icon: r.building, alert };
     },
-  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards, flash]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // A vista: t vai de 0 (Montar) a 1 (Planta) em TRANS_MS ao trocar; a câmera usa os limites de zoom da vista atual.
   const tNow = useRef(montar ? 0 : 1);
@@ -712,6 +719,40 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const zoomCenter = (k: number) => { const c = cam.current; if (c) moveCam(zoomAt(c, k, size.current.w / 2, size.current.h / 2, limits())); };
   const showAll = () => { if (size.current.w) moveCam(fitView()); };
 
+  // Ir até uma porta (faixa Balanço): seleciona o bloco, leva a câmera até ele em FOCUS_MS (na hora com movimento
+  // reduzido; na Montar, de longe, aproxima até 90 % do zoom de referência) e pisca o cartão e a porta por FLASH_MS.
+  const camAnim = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(camAnim.current), []);
+  const focusPort = (block: StageId, side: 'in' | 'out', item: ItemId) => {
+    const c = cam.current, { w, h } = size.current, sb = scene.blocks.find(x => x.stage === block), b = byId.get(block);
+    onSelect({ kind: 'stage', id: block });
+    setPopId(null);
+    setFlash({ id: block, port: `${block}|${side}|${item}`, until: Date.now() + FLASH_MS });
+    if (!c || !w || !sb || !b) return;
+    const isMontar = modeRef.current === 'montar';
+    const z1 = isMontar && c.zoom < MONTAR_REF * 0.7 ? MONTAR_REF * 0.9 : c.zoom;
+    // Centro do que se vê: o cartão (tamanho de tela, no canto do bloco) na Montar, o bloco real na Planta.
+    let cx = sb.rect.x + sb.rect.w / 2, cy = sb.rect.y + sb.rect.h / 2;
+    if (isMontar) {
+      const sz = blockCardSize(b, data, flow), k = cardScale(z1, phone.current) / z1;
+      cx = sb.rect.x + sz.w * k / 2; cy = sb.rect.y + sz.h * k / 2;
+    }
+    const to: Camera = { x: cx - w / 2 / z1, y: cy - h / 2 / z1, zoom: z1 };
+    cancelAnimationFrame(camAnim.current);
+    camMoved = true;
+    if (reduced.current) { setCam(to); return; }
+    // Anda o centro da tela e o zoom (o canto da câmera depende dos dois).
+    const fx = c.x + w / 2 / c.zoom, fy = c.y + h / 2 / c.zoom, t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / FOCUS_MS), e = 1 - (1 - k) ** 3;
+      const z = c.zoom + (z1 - c.zoom) * e, x = fx + (cx - fx) * e, y = fy + (cy - fy) * e;
+      setCam(k < 1 ? { x: x - w / 2 / z, y: y - h / 2 / z, zoom: z } : to);
+      if (k < 1) camAnim.current = requestAnimationFrame(step);
+    };
+    camAnim.current = requestAnimationFrame(step);
+  };
+  useImperativeHandle(ref, () => ({ focusPort }));
+
   const area = sizeText(scene.bounds);
   return (
     <>
@@ -723,7 +764,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
             onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); } }}
             onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onKeyDown={canvasKey} />
-          {!f.blocks.length && !picker && <p className="pl-map-empty">{t('plCanvasHint')}</p>}
+          {!f.blocks.length && !picker && <EmptyInvite />}
           {notice && <p className="pl-map-notice" role="status">{t(notice, fmt(notice === 'plBlocksFull' ? MAX_STAGES : MAX_LINKS, 0))}</p>}
           {picker && (
             <Picker data={data} filter={picker.filter} x={picker.x} y={picker.y} area={size.current} onPick={pick} onClose={closePicker} />
@@ -735,17 +776,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
               onSwap={key => dispatch({ type: 'setMeioAlt', meio: popMeio.id, key })}
               onUnlink={() => unlink(popMeio.id)} onClose={() => closePop(true)} />
           )}
-          <MapLegend />
-          {hint && (
-            <p className="pl-map-hint">
-              <span>{t('plCanvasHint')} · {t('plMapHint')}</span>
-              <button type="button" onClick={hideHint} aria-label={t('plMapHintClose')} title={t('plMapHintClose')}>×</button>
-            </p>
-          )}
+          <FirstHint />
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
-            <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>+ {t('plPickTitle')}</button>
-            <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
+            <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
+            <Legend />
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
+            <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
             <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{t('plMapFit')}</button>
           </div>
         </div>
@@ -754,32 +790,5 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
         onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />
     </>
-  );
-}
-
-// Legenda do mapa, recolhível, no canto de cima à esquerda. Os sinais repetem o canvas: de perto a faixa de perigo
-// (travado, loop travado); de longe os sinais no canto do bloco (falta e represado em círculo, travado em quadrado,
-// loop travado em losango, sem limite em anel).
-const LEGEND: [string, string][] = [
-  ['machine', 'plLegMachine'], ['belt', 'plLegBelt'], ['pipe', 'plLegPipe'], ['meio', 'plLegMeio'], ['marker', 'plLegMarker'],
-  ['port', 'plLegPort'], ['short', 'plLegShort'], ['held', 'plLegHeld'], ['stalled', 'plLegStalled'], ['deadlock', 'plLegDeadlock'],
-  ['unbounded', 'plLegUnbounded'], ['clash', 'plLegClash'], ['dots', 'plLegDots'],
-];
-function MapLegend() {
-  const [open, setOpen] = useState(() => { try { return localStorage.getItem(LEGEND_STORE) === '1'; } catch { return false; } });
-  const toggle = (e: React.SyntheticEvent<HTMLDetailsElement>) => {
-    const v = e.currentTarget.open;
-    setOpen(v);
-    try { localStorage.setItem(LEGEND_STORE, v ? '1' : '0'); } catch { /* sem storage */ }
-  };
-  return (
-    <details className="pl-map-legend" open={open} onToggle={toggle}>
-      <summary>{t('plLegend')}</summary>
-      <ul>
-        {LEGEND.map(([k, key]) => (
-          <li key={k}><i className={'pl-lg pl-lg-' + k} aria-hidden="true">{k === 'dots' && <><b /><b /></>}</i>{t(key)}</li>
-        ))}
-      </ul>
-    </details>
   );
 }

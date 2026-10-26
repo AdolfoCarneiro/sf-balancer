@@ -67,8 +67,8 @@ export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: D
     const img = o.icon(p.item);
     const ic = PORT_ICON * (r / PORT_R);
     if (img) ctx.drawImage(img, p.x - ic / 2, p.y - ic / 2, ic, ic);
-    if (o.flash && o.flash.id === key && now < o.flash.until) {
-      const f = Math.min(1, (o.flash.until - now) / 1100);
+    if (o.flash && (o.flash.port ?? o.flash.id) === key && now < o.flash.until) {
+      const f = Math.min(1, (o.flash.until - now) / 1200);
       ctx.globalAlpha = a * f; ctx.strokeStyle = th.ink; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(p.x, p.y, r + (1 - f) * 18, 0, Math.PI * 2); ctx.stroke();
     }

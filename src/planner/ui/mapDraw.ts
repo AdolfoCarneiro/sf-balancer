@@ -47,12 +47,13 @@ export interface DrawOpts {
   // as portas em lit brilham, as outras ficam a 30 %.
   portHover: string | null;
   wire: { from: { block: StageId; side: 'in' | 'out'; item: ItemId }; to: Pt; lit: Set<string> } | null;
-  // Destaque passageiro de um bloco ou de uma porta (id do bloco ou chave da porta) até `until` (Date.now()).
-  flash: { id: string; until: number } | null;
+  // Destaque passageiro de um bloco e/ou de uma porta (id do bloco, chave bloco|lado|item da porta) até `until`
+  // (Date.now()).
+  flash: { id: string; port?: string; until: number } | null;
   icon: (item: ItemId) => HTMLImageElement | null;
 }
 
-const FLASH_MS = 1100;
+const FLASH_MS = 1200;
 const near = (r: Rect, vw: number, vh: number, m: number) => r.x + r.w >= -m && r.y + r.h >= -m && r.x <= vw + m && r.y <= vh + m;
 const boxOfPts = (pts: Pt[]): Rect => {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;

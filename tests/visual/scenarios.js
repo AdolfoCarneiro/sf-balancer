@@ -28,7 +28,7 @@ const settle = async pg => {
   }
 };
 // Builder pronto: a cena exposta com ?debug=1 e todas as ligações com a montagem calculada.
-const BUILDER_STORE = ['sf-balancer:planner', 'sf-balancer:planner-map-hint', 'sf-balancer:planner-legend'];
+const BUILDER_STORE = ['sf-balancer:planner', 'sf-balancer:planner-hint2'];
 const builderReady = async pg => {
   await pg.waitForFunction(() => window.__sfPlanner && window.__sfPlanner.scene.meios.every(m => m.geo), null, { timeout: 15000 });
   await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));

@@ -142,7 +142,8 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
 // Régua de escala no canto de cima à esquerda, abaixo da Legenda (embaixo fica a dica de navegação).
 export function drawRuler(ctx: CanvasRenderingContext2D, z: number, th: DrawOpts['theme'], L: Labels): void {
   const meters = [...SCALES].reverse().find(s => s * z <= SCALE_MAX_PX) ?? SCALES[0];
-  const len = meters * z, rx = 20, ry = 82;
+  // No canto de cima à esquerda do mapa, 12 px de margem (a placa começa em ry - 22).
+  const len = meters * z, rx = 20, ry = 34;
   const label = t('plPlantScale', fmt(meters, 0));
   ctx.font = L.SMALL;
   const plate = { x: rx - 8, y: ry - 22, w: Math.max(len, ctx.measureText(label).width) + 16, h: 32 };

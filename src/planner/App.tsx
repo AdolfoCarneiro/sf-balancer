@@ -12,7 +12,7 @@ import { useMeioResults } from './meios.ts';
 import { Header } from './ui/Header.tsx';
 import type { Selection, ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
-import { MapView } from './ui/MapView.tsx';
+import { MapView, type MapViewHandle } from './ui/MapView.tsx';
 import { BalanceBar } from './ui/BalanceBar.tsx';
 import { factoryBalance, nextProblem, type PortState } from './model/portstate.ts';
 import { blockName } from './ui/format.ts';
@@ -26,7 +26,7 @@ const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 // ou no servidor de desenvolvimento.
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 
-export function App({ onFocusProblem }: { onFocusProblem?: (p: PortState) => void } = {}) {
+export function App() {
   // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
   const [lang, setLangState] = useState<Lang>(getLang() as Lang);
 
@@ -109,12 +109,13 @@ export function App({ onFocusProblem }: { onFocusProblem?: (p: PortState) => voi
   // Faixa Balanço: o que entra, sai e vai pro sink; os botões passam pelas faltas e sobras em círculo.
   const balance = useMemo(() => factoryBalance(f, flow, data), [f, flow]);
   const probIdx = useRef({ deficit: -1, surplus: -1 });
+  const mapRef = useRef<MapViewHandle>(null);
   const goProblem = (kind: 'deficit' | 'surplus'): PortState | null => {
     const n = nextProblem(balance.problems, kind, probIdx.current[kind]);
     if (!n) return null;
     probIdx.current[kind] = n.index;
     setSelection({ kind: 'stage', id: n.problem.block });
-    onFocusProblem?.(n.problem);
+    mapRef.current?.focusPort(n.problem.block, n.problem.side, n.problem.item);
     return n.problem;
   };
   const nameOfBlock = (id: string) => { const b = f.blocks.find(x => x.id === id); return b ? blockName(b, data) : id; };
@@ -146,7 +147,7 @@ export function App({ onFocusProblem }: { onFocusProblem?: (p: PortState) => voi
         view={view} onView={setView} />
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
-        <MapView view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
+        <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
           onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} />
       </div>
       {openStage && (

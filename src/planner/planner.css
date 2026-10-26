@@ -156,44 +156,10 @@ select.pl-field { width: auto; }
 .pl-map-canvas.moving { cursor: move; }
 .pl-map-canvas.linking { cursor: crosshair; }
 .pl-map-canvas:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
-/* Dica embaixo, ao lado da régua de escala (que o canvas desenha no canto até ~170 px), e fechável. */
-.pl-map-hint { position: absolute; bottom: 8px; left: 176px; right: 12px; width: fit-content; max-width: calc(100% - 188px); margin: 0; padding: 3px 4px 3px 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-dim); background: rgba(10, 27, 45, .88); }
-.pl-map-hint button { flex: none; padding: 0 6px; font: 15px/1.2 var(--body); color: var(--ink-dim); background: none; border: 1px solid transparent; cursor: pointer; }
-.pl-map-hint button:hover { color: var(--ink); border-color: var(--line); }
-.pl-map-hint button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
-.pl-map-ctrl { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
-.pl-map-ctrl .pl-btn { min-width: 34px; background: var(--bench); }
+/* Controles do mapa: o grupo de baixo à direita (Novo bloco, Legenda, −, +, Mostrar tudo), todos com 44 px. */
+.pl-map-ctrl { position: absolute; right: 12px; bottom: 12px; z-index: 4; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: calc(100% - 24px); }
+.pl-map-ctrl .pl-btn, .pl-map-ctrl .pl-leg-btn { min-width: 44px; min-height: 44px; padding: 0 14px; background: var(--bench); font: 600 14px var(--body); }
 .pl-map-ctrl .pl-map-add { color: var(--ficsit); border-color: var(--ficsit); }
-
-/* Legenda do mapa: recolhível no canto de cima à esquerda; os sinais repetem o desenho do canvas. */
-.pl-map-legend { position: absolute; top: 10px; left: 12px; max-width: min(300px, calc(100% - 24px)); max-height: calc(100% - 80px); overflow-y: auto; background: rgba(10, 27, 45, .92); border: 1px solid var(--line); font-size: 12px; color: var(--ink-dim); }
-.pl-map-legend summary { padding: 5px 10px; font: 600 13px var(--display); color: var(--ink); cursor: pointer; list-style-position: inside; }
-.pl-map-legend summary::marker { color: var(--ficsit); }
-.pl-map-legend summary:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
-.pl-map-legend ul { display: grid; gap: 4px; margin: 0; padding: 2px 10px 10px; list-style: none; }
-.pl-map-legend li { display: flex; align-items: center; gap: 8px; }
-.pl-lg { flex: none; display: inline-block; width: 18px; height: 12px; }
-.pl-lg-machine { background: #1f4a72; border: 1px solid var(--ink-dim); }
-.pl-lg-belt { height: 3px; background: var(--flow); box-shadow: 0 0 0 1px var(--bench); }
-.pl-lg-pipe { height: 3px; background: repeating-linear-gradient(90deg, var(--holo) 0 6px, transparent 6px 10px); }
-.pl-lg-meio { border: 1.5px dashed var(--ficsit); background: rgba(10, 27, 45, .8); }
-.pl-lg-marker { border: 1px dashed var(--ink-dim); }
-.pl-lg-port { width: 18px; height: 8px; background: linear-gradient(var(--flow), var(--flow)) left center / 10px 3px no-repeat, radial-gradient(circle at 14px 4px, var(--bench) 2.5px, var(--ink-dim) 3px, transparent 3.5px); }
-.pl-lg-short, .pl-lg-held, .pl-lg-unbounded, .pl-lg-clash { width: 10px; height: 10px; margin: 0 4px; border-radius: 50%; }
-.pl-lg-short { background: var(--sink); }
-.pl-lg-held { background: var(--ok); }
-.pl-lg-unbounded { border: 2px solid var(--holo); }
-.pl-lg-clash { border: 2px solid var(--sink); }
-.pl-lg-stalled { width: 18px; height: 10px; border: 3px solid; border-image: repeating-linear-gradient(45deg, var(--ficsit) 0 4px, var(--bench) 4px 8px) 3; }
-.pl-lg-deadlock { width: 18px; height: 10px; border: 3px solid; border-image: repeating-linear-gradient(45deg, var(--lock) 0 4px, var(--bench) 4px 8px) 3; }
-.pl-lg-dots { width: auto; height: 10px; display: inline-flex; align-items: center; gap: 4px; }
-.pl-lg-dots b { display: block; width: 8px; height: 8px; background: var(--ficsit); }
-.pl-lg-dots b + b { width: 7px; height: 7px; margin: 0 1px; background: var(--lock); transform: rotate(45deg); }
-/* Celular: a dica sobe acima da régua e a legenda desce abaixo dos botões do mapa (depois das regras-base, de propósito). */
-@media (max-width: 600px) {
-  .pl-map-hint { left: 12px; bottom: 56px; max-width: calc(100% - 24px); }
-  .pl-map-legend { top: 52px; }
-}
 
 .pl-map-blocks, .pl-map-warns { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .pl-map-block, .pl-map-warns button { width: 100%; padding: 5px 10px; text-align: left; background: none; color: var(--ink); border: 1px solid var(--line); border-left-width: 3px; font: 13px var(--body); cursor: pointer; }
@@ -202,7 +168,6 @@ select.pl-field { width: auto; }
 .pl-map-warns button { color: var(--sink); border-left-color: var(--sink); }
 .pl-map-block:focus-visible, .pl-map-warns button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
 .pl-foot { padding: 4px 16px; font: 11px var(--body); color: var(--ink-dim); background: var(--bench); border-top: 1px solid var(--line); text-align: center; }
-.pl-map-empty { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: min(90%, 460px); margin: 0; padding: 12px 16px; text-align: center; color: var(--ink); background: rgba(10, 27, 45, .9); border: 1px dashed var(--ficsit); pointer-events: none; }
 .pl-map-notice { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); margin: 0; padding: 6px 12px; font-size: 13px; color: var(--sink); background: var(--bench); border: 1px solid var(--sink); border-left-width: 4px; }
 
 /* Seletor do mapa (duplo clique, botão direito ou soltar uma porta no vazio): placa escura com a faixa laranja no topo,
@@ -352,3 +317,8 @@ select.pl-field { width: auto; }
 .pl-leg-ic { display: flex; justify-content: center; }
 .pl-leg-d { color: var(--ink-dim); font-size: 13px; }
 .pl-leg-strip { width: 100%; max-width: 360px; height: auto; align-self: center; }
+
+/* A dica de primeiro uso (embaixo à esquerda) sobe acima dos controles do mapa quando os dois não cabem lado a lado
+   (depois da regra-base da .pl-hint, de propósito); no celular os controles quebram em duas linhas. */
+@media (max-width: 1100px) { .pl-hint { bottom: 68px; } }
+@media (max-width: 600px) { .pl-hint { bottom: 118px; } }
