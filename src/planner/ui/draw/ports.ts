@@ -39,8 +39,11 @@ export function portLabel(p: ViewPort, o: DrawOpts): string {
   }
 }
 
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
 // Desenha as portas (já filtradas pelo que aparece) e devolve os retângulos dos rótulos, para os nomes não os cobrirem.
-export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: DrawOpts, vw: number, vh: number, now: number): Rect[] {
+// avoid: o que o rótulo não deve cobrir (os chips, desenhados depois por cima).
+export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: DrawOpts, vw: number, vh: number, now: number, avoid: Rect[] = []): Rect[] {
   const th = o.theme, wire = o.wire, placed: Rect[] = [];
   const from = wire ? viewPortId(wire.from) : null;
   for (const p of ports) {
@@ -74,17 +77,24 @@ export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: D
     }
     ctx.globalAlpha = a;
 
-    // Rótulo do estado, ao lado da porta, por fora do bloco (escondido puxando uma porta).
-    if (wire) continue;
+    // Rótulo do estado, ao lado da porta, por fora do bloco (escondido puxando uma porta, e com a porta fora da tela:
+    // preso à borda, ele cairia em cima de outro cartão).
+    if (wire || p.x < 0 || p.x > vw || p.y < 0 || p.y > vh) continue;
     const s = portLabel(p, o);
     if (!s) continue;
     ctx.font = LABEL_FONT(th);
     const w = ctx.measureText(s).width + 16;
-    let x: number, y: number;
-    if (p.dir[0] < 0) { x = p.x - PORT_R - w; y = p.y - PORT_R - LABEL_H - 4; }
-    else if (p.dir[0] > 0) { x = p.x + PORT_R; y = p.y - PORT_R - LABEL_H - 4; }
-    else { x = p.x + PORT_R + 4; y = p.y - LABEL_H / 2; }
-    x = Math.max(0, Math.min(x, vw - w)); y = Math.max(0, Math.min(y, vh - LABEL_H));
+    // Lugares, na ordem: acima e por fora (o normal), abaixo e por fora, do outro lado. Fica no primeiro que não
+    // cobre um chip (a Planta põe o chip colado nas portas da ligação); sem nenhum livre, o primeiro.
+    const up = p.y - PORT_R - LABEL_H - 4, down = p.y + PORT_R + 4, mid = p.y - LABEL_H / 2;
+    const cands: [number, number][] = p.dir[0] < 0 ? [[p.x - PORT_R - w, up], [p.x - PORT_R - w, down], [p.x + PORT_R, up]]
+      : p.dir[0] > 0 ? [[p.x + PORT_R, up], [p.x + PORT_R, down], [p.x - PORT_R - w, up]]
+        : [[p.x + PORT_R + 4, mid], [p.x - PORT_R - 4 - w, mid]];
+    const at = ([cx, cy]: [number, number]): Rect => {
+      const x = Math.max(0, Math.min(cx, vw - w)), y = Math.max(0, Math.min(cy, vh - LABEL_H));
+      return { x, y, w, h: LABEL_H };
+    };
+    const { x, y } = cands.map(at).find(r => !avoid.some(a => overlaps(a, r))) ?? at(cands[0]);
     ctx.fillStyle = L.fill === th.ficsit ? '#2b2010' : L.fill;
     ctx.fillRect(x, y, w, LABEL_H);
     ctx.strokeStyle = L.ring; ctx.lineWidth = 1;

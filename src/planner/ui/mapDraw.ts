@@ -127,8 +127,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   }
 
   // Portas e os rótulos de estado; depois os chips, por cima.
-  const portLabels = drawPorts(ctx, ports, o, vw, vh, now);
   const chips = view.chips.filter(c => near({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }, vw, vh, 4));
+  const chipRects = chips.map(c => ({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }));
+  const portLabels = drawPorts(ctx, ports, o, vw, vh, now, chipRects);
   drawChips(ctx, chips, o);
 
   // Planta: placas de nome, medidas e a régua.
@@ -138,7 +139,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
     for (const b of blocks) boxes.push({ id: b.stage, r: { x: sx(b.rect.x), y: sy(b.rect.y), w: b.rect.w * z, h: b.rect.h * z } });
     for (const m of meios) boxes.push({ id: m.meio, r: { x: sx(m.rect.x), y: sy(m.rect.y), w: m.rect.w * z, h: m.rect.h * z } });
     const L = makeLabels(ctx, vw, vh, th, o.icon, boxes);
-    L.placed.push(...portLabels, ...chips.map(c => ({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h })));
+    L.placed.push(...portLabels, ...chipRects);
     drawRuler(ctx, z, th, L);
     drawPlantLabels(ctx, scene, cam, vw, vh, blocks, meios, o, L, new Map(boxes.map(b => [b.id, b.r])));
     ctx.globalAlpha = 1;
