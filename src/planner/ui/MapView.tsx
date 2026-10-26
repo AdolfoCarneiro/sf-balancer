@@ -28,7 +28,7 @@ import { Legend } from './Legend.tsx';
 import { ChipPopover } from './ChipPopover.tsx';
 import { iconImage } from './icons.ts';
 import { PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
-import { MapPanel } from './MapPanel.tsx';
+import { MapPanel, type Sheet } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { blockBadges, type Badge } from '../model/badges.ts';
 import type { Selection, ViewMode } from './selection.ts';
@@ -38,6 +38,7 @@ interface Props {
   factory: Factory; flow: FlowResult; data: GameData; lang: string; meioList: Meio[]; results: Map<string, MeioResult | null>;
   selection: Selection; onSelect: (s: Selection) => void; onOpenStage: (id: string) => void; dispatch: (a: Action) => void;
   onOpenLig: (id: string) => void;   // abre o modal da ligação
+  onView: (v: ViewMode) => void;   // "Ver em escala" / "Voltar a montar" no painel
   ref?: Ref<MapViewHandle>;
 }
 
@@ -60,6 +61,9 @@ const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
+const PANEL_STORE = 'sf-balancer:planner-panel';   // painel aberto sem seleção (lembrado neste navegador)
+const FIX_GAP = 48;   // px de tela entre o bloco e o bloco que o conserto cria
+const PICKER_W = 380;   // largura do seletor, para abri-lo à esquerda de uma entrada
 // Animação das esteiras da Montar: no máximo 30 quadros/s; um quadro acima de 12 ms deixa o desenho parado até o próximo
 // pedido de redesenho.
 const ANIM_MS = 1000 / 30, SLOW_MS = 12;
@@ -144,7 +148,7 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
   };
 }
 
-export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, ref }: Props) {
+export function MapView({ view: mode, factory: f, flow, data, lang, meioList, results, selection, onSelect, onOpenStage, dispatch, onOpenLig, onView, ref }: Props) {
   const selected = selection?.id ?? null;
   const selStage = selection?.kind === 'stage' ? selection.id : null;
   const montar = mode === 'montar';
@@ -194,6 +198,25 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return m ? { x: m.rect.x, y: m.rect.y, rot: m.rot } : null;
   };
 
+
+  // Painel no desktop: sem seleção aparece só se a pessoa o abriu (lembrado); uma seleção nova o abre, e fechar com algo
+  // selecionado vale até a seleção mudar. No celular é a folha de baixo: a seleção nova a sobe até a meia altura.
+  const [panelPref, setPanelPref] = useState(() => { try { return localStorage.getItem(PANEL_STORE) === '1'; } catch { return false; } });
+  const [panelSel, setPanelSel] = useState<boolean | null>(null);
+  const [sheet, setSheet] = useState<Sheet>('peek');
+  const selKey = selection ? `${selection.kind}:${selection.id}` : null;
+  const [seenSel, setSeenSel] = useState(selKey);
+  if (seenSel !== selKey) {
+    setSeenSel(selKey);
+    setPanelSel(selKey ? true : null);
+    if (selKey && sheet === 'peek') setSheet('half');
+  }
+  const panelOpen = panelSel ?? panelPref;
+  const togglePanel = () => {
+    if (selKey) { setPanelSel(!panelOpen); return; }
+    setPanelPref(!panelOpen);
+    try { localStorage.setItem(PANEL_STORE, panelOpen ? '0' : '1'); } catch { /* sem storage: vale só nesta visita */ }
+  };
 
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -753,6 +776,37 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   };
   useImperativeHandle(ref, () => ({ focusPort }));
 
+  // Retângulo do bloco na tela do último quadro (Montar: o cartão; Planta: o bloco).
+  const viewRect = (id: StageId): Rect | null => lastView.current?.blocks.find(b => b.id === id)?.rect ?? null;
+  // Onde nasce o bloco de um conserto: à direita da saída, à esquerda da entrada, na altura do bloco.
+  const fixAt = (p: PortState): Pt => {
+    const r = viewRect(p.block), c = cam.current;
+    if (r && c) return screenToWorld(c, p.side === 'out' ? r.x + r.w + FIX_GAP : r.x - FIX_GAP - r.w, r.y);
+    const sb = scene.blocks.find(b => b.stage === p.block)?.rect;
+    return sb ? [p.side === 'out' ? sb.x + sb.w + 8 : sb.x - sb.w - 8, sb.y] : [0, 0];
+  };
+  // "Criar fonte/destino": o seletor filtrado pela porta, ao lado do bloco, como arrastar da porta para o vazio.
+  const createFor = (p: PortState) => {
+    const r = viewRect(p.block), { w, h } = size.current;
+    const x0 = r ? (p.side === 'out' ? r.x + r.w + FIX_GAP : r.x - FIX_GAP - PICKER_W) : w / 2 - PICKER_W / 2;
+    const x = clamp(x0, 8, Math.max(8, w - PICKER_W - 8)), y = clamp(r ? r.y : 56, 8, Math.max(8, h - 200));
+    openPicker(x, y, { filter: p.side === 'out' ? { consumes: p.item } : { produces: p.item }, port: { block: p.block, item: p.item, side: p.side } });
+    setSheet('peek');   // celular: a folha desce para o seletor aparecer
+  };
+  // Ver em escala: centraliza o bloco e troca para a Planta (a troca mantém o centro).
+  const toScale = (id: StageId) => {
+    const r = scene.blocks.find(b => b.stage === id)?.rect;
+    if (r) focus(r);
+    onView('planta');
+  };
+  // Da lista ou de um aviso do painel: seleciona, leva a câmera até lá e o foco vai para o mapa.
+  const goTo = (s: Selection) => {
+    onSelect(s);
+    const r = s?.kind === 'stage' ? scene.blocks.find(b => b.stage === s.id)?.rect : s ? scene.meios.find(m => m.meio === s.id)?.rect : undefined;
+    if (r) focus(r);
+    canvas.current?.focus();
+  };
+
   const area = sizeText(scene.bounds);
   return (
     <>
@@ -777,6 +831,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
               onUnlink={() => unlink(popMeio.id)} onClose={() => closePop(true)} />
           )}
           <FirstHint />
+          <button type="button" className={'pl-btn pl-panel-toggle' + (panelOpen ? ' on' : '')} aria-expanded={panelOpen} aria-controls="pl-inspector"
+            onClick={togglePanel}>{t(panelOpen ? 'plPanelClose' : 'plPanelOpen')}</button>
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
             <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
             <Legend />
@@ -786,9 +842,15 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
           </div>
         </div>
       </main>
-      <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places} selected={selStage}
-        onPlace={place} onPropose={propose} onFocus={focus} onPick={id => onSelect({ kind: 'stage', id })}
-        onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })} />
+      <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} meioList={meioList} scene={scene} places={places}
+        selection={selection} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
+        chip={id => chips.get(id) ?? null} results={results}
+        onPlace={place} onPropose={propose} onFocus={focus} onGo={goTo}
+        onGoPort={q => { focusPort(q.block, q.side, q.item); canvas.current?.focus(); }}
+        onOpenStage={onOpenStage} onBlockKey={blockKey} onGap={gap => dispatch({ type: 'setMapGap', gap })}
+        fixAt={fixAt} onCreate={createFor} onScale={toScale} onMontar={() => onView('montar')}
+        onSeeLig={id => { setPopId(null); onOpenLig(id); }} onSwap={(id, key) => dispatch({ type: 'setMeioAlt', meio: id, key })}
+        onUnlink={unlink} />
     </>
   );
 }

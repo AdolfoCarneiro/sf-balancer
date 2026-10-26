@@ -5,7 +5,7 @@ import { BUILDER_PATH, type Lang } from './lang.ts';
 import game from './data/game.json';
 import type { GameData } from './model/types.ts';
 import { meiosOf } from './model/factory.ts';
-import { factoryTotals, solvedStage } from './model/solved.ts';
+import { solvedStage } from './model/solved.ts';
 import { usePlanner } from './store.ts';
 import { useFlowState } from './solver.ts';
 import { useMeioResults } from './meios.ts';
@@ -105,7 +105,6 @@ export function App() {
   const selection: Selection = !picked ? null
     : picked.kind === 'stage' ? (f.blocks.some(b => b.id === picked.id) ? picked : null)
     : (meioList.some(m => m.id === picked.id) ? picked : null);
-  const { blocks, machines } = factoryTotals(f, flow);
   // Faixa Balanço: o que entra, sai e vai pro sink; os botões passam pelas faltas e sobras em círculo.
   const balance = useMemo(() => factoryBalance(f, flow, data), [f, flow]);
   const probIdx = useRef({ deficit: -1, surplus: -1 });
@@ -142,13 +141,13 @@ export function App() {
 
   return (
     <div className="pl-app">
-      <Header lang={lang} onLang={change} blocks={blocks} machines={machines} status={status} canUndo={canUndo} canRedo={canRedo}
+      <Header lang={lang} onLang={change} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
         view={view} onView={setView} />
       <BalanceBar balance={balance} data={data} onGo={goProblem} nameOf={nameOfBlock} />
       <div className="pl-body" style={openStage ? { display: 'none' } : undefined}>
         <MapView ref={mapRef} view={view} factory={f} flow={flow} data={data} lang={lang} meioList={meioList} results={meioResults} selection={selection}
-          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} />
+          onSelect={setSelection} onOpenStage={setOpenStage} dispatch={dispatch} onOpenLig={openLig} onView={setView} />
       </div>
       {openStage && (
         <StageView key={openStage.id} block={openStage} stage={solvedStage(openStage, flow.blocks[openStage.id])} factory={f} flow={flow}

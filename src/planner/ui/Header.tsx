@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { I18N, LANGS, fmt, t } from '../../i18n/index.js';
+import { I18N, LANGS, t } from '../../i18n/index.js';
 import { FLAGS } from '../../ui/flags.js';
 import { BALANCER_PATH, BUILDER_PATH, type Lang } from '../lang.ts';
 import type { ViewMode } from './selection.ts';
 
 interface Props {
   lang: Lang; onLang: (l: Lang) => void;
-  blocks: number; machines: number;
   status: string[];   // o que o fluxo tem a dizer (calculando, não estabilizou, loop travado)
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   shareUrl: () => string;
   view: ViewMode; onView: (v: ViewMode) => void;
 }
 
-export function Header({ lang, onLang, blocks, machines, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
+export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo, shareUrl, view, onView }: Props) {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState<string | null>(null);
   const timer = useRef<number>(0);
@@ -46,7 +45,6 @@ export function Header({ lang, onLang, blocks, machines, status, canUndo, canRed
       </div>
       <div className="pl-grow" />
       <div className="pl-status" role="status">{status.join(' · ')}</div>
-      <div className="pl-totals">{t('plTotals', fmt(blocks, 0), fmt(machines, 0))}</div>
       <div className="pl-pair">
         <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{ico('M6 4L2 8l4 4M2 8h9a5 5 0 010 10H8')}<span className="pl-lbl">{t('plUndo')}</span></button>
         <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{ico('M12 4l4 4-4 4M16 8H7a5 5 0 000 10h3')}<span className="pl-lbl">{t('plRedo')}</span></button>
