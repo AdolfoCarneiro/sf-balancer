@@ -506,6 +506,12 @@ test('center: Dividir igual divide o mesmo número de saídas o mais igual poss�
     assert.deepEqual(arrangementLines(a, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
     assert.equal(a.pieces.mergers, 22); assert.equal(a.pieces.splitters, 38);
   }
+  // Corte 6 no ferro: atravessa (ceil(42 / 6) = 7 saídas, contra 4 + 4 fechando cada par de 21).
+  const c6 = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 6 } } });
+  assert.deepEqual(arrangementLines(c6, 'out', INGOT), [6, 6, 6, 6, 6, 6, 6]);
+  assert.deepEqual(outLines(c6).map(l => l.rows), [[0, 1], [0, 1], [0, 1], [0, 1, 2, 3], [2, 3], [2, 3], [2, 3]]);
+  assert.equal(c6.pieces.lifts, 7);
+  assert.deepEqual(c6.warnings, []);
   // Corte 8 no ferro: 6 saídas separadas ou atravessando, então não atravessa; igual = 7, 7, 7 por par.
   const c8 = arrange(st(42), data, { kind: 'center', belts: { [`out:${INGOT}`]: { cut: 8, even: true } } });
   assert.deepEqual(arrangementLines(c8, 'out', INGOT), [7, 7, 7, 7, 7, 7]);
