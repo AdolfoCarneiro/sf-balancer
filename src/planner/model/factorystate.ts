@@ -1,8 +1,9 @@
 // Estado salvo da fábrica v2: ações com desfazer, leitura segura (link #p= e localStorage) e migração da v1.
 import type {
-  Block, Factory, GameData, ItemId, LigPlace, Limits, Link, MapPlace, Purity, RecipeId, Side, StageId,
+  Block, Factory, GameData, ItemId, Layout, LigPlace, Limits, Link, MapPlace, Purity, RecipeId, Side, StageId,
 } from './types.ts';
 import { tierKey } from './stage.ts';
+import { cleanLayout } from './layout.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
@@ -53,6 +54,7 @@ export type Action =
   | { type: 'disconnectMeio'; linkIds: string[] }
   | { type: 'setRecipe'; id: StageId; recipe: RecipeId }
   | { type: 'setLimits'; id: StageId; limits: Limits | null }
+  | { type: 'setLayout'; id: StageId; layout: Layout | null }   // null = simple (apaga o campo)
   | { type: 'setClock'; id: StageId; clock: number }
   | { type: 'setPerRow'; id: StageId; perRow: number | null }
   | { type: 'setTier'; id: StageId; side: Side; item: ItemId; tier: string | null }
@@ -135,10 +137,11 @@ function cleanBlock(r: Record<string, any>, id: StageId, data: GameData): Block 
     case 'recipe': {
       if (typeof r.recipe !== 'string' || !Object.hasOwn(data.recipes, r.recipe)) return null;
       const rec = data.recipes[r.recipe];
-      const limits = cleanLimits(r.limits, rec.ins.map(f => f.item)), collect = cleanCollect(r.collect, rec, data);
+      const limits = cleanLimits(r.limits, rec.ins.map(f => f.item)), layout = cleanLayout(r.layout), collect = cleanCollect(r.collect, rec, data);
       return {
         id, kind: 'recipe', recipe: r.recipe, clock: clamp(num(r.clock, 100), 1, 250), perRow: perRowOk(r.perRow) ? r.perRow : null,
         tiers: cleanTiers(r.tiers, r.recipe, data), ...(limits ? { limits } : {}), ...(collect ? { collect } : {}),
+        ...(layout ? { layout } : {}),
       };
     }
     case 'miner':
@@ -228,6 +231,15 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
       const b = f.blocks.find(x => x.id === a.id);
       if (b?.kind !== 'recipe') return f;
       return setLimits(f, a.id, cleanLimits(a.limits, d.recipes[b.recipe].ins.map(x => x.item)) ?? null);
+    }
+    case 'setLayout': {
+      const lay = a.layout === null ? null : cleanLayout(a.layout);
+      if (a.layout !== null && !lay) return f;
+      return { ...f, blocks: f.blocks.map(b => {
+        if (b.id !== a.id || b.kind !== 'recipe') return b;
+        const { layout: _l, ...rest } = b;
+        return lay ? { ...rest, layout: lay } : rest;
+      }) };
     }
     case 'setClock': return setClock(f, a.id, a.clock);
     case 'setPerRow': return setPerRow(f, a.id, a.perRow);

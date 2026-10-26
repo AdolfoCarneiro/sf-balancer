@@ -22,7 +22,19 @@ export type Purity = 'impure' | 'normal' | 'pure';
 // Valores fixados pelo usuário; ausente = livre (o solver calcula). Os dois podem coexistir.
 export interface Limits { machines?: number; inputs?: Record<ItemId, number> }
 // collect: saídas sólidas que coletam o excesso.
-export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; clock: number; perRow: number | null; tiers: Record<string, string>; limits?: Limits; collect?: ItemId[] }
+// Arranjo das fileiras do bloco (fase 4). Ausente ou inválido = { kind: 'simple' }.
+export type LayoutKind = 'simple' | 'backToBack' | 'center';
+export type LayoutExit = 'end' | 'down' | 'up';          // pela ponta da fileira, desce ou sobe por Conveyor Lift
+export interface RowEdit { flip?: boolean; mirror?: boolean; dx?: number; dy?: number }   // dx/dy em m, múltiplos de 8
+export interface BeltEdit { cut?: number; exit?: LayoutExit }                           // cut: fecha a cada N máquinas
+export interface Layout {
+  kind: LayoutKind;
+  invert?: boolean;                        // backToBack/center: o corredor do meio é das entradas, não das saídas
+  rows?: Record<number, RowEdit>;          // índice da fileira gerada pelo modelo
+  belts?: Record<string, BeltEdit>;        // chave tierKey(side, item) de model/stage.ts ('in:<item>' / 'out:<item>')
+  joins?: string[];                        // `${tierKey}@${r}`: junta a esteira desse item da fileira r com a da r+1
+}
+export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; clock: number; perRow: number | null; tiers: Record<string, string>; limits?: Limits; collect?: ItemId[]; layout?: Layout }
 export interface MinerBlock { id: StageId; kind: 'miner'; item: ItemId; rate: number }
 // count null = a ferramenta calcula quantos extratores.
 export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null }
