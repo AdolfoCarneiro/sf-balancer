@@ -4,7 +4,7 @@ import game from '../data/game.json';
 import { meiosOf } from '../model/factory.ts';
 import { flowView, type FlowView } from '../model/ligacao.ts';
 import { meioResult, type MeioResult } from '../model/meioresult.ts';
-import { solveCached, type FlowResult } from '../model/solve.ts';
+import { solveSafe, type FlowResult } from '../model/solve.ts';
 import type { Factory, GameData } from '../model/types.ts';
 
 // solve: o fluxo da fábrica; seq numera os pedidos (a página descarta resposta de pedido velho).
@@ -26,10 +26,12 @@ const scope = self as unknown as { onmessage: ((e: MessageEvent<WorkerIn>) => vo
 // Componentes já resolvidos: editar um bloco só recalcula o componente dele.
 const flowCache = new Map<string, FlowResult>();
 
+// Erro num pedido não derruba o worker (um erro solto aqui terminaria com ele e a página voltaria ao cálculo síncrono,
+// que daria o mesmo erro): o fluxo sai vazio com `failed`, o meio vai para `failed`, o desenho sai null.
 scope.onmessage = e => {
   const m = e.data;
   if (m.type === 'solve') {
-    scope.postMessage({ type: 'solved', seq: m.seq, result: solveCached(m.factory, data, flowCache).result });
+    scope.postMessage({ type: 'solved', seq: m.seq, result: solveSafe(m.factory, data, flowCache) });
     return;
   }
   if (m.type === 'flow') {
@@ -44,7 +46,8 @@ scope.onmessage = e => {
   }
   const { lang, factory, flow, jobs } = m;
   setLang(lang);
-  const list = meiosOf(factory);
+  let list: ReturnType<typeof meiosOf>;
+  try { list = meiosOf(factory); } catch { scope.postMessage({ type: 'meios', results: [], failed: jobs.map(j => j.key) }); return; }
   // Um envio por meio: os rápidos aparecem sem esperar o mais lento.
   for (const job of jobs) {
     const meio = list.find(x => x.id === job.id);

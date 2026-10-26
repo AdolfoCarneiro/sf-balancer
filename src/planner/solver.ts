@@ -1,7 +1,7 @@
 // O fluxo da fábrica calculado fora do render: no Web Worker (com cache por componente lá dentro); sem Worker,
 // síncrono com o mesmo cache. Também guarda o worker único do planner, usado pelos meios.
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { solveCached, type FlowResult } from './model/solve.ts';
+import { solveSafe, type FlowResult } from './model/solve.ts';
 import type { Factory, GameData } from './model/types.ts';
 import type { WorkerIn, WorkerOut } from './worker/meio.worker.ts';
 
@@ -30,9 +30,9 @@ export function getWorker(): Worker | null {
 }
 export const postToWorker = (w: Worker, m: WorkerIn): void => w.postMessage(m);
 
-// Cache do cálculo síncrono (abertura e sem Worker).
+// Cache do cálculo síncrono (abertura e sem Worker). Roda no render: erro vira fluxo vazio com `failed`, nunca exceção.
 const localCache = new Map<string, FlowResult>();
-const solveHere = (f: Factory, d: GameData) => solveCached({ v: 2, blocks: f.blocks, links: f.links }, d, localCache).result;
+const solveHere = (f: Factory, d: GameData) => solveSafe({ v: 2, blocks: f.blocks, links: f.links }, d, localCache);
 
 let lastSeq = 0;
 const solvedListeners = new Set<(seq: number, result: FlowResult) => void>();

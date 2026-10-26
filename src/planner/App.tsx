@@ -20,6 +20,9 @@ const data = game as unknown as GameData;
 const LigacaoModal = lazy(() => import('./ui/LigacaoModal.tsx').then(m => ({ default: m.LigacaoModal })));
 const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
+// Gancho de teste da rede de segurança (ErrorBoundary): window.__sfPlannerCrash = true quebra o render; só com ?debug=1
+// ou no servidor de desenvolvimento.
+const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 
 export function App() {
   // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
@@ -43,6 +46,7 @@ export function App() {
   };
 
   const { factory: f, dispatch, canUndo, canRedo, shareUrl } = usePlanner(data);
+  if (DEBUG && (window as unknown as { __sfPlannerCrash?: boolean }).__sfPlannerCrash) throw new Error('debug: __sfPlannerCrash');
   // O fluxo: no worker, com cache por componente; enquanto calcula, o último pronto.
   const { flow, pending } = useFlowState(f, data);
   const [picked, setSelection] = useState<Selection>(null);
@@ -93,7 +97,7 @@ export function App() {
     if (next) setLigId(next.id); else closeLig();
   }, [ligId, ligMeio]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Os planos dos meios: calculados no worker, com cache; null enquanto calcula.
-  const meioResults = useMeioResults(f, flow, data, lang, meioList);
+  const meioResults = useMeioResults(f, flow, data, lang, meioList, pending);
   // Depois de desfazer, o bloco ou o meio selecionado pode não existir mais: aí não há seleção.
   const selection: Selection = !picked ? null
     : picked.kind === 'stage' ? (f.blocks.some(b => b.id === picked.id) ? picked : null)
@@ -102,6 +106,7 @@ export function App() {
   // O que o fluxo tem a dizer: calculando, não estabilizou, loop travado.
   const status = [
     ...(pending ? [t('plFlowCalc')] : []),
+    ...(flow.failed ? [t('plFlowFailed')] : []),
     ...(flow.converged ? [] : [t('plNotConverged')]),
     ...flow.deadlock.map(ids => t('plDeadlock', ids.map(id => { const b = f.blocks.find(x => x.id === id); return b ? blockName(b, data) : id; }).join(', '))),
   ];

@@ -15,7 +15,11 @@ export interface BlockFlow {
   unbounded: boolean; stalled: ItemId | null; ins: PortFlow[]; outs: PortFlow[];
 }
 // links: fluxo de cada ligação (null = sem limite).
-export interface FlowResult { blocks: Record<StageId, BlockFlow>; links: Record<string, number | null>; deadlock: StageId[][]; converged: boolean; iterations: number }
+// failed: o cálculo deu erro (o fluxo vem vazio e a página avisa, em vez de quebrar).
+export interface FlowResult {
+  blocks: Record<StageId, BlockFlow>; links: Record<string, number | null>; deadlock: StageId[][]; converged: boolean; iterations: number;
+  failed?: true;
+}
 
 export const MAX_ITER = 1000, EPS = 1e-9;
 const INF = Infinity;
@@ -302,4 +306,9 @@ export function solveCached(f: Factory, d: GameData, cache: Map<string, FlowResu
   for (const k of [...cache.keys()]) if (!used.has(k)) cache.delete(k);
   result.deadlock.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return { result, solved };
+}
+
+// O solveCached sem exceção: um erro no cálculo vira fluxo vazio com `failed` (a página segue de pé e avisa).
+export function solveSafe(f: Factory, d: GameData, cache: Map<string, FlowResult>): FlowResult {
+  try { return solveCached(f, d, cache).result; } catch { return { blocks: {}, links: {}, deadlock: [], converged: true, iterations: 0, failed: true }; }
 }

@@ -79,3 +79,12 @@ export function evict(cache: Map<string, MeioResult>, max: number, keep: Set<str
     if (!keep.has(k)) cache.delete(k);
   }
 }
+
+// Os meios a pedir ao worker: os que ainda não têm resultado (null) e não estão pedidos (`inFlight`). Com o fluxo da
+// fábrica calculando, nada: as chaves misturariam a fábrica nova com o fluxo velho (a tela fica com o que tem).
+export function meioJobs(keys: Map<string, string>, results: Map<string, MeioResult | null>, inFlight: Set<string>, flowPending: boolean): { id: string; key: string }[] {
+  if (flowPending) return [];
+  const jobs: { id: string; key: string }[] = [];
+  for (const [id, key] of keys) if (results.get(id) === null && !inFlight.has(key)) jobs.push({ id, key });
+  return jobs;
+}
