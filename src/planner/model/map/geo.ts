@@ -1,4 +1,4 @@
-import type { ItemId, Rot, StageId } from '../types.ts';
+import type { ItemId, LayoutExit, Rot, StageId } from '../types.ts';
 
 export type Pt = [number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -8,7 +8,8 @@ export type PieceKind = 'machine' | 'splitter' | 'merger' | 'smart' | 'sink' | '
 export interface Piece extends Rect { kind: PieceKind; label?: string; above?: boolean; item?: string }
 export type BeltRole = 'main' | 'donor' | 'loop' | 'sink' | 'extra' | 'over' | 'in' | 'out' | 'raw';
 export interface BeltPath { pts: Pt[]; item: ItemId; rate: number; role: BeltRole; fluid: boolean }
-export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean }  // extra: saída de linha extra do meio
+// extra: saída de linha extra do meio. exit: a linha do bloco desce ou sobe por Conveyor Lift ali (ausente = pela ponta).
+export interface Anchor { x: number; y: number; item: ItemId; row: number; stage?: StageId; extra?: boolean; exit?: LayoutExit }
 export interface BlockGeo { w: number; h: number; pieces: Piece[]; belts: BeltPath[]; ins: Anchor[]; outs: Anchor[]; estimate: boolean }
 export interface MeioGeo extends BlockGeo { floors: number; tooLarge: boolean }
 

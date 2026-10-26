@@ -204,10 +204,19 @@ export function buildScene(f: Factory, data: GameData, places: Record<StageId, M
   const { blocks, byId, list, meios } = layout(f, data, places, geos, flow);
   const belts: BeltPath[] = [];
   const world = (b: SceneBlock, p: { x: number; y: number }): Pt => toWorld([p.x, p.y], b.geo, b.place);
-  // Portas do bloco para o item, na ordem das fileiras, com a taxa da faixa da fileira.
+  // Portas do bloco para o item, com a taxa da faixa de cada linha, na ordem das linhas do meio: o meioInput agrupa as
+  // linhas do bloco por tamanho (na ordem em que aparecem), então aqui também (estável). Linha que desce ou sobe por
+  // Conveyor Lift: a esteira até a ligação começa na borda do lado dela (não atravessa as máquinas no chão); o leque
+  // da porta mostra o elevador.
   const ports = (b: SceneBlock, side: 'ins' | 'outs', item: string) => {
     const lanes = b.geo.belts.filter(x => x.role === (side === 'ins' ? 'in' : 'out') && x.item === item);
-    return b.geo[side].filter(a => a.item === item).map((a, k) => ({ at: world(b, a), rate: lanes[k]?.rate ?? 0 }));
+    const list = b.geo[side].filter(a => a.item === item).map((a, k) => {
+      const p = a.exit ? { x: side === 'ins' ? 0 : b.geo.w, y: a.y } : a;
+      return { at: world(b, p), rate: lanes[k]?.rate ?? 0 };
+    });
+    const first = new Map<string, number>(), key = (r: number) => r.toFixed(6);
+    list.forEach((p, k) => { if (!first.has(key(p.rate))) first.set(key(p.rate), k); });
+    return list.map((p, k) => ({ p, k })).sort((u, v) => first.get(key(u.p.rate))! - first.get(key(v.p.rate))! || u.k - v.k).map(x => x.p);
   };
   // Marcador tem uma porta por item: todas as linhas do meio saem (ou chegam) nela.
   const nth = <T>(xs: T[], k: number, marker: boolean) => (marker ? xs[Math.min(k, xs.length - 1)] : xs[k]);

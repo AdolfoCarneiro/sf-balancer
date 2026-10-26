@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Factory, GameData, MapPlace, RecipeBlock, StageId } from '../../src/planner/model/types.ts';
+import type { Factory, GameData, Layout, MapPlace, RecipeBlock, StageId } from '../../src/planner/model/types.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
-import { connect, disconnect, meiosOf, nextBlockId, placeLig, setLimits } from '../../src/planner/model/factory.ts';
+import { connect, disconnect, meiosOf, nextBlockId, placeLig, setCollect, setLimits } from '../../src/planner/model/factory.ts';
 import { solveFactory, type FlowResult } from '../../src/planner/model/solve.ts';
 import { solvedStage } from '../../src/planner/model/solved.ts';
 import { meioPlan } from '../../src/planner/model/meio.ts';
@@ -365,4 +365,48 @@ test('proposeMap: marcadores empilhados não se sobrepõem como cartões', () =>
   const p = proposeMap(f, data, {});
   assert.equal(p.m1.x, p.m2.x);
   assert.ok(Math.abs(p.m2.y - p.m1.y) >= MARK_H / MONTAR_REF, `${p.m1.y} e ${p.m2.y}`);
+});
+
+// ---- O arranjo das fileiras na cena (fase 4) ----
+const withLayout = (f: Factory, id: string, layout: Layout): Factory =>
+  ({ ...f, blocks: f.blocks.map(b => (b.id === id ? { ...(b as RecipeBlock), layout } : b)) });
+// Refinaria com 40 máquinas em Mergers no meio, coletando a sobra (roda cheia): linhas 7, 7, 6 em cada par.
+const center40 = (): Factory => withLayout(setLimits(setCollect(ex, data, 's1', 'Desc_IronIngot_C', true), 's1', { machines: 40 }), 's1', { kind: 'center' });
+const same = (a: number[], b: number[]) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
+
+test('cena: linhas de tamanhos misturados chegam cada uma na entrada da ligação do mesmo tamanho', () => {
+  const f = center40(), geos = geosOf(f), s = buildScene(f, data, placesOf(f, data, geos), geos);
+  const plan = meioPlan(meiosOf(f).find(m => m.id === IRON_MEIO)!, f, flowOf(f), data);
+  assert.deepEqual([...new Set(plan.src.lines.map(l => l.machines))], [7, 6]);
+  const sm = meioOf(s, IRON_MEIO), geo = sm.geo!, place = { x: sm.rect.x, y: sm.rect.y, rot: sm.rot };
+  const ends = geo.ins.filter(a => a.stage === 's1').map(a => ({ at: toWorld([a.x, a.y], geo, place), line: plan.src.lines[a.row] }));
+  const belts = s.belts.filter(b => b.role === 'main' && b.item === 'Desc_IronIngot_C' && ends.some(e => same(e.at, b.pts[b.pts.length - 1])));
+  assert.equal(belts.length, 6);
+  for (const b of belts) {
+    const e = ends.find(x => same(x.at, b.pts[b.pts.length - 1]))!;
+    assert.ok(Math.abs(b.rate - e.line.rate) < 1e-6, `esteira de ${b.rate} chegou na linha de ${e.line.rate}`);
+  }
+});
+
+test('cena: linha que desce por Conveyor Lift sai da borda do bloco, não do elevador no meio das máquinas', () => {
+  for (const rot of [0, 2] as const) {
+    const f = center40(), geos = geosOf(f);
+    const p0 = placesOf(f, data, geos), places = { ...p0, s1: { ...p0.s1, rot } };
+    const s = buildScene(f, data, places, geos), r = blockOf(s, 's1').rect;
+    const sm = meioOf(s, IRON_MEIO), geo = sm.geo!, place = { x: sm.rect.x, y: sm.rect.y, rot: sm.rot };
+    const ends = geo.ins.filter(a => a.stage === 's1').map(a => toWorld([a.x, a.y], geo, place));
+    const belts = s.belts.filter(b => b.role === 'main' && ends.some(e => same(e, b.pts[b.pts.length - 1])));
+    assert.equal(belts.length, 6);
+    const edge = rot === 0 ? r.x + r.w : r.x;
+    for (const b of belts) {
+      assert.ok(Math.abs(b.pts[0][0] - edge) < 1e-6, `rot ${rot}: começa em ${b.pts[0][0]}, borda ${edge}`);
+      assert.ok(b.pts[0][1] > r.y && b.pts[0][1] < r.y + r.h);
+    }
+  }
+  // Pela ponta (sem elevador): a âncora não leva exit, e a esteira sai dela, como antes.
+  const g = withLayout(center40(), 's1', { kind: 'center', belts: { 'out:Desc_IronIngot_C': { exit: 'end' } } });
+  const gs = geosOf(g), sc = buildScene(g, data, placesOf(g, data, gs), gs), sb = blockOf(sc, 's1');
+  assert.ok(sb.geo.outs.every(a => a.exit === undefined));
+  const starts = sb.geo.outs.map(a => toWorld([a.x, a.y], sb.geo, sb.place));
+  assert.ok(sc.belts.filter(b => b.role === 'main' && starts.some(p => same(p, b.pts[0]))).length > 0);
 });

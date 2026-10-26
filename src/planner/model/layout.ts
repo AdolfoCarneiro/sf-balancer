@@ -308,7 +308,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       const rate = p * sg.machines;
       const segRows = [...new Set(sg.cols.flatMap(c => cols[c.ci].rows.slice(c.from, c.from + c.k)))].sort((u, v) => u - v);
       belts.push({ pts: [[xs, cy], [xe, cy]], item, rate, role: s, fluid: false });
-      (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row: segRows[0], stage: stage.id });
+      (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row: segRows[0], stage: stage.id, ...(exit !== 'end' ? { exit } : {}) });
       lines.push({ side: s, item, machines: sg.machines, rate, rows: segRows, exit, at: a, tier, cap, fluid: false });
       const withPiece = pieceCols(sg, side);
       count[side === 'ins' ? 'splitters' : 'mergers'] += withPiece.length;
@@ -356,7 +356,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
         }
         const rate = p * sg.count;
         belts.push({ pts, item, rate, role: s, fluid });
-        (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row, stage: stage.id });
+        (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row, stage: stage.id, ...(exit !== 'end' ? { exit } : {}) });
         lines.push({ side: s, item, machines: sg.count, rate, rows: [row], exit, at: a, tier, cap, fluid });
         if (!fluid) count[side === 'ins' ? 'splitters' : 'mergers'] += Math.max(0, sg.count - 1);
         if (exit !== 'end') lift(a, exit, item);

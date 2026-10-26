@@ -158,3 +158,22 @@ test('meio: fundição em Mergers no meio invertido recebe as linhas de entrada 
   const mine = (id: string) => sp.dst.lines.filter(l => lineOwner(steel, 'dst', l, sp) === id).reduce((s, l) => s + l.machines, 0);
   assert.equal(mine('s3'), hf.blocks.s3.machines); assert.equal(mine('s4'), hf.blocks.s4.machines);
 });
+
+test('meio: simples (ou costas com costas) só com fileiras viradas/deslocadas dá os grupos e as linhas de sem arranjo', () => {
+  // s3 (Steel Beam) tem 30 máquinas de 8: a última fileira de 6 continua "partial" no plano, como sem arranjo.
+  const base = exampleFactory(data), flow = solveFactory(base, data);
+  const steel = (f: Factory) => { const me = meioFor(f, 'l2'); return { inp: meioInput(me, f, flow, data), plan: meioPlan(me, f, flow, data) }; };
+  const ref = steel(base);
+  assert.ok(ref.plan.dst.lines.some(l => l.partial));
+  for (const layout of [
+    { kind: 'simple', rows: { 1: { flip: true }, 2: { mirror: true, dx: 8 } } },
+    { kind: 'backToBack', invert: true },
+  ] as Layout[]) {
+    const f = withLayout(withLayout(base, 's3', layout), 's2', layout), got = steel(f);
+    assert.deepEqual(got.inp, ref.inp, layout.kind);
+    assert.deepEqual(got.plan.src.lines, ref.plan.src.lines); assert.deepEqual(got.plan.dst.lines, ref.plan.dst.lines);
+  }
+  // Com esteira editada já vale o arranjo.
+  const cut = withLayout(base, 's3', { kind: 'simple', belts: { 'in:Desc_SteelIngot_C': { cut: 4, exit: 'down' } } });
+  assert.notDeepEqual(steel(cut).inp.dstGroups, ref.inp.dstGroups);
+});

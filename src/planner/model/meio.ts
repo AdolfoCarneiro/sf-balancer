@@ -3,10 +3,10 @@
 import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { BALANCER_PATH, type Lang } from '../lang.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
-import { arrange, type ArrLine } from './layout.ts';
+import { arrange, type ArrLine, type Arrangement } from './layout.ts';
 import { solvedStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
-import type { Block, Factory, GameData, ItemId, Link, RecipeBlock, StageId } from './types.ts';
+import type { Block, Factory, GameData, ItemId, Layout, Link, RecipeBlock, StageId } from './types.ts';
 import { PURITY } from './factory.ts';
 import { countPieces, type MeioGeo, type PieceCount } from './map/geo.ts';
 
@@ -93,16 +93,32 @@ export const meioUnbounded = (meio: Meio, flow: FlowResult): boolean =>
   [...meio.producers, ...meio.consumers].some(id => !flow.blocks[id] || flow.blocks[id].unbounded)
   || meio.links.some(id => typeof flow.links[id] !== 'number');
 
+// arrange de cada bloco guardado pelo objeto do bloco (o Factory é imutável) e pelas máquinas resolvidas: o cacheKey
+// chama o meioInput a cada mudança, para todos os meios, e só o bloco editado precisa montar de novo.
+const arrMemo = new WeakMap<RecipeBlock, { machines: number; d: GameData; a: Arrangement }>();
+function blockArrangement(b: RecipeBlock, bf: FlowResult['blocks'][string] | undefined, d: GameData): Arrangement {
+  const st = solvedStage(b, bf), m = arrMemo.get(b);
+  if (m && m.machines === st.machines && m.d === d) return m.a;
+  const a = arrange(st, d, b.layout);
+  arrMemo.set(b, { machines: st.machines, d, a });
+  return a;
+}
+
+const linesEdited = (l: Layout | undefined): l is Layout =>
+  !!l && (l.kind === 'center' || Object.keys(l.belts ?? {}).length > 0 || (l.joins?.length ?? 0) > 0);
+
 export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData): MeioInput {
   const it = d.items[meio.item];
   const consumers = planMeio(meio, f).consumers;
-  // Linhas do item no arranjo do bloco (null sem arranjo: as contas de hoje, por perRowOf). Uma vez por bloco e lado.
+  // Linhas do item no arranjo do bloco; null quando as linhas são as fileiras de hoje (sem arranjo, ou simples/costas
+  // com costas sem esteiras editadas nem junções: virar, espelhar e deslocar fileiras não mudam as linhas) e valem as
+  // contas de hoje, por perRowOf (a última fileira incompleta continua "partial"). Uma vez por bloco e lado.
   const memo = new Map<string, ArrLine[] | null>();
   const arranged = (b: RecipeBlock, id: StageId, side: 'ins' | 'outs'): ArrLine[] | null => {
     const k = `${id}|${side}`;
     if (!memo.has(k)) {
       const s = side === 'ins' ? 'in' : 'out';
-      memo.set(k, b.layout ? arrange(solvedStage(b, flow.blocks[id]), d, b.layout).lines.filter(l => l.side === s && l.item === meio.item) : null);
+      memo.set(k, linesEdited(b.layout) ? blockArrangement(b, flow.blocks[id], d).lines.filter(l => l.side === s && l.item === meio.item) : null);
     }
     return memo.get(k)!;
   };
