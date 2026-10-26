@@ -77,6 +77,17 @@ test('balanço: entra, sai, sink e problemas', () => {
   assert.deepEqual(d.problems.map(p => [p.block, p.kind]), [['s1', 'surplus']]);
 });
 
+for (const kind of ['export', 'container'] as const) {
+  test(`balanço: o que chega a ${kind} conta em Sai, não em Sink`, () => {
+    const f = fac([{ id: 'm1', kind: 'miner', item: 'Desc_OreIron_C', rate: 120 }, recipe('s1', 'Recipe_IngotIron_C'), { id: 'x1', kind }],
+      [link('l1', 'Desc_OreIron_C', 'm1', 's1'), link('l2', 'Desc_IronIngot_C', 's1', 'x1')]);
+    const b = factoryBalance(f, solveFactory(f, data), data);
+    assert.deepEqual(b.outs, [{ item: 'Desc_IronIngot_C', rate: 120 }]);
+    assert.deepEqual(b.sink, []);
+    assert.deepEqual(b.problems, []);
+  });
+}
+
 test('nextProblem: circular, por tipo, travada conta como falta', () => {
   const p = (kind: PortState['kind'], block: string): PortState => ({ block, side: kind === 'deficit' ? 'in' : 'out', item: 'x', kind, amount: 1, rate: 1 });
   const ps = [p('surplus', 'a'), p('deficit', 'b'), p('stalled', 'c'), p('surplus', 'd')];

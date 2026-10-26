@@ -51,7 +51,9 @@ export function factoryBalance(f: Factory, flow: FlowResult, _d: GameData): Bala
     if (b.kind === 'recipe') {
       for (const p of bf.ins) if (!f.links.some(l => l.to === b.id && l.item === p.item)) ins.push({ item: p.item, rate: num(p.rate) });
     }
+    // O que chega ao Awesome Sink vai para "Sink"; o que chega a Container e Saída (Export) sai da fábrica, como as saídas.
     if (b.kind === 'sink') for (const p of bf.ins) sink.push({ item: p.item, rate: num(p.rate) });
+    if (b.kind === 'export' || b.kind === 'container') for (const p of bf.ins) outs.push({ item: p.item, rate: num(p.rate) });
     for (const p of bf.outs) if (p.exits === null || p.exits > EPS) outs.push({ item: p.item, rate: num(p.exits) });
     for (const s of portStates(bf)) if (s.kind === 'deficit' || s.kind === 'surplus' || s.kind === 'stalled') problems.push(s);
   }
