@@ -12,7 +12,7 @@ import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  MONTAR_LIMITS, MONTAR_REF, cardScale, cardSize, chipWorld, fitMontar, montarBounds, stripRows, viewGeo, viewHit, viewLimits,
+  MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, stripRows, viewGeo, viewHit, viewLimits,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -204,8 +204,18 @@ test('Montar: mostrar tudo enquadra os cartões (com as portas) dentro dos limit
   const v = viewGeo(scene, c, 0, false, ex, data, flow);
   for (const b of v.blocks) assert.ok(b.rect.x >= 0 && b.rect.y >= 0 && b.rect.x + b.rect.w <= vw && b.rect.y + b.rect.h <= vh, JSON.stringify(b.rect));
   for (const p of v.ports) assert.ok(p.x - 22 >= 0 && p.x + 22 <= vw, `porta fora: ${p.x}`);
+  // E o rótulo do estado ao lado de cada porta (por fora do cartão) também cabe.
+  for (const p of v.ports) assert.ok(p.x - 22 - PORT_LABEL_ROOM >= 0 && p.x + 22 + PORT_LABEL_ROOM <= vw, `rótulo fora: ${p.x}`);
   const empty: Factory = { ...ex, blocks: [], links: [] }, fe = solveFactory(empty, data);
   const se = buildScene(empty, data, {}, {}, fe);
   assert.equal(fitMontar(se, empty, data, fe, vw, vh, false), null);
   assert.deepEqual(montarBounds(se, empty, data, fe, 4, false), { x: 0, y: 0, w: 0, h: 0 });
+});
+
+test('Planta: mostrar tudo deixa as portas e os rótulos delas dentro da tela', () => {
+  const { scene, flow } = view(ex, 1);
+  const vw = 1400, vh = 860, c = fitPlanta(scene.bounds, vw, vh);
+  const v = viewGeo(scene, c, 1, false, ex, data, flow);
+  assert.ok(v.ports.length > 0);
+  for (const p of v.ports) assert.ok(p.x - 22 - PORT_LABEL_ROOM >= 0 && p.x + 22 + PORT_LABEL_ROOM <= vw, `porta/rótulo fora: ${p.x}`);
 });

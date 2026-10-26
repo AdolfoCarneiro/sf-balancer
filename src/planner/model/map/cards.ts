@@ -181,10 +181,13 @@ export function chipWorld(cam: Camera, sx: number, sy: number, size: { w: number
 export const MONTAR_LIMITS: ZoomLimits = { min: MONTAR_REF * 0.35, max: MONTAR_REF * 3 };
 export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMITS : PLANT_LIMITS);
 
-// Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas por fora, e os
-// chips postos. Vazio sem blocos.
+// Do lado de fora de cada porta cabe o rótulo do estado ("sai 1.200/min", "faltam 120/min", "+330 sobrando"): sem essa
+// folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.
+export const PORT_LABEL_ROOM = 104;
+// Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas e os rótulos
+// delas por fora, e os chips postos. Vazio sem blocos.
 export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: FlowResult, z: number, phone: boolean): Rect {
-  const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b])), m = (PORT_D / 2 + 8) / z;
+  const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b])), m = (PORT_D / 2 + PORT_LABEL_ROOM) / z;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const add = (ax: number, ay: number, bx: number, by: number) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, bx); y1 = Math.max(y1, by); };
   for (const sb of scene.blocks) {
@@ -200,6 +203,18 @@ export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: Flo
     add(cx - hw, cy - hh, cx + hw, cy + hh);
   }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// "Mostrar tudo" da Planta: os blocos reais, com folga dos lados para as portas e os rótulos delas (em px de tela, então
+// a folga no mundo depende do zoom: enquadra algumas vezes).
+export function fitPlanta(b: Rect, vw: number, vh: number, pad = 40): Camera {
+  const side = PORT_D / 2 + PORT_LABEL_ROOM;
+  let c = fit(b, vw, vh, pad);
+  for (let k = 0; k < 3; k++) {
+    const m = side / c.zoom;
+    c = fit({ x: b.x - m, y: b.y, w: b.w + 2 * m, h: b.h }, vw, vh, pad);
+  }
+  return c;
 }
 
 // "Mostrar tudo" da Montar: o zoom muda o tamanho do cartão no mundo, então enquadra algumas vezes até assentar.

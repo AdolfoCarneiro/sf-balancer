@@ -17,7 +17,7 @@ import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
 import { buildScene, hitTest, placesOf, proposeMap, type Scene } from '../model/map/scene.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
-import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
+import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
@@ -56,7 +56,7 @@ let camMoved = false, refitted = false;
 // Mapa vazio: a origem no centro, de perto (enquadrar um retângulo vazio daria o zoom máximo).
 const EMPTY_ZOOM = 2;
 const fitAll = (b: Rect, w: number, h: number): Camera =>
-  (b.w || b.h ? fit(b, w, h) : { x: -w / 2 / EMPTY_ZOOM, y: -h / 2 / EMPTY_ZOOM, zoom: EMPTY_ZOOM });
+  (b.w || b.h ? fitPlanta(b, w, h) : { x: -w / 2 / EMPTY_ZOOM, y: -h / 2 / EMPTY_ZOOM, zoom: EMPTY_ZOOM });
 
 const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
 const BUTTON_ZOOM = 1.25;
