@@ -45,7 +45,10 @@ export type Block = RecipeBlock | MinerBlock | ExtractorBlock | OutletBlock;
 export interface LigPlace { x: number; y: number; rot: Rot }
 // map: posição de cada bloco no mapa; alts: id do meio -> `key` da montagem escolhida; mapGap: vão entre peças ligadas
 // dos meios no mapa (m, inteiro de 1 a 8; sem ele, 2); ligs: id do meio -> posição da ligação.
+// map e ligs são da Planta em escala; montar e montarLigs, da Montar (posição e giro, sem os vãos). Bloco sem `montar`
+// usa o `map`; sem o objeto `montarLigs` inteiro, a Montar usa as `ligs` (com ele, ligação fora dele fica no automático).
 export interface Factory {
   v: 2; blocks: Block[]; links: Link[];
   map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number; ligs?: Record<string, LigPlace>;
+  montar?: Record<StageId, MapPlace>; montarLigs?: Record<string, LigPlace>;
 }

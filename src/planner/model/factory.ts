@@ -104,9 +104,10 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
   }
 }
 
+// Bloco novo nasce no mesmo ponto nas duas vistas (sem `montar`, a Montar já usa o `map`).
 const placeAt = (f: Factory, id: StageId, at: Pt): Factory => {
   const p = cleanPlace({ x: at[0], y: at[1], rot: 0 });
-  return p ? { ...f, map: { ...f.map, [id]: p } } : f;
+  return p ? { ...f, map: { ...f.map, [id]: p }, ...(f.montar ? { montar: { ...f.montar, [id]: p } } : {}) } : f;
 };
 
 export function addBlock(f: Factory, d: GameData, spec: BlockSpec, at: Pt): Factory {
@@ -126,37 +127,43 @@ export function addLinkedBlock(f: Factory, d: GameData, spec: BlockSpec, port: {
   return placeAt(connect(f2, d, from, to, port.item), b.id, at);
 }
 
-// Tira as posições de ligação e as montagens cujo grupo deixou de existir.
+// Tira as posições de ligação e as montagens cujo grupo deixou de existir. `montarLigs` fica mesmo vazio (a presença
+// dele diz que a Montar não segue mais as `ligs`).
 function pruneMeios(f: Factory): Factory {
-  if (!f.ligs && !f.alts) return f;
+  if (!f.ligs && !f.alts && !f.montarLigs) return f;
   const ids = new Set(meiosOf(f).map(m => m.id));
   const keep = <T>(o: Record<string, T> | undefined) => {
     if (!o) return undefined;
     const e = Object.entries(o).filter(([k]) => ids.has(k));
     return e.length ? Object.fromEntries(e) : undefined;
   };
-  const { ligs: _l, alts: _a, ...rest } = f;
-  const ligs = keep(f.ligs), alts = keep(f.alts);
-  return { ...rest, ...(alts ? { alts } : {}), ...(ligs ? { ligs } : {}) };
+  const { ligs: _l, alts: _a, montarLigs: _m, ...rest } = f;
+  const ligs = keep(f.ligs), alts = keep(f.alts), montarLigs = f.montarLigs && (keep(f.montarLigs) ?? {});
+  return { ...rest, ...(alts ? { alts } : {}), ...(ligs ? { ligs } : {}), ...(montarLigs ? { montarLigs } : {}) };
+}
+
+// Sem as posições (nas duas vistas) dos blocos que saíram.
+function dropPlaces(f: Factory, gone: (id: StageId) => boolean): Factory {
+  let g = f;
+  for (const k of ['map', 'montar'] as const) {
+    const o = g[k];
+    if (o && Object.keys(o).some(gone)) g = { ...g, [k]: Object.fromEntries(Object.entries(o).filter(([id]) => !gone(id))) };
+  }
+  return g;
 }
 
 export function removeBlock(f: Factory, id: StageId): Factory {
   if (!get(f, id)) return f;
-  let g: Factory = { ...f, blocks: f.blocks.filter(b => b.id !== id), links: f.links.filter(l => l.from !== id && l.to !== id) };
-  if (g.map && Object.hasOwn(g.map, id)) {
-    const { [id]: _gone, ...map } = g.map;
-    g = { ...g, map };
-  }
-  return pruneMeios(g);
+  const g: Factory = { ...f, blocks: f.blocks.filter(b => b.id !== id), links: f.links.filter(l => l.from !== id && l.to !== id) };
+  return pruneMeios(dropPlaces(g, x => x === id));
 }
 
 // Apaga vários blocos de uma vez (seleção múltipla), com as ligações deles; ids que não existem são ignorados.
 export function removeBlocks(f: Factory, ids: readonly StageId[]): Factory {
   const gone = new Set(ids.filter(id => get(f, id)));
   if (!gone.size) return f;
-  let g: Factory = { ...f, blocks: f.blocks.filter(b => !gone.has(b.id)), links: f.links.filter(l => !gone.has(l.from) && !gone.has(l.to)) };
-  if (g.map && Object.keys(g.map).some(id => gone.has(id))) g = { ...g, map: Object.fromEntries(Object.entries(g.map).filter(([id]) => !gone.has(id))) };
-  return pruneMeios(g);
+  const g: Factory = { ...f, blocks: f.blocks.filter(b => !gone.has(b.id)), links: f.links.filter(l => !gone.has(l.from) && !gone.has(l.to)) };
+  return pruneMeios(dropPlaces(g, id => gone.has(id)));
 }
 
 // Loops liberados: só a ligação de um bloco com ele mesmo é proibida.

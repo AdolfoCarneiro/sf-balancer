@@ -10,10 +10,13 @@ import { clean, cutsRect, dirWorld, gateOf, rotSize, toWorld, type BeltPath, typ
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
 import { crossings, intersects, overlaps } from './checks.ts';
 import { blockCardSize, MONTAR_REF } from './cards.ts';
+import { montarLig } from '../views.ts';
 
-// marker: origem ou sobra, desenhada fora de escala.
-export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean }
-export interface SceneMeio { meio: string; rect: Rect; rot: Rot; geo: MeioGeo | null }   // null = calculando (faixa 16 × 8)
+// marker: origem ou sobra, desenhada fora de escala. card: canto do cartão na Montar (a posição dela, senão a da Planta).
+export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean; card: Pt }
+// geo null = calculando (faixa 16 × 8). chip: centro do chip na Montar quando a ligação tem posição lá (null: no meio
+// das portas, calculado na tela).
+export interface SceneMeio { meio: string; rect: Rect; rot: Rot; geo: MeioGeo | null; chip: Pt | null }
 export interface Scene {
   blocks: SceneBlock[]; meios: SceneMeio[]; belts: BeltPath[]; bounds: Rect;
   overlaps: [string, string][]; crossings: Pt[];
@@ -146,19 +149,23 @@ export function proposeMap(f: Factory, data: GameData, geos: Geos, flow: FlowRes
 function layout(f: Factory, data: GameData, places: Record<StageId, MapPlace>, geos: Geos, flow: FlowResult, list0 = f.blocks) {
   const blocks: SceneBlock[] = list0.map(b => {
     const place = places[b.id] ?? ORIGIN, geo = geoOf(b, data, flow, place);
-    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe' };
+    const mp = f.montar && Object.hasOwn(f.montar, b.id) ? f.montar[b.id] : place;
+    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe', card: [mp.x, mp.y] };
   });
   const byId = new Map(blocks.map(b => [b.stage, b]));
   const list = groupLinks(f.links).filter(m => byId.has(m.producers[0]));
   const att = attach(list, geos, id => byId.get(id)!.geo);
   const meios: SceneMeio[] = list.map(m => {
+    // Na Montar: o centro do retângulo da ligação no lugar dela lá.
+    const ml = montarLig(f, m.id), size = meioSize(geos[m.id]), mr = ml && rotSize(size, ml.rot);
+    const chip: Pt | null = ml && mr ? [ml.x + mr.w / 2, ml.y + mr.h / 2] : null;
     // Ligação posta no mapa: canto e giro salvos; senão colada na primeira produtora.
     const lig = f.ligs && Object.hasOwn(f.ligs, m.id) ? f.ligs[m.id] : null;
-    if (lig) return { meio: m.id, rect: { x: lig.x, y: lig.y, ...rotSize(meioSize(geos[m.id]), lig.rot) }, rot: lig.rot, geo: geos[m.id] ?? null };
+    if (lig) return { meio: m.id, rect: { x: lig.x, y: lig.y, ...rotSize(size, lig.rot) }, rot: lig.rot, geo: geos[m.id] ?? null, chip };
     const a = att.get(m.id)!, owner = byId.get(a.owner)!;
     const p = toWorld(a.at, owner.geo, owner.place), q = toWorld([a.at[0] + a.size.w, a.at[1] + a.size.h], owner.geo, owner.place);
     const rect = { x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) };
-    return { meio: m.id, rect, rot: owner.place.rot, geo: geos[m.id] ?? null };
+    return { meio: m.id, rect, rot: owner.place.rot, geo: geos[m.id] ?? null, chip };
   });
   return { blocks, byId, list, meios };
 }

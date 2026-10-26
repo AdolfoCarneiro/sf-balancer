@@ -6,12 +6,13 @@ import { tierKey } from './stage.ts';
 import { cleanLayout } from './layout.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
-  extractable, meiosOf, minable, nextLinkId, perRowOk, placeLig, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
+  extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
   setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
 import { exampleChain } from './example.ts';
+import { placeBlockIn, placeLigIn, proposeIn, setPlacesIn, type PlaceView } from './views.ts';
 import { BELTS, PIPES, encodeShare, historyNew, historyPush, historyRedo, historyUndo } from '../../logic/index.js';
 
 export const PLANNER_STORE = 'sf-balancer:planner';
@@ -61,10 +62,12 @@ export type Action =
   | { type: 'setCollect'; id: StageId; item: ItemId; on: boolean }
   | { type: 'setMinerRate'; id: StageId; rate: number }
   | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity }
-  | { type: 'placeLig'; meio: string; place: LigPlace | null }
-  | { type: 'placeBlock'; id: StageId; place: MapPlace }
-  | { type: 'setPlaces'; places: Record<StageId, MapPlace> }
-  | { type: 'proposeMap'; places: Record<StageId, MapPlace> }   // propor de novo: posições novas e ligações soltas
+  // Posições: na vista dada (sem ela, a Planta). together: "Mover junto" (o mesmo deslocamento na outra vista); auto e
+  // shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
+  | { type: 'placeLig'; meio: string; place: LigPlace | null; view?: PlaceView; together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
+  | { type: 'placeBlock'; id: StageId; place: MapPlace; view?: PlaceView; together?: boolean; auto?: Record<StageId, MapPlace> }
+  | { type: 'setPlaces'; places: Record<StageId, MapPlace>; view?: PlaceView; together?: boolean; auto?: Record<StageId, MapPlace> }
+  | { type: 'proposeMap'; places: Record<StageId, MapPlace>; view?: PlaceView; auto?: Record<StageId, MapPlace> }   // propor de novo: posições novas e ligações soltas
   | { type: 'setMeioAlt'; meio: string; key: string | null }
   | { type: 'setMapGap'; gap: number | null }
   | { type: 'undo' }
@@ -178,13 +181,14 @@ function cleanFactory(raw: unknown, data: GameData): Factory | null {
     const nl: Link = { id, item: l.item, from, to };
     f = { ...f, links: [...f.links, nl] };
   }
-  if (isObj(raw.map)) {
+  for (const k of ['map', 'montar'] as const) {
+    if (!isObj(raw[k])) continue;
     const map: Record<StageId, MapPlace> = {};
-    for (const [key, v] of Object.entries(raw.map)) {
-      const id = safeId(key), place = cleanPlace(v);
+    for (const [key, v] of Object.entries(raw[k])) {
+      const id = safeId(key), place = k === 'montar' ? cleanLigPlace(v) : cleanPlace(v);
       if (id && id === key && place && seen.has(id)) map[id] = place;
     }
-    if (Object.keys(map).length) f = { ...f, map };
+    if (Object.keys(map).length) f = { ...f, [k]: map };
   }
   const meioIds = new Set(meiosOf(f).map(m => m.id));
   if (isObj(raw.alts)) {
@@ -193,26 +197,21 @@ function cleanFactory(raw: unknown, data: GameData): Factory | null {
     if (Object.keys(alts).length) f = { ...f, alts };
   }
   if (validPieceGap(raw.mapGap) && raw.mapGap !== PIECE_GAP) f = { ...f, mapGap: raw.mapGap };
-  if (isObj(raw.ligs)) {
+  for (const k of ['ligs', 'montarLigs'] as const) {
+    if (!isObj(raw[k])) continue;
     const ligs: Record<string, LigPlace> = {};
-    for (const [key, v] of Object.entries(raw.ligs)) {
+    for (const [key, v] of Object.entries(raw[k])) {
       const p = cleanLigPlace(v);
       if (meioIds.has(key) && p) ligs[key] = p;
     }
-    if (Object.keys(ligs).length) f = { ...f, ligs };
+    // montarLigs vale mesmo vazio: a Montar deixou de seguir as ligs.
+    if (Object.keys(ligs).length || k === 'montarLigs') f = { ...f, [k]: ligs };
   }
   return f;
 }
 
-// Só posições válidas de blocos que existem.
-function cleanPlaces(f: Factory, places: Record<StageId, MapPlace>): Record<StageId, MapPlace> {
-  const map: Record<StageId, MapPlace> = {};
-  for (const [id, v] of Object.entries(places)) {
-    const place = cleanPlace(v);
-    if (place && f.blocks.some(b => b.id === id)) map[id] = place;
-  }
-  return map;
-}
+// Vista de uma ação de posição: sem ela (ou inválida), a Planta.
+const view = (v: unknown): PlaceView => (v === 'montar' ? 'montar' : 'planta');
 
 const omitAlts = (f: Factory): Factory => { const { alts: _a, ...rest } = f; return rest; };
 
@@ -247,17 +246,11 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' }
     case 'setCollect': return setCollect(f, d, a.id, a.item, a.on);
     case 'setMinerRate': return setMinerRate(f, a.id, a.rate);
     case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity });
-    case 'placeLig': return placeLig(f, a.meio, a.place);
-    case 'placeBlock': {
-      const place = cleanPlace(a.place);
-      return place && f.blocks.some(b => b.id === a.id) ? { ...f, map: { ...f.map, [a.id]: place } } : f;
-    }
-    case 'setPlaces': return { ...f, map: cleanPlaces(f, a.places) };
-    case 'proposeMap': {
-      // As ligações postas também voltam ao lugar automático: o mapa inteiro é proposto de novo.
-      const { ligs: _l, ...rest } = f;
-      return { ...rest, map: cleanPlaces(f, a.places) };
-    }
+    case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { together: a.together === true, shown: a.shown });
+    case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { together: a.together === true, auto: a.auto });
+    case 'setPlaces': return isObj(a.places) ? setPlacesIn(f, view(a.view), a.places, { together: a.together === true, auto: a.auto }) : f;
+    // As ligações postas também voltam ao lugar automático: a vista inteira é proposta de novo.
+    case 'proposeMap': return isObj(a.places) ? proposeIn(f, view(a.view), a.places, a.auto) : f;
     case 'setMeioAlt': {
       // Como na leitura: só meio que existe e chave curta.
       if (!meiosOf(f).some(m => m.id === a.meio) || (a.key !== null && (typeof a.key !== 'string' || a.key.length > ALT_KEY_MAX))) return f;

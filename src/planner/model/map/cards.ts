@@ -120,8 +120,9 @@ export function viewGeo(scene: Scene, cam: Camera, t: number, phone: boolean, f:
     const b = byId.get(sb.stage);
     if (!b) continue;
     const spec = cardSpec(b, data, flow), size = cardSize(spec.kind, spec.ins.length, spec.outs.length);
-    const [x, y] = toS([sb.rect.x, sb.rect.y]);
-    const card: Rect = { x, y, w: size.w * s, h: size.h * s }, plant: Rect = { x, y, w: sb.rect.w * z, h: sb.rect.h * z };
+    // O cartão no lugar da Montar e o bloco no da Planta: a transição anda de um ao outro.
+    const [x, y] = toS(sb.card), [px, py] = toS([sb.rect.x, sb.rect.y]);
+    const card: Rect = { x, y, w: size.w * s, h: size.h * s }, plant: Rect = { x: px, y: py, w: sb.rect.w * z, h: sb.rect.h * z };
     blocks.push({ id: b.id, rect: lerpRect(card, plant, t), scale: s, card, plant });
     const y0 = spec.kind === 'marker' ? MARK_PORT_Y0 : PORT_Y0;
     for (const side of ['in', 'out'] as const) {
@@ -139,10 +140,10 @@ export function viewGeo(scene: Scene, cam: Camera, t: number, phone: boolean, f:
   const groups = groupsOf(f.links), chips: ViewChip[] = [];
   for (const sm of scene.meios) {
     const center = toS([sm.rect.x + sm.rect.w / 2, sm.rect.y + sm.rect.h / 2]);
-    let m0 = center;
+    let m0 = sm.chip ? toS(sm.chip) : center;
     const g = groups.get(sm.meio);
-    // Sem posição salva: na Montar, no meio entre as saídas das produtoras e as entradas das consumidoras.
-    if (g && !(f.ligs && Object.hasOwn(f.ligs, sm.meio))) {
+    // Sem posição na Montar: lá, no meio entre as saídas das produtoras e as entradas das consumidoras.
+    if (g && !sm.chip) {
       const pick = (ids: StageId[], side: 'in' | 'out') => ids.map(id => montar.get(`${id}|${side}|${g.item}`)).filter((p): p is Pt => !!p);
       const a = mean(pick(g.producers, 'out')), b = mean(pick(g.consumers, 'in'));
       m0 = a && b ? lerpPt(a, b, 0.5) : a ?? b ?? center;
@@ -186,7 +187,7 @@ export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMI
 // folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.
 export const PORT_LABEL_ROOM = 104;
 // Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas e os rótulos
-// delas por fora, e os chips postos. Vazio sem blocos.
+// delas por fora, e os chips postos (no lugar da Montar). Vazio sem blocos.
 export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: FlowResult, z: number, phone: boolean): Rect {
   const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b])), m = (PORT_D / 2 + PORT_LABEL_ROOM) / z;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -195,12 +196,13 @@ export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: Flo
     const b = byId.get(sb.stage);
     if (!b) continue;
     const size = blockCardSize(b, data, flow);
-    add(sb.rect.x - m, sb.rect.y, sb.rect.x + size.w * s / z + m, sb.rect.y + size.h * s / z);
+    const [x, y] = sb.card;
+    add(x - m, y, x + size.w * s / z + m, y + size.h * s / z);
   }
   if (x0 === Infinity) return { x: 0, y: 0, w: 0, h: 0 };
   for (const sm of scene.meios) {
-    if (!(f.ligs && Object.hasOwn(f.ligs, sm.meio))) continue;
-    const cx = sm.rect.x + sm.rect.w / 2, cy = sm.rect.y + sm.rect.h / 2, hw = CHIP_W / 2 / z, hh = CHIP_H / 2 / z;
+    if (!sm.chip) continue;
+    const [cx, cy] = sm.chip, hw = CHIP_W / 2 / z, hh = CHIP_H / 2 / z;
     add(cx - hw, cy - hh, cx + hw, cy + hh);
   }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };

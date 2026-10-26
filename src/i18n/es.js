@@ -371,6 +371,7 @@ export default {
   plTierAuto: 'automático', plTierOf: item => `Tier de ${item}`,
   plMapSize: (w, h, fw, fh) => `${w} × ${h} m · ${fw} × ${fh} cimientos`,
   plMapFit: 'Ver todo', plMapZoomIn: 'Acercar el mapa', plMapZoomOut: 'Alejar el mapa', plMapControls: 'Navegación del mapa',
+  plMoveTogether: 'Mover juntos', plMoveTogetherTip: 'Activado: arrastrar un bloque o una conexión en una vista (Montar o Plano a escala) también lo mueve en la otra, lo mismo. Desactivado: cada vista guarda sus propias posiciones.',
   plMapAria: (n, area) => `Mapa de la fábrica a escala: ${n} ${n === '1' ? 'etapa' : 'etapas'}, ${area}`,
   // Montar: tarjeta, puertos y chip de la conexión; Planta: medida y escala.
   plCardMachines: 'máquinas', plCardFixed: 'fijado', plCardStalled: 'trabado',

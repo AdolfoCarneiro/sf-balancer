@@ -371,6 +371,7 @@ export default {
   plTierAuto: 'automatic', plTierOf: item => `Tier of ${item}`,
   plMapSize: (w, h, fw, fh) => `${w} × ${h} m · ${fw} × ${fh} foundations`,
   plMapFit: 'Fit all', plMapZoomIn: 'Zoom the map in', plMapZoomOut: 'Zoom the map out', plMapControls: 'Map navigation',
+  plMoveTogether: 'Move together', plMoveTogetherTip: 'On: dragging a block or a connection in one view (Build or Scale plan) moves it in the other too, by the same amount. Off: each view keeps its own positions.',
   plMapAria: (n, area) => `Factory map to scale: ${n} ${n === '1' ? 'stage' : 'stages'}, ${area}`,
   // Build view: card, ports and connection chip; Plant view: size and scale bar.
   plCardMachines: 'machines', plCardFixed: 'fixed', plCardStalled: 'stalled',

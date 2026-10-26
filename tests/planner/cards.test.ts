@@ -272,3 +272,31 @@ test('Planta: Conveyor Lift fora da caixa do bloco (x = -1) não muda o retângu
   assert.deepEqual(hitTest(scene, sb.rect.x + sb.rect.w / 2, sb.rect.y + sb.rect.h / 2), { kind: 'block', id: 's1' });
   assert.ok(finite(sb.geo));
 });
+
+test('Montar e Planta com posições próprias: o cartão no lugar da Montar, o bloco no da Planta, a transição entre eles', () => {
+  const base = view(ex, 0).scene.blocks.find(b => b.stage === 's2')!.place;
+  const f: Factory = { ...ex, montar: { s2: { x: base.x + 80, y: base.y + 40, rot: 0 } } };
+  const toS = (x: number, y: number) => [(x - CAM.x) * CAM.zoom, (y - CAM.y) * CAM.zoom];
+  const at = (t: number) => view(f, t).v.blocks.find(b => b.id === 's2')!;
+  // Montar: o cartão onde a Montar diz; Planta: o bloco onde a Planta diz (igual à fábrica sem montar).
+  assert.deepEqual([at(0).rect.x, at(0).rect.y], toS(base.x + 80, base.y + 40));
+  assert.deepEqual([at(1).rect.x, at(1).rect.y], toS(base.x, base.y));
+  assert.deepEqual(view(f, 1).scene.blocks.find(b => b.stage === 's2')!.rect, view(ex, 1).scene.blocks.find(b => b.stage === 's2')!.rect);
+  near(at(0.5).rect.x, (at(0).rect.x + at(1).rect.x) / 2);
+  // Os outros seguem a Planta.
+  assert.deepEqual(view(f, 0).v.blocks.find(b => b.id === 's1')!.rect, view(ex, 0).v.blocks.find(b => b.id === 's1')!.rect);
+  // Chip: montarLigs na Montar, ligs na Planta.
+  const g: Factory = { ...ex, ligs: { [STEEL_MEIO]: { x: 400, y: 80, rot: 0 } }, montarLigs: { [STEEL_MEIO]: { x: 40, y: 200, rot: 0 } } };
+  const w0 = view(g, 0), w1 = view(g, 1);
+  const r = w1.scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, c0 = w0.v.chips.find(x => x.meio === STEEL_MEIO)!, c1 = w1.v.chips.find(x => x.meio === STEEL_MEIO)!;
+  assert.equal(r.x, 400);
+  near(c0.x, (40 + r.w / 2 - CAM.x) * CAM.zoom); near(c0.y, (200 + r.h / 2 - CAM.y) * CAM.zoom);
+  near(c1.x, (400 + r.w / 2 - CAM.x) * CAM.zoom);
+  // montarLigs vazio: a Montar volta ao automático (entre as portas), mesmo com ligs.
+  const auto = view({ ...g, montarLigs: {} }, 0).v.chips.find(x => x.meio === STEEL_MEIO)!, free = view(ex, 0).v.chips.find(x => x.meio === STEEL_MEIO)!;
+  near(auto.x, free.x); near(auto.y, free.y);
+  // Mostrar tudo da Montar enquadra os cartões nos lugares dela.
+  const wf = view(f, 0), b1 = montarBounds(wf.scene, f, data, wf.flow, MONTAR_REF, false);
+  assert.ok(b1.x + b1.w >= base.x + 80 + CARD_W / MONTAR_REF);
+  assert.ok(b1.y + b1.h > base.y + 40);
+});

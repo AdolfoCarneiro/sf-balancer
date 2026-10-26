@@ -3,7 +3,8 @@
 // arrastar da saída para o vazio -> "Solid Steel Ingot" cria o próximo já ligado; segunda perna "Steel Pipe";
 // Ctrl+Z desfaz a última; (na Montar) clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco
 // no canvas; Desligar some com a ligação e Ctrl+Z a traz de volta; o botão Planta em escala troca a vista e as portas
-// continuam pegáveis (arrastar para o vazio abre o seletor); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
+// continuam pegáveis (arrastar para o vazio abre o seletor); arrastar um bloco na Planta não mexe no cartão da Montar
+// (cada vista com as suas posições); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
 // Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
 // Camadas "Machines only" tira portas e chips; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
@@ -156,6 +157,30 @@ await step('Planta em escala troca a vista e as portas continuam pegáveis', asy
   must((await state()).blocks.length === 2, 'o seletor fechado criou bloco');
   await pg.locator('.pl-view button').nth(0).click();
   await waitFor(() => window.__sfPlanner?.mode === 'montar', null, "mode === 'montar'");
+});
+await step('arrastar um bloco na Planta não mexe na Montar (Mover junto desligado)', async () => {
+  await settled();
+  const at = () => pg.evaluate(id => { const b = window.__sfPlanner.scene.blocks.find(x => x.stage === id); return { card: b.card, rect: b.rect }; }, first);
+  const before = await at();
+  must(Array.isArray(before.card), 'a cena não traz o lugar do cartão na Montar');
+  await pg.locator('.pl-view button').nth(1).click();
+  await waitFor(() => window.__sfPlanner?.mode === 'planta' && window.__sfPlanner.t === 1, null, "mode === 'planta'");
+  await settled();
+  const b = await box(), r = await pg.evaluate(id => window.__sfPlanner.view.blocks.find(x => x.id === id).rect, first);
+  const x = b.x + r.x + r.w / 2, y = b.y + r.y + r.h / 2;
+  await pg.mouse.move(x, y);
+  await pg.mouse.down();
+  for (let i = 1; i <= 10; i++) await pg.mouse.move(x, y + 12 * i, { steps: 1 });
+  await pg.mouse.up();
+  await waitFor(([id, y0]) => window.__sfPlanner.scene.blocks.find(s => s.stage === id).rect.y !== y0, [first, before.rect.y], 'o bloco andar na Planta');
+  await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const after = await at();
+  must(JSON.stringify(after.card) === JSON.stringify(before.card), `a Montar mudou: ${JSON.stringify(before.card)} → ${JSON.stringify(after.card)}`);
+  await pg.keyboard.press('Escape');
+  await pg.locator('.pl-view button').nth(0).click();
+  await waitFor(() => window.__sfPlanner?.mode === 'montar', null, "mode === 'montar'");
+  const back = await at();
+  must(JSON.stringify(back.card) === JSON.stringify(before.card), 'a Montar mudou ao voltar');
 });
 await step('Shift + arrastar no vazio seleciona os blocos dentro do retângulo; Esc limpa', async () => {
   await settled();
