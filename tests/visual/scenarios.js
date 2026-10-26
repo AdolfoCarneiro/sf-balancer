@@ -174,6 +174,20 @@ export const scenarios = [
     },
   },
   {
+    // Tela da etapa do refinador (s1, duplo clique no cartão) em "Mergers no meio", com a saída de lingote selecionada:
+    // o corredor de Mergers fechando a cada 7 e descendo por Conveyor Lift, e o painel da esteira.
+    name: 'builder-etapa', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
+      await pg.waitForSelector('.pl-stageview');
+      await pg.check('.pl-stageview input[name^="pl-lay-kind"][value="center"]');
+      await pg.click('.pl-stageview [data-belt="out:Desc_IronIngot_C"]');
+      await pg.evaluate(() => document.querySelector('.pl-stageview').scrollTo(0, 0));
+      await pg.waitForTimeout(300);
+    },
+  },
+  {
     // Celular: a Montar com a folha de baixo recolhida (sem seleção).
     name: 'builder-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); },
   },

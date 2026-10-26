@@ -62,7 +62,8 @@ export function cleanLayout(v: unknown): Layout | null {
 
 // ---- arrange ----
 
-export interface ArrRow { index: number; machines: number; x: number; y: number; flip: boolean; mirror: boolean }
+// x, y, w, h: a faixa da fileira (máquinas e as esteiras dela), coordenadas locais do bloco (m).
+export interface ArrRow { index: number; machines: number; x: number; y: number; w: number; h: number; flip: boolean; mirror: boolean }
 export interface ArrLine {                  // uma esteira/cano que entra ou sai do bloco
   side: 'in' | 'out'; item: ItemId; machines: number; rate: number;   // rate a 100 % do clock da etapa
   rows: number[];                          // fileiras que alimenta / que a alimentam
@@ -334,7 +335,8 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     const pt = (x: number, py: number): Pt => [tx(x), py];
     const strip = (fluid: boolean) => (!fluid && n > 1 ? PIECE : BELT);
     const end = rowW(n);
-    rows.push({ index: row, machines: n, x: bx + dx, y: top, flip, mirror });
+    const arow: ArrRow = { index: row, machines: n, x: bx + dx, y: top, w: W, h: 0, flip, mirror };
+    rows.push(arow);
     let ly = top;
     const lane = (side: Side, item: ItemId) => {
       const key = tierKey(side, item), fluid = fluidOf(item);
@@ -382,6 +384,7 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
     for (let m = 0; m < n; m++) pieces.push({ kind: 'machine', x: machX(rp, m), y: ly, w: b.w, h: b.l });
     ly += b.l;
     for (const item of sideItems(order[1], false)) lane(order[1], item);
+    arow.h = ly - top;
     maxBottom = Math.max(maxBottom, ly);
     y = ly - dy;
     if (rp.gapAfter) y += gapRow;
