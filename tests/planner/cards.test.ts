@@ -12,7 +12,7 @@ import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  MONTAR_FAR, MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, stripRows, viewGeo, viewHit, viewLimits, montarFar,
+  MONTAR_FAR, MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, viewGeo, viewHit, viewLimits, montarFar,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -55,18 +55,14 @@ test('de longe na Montar: portas e chips somem; na Planta, não depende disso', 
   assert.equal(montarFar(1, MONTAR_FAR / 2), false);
 });
 
-test('faixa: 6 fileiras como estão; 8 de 8 com última 4 vira 4 + "+3" + a última', () => {
-  assert.deepEqual(stripRows([8, 8, 8, 8, 8, 4]), [8, 8, 8, 8, 8, 4].map(machines => ({ machines })));
-  assert.deepEqual(stripRows([8, 8, 8, 8, 8, 8, 8, 4]),
-    [{ machines: 8 }, { machines: 8 }, { machines: 8 }, { machines: 8 }, { machines: 0, repeat: 3 }, { machines: 4 }]);
-  assert.equal(stripRows(Array(120).fill(40)).length, 6);
-  // Tamanho: 1 entrada e 1 saída, 5 fileiras mostradas de 29 + 20 do "+ N" + 12.
-  const rowH = 5 + 14 + 5 + 5;
-  assert.deepEqual(cardSize('recipe', Array(120).fill(40), 1, 1), { w: CARD_W, h: 62 + 5 * rowH + 20 + 12 + 34 });
-  assert.deepEqual(cardSize('recipe', [8, 8, 8, 8, 8, 8, 8, 4], 1, 1), cardSize('recipe', Array(120).fill(40), 1, 1));
-  // Muitas portas: a altura acompanha as portas.
-  assert.equal(cardSize('recipe', [1], 4, 1).h, 90 + 3 * 52 + 34);
-  assert.deepEqual(cardSize('marker', [], 0, 1), { w: MARK_W, h: MARK_H });
+test('cartão enxuto: só o cabeçalho, a altura acompanha as portas', () => {
+  // Uma porta de cada lado: cabeçalho + rodapé, a porta no meio da altura.
+  assert.deepEqual(cardSize('recipe', 1, 1), { w: CARD_W, h: 76 });
+  assert.equal(PORT_Y0, 38);
+  assert.equal(cardSize('recipe', 2, 1).h, 2 * PORT_Y0 + PORT_STEP);
+  // Muitas portas: a altura acompanha as portas, com a mesma folga em cima e embaixo.
+  assert.equal(cardSize('recipe', 4, 1).h, 2 * PORT_Y0 + 3 * PORT_STEP);
+  assert.deepEqual(cardSize('marker', 0, 1), { w: MARK_W, h: MARK_H });
 });
 
 test('Montar: portas na borda do cartão, 44 px, uma por item', () => {
@@ -188,7 +184,7 @@ test('fábrica vazia: listas vazias, sem NaN', () => {
   }
 });
 
-test('bloco sem limite e bloco com 120 fileiras: cartão finito, faixa de no máximo 6 linhas', () => {
+test('bloco sem limite e bloco com 120 fileiras: cartão finito, do mesmo tamanho (sem faixa)', () => {
   const free: RecipeBlock = { id: 's1', kind: 'recipe', recipe: 'Recipe_IronPlate_C', clock: 100, perRow: null, tiers: {} };
   const big: RecipeBlock = { id: 's2', kind: 'recipe', recipe: 'Recipe_IronPlate_C', clock: 100, perRow: 40, tiers: {}, limits: { machines: 4800 } };
   const f: Factory = { v: 2, blocks: [free, big], links: [] };
@@ -199,8 +195,8 @@ test('bloco sem limite e bloco com 120 fileiras: cartão finito, faixa de no má
   }
   const { v } = view(f, 0);
   const a = v.blocks.find(b => b.id === 's1')!, b = v.blocks.find(x => x.id === 's2')!;
-  near(a.card.h, cardSize('recipe', [1], 1, 1).h * a.scale);
-  near(b.card.h, cardSize('recipe', Array(120).fill(40), 1, 1).h * b.scale);
+  near(a.card.h, cardSize('recipe', 1, 1).h * a.scale);
+  near(b.card.h, cardSize('recipe', 1, 1).h * b.scale);
 });
 
 test('Montar: zoom de longe como o da Planta até 300 % do zoom de referência', () => {

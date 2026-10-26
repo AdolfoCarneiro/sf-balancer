@@ -1,24 +1,22 @@
-// Geometria de tela (px) das duas vistas do mapa: a Montar (cartões com a faixa de fileiras, portas de 44 px nas bordas e
+// Geometria de tela (px) das duas vistas do mapa: a Montar (cartões enxutos como o nó do Modeler, portas de 44 px nas bordas e
 // o chip de cada ligação) e a Planta em escala (o bloco real com as portas por fora), e a transição entre elas (t de 0 a 1).
 // Puro e barato (roda a cada quadro): só lê a cena, a câmera, o fluxo e os dados do jogo, sem solver nem plano.
 import type { Block, Factory, GameData, ItemId, LigPlace, Link, StageId } from '../types.ts';
 import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
-import { solvedStage } from '../solved.ts';
-import { stageRows } from '../stage.ts';
 import { PLANT_LIMITS, fit, type Camera, type ZoomLimits } from './camera.ts';
 import { toWorld, type Pt, type Rect } from './geo.ts';
 import type { Scene, SceneBlock } from './scene.ts';
 import { MAP_GRID } from './sizes.ts';
 
-export const CARD_W = 260, MARK_W = 220, MARK_H = 108, STRIP_W = 212, MAX_ROWS = 6;
-export const PORT_D = 44, PORT_Y0 = 90, PORT_STEP = 52, CHIP_W = 120, CHIP_H = 52, PLANT_PORT_OUT = 30;
+export const CARD_W = 260, MARK_W = 220, MARK_H = 108;
+export const PORT_D = 44, PORT_Y0 = 38, PORT_STEP = 52, CHIP_W = 120, CHIP_H = 52, PLANT_PORT_OUT = 30;
 // Px por metro em que o cartão tem 100 %.
 export const MONTAR_REF = 4;
 // Marcador: a primeira porta no meio da altura (as seguintes descem PORT_STEP e o cartão cresce junto).
 const MARK_PORT_Y0 = MARK_H / 2;
-// Abaixo da última porta e da faixa.
-const CARD_FOOT = 34, CARD_HEAD = 62;
+// Abaixo da última porta do marcador; o cartão de receita é o cabeçalho com um rodapé curto.
+const CARD_FOOT = 34, CARD_HEAD = 62, RECIPE_FOOT = 14;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -36,43 +34,33 @@ export const cardScale = (zoom: number, phone: boolean): number => {
 // Montar (t < 0.5) de longe: sem portas nem chips na tela e no ponteiro.
 export const montarFar = (t: number, zoom: number): boolean => t < 0.5 && zoom < MONTAR_FAR;
 
-// repeat: a linha "+ N fileiras iguais" no lugar das do meio.
-export interface StripRow { machines: number; repeat?: number }
-export function stripRows(rows: number[]): StripRow[] {
-  if (rows.length <= MAX_ROWS) return rows.map(machines => ({ machines }));
-  return [...rows.slice(0, MAX_ROWS - 2).map(machines => ({ machines })), { machines: 0, repeat: rows.length - (MAX_ROWS - 1) }, { machines: rows[rows.length - 1] }];
-}
-
-// Tamanho do cartão a 100 %. Receita: cabeçalho, a faixa de fileiras (cada fileira com as faixas das entradas, as
-// máquinas e as faixas das saídas) e o rodapé, ou a altura das portas, o que for maior. Marcador: fixo, crescendo só
-// com mais de uma porta.
-export function cardSize(kind: 'recipe' | 'marker', rows: number[], nIns: number, nOuts: number): { w: number; h: number } {
+// Tamanho do cartão a 100 %. Receita: o cabeçalho (ícone, nome, prédio, máquinas e clock) com um rodapé curto, ou a
+// altura das portas com a mesma folga em cima e embaixo (PORT_Y0), o que for maior; sem faixa de fileiras (elas ficam
+// na miniatura do painel). Marcador: fixo, crescendo só com mais de uma porta.
+export function cardSize(kind: 'recipe' | 'marker', nIns: number, nOuts: number): { w: number; h: number } {
   const n = Math.max(nIns, nOuts);
   if (kind === 'marker') return { w: MARK_W, h: Math.max(MARK_H, MARK_PORT_Y0 + (n - 1) * PORT_STEP + CARD_FOOT) };
-  const rowH = nIns * 5 + 14 + nOuts * 5 + 5;
-  // Sem fileira (não acontece com bloco resolvido): a faixa de uma.
-  const strip = stripRows(rows.length ? rows : [0]).reduce((s, r) => s + (r.repeat !== undefined ? 20 : rowH), 0) + 12;
-  return { w: CARD_W, h: Math.max(CARD_HEAD + strip + CARD_FOOT, PORT_Y0 + (n - 1) * PORT_STEP + CARD_FOOT) };
+  return { w: CARD_W, h: Math.max(CARD_HEAD + RECIPE_FOOT, 2 * PORT_Y0 + Math.max(0, n - 1) * PORT_STEP) };
 }
 
-// O que o cartão de um bloco mostra: fileiras e os itens de cada lado, na ordem da receita (marcador: a saída da
-// origem, ou uma entrada por item que chega na sobra, como o markerGeo).
-export interface CardSpec { kind: 'recipe' | 'marker'; rows: number[]; ins: ItemId[]; outs: ItemId[] }
+// O que o cartão de um bloco mostra: os itens de cada lado, na ordem da receita (marcador: a saída da origem, ou uma
+// entrada por item que chega na sobra, como o markerGeo).
+export interface CardSpec { kind: 'recipe' | 'marker'; ins: ItemId[]; outs: ItemId[] }
 const uniq = (xs: ItemId[]) => [...new Set(xs)];
 export function cardSpec(b: Block, d: GameData, flow: FlowResult): CardSpec {
   const bf = flow.blocks[b.id];
   switch (b.kind) {
     case 'recipe': {
       const r = d.recipes[b.recipe];
-      return { kind: 'recipe', rows: stageRows(solvedStage(b, bf), d), ins: uniq(r.ins.map(x => x.item)), outs: uniq(r.outs.map(x => x.item)) };
+      return { kind: 'recipe', ins: uniq(r.ins.map(x => x.item)), outs: uniq(r.outs.map(x => x.item)) };
     }
-    case 'miner': case 'extractor': return { kind: 'marker', rows: [], ins: [], outs: [b.item] };
-    default: return { kind: 'marker', rows: [], ins: uniq((bf?.ins ?? []).map(p => p.item)), outs: [] };
+    case 'miner': case 'extractor': return { kind: 'marker', ins: [], outs: [b.item] };
+    default: return { kind: 'marker', ins: uniq((bf?.ins ?? []).map(p => p.item)), outs: [] };
   }
 }
 export const blockCardSize = (b: Block, d: GameData, flow: FlowResult): { w: number; h: number } => {
   const c = cardSpec(b, d, flow);
-  return cardSize(c.kind, c.rows, c.ins.length, c.outs.length);
+  return cardSize(c.kind, c.ins.length, c.outs.length);
 };
 
 // rect: o que se desenha agora (Montar → Planta); card e plant: as duas pontas. scale: a do cartão.
@@ -127,7 +115,7 @@ export function viewGeo(scene: Scene, cam: Camera, t: number, phone: boolean, f:
   for (const sb of scene.blocks) {
     const b = byId.get(sb.stage);
     if (!b) continue;
-    const spec = cardSpec(b, data, flow), size = cardSize(spec.kind, spec.rows, spec.ins.length, spec.outs.length);
+    const spec = cardSpec(b, data, flow), size = cardSize(spec.kind, spec.ins.length, spec.outs.length);
     const [x, y] = toS([sb.rect.x, sb.rect.y]);
     const card: Rect = { x, y, w: size.w * s, h: size.h * s }, plant: Rect = { x, y, w: sb.rect.w * z, h: sb.rect.h * z };
     blocks.push({ id: b.id, rect: lerpRect(card, plant, t), scale: s, card, plant });

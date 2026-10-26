@@ -126,7 +126,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       drawCard(ctx, b, o.card(b.id), {
         selected: o.selected.has(b.id), hover: o.hover === b.id, flash: Math.min(1, flash),
         lock: bs.some(x => x.kind === 'deadlock' || x.kind === 'stalled'), bad: bs.some(x => x.kind === 'deficit'),
-      }, th, o.colors, o.icon);
+      }, th, o.icon);
     }
     ctx.globalAlpha = 1;
   }

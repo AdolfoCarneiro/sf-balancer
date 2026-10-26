@@ -1,8 +1,8 @@
 // Painel lateral do bloco selecionado: ícone, nome e prédio; o que entra e sai (taxa e estado de cada porta, nas cores
-// das portas do mapa) com a frase de cada problema e os consertos de um clique; a receita (troca no lugar), os limites
-// (máquinas e entrada por porta: calculado em texto normal, fixado em destaque com "voltar ao padrão"), clock, coleta do
-// excesso, a origem (taxa da Miner; pureza e quantidade do extrator), o lugar no mapa (lado das entradas, giro, vãos),
-// "Ver em escala" / "Voltar a montar" e apagar.
+// das portas do mapa) com a frase de cada problema e os consertos de um clique; a miniatura das fileiras com "Montar
+// fileiras"; a receita (troca no lugar), os limites (máquinas e entrada por porta: calculado em texto normal, fixado em
+// destaque com "voltar ao padrão"), clock, coleta do excesso, a origem (taxa da Miner; pureza e quantidade do extrator),
+// o lugar no mapa (lado das entradas, giro, vãos), "Ver em escala" / "Voltar a montar" e apagar.
 import { fmt, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
 import { MAX_EXTRACTORS, MAX_MACHINES, countOk, machinesOk, rateOk } from '../model/factory.ts';
@@ -17,6 +17,7 @@ import { rotated } from '../model/map/edit.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { fixesFor, problemSentence, type Fix } from '../model/fixes.ts';
 import { NumField } from './NumField.tsx';
+import { RowsPreview } from './RowsPreview.tsx';
 import { iconUrl } from './icons.ts';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
 import type { ViewMode } from './selection.ts';
@@ -148,6 +149,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
           </div>
         );
       })}
+      {b.kind === 'recipe' && onOpen && <RowsPreview block={b} bf={bf} data={data} place={place} onOpen={onOpen} />}
       {b.kind === 'recipe' && <RecipeFields b={b} bf={bf} f={f} data={data} dispatch={dispatch} />}
       {b.kind === 'miner' && <MinerFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
@@ -175,7 +177,6 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
         {view === 'montar'
           ? <button type="button" className="pl-btn" onClick={onScale}>{t('plSeeScale')}</button>
           : <button type="button" className="pl-btn" onClick={onMontar}>{t('plBackMontar')}</button>}
-        {onOpen && <button type="button" className="pl-btn" onClick={onOpen}>{t('plOpenStage')}</button>}
         <button type="button" className="pl-btn pl-danger" onClick={onDelete}>{t('plDeleteBlock')}</button>
       </div>
     </>

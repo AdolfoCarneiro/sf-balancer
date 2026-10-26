@@ -125,7 +125,7 @@ function itemColors(f: Factory, data: GameData, th: MapTheme): Record<string, st
 function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): CardText {
   const spec = cardSpec(b, data, flow), bf = flow.blocks[b.id];
   const unitOf = (fluid: boolean) => t(fluid ? 'plPerMinFluid' : 'plPerMin', '').trim();
-  const base = { ins: spec.ins, outs: spec.outs, rows: spec.rows, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', rowsText: '', perRowText: '', rate: '', unit: '' };
+  const base = { ins: spec.ins, outs: spec.outs, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', rate: '', unit: '' };
   if (b.kind !== 'recipe') {
     // Origem: o que sai; sobra: a soma do que chega.
     const src = b.kind === 'miner' || b.kind === 'extractor';
@@ -138,16 +138,12 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
     const title = src ? data.items[b.item]?.name ?? b.item : blockName(b, data);
     return { ...base, title, building, marker: true, rate: rate === null ? t('plUnbounded') : fmt(rate), unit: rate === null ? '' : unitOf(fluid) };
   }
-  const s = solvedStage(b, bf), r = data.recipes[s.recipe], per = perRowOf(s, data), rows = spec.rows;
+  const s = solvedStage(b, bf), r = data.recipes[s.recipe];
   const stalled = bs.some(x => x.kind === 'stalled' || x.kind === 'deadlock');
   const count = bf?.unbounded ? t('plUnbounded') : stalled ? t('plCardStalled') : fmt(s.machines, 0);
-  const n = rows.length, full = rows[0] ?? 0, last = rows[n - 1] ?? 0;
-  const rowsText = n > 1 && last !== full ? t('plCardRowsLast', fmt(n, 0), fmt(full, 0), fmt(last, 0)) : t('plCardRows', fmt(Math.max(1, n), 0), fmt(full, 0));
-  const main = r.outs[0];
-  const perRowText = main ? t('plCardPerRow', rateText(data.items[main.item], (main.perMin * b.clock / 100) * per)) : '';
   return {
     ...base, title: r.name, building: data.buildings[r.building]?.name ?? r.building, icon: r.building, alt: r.alt, marker: false,
-    count, fixed: b.limits?.machines !== undefined, clock: b.clock !== 100 ? `${fmt(b.clock)}%` : null, rowsText, perRowText,
+    count, fixed: b.limits?.machines !== undefined, clock: b.clock !== 100 ? `${fmt(b.clock)}%` : null,
   };
 }
 

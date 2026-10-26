@@ -224,6 +224,19 @@ select.pl-field { width: auto; }
 .pl-bp-head { display: flex; align-items: center; gap: 12px; }
 .pl-bp-head img { flex: none; display: block; padding: 3px; background: var(--plate); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%); }
 .pl-bp-sec { display: flex; flex-direction: column; gap: 8px; }
+/* Miniatura das fileiras: o desenho da Planta do bloco, sem grade, numa chapa de ~260 × 160. */
+.pl-rows-svg { display: block; width: 100%; max-width: 260px; height: 160px; padding: 8px; box-sizing: border-box; background: var(--bench); border: 1px solid var(--line); }
+.pl-rows-svg rect { fill: var(--plate); stroke: var(--ink-dim); stroke-width: 1px; }
+.pl-rows-svg .pl-rp-machine { fill: #1f4a72; }
+.pl-rows-svg .pl-rp-splitter { fill: var(--flow); stroke: none; }
+.pl-rows-svg .pl-rp-merger { fill: var(--ficsit); stroke: none; }
+.pl-rp-belt { fill: none; stroke-width: 2px; stroke-linecap: round; }
+.pl-rp-in { stroke: var(--flow); opacity: .7; }
+.pl-rp-out { stroke: var(--ficsit); }
+.pl-rp-fluid { stroke: var(--holo); }
+.pl-rows-info { display: flex; flex-direction: column; gap: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pl-rows-info span { color: var(--ink-dim); }
+.pl-rows-prev .pl-btn { align-self: flex-start; }
 .pl-badges { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; font-size: 13px; font-variant-numeric: tabular-nums; }
 .pl-badges li { padding: 4px 8px; background: var(--plate); border-left: 3px solid var(--line); }
 .pl-badges .pl-badge-deficit { border-left-color: var(--sink); color: var(--sink); }
