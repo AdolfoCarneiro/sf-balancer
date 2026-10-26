@@ -1,0 +1,1 @@
+Exemplos de arquivo .sfmd (Satisfactory Modeler) copiados de https://github.com/dberlin/SatisfactorySolver (BSD-3-Clause, licença ao lado), usados só como referência do formato e nos testes da importação.
