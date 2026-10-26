@@ -72,7 +72,7 @@ El Balancer no conoce recetas: tú escribes las tasas de tu planificador o del j
 
 ## Ejecutarlo en local
 
-Es un sitio estático construido con Vite (Node 20.19+ / 22.12+).
+Es un sitio estático construido con Vite (Node 22.18+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git

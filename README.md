@@ -72,7 +72,7 @@ The Balancer knows no recipes: you type the rates from your production planner o
 
 ## Running it locally
 
-It's a static site built with Vite (Node 20.19+ / 22.12+).
+It's a static site built with Vite (Node 22.18+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git

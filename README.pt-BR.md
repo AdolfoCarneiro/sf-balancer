@@ -72,7 +72,7 @@ O Balancer não conhece receitas: você digita as taxas do seu planner ou do jog
 
 ## Rodando localmente
 
-É um site estático montado com Vite (Node 20.19+ / 22.12+).
+É um site estático montado com Vite (Node 22.18+).
 
 ```bash
 git clone https://github.com/AdolfoCarneiro/sf-balancer.git

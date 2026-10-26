@@ -19,7 +19,9 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
   - Blueprint Designer no mapa do builder (as marcações já existem na planta da biblioteca do Balancer).
 - **Medidas reais de Miner, extratores (Water, Oil, Resource Well) e Container:** hoje são marcadores de 8×8 m rotulados "fora de escala". Pergunta ao dono (não chutar).
 - **Ficou de fora da fase 3:** copiar e colar, seleção múltipla, gerar a cadeia pela meta no mesmo canvas (só como ajuda, nunca o fluxo principal), importar `.sfmd` (falta um arquivo de exemplo), energia, somersloop, sub-fábricas.
-- **Adiados das revisões da fase 3 (pequenos):** "Propor de novo" também deveria soltar as ligações postas; ligação colada fora da grade pula até 4 m no primeiro empurrão; o seletor pode perder o foco sem fechar; `model/picker.ts` importa de `ui/icons.ts`; nomes de receita forçados podem cobrir vizinhos; o desenho proposto para fábricas grandes cruza muita esteira (10 blocos de 200 máquinas: colunas de ~1,4 km e 1.753 cruzamentos, mesmo com "Propor de novo") até o usuário arrumar.
+- **Adiados das revisões da fase 3 (pequenos):** ligação colada fora da grade pula até 4 m no primeiro empurrão; o seletor pode perder o foco sem fechar; `model/picker.ts` importa de `ui/icons.ts`; nomes de receita forçados podem cobrir vizinhos; o desenho proposto para fábricas grandes cruza muita esteira (10 blocos de 200 máquinas: colunas de ~1,4 km e 1.753 cruzamentos, mesmo com "Propor de novo") até o usuário arrumar.
+- **Portas mudam de lugar na primeira abertura:** blocos sem posição salva são posicionados de novo quando a geometria das ligações chega do worker, e as portas andam junto (quem é rápido pode errar a porta; o smoke espera a geometria).
+- **Capturas antigas:** `docs/screenshot*.png` ainda mostram o Balancer como página inicial; refazer com o builder.
 - **Conhecido:** a borboleta com loop é desenhada plana (a pegada fica maior que a real, rotulada "N andares"); os tamanhos das peças de fluido (cano, Junction, Valve) são estimativas e vêm marcados como tal.
 - Ideia original da planta:
 
