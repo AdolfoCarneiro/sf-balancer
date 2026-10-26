@@ -114,9 +114,10 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
       return free ? b : { ...b, limits: { machines: suggestedPerRow(asStage(b), d) } };
     }
     case 'miner': return minable(d, spec.item) ? { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT } : null;
-    // Extrator novo: um, como o nó do Modeler (um extrator por nó); "calcular" fica no painel.
+    // Extrator novo: o de nó (Oil Extractor, Resource Well, os que têm pureza) nasce com um, como o nó do Modeler; o
+    // Water Extractor vai em qualquer água, então a ferramenta calcula quantos.
     case 'extractor': return extractable(d, spec.building, spec.item)
-      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: 1 } : null;
+      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: d.extractors[spec.building].purity ? 1 : null } : null;
     case 'input': return typeof spec.item === 'string' && own(d.items, spec.item) ? { id, kind: 'input', item: spec.item, rate: null } : null;
     case 'generator': return genFuel(d, spec.building, spec.fuel) ? { id, kind: 'generator', building: spec.building, fuel: spec.fuel, count: null } : null;
     case 'sink': case 'container': case 'export': return { id, kind: spec.kind };

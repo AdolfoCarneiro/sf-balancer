@@ -31,7 +31,7 @@ test('cleanLayout: aceita um layout válido igual e rejeita kind desconhecido', 
 test('cleanLayout: campos inválidos somem sem derrubar o todo', () => {
   const l = cleanLayout({
     kind: 'backToBack',
-    rows: { 0: { dx: 3, flip: true }, '-1': { flip: true }, 2: { dy: 808 }, x: { flip: true } },
+    rows: { 0: { dx: 3.5, flip: true }, '-1': { flip: true }, 2: { dy: 808 }, x: { flip: true } },
     belts: {
       'out:A': { cut: 0 }, 'out:B': { cut: 1.5, exit: 'left' }, 'out:C': { cut: 1001 }, 'out:D': { cut: 4, exit: 'up' }, nokey: { cut: 3 },
     },

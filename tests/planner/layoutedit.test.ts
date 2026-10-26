@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Factory, GameData, Layout, Stage } from '../../src/planner/model/types.ts';
-import { arrange } from '../../src/planner/model/layout.ts';
+import { arrange, cleanLayout } from '../../src/planner/model/layout.ts';
 import {
   fixCut, hasEdits, joinState, moveRow, normLayout, warningFixes, resetModel, resetRowPlace, setBelt, setEven, setInvert, setKind, toggleJoin, toggleRow,
 } from '../../src/planner/model/layoutedit.ts';
@@ -143,4 +143,20 @@ test('Dividir igual: liga e desliga sem mexer no corte e na saída; desligado so
   assert.deepEqual(setEven(cut, INGOT, true), { kind: 'center', belts: { [INGOT]: { cut: 6, exit: 'up', even: true } } });
   assert.deepEqual(setEven(setEven(cut, INGOT, true)!, INGOT, false), cut);
   assert.deepEqual(setEven({ kind: 'center' }, INGOT, false), { kind: 'center' });
+});
+
+test('mover com a posição atual: o destino encaixa na grade de 8 m do bloco, e fileiras de alturas diferentes ficam na mesma linha', () => {
+  // Fileira simples de Polymer Resin: 14 fileiras a cada 28 m (28 não é múltiplo de 8).
+  const stage = { id: 's1', recipe: 'Recipe_Alternate_PolymerResin_C', machines: 42, clock: 100, perRow: null, tiers: {} };
+  const rowsOf = (lay: Layout | null) => arrange({ ...stage, ...(lay ? { layout: lay } : {}) }, data, lay ?? undefined).rows;
+  const r0 = rowsOf(null);
+  assert.deepEqual([r0[1].y, r0[2].y], [28, 56]);
+  // Arrasta as duas para a direita da primeira, na altura 0 (o arraste soltou com 3 m de sobra).
+  let lay = moveRow(undefined, 1, 40, -25, r0[1]);
+  lay = moveRow(lay ?? undefined, 2, 80, -59, rowsOf(lay)[2]);
+  const r = rowsOf(lay);
+  assert.deepEqual([r[0].y, r[1].y, r[2].y], [0, 0, 0]);
+  assert.deepEqual([r[1].x % 8, r[2].x % 8], [0, 0]);
+  // Lê de volta o deslocamento que não é múltiplo de 8.
+  assert.deepEqual(cleanLayout(JSON.parse(JSON.stringify(lay)))?.rows?.[1], { dx: 40, dy: -28 });
 });

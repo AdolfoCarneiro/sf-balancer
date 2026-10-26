@@ -150,7 +150,10 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove, f
   const move = (e: PointerEvent<SVGRectElement>) => {
     const st = start.current;
     if (!st) return;
-    const dx = snap((e.clientX - st.cx) / s), dy = snap((e.clientY - st.cy) / s);
+    // O destino encaixa na grade de 8 m do bloco (não no lugar de origem da fileira): fileiras de alturas diferentes no
+    // modelo param na mesma linha.
+    const r = arr.rows.find(x => x.index === st.i), rx = (e.clientX - st.cx) / s, ry = (e.clientY - st.cy) / s;
+    const dx = r ? snap(r.x + rx) - r.x : snap(rx), dy = r ? snap(r.y + ry) - r.y : snap(ry);
     if (dx !== drag?.dx || dy !== drag?.dy) setDrag({ i: st.i, dx, dy });
   };
   const up = () => {

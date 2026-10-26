@@ -59,7 +59,8 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
     : sel?.t === 'belt' ? (arr.lines.some(l => `${l.side}:${l.item}` === sel.key) ? sel : null) : null;
   const lay = stage.layout;
   const set = (l: Layout | null) => dispatch({ type: 'setLayout', id: stage.id, layout: l });
-  const onMove = (i: number, dx: number, dy: number) => set(moveRow(lay, i, dx, dy));
+  // A fileira encaixa na grade de 8 m do bloco (o arraste já mostra o destino encaixado).
+  const onMove = (i: number, dx: number, dy: number) => set(moveRow(lay, i, dx, dy, arr.rows.find(r => r.index === i)));
   // Selecionar no celular sobe a folha até a metade, para o ajuste aparecer.
   const select = (s: StageSel) => { setSel(s); if (s && sheet === 'peek' && phone()) setSheet('half'); };
 

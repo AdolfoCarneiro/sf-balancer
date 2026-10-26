@@ -44,6 +44,9 @@ test('fábrica: mineradora, extrator e blocos de sobra nascem com os padrões; s
     { id: 's3', kind: 'sink' },
   ]);
   assert.equal(MINER_DEFAULT, 60);
+  // Water Extractor: a ferramenta calcula quantos (o de nó, como o Oil, nasce com um).
+  const w = addBlock(f, data, { kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C' }, [0, 0]);
+  assert.equal((w.blocks.at(-1) as ExtractorBlock).count, null);
   assert.deepEqual(PURITY, { impure: 0.5, normal: 1, pure: 2 });
   for (const spec of [
     { kind: 'recipe', recipe: 'Nope' }, { kind: 'miner', item: 'Desc_Water_C' }, { kind: 'miner', item: 'Desc_IronIngot_C' },

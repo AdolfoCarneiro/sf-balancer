@@ -160,7 +160,7 @@ export function RowAdjust(p: Props & { i: number }) {
   const e = lay?.rows?.[i];
   const machine = data.buildings[data.recipes[stage.recipe].building].name;
   const belts = [...new Map(arr.lines.filter(l => l.rows.includes(i)).map(l => [beltKeyOf(l), l])).values()];
-  const mv = (dx: number, dy: number) => set(moveRow(lay, i, dx, dy));
+  const mv = (dx: number, dy: number) => set(moveRow(lay, i, dx, dy, row));
   return (
     <div className="pl-sv-level">
       <AdjustHead title={t('plLayRow', String(i + 1))} sub={t('plLayRowInfo', fmt(row.machines), machine)} onBack={() => onSel(null)} />

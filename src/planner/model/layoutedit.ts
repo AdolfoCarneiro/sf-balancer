@@ -39,10 +39,14 @@ const dropJoinsOf = (l: Layout, i: number): Layout =>
 export const toggleRow = (cur: Layout | undefined, i: number, what: 'flip' | 'mirror'): Layout | null =>
   normLayout(withRow(cur, i, e => ({ ...e, [what]: !e[what] })));
 
-// Move a fileira em passos de 8 m (dx/dy em m); mover tira as junções dela.
-export function moveRow(cur: Layout | undefined, i: number, ddx: number, ddy: number): Layout | null {
-  const snap = (v: number) => Math.max(-SHIFT_MAX, Math.min(SHIFT_MAX, Math.round(v / 8) * 8));
-  const moved = withRow(cur, i, e => ({ ...e, dx: snap((e.dx ?? 0) + ddx), dy: snap((e.dy ?? 0) + ddy) }));
+// Move a fileira (dx/dy em m); mover tira as junções dela. at: onde a fileira está agora (canto, m): com ele, o destino
+// encaixa na grade de 8 m do bloco (fileiras em lugares diferentes do modelo ficam na mesma linha); sem ele, o
+// deslocamento anda em passos de 8 m.
+export function moveRow(cur: Layout | undefined, i: number, ddx: number, ddy: number, at?: { x: number; y: number }): Layout | null {
+  const clampS = (v: number) => Math.max(-SHIFT_MAX, Math.min(SHIFT_MAX, Math.round(v)));
+  const g8 = (v: number) => Math.round(v / 8) * 8;
+  const step = (old: number, d: number, pos: number | undefined) => clampS(pos === undefined ? g8(old + d) : old + g8(pos + d) - pos);
+  const moved = withRow(cur, i, e => ({ ...e, dx: step(e.dx ?? 0, ddx, at?.x), dy: step(e.dy ?? 0, ddy, at?.y) }));
   return normLayout(dropJoinsOf(moved, i));
 }
 export const resetRowPlace = (cur: Layout | undefined, i: number): Layout | null =>

@@ -12,7 +12,9 @@ const MAX_CUT = 1000, MAX_SHIFT = 800, MAX_ROW = 999, MAX_ENTRIES = 200;
 const BELT_KEY = /^(in|out):[^@\s]+$/, JOIN = /^((?:in|out):[^@\s]+)@(\d{1,3})$/;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const shiftOk = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v % 8 === 0 && Math.abs(v) <= MAX_SHIFT;
+// Deslocamento da fileira (m): inteiro até MAX_SHIFT. Não precisa ser múltiplo de 8: quem arrasta encaixa a fileira na
+// grade de 8 m do bloco, e a posição de cada fileira no modelo (a cada 28 m, por exemplo) nem sempre cai nela.
+const shiftOk = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && Math.abs(v) <= MAX_SHIFT;
 
 function cleanRow(v: unknown): RowEdit | null {
   if (!isObj(v)) return null;
