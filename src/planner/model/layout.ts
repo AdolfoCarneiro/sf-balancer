@@ -142,8 +142,12 @@ function sharedSegments(sizes: number[], cut: number | undefined): SharedSeg[] {
   if (cur.machines) segs.push(cur);
   return segs;
 }
-// Um Merger (ou Splitter) por coluna; a primeira coluna que dá só uma máquina inicia a esteira (k−1).
-const sharedPieces = (sg: SharedSeg) => sg.cols.length - (sg.cols[0].k === 1 ? 1 : 0);
+// Colunas com peça: um Merger (Splitter) por coluna, menos a ponta que fica com uma máquina só (k−1):
+// na saída, a primeira coluna (a máquina inicia a esteira); na entrada, a última (a esteira termina nela).
+const pieceCols = (sg: SharedSeg, side: Side) => {
+  const free = side === 'ins' ? sg.cols.length - 1 : 0;
+  return sg.cols.filter((c, k) => k !== free || c.k > 1);
+};
 
 interface RowPlan { index: number; n: number; flip: boolean; mirror: boolean; bx: number; dx: number; dy: number; gapAfter: boolean; pairStart: boolean }
 interface Shared { key: string; side: Side; item: ItemId; top: RowPlan; bot: RowPlan }
@@ -240,15 +244,16 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       if (g) accept(g); else warnings.push({ kind: 'badJoin', key: `${sharedKey}@${rp.index}` });
     }
   }
-  const asked = new Set(layout?.joins ?? []);
-  for (const j of layout?.joins ?? []) {
-    const at = j.lastIndexOf('@'), key = j.slice(0, at), r = Number(j.slice(at + 1));
+  // Por fileira, para a cadeia @r−1 → @r se ver já decidida.
+  const rowOf = (j: string) => Number(j.slice(j.lastIndexOf('@') + 1));
+  for (const j of [...layout?.joins ?? []].sort((u, v) => rowOf(u) - rowOf(v))) {
+    const at = j.lastIndexOf('@'), key = j.slice(0, at), r = rowOf(j);
     if (center) {
       if (!(key === sharedKey && shared.has(`${r}|${key}`))) warnings.push({ kind: 'badJoin', key: j });
       continue;
     }
     const f = parse(key);
-    if (f && planOf.has(r) && planOf.has(r + 1) && asked.has(`${key}@${r - 1}`) && joinable(key, r - 1)) {
+    if (f && planOf.has(r + 1) && skip.has(`${r}|${key}`)) {
       warnings.push({ kind: 'merger3', item: f.item });   // a r já divide com a r−1: 3 fileiras numa linha
       continue;
     }
@@ -295,8 +300,9 @@ export function arrange(stage: Stage, data: GameData, layout: Layout | undefined
       belts.push({ pts: [[xs, cy], [xe, cy]], item, rate, role: s, fluid: false });
       (side === 'ins' ? ins : outs).push({ x: a[0], y: a[1], item, row: segRows[0], stage: stage.id });
       lines.push({ side: s, item, machines: sg.machines, rate, rows: segRows, exit, at: a, tier, cap, fluid: false });
-      count[side === 'ins' ? 'splitters' : 'mergers'] += sharedPieces(sg);
-      sg.cols.forEach((c, k) => { if (k > 0 || c.k > 1) perCol.set(c.ci, (perCol.get(c.ci) ?? 0) + 1); });
+      const withPiece = pieceCols(sg, side);
+      count[side === 'ins' ? 'splitters' : 'mergers'] += withPiece.length;
+      for (const c of withPiece) perCol.set(c.ci, (perCol.get(c.ci) ?? 0) + 1);
       if (exit !== 'end') lift(a, exit);
     }
     // Coluna cortada no meio leva duas peças, uma de cada trecho, lado a lado.

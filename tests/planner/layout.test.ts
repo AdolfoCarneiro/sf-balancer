@@ -332,7 +332,12 @@ test('center com invert: a entrada principal no corredor, saídas por fileira', 
   assert.ok(belt(a, 'out', INGOT, 0).pts[0][1] < top.y, 'saída de cima por fora');
   // Entrada: o elevador fica no começo do trecho (ponta de fora).
   assert.equal(a.lines.find(l => l.item === ORE)!.at[0], 0);
-  assert.equal(a.pieces.splitters, 2 * (7 + 4));   // 13: colunas 0-5 + a de cima da 6 → 7; 8: a de baixo da 6 + 7-9 + a 10 → 5 − 1
+  // Splitters por par: a última coluna do trecho que fica com uma máquina só não precisa (a esteira termina nela).
+  //   13: colunas 0-5 (12) + a de cima da 6 → 7 colunas, a última dá 1 → 6;
+  //   8: a de baixo da 6 (precisa de Splitter) + 7-9 + a 10, só em cima → 5 colunas, a última dá 1 → 4.
+  //   (6 + 4) × 2 pares = 20.
+  assert.equal(a.pieces.splitters, 2 * (6 + 4));
+  assert.equal(a.geo.pieces.filter(p => p.kind === 'splitter' && p.y > top.y + top.h && p.y < bot.y).length, 20);
   assert.deepEqual(a.warnings, []);
 });
 
@@ -370,7 +375,7 @@ test('joins no simple: fileiras coladas dividem a esteira; avisos badJoin, over 
   const bad = arrange(s, data, { kind: 'simple', joins: [`out:${INGOT}@0`, `out:${INGOT}@7`, `in:${WATER}@0`] });
   assert.deepEqual(arrangementLines(bad, 'out', INGOT), [3, 3]);
   assert.deepEqual(bad.warnings, [
-    { kind: 'badJoin', key: `out:${INGOT}@0` }, { kind: 'badJoin', key: `out:${INGOT}@7` }, { kind: 'badJoin', key: `in:${WATER}@0` },
+    { kind: 'badJoin', key: `out:${INGOT}@0` }, { kind: 'badJoin', key: `in:${WATER}@0` }, { kind: 'badJoin', key: `out:${INGOT}@7` },
   ]);
   assert.deepEqual(bad.geo, arrange(s, data, { kind: 'simple' }).geo);
 
@@ -387,6 +392,13 @@ test('joins no simple: fileiras coladas dividem a esteira; avisos badJoin, over 
   const three = arrange(st(9, { perRow: 3 }), data, { kind: 'simple', rows: { 1: { flip: true } }, joins: [`out:${INGOT}@0`, `out:${INGOT}@1`] });
   assert.deepEqual(arrangementLines(three, 'out', INGOT), [6, 3]);
   assert.deepEqual(three.warnings, [{ kind: 'merger3', item: INGOT }]);
+  // Cadeia @0, @1, @2: a @1 cai (merger3), a @2 não depende dela e junta a 2 com a 3 (em qualquer ordem).
+  for (const joins of [[0, 1, 2], [2, 1, 0]].map(rs => rs.map(r => `out:${INGOT}@${r}`))) {
+    const chain = arrange(st(12, { perRow: 3 }), data, { kind: 'simple', rows: { 1: { flip: true }, 3: { flip: true } }, joins });
+    assert.deepEqual(arrangementLines(chain, 'out', INGOT), [6, 6]);
+    assert.deepEqual(outLines(chain).map(l => l.rows), [[0, 1], [2, 3]]);
+    assert.deepEqual(chain.warnings, [{ kind: 'merger3', item: INGOT }]);
+  }
 });
 
 test('joins no backToBack: o par junta as saídas do corredor', () => {
