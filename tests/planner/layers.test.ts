@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { viewHit, type ViewGeo } from '../../src/planner/model/map/cards.ts';
-import { ALL_LAYERS, NO_LAYERS, cleanLayers, hitGeo } from '../../src/planner/model/map/layers.ts';
+import { ALL_LAYERS, NO_LAYERS, cleanLayers, cleanViewLayers, hitGeo } from '../../src/planner/model/map/layers.ts';
 
 // Um cartão com uma porta na borda e um chip ao lado.
 const V: ViewGeo = {
@@ -40,4 +40,11 @@ test('camadas: de longe (portas e chips fora) continua escondendo, com as camada
   assert.deepEqual([far.ports.length, far.chips.length], [0, 0]);
   const plantFar = hitGeo(V, ALL_LAYERS, false, true);
   assert.deepEqual([plantFar.ports.length, plantFar.chips.length], [0, 1]);
+});
+
+test('camadas por vista: o formato antigo vale para as duas; cada vista guarda a sua', () => {
+  assert.deepEqual(cleanViewLayers(null), { montar: ALL_LAYERS, planta: ALL_LAYERS });
+  assert.deepEqual(cleanViewLayers(NO_LAYERS), { montar: NO_LAYERS, planta: NO_LAYERS });
+  assert.deepEqual(cleanViewLayers({ montar: NO_LAYERS }), { montar: NO_LAYERS, planta: ALL_LAYERS });
+  assert.deepEqual(cleanViewLayers({ montar: 1, planta: { names: false } }), { montar: ALL_LAYERS, planta: { ...ALL_LAYERS, names: false } });
 });

@@ -8,7 +8,7 @@
 // (cada vista com as suas posições); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
 // Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
 // importar duo.sfmd (input de arquivo) cria os 6 blocos numa fábrica nova e "Factories" volta para a de antes;
-// Camadas "Machines only" tira portas e chips; /#s= antigo cai em /balancer.
+// Camadas "Machines only" tira portas e chips (só na Montar); /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
 import { chromium } from 'playwright';
@@ -266,8 +266,10 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   await settled();
   await pg.locator('.pl-layers-btn').click();
   await pg.getByRole('button', { name: 'Machines only' }).click();
+  // Uma escolha por vista: aqui, a da Montar; a Planta continua com tudo ligado.
   const saved = () => pg.evaluate(() => JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}'));
-  await waitFor(() => Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}')).length === 4 && Object.values(JSON.parse(localStorage.getItem('sf-balancer:planner-layers'))).every(v => v === false), null, 'as quatro camadas desligadas');
+  await waitFor(() => { const s = JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}'); return Object.values(s.montar ?? {}).length === 4 && Object.values(s.montar).every(v => v === false); }, null, 'as quatro camadas desligadas');
+  must(Object.values((await saved()).planta ?? {}).every(v => v === true), 'desligar na Montar mexeu na Planta');
   // Chip escondido não pega o clique: o mini painel não abre.
   const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);
   must(ch, 'sem chip na vista para conferir o clique escondido');
@@ -276,7 +278,7 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   if (!await pg.locator('.pl-layers-pop').count()) await pg.locator('.pl-layers-btn').click();
   for (const c of await pg.locator('.pl-layers-pop input[type=checkbox]').all()) await c.check();
   await pg.waitForTimeout(150);
-  must(Object.values(await saved()).every(v => v === true), 'as camadas não voltaram');
+  must(Object.values((await saved()).montar).every(v => v === true), 'as camadas não voltaram');
   await pg.keyboard.press('Escape');
 });
 await step('importar duo.sfmd pelo input de arquivo cria uma fábrica nova; Factories volta para a de antes', async () => {

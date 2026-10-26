@@ -15,6 +15,14 @@ export function cleanLayers(v: unknown): MapLayers {
   return out;
 }
 
+// Uma escolha por vista ({ montar, planta }). O formato antigo (uma só para as duas) vale para as duas.
+export interface ViewLayers { montar: MapLayers; planta: MapLayers }
+export function cleanViewLayers(v: unknown): ViewLayers {
+  const o = v && typeof v === 'object' ? v as Record<string, unknown> : {};
+  if (!('montar' in o) && !('planta' in o)) { const one = cleanLayers(v); return { montar: one, planta: { ...one } }; }
+  return { montar: cleanLayers(o.montar), planta: cleanLayers(o.planta) };
+}
+
 // A geometria de tela que pega o ponteiro: sem as portas escondidas (camada desligada ou de longe) e sem os chips
 // escondidos (ligações desligadas ou a Montar de longe).
 export function hitGeo(v: ViewGeo, layers: MapLayers, portsLive: boolean, chipsLive: boolean): ViewGeo {

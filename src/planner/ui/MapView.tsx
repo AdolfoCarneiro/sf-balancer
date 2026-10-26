@@ -32,7 +32,7 @@ import { EmptyInvite } from './FirstHint.tsx';
 import { TourHelp, openTour, useTourAnchor } from './Tour.tsx';
 import { Legend } from './Legend.tsx';
 import { Layers } from './Layers.tsx';
-import { cleanLayers, hitGeo, type MapLayers } from '../model/map/layers.ts';
+import { cleanViewLayers, hitGeo, type MapLayers, type ViewLayers } from '../model/map/layers.ts';
 import { ChipPopover } from './ChipPopover.tsx';
 import { SPECIAL_ICON, iconImage } from './icons.ts';
 import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
@@ -289,13 +289,15 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     if (selKey && sheet === 'peek') setSheet('half');
   }
   const panelOpen = panelSel ?? panelPref;
-  // Camadas: ícones, nomes, ligações e portas (padrão tudo ligado).
-  const [layers, setLayersState] = useState<MapLayers>(() => {
-    try { return cleanLayers(JSON.parse(localStorage.getItem(LAYERS_STORE) ?? 'null')); } catch { return cleanLayers(null); }
+  // Camadas: ícones, nomes, ligações e portas (padrão tudo ligado), uma escolha por vista.
+  const [viewLayers, setViewLayers] = useState<ViewLayers>(() => {
+    try { return cleanViewLayers(JSON.parse(localStorage.getItem(LAYERS_STORE) ?? 'null')); } catch { return cleanViewLayers(null); }
   });
+  const layers = viewLayers[mode];
   const setLayers = (v: MapLayers) => {
-    setLayersState(v);
-    try { localStorage.setItem(LAYERS_STORE, JSON.stringify(v)); } catch { /* sem storage: vale só nesta visita */ }
+    const next = { ...viewLayers, [mode]: v };
+    setViewLayers(next);
+    try { localStorage.setItem(LAYERS_STORE, JSON.stringify(next)); } catch { /* sem storage: vale só nesta visita */ }
   };
   const togglePanel = () => {
     if (selKey) { setPanelSel(!panelOpen); return; }
