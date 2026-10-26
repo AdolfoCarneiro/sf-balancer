@@ -183,8 +183,32 @@ export const scenarios = [
       await pg.waitForSelector('.pl-stageview');
       await pg.check('.pl-stageview input[name^="pl-lay-kind"][value="center"]');
       await pg.click('.pl-stageview [data-belt="out:Desc_IronIngot_C"]');
-      await pg.evaluate(() => document.querySelector('.pl-stageview').scrollTo(0, 0));
       await pg.waitForTimeout(300);
+    },
+  },
+  {
+    // A mesma etapa na visão geral (nada selecionado): os três modelos como cartões e o resumo fixo.
+    name: 'builder-etapa-geral', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
+      await pg.waitForSelector('.pl-stageview');
+      await pg.check('.pl-stageview input[name^="pl-lay-kind"][value="center"]');
+      await pg.waitForTimeout(300);
+    },
+  },
+  {
+    // Celular: a etapa com o desenho na tela toda e o painel como folha de baixo, aberta na esteira de saída.
+    name: 'builder-etapa-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
+      await pg.waitForSelector('.pl-stageview');
+      // A folha começa fechada (conteúdo escondido): o modelo e a esteira vão pelo clique do próprio elemento.
+      await pg.evaluate(() => document.querySelector('.pl-stageview input[name^="pl-lay-kind"][value="center"]').click());
+      await pg.waitForTimeout(200);
+      await pg.evaluate(() => document.querySelector('.pl-stageview [data-belt="out:Desc_IronIngot_C"]').click());
+      await pg.waitForTimeout(400);
     },
   },
   {

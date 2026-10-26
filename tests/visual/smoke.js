@@ -189,7 +189,7 @@ await step('Ctrl+A seleciona tudo, Delete apaga todos, um Ctrl+Z traz todos de v
   await nBlocks(n);
   await nMeios(1);
 });
-await step('etapa do Pure Iron: "Mergers no meio" muda as linhas da ligação; volta à cadeia', async () => {
+await step('etapa do Pure Iron: "Mergers no meio" muda as linhas da ligação; volta ao mapa', async () => {
   await settled();
   const geoOf = () => pg.evaluate(() => { const m = window.__sfPlanner.scene.meios[0]; return m && JSON.stringify([m.rect, m.geo?.pieces.length]); });
   const before = await geoOf();
@@ -197,7 +197,7 @@ await step('etapa do Pure Iron: "Mergers no meio" muda as linhas da ligação; v
   await pg.mouse.dblclick(b.x + r.x + r.w / 2, b.y + r.y + r.h / 2);
   await pg.waitForSelector('input[type=radio][value=center]', { timeout: 10000 }).catch(() => { throw new Error('a tela da etapa não abriu'); });
   await pg.locator('input[type=radio][value=center]').check({ force: true });
-  await pg.getByRole('button', { name: 'Back to the chain' }).first().click();
+  await pg.getByRole('button', { name: 'Back to map' }).first().click();
   await pg.waitForSelector('canvas.pl-map-canvas', { timeout: 5000 });
   await settled();
   await waitFor(b0 => { const m = window.__sfPlanner.scene.meios[0]; return JSON.stringify([m.rect, m.geo?.pieces.length]) !== b0; }, before, 'a ligação mudar com o modelo Mergers no meio');

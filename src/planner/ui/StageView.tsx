@@ -1,23 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Tela da etapa: topo fixo (Voltar ao mapa, o caminho, máquinas/clock/receita e "? Como mexer"), o desenho ocupando o
+// espaço livre com a barra das ações da seleção por cima, e o painel em dois níveis (visão geral / ajuste) com o resumo
+// fixo embaixo. No celular o painel vira uma folha de baixo com alça.
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import { BELTS, PIPES } from '../../logic/belts.js';
 import type { Action } from '../model/factorystate.ts';
 import { MAX_MACHINES, machinesOk } from '../model/factory.ts';
 import { limitView } from '../model/badges.ts';
-import { recipeLine, recipesFor } from '../model/search.ts';
-import { arrange, type Arrangement } from '../model/layout.ts';
-import { moveRow } from '../model/layoutedit.ts';
-import { portsOf, portTier, suggestedPerRow, tierKey } from '../model/stage.ts';
+import { recipesFor } from '../model/search.ts';
+import { arrange } from '../model/layout.ts';
+import { joinState, moveRow, setBelt, setEven, toggleJoin, toggleRow, sharedKeyOf } from '../model/layoutedit.ts';
+import { suggestedPerRow } from '../model/stage.ts';
 import type { FlowResult } from '../model/solve.ts';
-import type { Factory, GameData, Recipe, RecipeBlock, Stage } from '../model/types.ts';
+import type { Factory, GameData, Layout, Recipe, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
 import { NumField } from './NumField.tsx';
-import { LimitField } from './BlockPanel.tsx';
 import { StageDrawing, type StageSel } from './StageDrawing.tsx';
-import { LayoutModel, LayoutSelection, LayoutWarnings, OptIntField, linesText } from './StageLayout.tsx';
+import { BeltAdjust, CUT_ID, EXITS, OptIntField, Overview, RowAdjust, Summary, exitLabel } from './StageLayout.tsx';
+import { StageHelp } from './StageHelp.tsx';
 
 // stage: o bloco resolvido (solvedStage); block: o bloco salvo, com os limites.
 interface Props { block: RecipeBlock; stage: Stage; factory: Factory; flow: FlowResult; data: GameData; dispatch: (a: Action) => void; onClose: () => void }
+
+type Sheet = 'peek' | 'half' | 'full';
+const SHEET_NEXT: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'peek' };
+const SHEET_UP: Record<Sheet, Sheet> = { peek: 'half', half: 'full', full: 'full' };
+const SHEET_DOWN: Record<Sheet, Sheet> = { peek: 'peek', half: 'peek', full: 'half' };
+const DRAG_PX = 12, CLICK_AFTER_DRAG_MS = 400;
+const phone = () => window.matchMedia('(max-width: 720px)').matches;
 
 // Cor de cada item da receita: entradas sólidas em branco/cinza, saídas em laranja/turquesa, fluidos em ciano/verde.
 function stageColors(r: Recipe, data: GameData): Record<string, string> {
@@ -41,16 +50,21 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
   const arr = useMemo(() => arrange(stage, data, stage.layout, place), [stage, data, place]);
   const colors = useMemo(() => stageColors(r, data), [r, data]);
   const [sel, setSel] = useState<StageSel>(null);
+  const [sheet, setSheet] = useState<Sheet>('peek');
   // Seleção que deixou de existir (fileira sumiu, esteira de outra receita) cai.
   const live: StageSel = sel?.t === 'row' ? (arr.rows.some(x => x.index === sel.i) ? sel : null)
     : sel?.t === 'belt' ? (arr.lines.some(l => `${l.side}:${l.item}` === sel.key) ? sel : null) : null;
-  const onMove = (i: number, dx: number, dy: number) => dispatch({ type: 'setLayout', id: stage.id, layout: moveRow(stage.layout, i, dx, dy) });
+  const lay = stage.layout;
+  const set = (l: Layout | null) => dispatch({ type: 'setLayout', id: stage.id, layout: l });
+  const onMove = (i: number, dx: number, dy: number) => set(moveRow(lay, i, dx, dy));
+  // Selecionar no celular sobe a folha até a metade, para o ajuste aparecer.
+  const select = (s: StageSel) => { setSel(s); if (s && sheet === 'peek' && phone()) setSheet('half'); };
 
   // Ao abrir, o foco vai para o título da etapa.
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
 
-  // Esc tira a seleção; sem seleção, volta à cadeia (num campo, o Esc cancela a edição).
+  // Esc volta um nível: do ajuste para a visão geral; da visão geral, ao mapa (num campo, o Esc cancela a edição).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -62,121 +76,152 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
   }, [onClose, live]);
 
   const name = (id: string) => data.items[id]?.name ?? id;
-  const items = [...new Set([...r.ins, ...r.outs].map(f => f.item))];
+  const selLine = live?.t === 'belt' ? arr.lines.find(l => `${l.side}:${l.item}` === live.key) : undefined;
+  const selTitle = live?.t === 'row' ? t('plLayRow', String(live.i + 1))
+    : selLine ? t('plLayBelt', name(selLine.item), selLine.side, selLine.fluid) : null;
+
+  // Saídas fluidas sem ligação, com o que sai delas: o Awesome Sink não aceita fluido.
+  const bf = flow.blocks[stage.id];
+  const extra = r.outs
+    .filter(x => data.items[x.item]?.fluid && !factory.links.some(l => l.from === stage.id && l.item === x.item))
+    .map(x => t('plFluidOut', name(x.item), rateText(data.items[x.item], bf?.outs.find(p => p.item === x.item)?.rate ?? 0)));
+
+  const panel = { stage, data, arr, sel: live, onSel: select, dispatch };
+  const center = arr.kind === 'center';
+  // "Por linha": vazio = sugerido. No center o modelo divide as máquinas, então o campo some.
+  const perRow = center ? null : (
+    <OptIntField label={t('plPerRow')} value={stage.perRow} max={500}
+      placeholder={t('plSuggested', fmt(suggestedPerRow(stage, data)))} bad={t('plPerRowBad')}
+      onCommit={n => dispatch({ type: 'setPerRow', id: stage.id, perRow: n })} />
+  );
+
+  // A barra flutuante: as ações rápidas da seleção.
+  let float = null;
+  if (live?.t === 'row') {
+    const e = lay?.rows?.[live.i];
+    float = (
+      <div className="pl-sv-float" role="toolbar" aria-label={t('plSvQuick')}>
+        <button type="button" className="pl-btn" aria-pressed={!!e?.flip} onClick={() => set(toggleRow(lay, live.i, 'flip'))}>{t('plLayFlip')}</button>
+        <button type="button" className="pl-btn" aria-pressed={!!e?.mirror} onClick={() => set(toggleRow(lay, live.i, 'mirror'))}>{t('plLayMirror')}</button>
+      </div>
+    );
+  } else if (live?.t === 'belt' && selLine && !selLine.fluid) {
+    const { side, exit } = selLine, key = live.key;
+    const shared = sharedKeyOf(stage, data, lay) === key, defExit = shared ? 'down' : 'end';
+    const next = EXITS[(EXITS.indexOf(exit) + 1) % EXITS.length];
+    const join = joinState(arr, lay, key, live.row);
+    const even = !!lay?.belts?.[key]?.even;
+    const focusCut = () => {
+      if (sheet === 'peek' && phone()) setSheet('half');
+      requestAnimationFrame(() => document.getElementById(CUT_ID)?.focus());
+    };
+    float = (
+      <div className="pl-sv-float" role="toolbar" aria-label={t('plSvQuick')}>
+        {exit !== 'end' && <button type="button" className="pl-btn" onClick={focusCut}>{t('plSvCutAct')}</button>}
+        <button type="button" className="pl-btn" aria-label={t('plSvExitNext', exitLabel(side, exit), exitLabel(side, next))}
+          onClick={() => set(setBelt(lay, key, { exit: next === defExit ? null : next }))}>{exitLabel(side, exit)}</button>
+        {exit !== 'end' && <button type="button" className="pl-btn" aria-pressed={even} onClick={() => set(setEven(lay, key, !even))}>{t('plSvEven')}</button>}
+        {join && <button type="button" className="pl-btn" aria-pressed={join === 'joined'}
+          onClick={() => set(toggleJoin(lay, `${key}@${live.row}`))}>{t(join === 'joined' ? 'plSvUnjoinShort' : 'plSvJoinShort')}</button>}
+      </div>
+    );
+  }
 
   return (
     <div className="pl-stageview" role="region" aria-label={t('plStageView')}>
-      <div className="pl-sv-head">
-        <nav className="pl-crumb" aria-label={t('plCrumbChain')}>
-          <button type="button" className="pl-linkbtn" onClick={onClose}>{t('plCrumbChain')}</button>
-          <span aria-hidden="true"> › </span><h2 className="pl-crumb-h" tabIndex={-1} ref={heading}>{r.name}</h2>
+      <div className="pl-sv-top">
+        <button type="button" className="pl-btn pl-primary pl-sv-back" data-tour="stage-back" onClick={onClose}>
+          <span aria-hidden="true">← </span>{t('plSvBackMap')}
+        </button>
+        <nav className="pl-crumb" aria-label={t('plSvPath')}>
+          <button type="button" className="pl-crumb-a" onClick={onClose}>{t('plSvFactory')}</button>
+          <span aria-hidden="true" className="pl-crumb-sep">›</span>
+          <h2 className="pl-crumb-h" tabIndex={-1} ref={heading}>
+            {selTitle ? <button type="button" className="pl-crumb-a" onClick={() => setSel(null)}>{r.name}</button> : <b aria-current="page">{r.name}</b>}
+          </h2>
+          {selTitle && <><span aria-hidden="true" className="pl-crumb-sep">›</span><b aria-current="page">{selTitle}</b></>}
         </nav>
-        <button type="button" className="pl-btn" onClick={onClose}>{t('plBackChain')}</button>
+        {!selTitle && <StageChips block={block} stage={stage} factory={factory} flow={flow} data={data} dispatch={dispatch} />}
+        <span className="pl-grow" />
+        <StageHelp items={Object.keys(colors).map(it => ({ name: name(it), color: colors[it] }))} />
       </div>
       <div className="pl-sv-body">
-        <div className="pl-sv-main">
-          <ul className="pl-legend2" aria-label={t('plLegend')}>
-            {items.map(it => <li key={it}><i style={{ background: colors[it] }} />{name(it)}</li>)}
-            <li><i className="pl-sq" style={{ background: 'var(--flow)' }} />Splitter</li>
-            <li><i className="pl-sq" style={{ background: 'var(--ficsit)' }} />Merger</li>
-            {arr.pieces.lifts > 0 && <li><i className="pl-sq pl-sq-lift" />Conveyor Lift</li>}
-            <li className="pl-dim">{t('plFoundation')}</li>
-          </ul>
-          <div className="pl-draw-scroll" onPointerDown={e => { if (e.target === e.currentTarget) setSel(null); }}>
-            {arr.rows.length > 0 && (
-              <StageDrawing arr={arr} data={data} machine={b.name} colors={colors} sel={live} onSel={setSel} onMove={onMove} />
-            )}
+        <StageDrawing arr={arr} data={data} machine={b.name} colors={colors} sel={live} onSel={select} onMove={onMove}
+          fitKey={`${arr.kind}|${lay?.invert ? 1 : 0}|${arr.rows.length}`} float={float} />
+        <aside className="pl-sv-panel" data-sheet={sheet} aria-label={t('plInspector')} data-tour="stage-belt-panel">
+          <SheetHandle sheet={sheet} onSheet={setSheet} title={selTitle ?? `${t('plSvOverview')} · ${r.name}`} />
+          <div className="pl-sv-scroll" key={live ? JSON.stringify(live) : ''}>
+            {live?.t === 'row' ? <RowAdjust {...panel} i={live.i} />
+              : live?.t === 'belt' ? <BeltAdjust {...panel} beltKey={live.key} row={live.row} />
+                : <Overview {...panel} perRow={perRow} />}
           </div>
-        </div>
-        <Side block={block} stage={stage} factory={factory} flow={flow} data={data} dispatch={dispatch} arr={arr} sel={live} onSel={setSel} />
+          <Summary {...panel} extra={extra} />
+        </aside>
       </div>
     </div>
   );
 }
 
-function Side({ block, stage, factory, flow, data, dispatch, arr, sel, onSel }: Omit<Props, 'onClose'> & { arr: Arrangement; sel: StageSel; onSel: (s: StageSel) => void }) {
+// Máquinas (calculado ou fixado, com "auto" para voltar), clock e receita, editáveis no topo.
+function StageChips({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onClose'>) {
   const r = data.recipes[stage.recipe];
   const main = (r.outs[0] ?? r.ins[0]).item;
   const options = recipesFor(data, main);
   if (!options.some(o => o.id === r.id)) options.unshift(r);
-  // Saídas fluidas sem ligação, com o que sai delas: o Awesome Sink não aceita fluido.
   const bf = flow.blocks[stage.id];
-  const fluidOut = r.outs
-    .filter(x => data.items[x.item]?.fluid && !factory.links.some(l => l.from === stage.id && l.item === x.item))
-    .map(x => ({ item: x.item, total: bf?.outs.find(p => p.item === x.item)?.rate ?? 0 }));
-  const ports = portsOf(stage, data);
-  const center = arr.kind === 'center';
-  const per = arr.rows.reduce((m, x) => Math.max(m, x.machines), 0);
-  const panel = { stage, data, arr, sel, onSel, dispatch };
-  // "Por linha": vazio = sugerido. No center o modelo divide as máquinas, então o campo fica desligado.
-  const perRow = (
-    <OptIntField label={t('plPerRow')} value={center ? null : stage.perRow} max={500} disabled={center}
-      placeholder={center ? '' : t('plSuggested', fmt(suggestedPerRow(stage, data)))} bad={t('plPerRowBad')}
-      onCommit={n => dispatch({ type: 'setPerRow', id: stage.id, perRow: n })} />
-  );
+  const fixed = block.limits?.machines !== undefined;
   return (
-    <aside className="pl-inspector pl-sv-side" aria-label={t('plInspector')}>
-      <div className="pl-insp">
-        <label className="pl-field">
-          <span>{t('plRecipe')}</span>
-          <select value={r.id} onChange={e => dispatch({ type: 'setRecipe', id: stage.id, recipe: e.target.value })}>
-            {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-        </label>
-        <div className="pl-note">{recipeLine(r, data)}</div>
-        {/* Como no painel do bloco: calculado ou fixado, com voltar ao padrão; sem limite ou travado, sem número a fixar. */}
-        <LimitField label={t('plMachines')} value={limitView(block, bf, factory.links).machines.value} fixed={block.limits?.machines !== undefined}
-          valid={machinesOk} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} unbounded={!!bf?.unbounded}
-          onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })}
-          onReset={() => dispatch({ type: 'setLimits', id: stage.id, limits: block.limits?.inputs ? { inputs: block.limits.inputs } : null })} />
+    <div className="pl-sv-chips">
+      <div className={'pl-sv-chip' + (fixed ? ' pl-fixed' : '')}>
+        <NumField label={t('plMachines')} value={limitView(block, bf, factory.links).machines.value} valid={machinesOk}
+          bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} always={!fixed} placeholder={bf?.unbounded && !fixed ? t('plUnbounded') : undefined}
+          onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} />
+        {fixed && (
+          <button type="button" className="pl-sv-auto" aria-label={`${t('plResetDefault')}: ${t('plMachines')}`}
+            onClick={() => dispatch({ type: 'setLimits', id: stage.id, limits: block.limits?.inputs ? { inputs: block.limits.inputs } : null })}>
+            {t('plSvAuto')}
+          </button>
+        )}
+      </div>
+      <div className="pl-sv-chip">
         <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
           onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
-
-        <h3 className="pl-insp-h">{t('plRowsTitle')}</h3>
-        <LayoutModel {...panel} perRow={perRow} />
-        <LayoutSelection {...panel} />
-        <LayoutWarnings {...panel} />
-
-        <h3 className="pl-insp-h">{t('plRowBelts')}</h3>
-        {ports.map(f => {
-          const it = data.items[f.item];
-          const tiers = (it?.fluid ? PIPES : BELTS) as { id: string; cap: number }[];
-          const side = f.side === 'ins' ? 'in' : 'out', key = `${side}:${f.item}`;
-          const first = arr.lines.find(l => l.side === side && l.item === f.item);
-          const label = t(f.side === 'ins' ? 'plPortIn' : 'plPortOut', it?.name ?? f.item);
-          const on = sel?.t === 'belt' && sel.key === key;
-          return (
-            <div key={f.side + f.item} className="pl-port-set">
-              <label className="pl-field">
-                <span>{label}</span>
-                <select value={stage.tiers[tierKey(f.side, f.item)] ?? ''} aria-label={t('plTierOf', label)}
-                  onChange={e => dispatch({ type: 'setTier', id: stage.id, side: f.side, item: f.item, tier: e.target.value || null })}>
-                  <option value="">{t('plTierAuto')} · {first?.tier ?? portTier(stage, data, f.item, f.side)}</option>
-                  {tiers.map(x => <option key={x.id} value={x.id}>{x.id} ({fmt(x.cap)})</option>)}
-                </select>
-              </label>
-              {first && (
-                <div className="pl-lay-port">
-                  <span>{linesText(arr, data, side, f.item)}</span>
-                  <button type="button" className="pl-btn" aria-pressed={on} aria-label={t('plLayAdjustAria', label)} data-belt={key}
-                    onClick={() => onSel({ t: 'belt', key, row: first.rows[0] })}>{t('plLayAdjust')}</button>
-                </div>
-              )}
-              {f.side === 'outs' && fluidOut.some(x => x.item === f.item) && (
-                <div className="pl-warn-box" role="status">{t('plFluidOut', it?.name ?? f.item, rateText(it, fluidOut.find(x => x.item === f.item)!.total))}</div>
-              )}
-            </div>
-          );
-        })}
-        <h3 className="pl-insp-h">{t('plStagePieces')}</h3>
-        <ul className="pl-pieces">
-          <li><span>Splitter</span><b>{fmt(arr.pieces.splitters)}</b></li>
-          <li><span>Merger</span><b>{fmt(arr.pieces.mergers)}</b></li>
-          {arr.pieces.lifts > 0 && <li><span>Conveyor Lift</span><b>{fmt(arr.pieces.lifts)}</b></li>}
-        </ul>
-        {arr.rows.length > 0 && <p className="pl-note">{t('plLayRowsLine', fmt(arr.rows.length), fmt(per))}</p>}
-        <p className="pl-note">{t('plLayArea', fmt(arr.area.w), fmt(arr.area.d))}</p>
       </div>
-    </aside>
+      <label className="pl-sv-chip pl-sv-chip-recipe">
+        <span>{t('plRecipe')}</span>
+        <select value={r.id} onChange={e => dispatch({ type: 'setRecipe', id: stage.id, recipe: e.target.value })}>
+          {options.map(o => <option key={o.id} value={o.id}>{o.alt ? `${o.name} · ${t('plPickAlt')}` : o.name}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+// Alça da folha do celular: toque alterna fechada / meia / inteira; arrastar sobe ou desce um nível.
+function SheetHandle({ sheet, onSheet, title }: { sheet: Sheet; onSheet: (s: Sheet) => void; title: string }) {
+  const h = useRef({ y0: 0, at: -1, dragged: 0 });
+  const down = (e: RPointerEvent<HTMLButtonElement>) => {
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
+    h.current = { y0: e.clientY, at: e.pointerId, dragged: 0 };
+  };
+  const up = (e: RPointerEvent<HTMLButtonElement>) => {
+    if (h.current.at !== e.pointerId) return;
+    h.current.at = -1;
+    const dy = e.clientY - h.current.y0;
+    if (Math.abs(dy) <= DRAG_PX) return;
+    h.current.dragged = performance.now();
+    onSheet(dy < 0 ? SHEET_UP[sheet] : SHEET_DOWN[sheet]);
+  };
+  const click = () => {
+    // O clique sintético de um arraste chega logo depois do pointerup.
+    if (h.current.dragged && performance.now() - h.current.dragged < CLICK_AFTER_DRAG_MS) { h.current.dragged = 0; return; }
+    h.current.dragged = 0;
+    onSheet(SHEET_NEXT[sheet]);
+  };
+  return (
+    <button type="button" className="pl-sv-sheet-h" aria-expanded={sheet !== 'peek'} aria-label={`${t('plPanelSheet')}: ${title}`}
+      onPointerDown={down} onPointerUp={up} onPointerCancel={() => { h.current.at = -1; }} onClick={click}>
+      <span>{title}</span><i aria-hidden="true" />
+    </button>
   );
 }
