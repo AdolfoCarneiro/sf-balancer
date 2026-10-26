@@ -9,7 +9,8 @@ export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeI
 // Gerador (do Docs): potência a 100 % (MW) e, por combustível, o consumo por minuto de um gerador (sólido: itens;
 // fluido: m³), a água (m³/min, carvão e nuclear) e o resíduo (nuclear).
 export interface GenFuel { item: ItemId; perMin: number; water: number | null; waste: { item: ItemId; perMin: number } | null }
-export interface Generator { id: BuildingId; name: string; power: number; fuels: GenFuel[] }
+// w × l: o prédio em metros (de building-sizes.json), como nos de produção.
+export interface Generator { id: BuildingId; name: string; power: number; fuels: GenFuel[]; w: number; l: number }
 export type Side = 'ins' | 'outs';
 // Etapa derivada de um bloco de receita resolvido (solvedStage): o que as contas de fileira e o desenho leem.
 // tiers: chave `in:<item>` ou `out:<item>` (o mesmo item pode entrar e sair da receita).

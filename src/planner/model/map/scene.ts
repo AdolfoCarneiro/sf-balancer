@@ -12,7 +12,7 @@ import { crossings, intersects, overlaps } from './checks.ts';
 import { blockCardSize, MONTAR_REF } from './cards.ts';
 import { montarLig } from '../views.ts';
 
-// marker: origem ou sobra, desenhada fora de escala. card: canto do cartão na Montar (a posição dela, senão a da Planta).
+// marker: origem ou sobra, desenhada fora de escala (o gerador não: fica no tamanho dele). card: canto do cartão na Montar (a posição dela, senão a da Planta).
 export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean; card: Pt }
 // geo null = calculando (faixa 16 × 8). chip: centro do chip na Montar quando a ligação tem posição lá (null: no meio
 // das portas, calculado na tela).
@@ -150,7 +150,7 @@ function layout(f: Factory, data: GameData, places: Record<StageId, MapPlace>, g
   const blocks: SceneBlock[] = list0.map(b => {
     const place = places[b.id] ?? ORIGIN, geo = geoOf(b, data, flow, place);
     const mp = f.montar && Object.hasOwn(f.montar, b.id) ? f.montar[b.id] : place;
-    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe', card: [mp.x, mp.y] };
+    return { stage: b.id, place, geo, rect: { x: place.x, y: place.y, ...rotSize(geo, place.rot) }, marker: b.kind !== 'recipe' && b.kind !== 'generator', card: [mp.x, mp.y] };
   });
   const byId = new Map(blocks.map(b => [b.stage, b]));
   const list = groupLinks(f.links).filter(m => byId.has(m.producers[0]));

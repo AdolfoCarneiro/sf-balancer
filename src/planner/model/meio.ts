@@ -4,7 +4,7 @@ import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
 import { BALANCER_PATH, type Lang } from '../lang.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
 import { arrange, type ArrLine, type Arrangement } from './layout.ts';
-import { solvedStage } from './solved.ts';
+import { genPerRow, solvedStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
 import type { Block, Factory, GameData, ItemId, Layout, Link, RecipeBlock, StageId } from './types.ts';
 import { PURITY, extractorRate, genFuel } from './factory.ts';
@@ -151,7 +151,7 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
       }
       case 'generator': {
         const n = Math.max(1, finite(bf?.machines)), g = genFuel(d, b.building, b.fuel), each = g?.waste?.perMin ?? 1;
-        return [{ driver: 'clock', count: n, clock: 100 * x / n, nominal: each, per: Math.max(1, Math.floor(cap / each + E)) }];
+        return [{ driver: 'clock', count: n, clock: 100 * x / n, nominal: each, per: genPerRow(d, b) }];
       }
       case 'miner': case 'input': {
         // Linhas iguais, cada uma dentro da esteira.
@@ -170,11 +170,11 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   const dst = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id];
     if (b.kind === 'generator') {
-      // Gerador: cada um queima o combustível (ou a água) por minuto; quantos cabem numa linha pela esteira.
+      // Gerador: cada um queima o combustível (ou a água) por minuto; uma linha por fileira do desenho (genPerRow).
       const g = genFuel(d, b.building, b.fuel), nominal = meio.item === g?.item ? g.perMin : g?.water ?? 1;
       const port = bf?.ins.find(p => p.item === meio.item), want = finite(port?.rate) + finite(port?.deficit);
       const n = Math.max(1, finite(bf?.machines));
-      return [{ driver: 'clock', count: n, clock: 100 * want / (nominal * n), nominal, per: Math.max(1, Math.floor(cap / nominal + E)) }];
+      return [{ driver: 'clock', count: n, clock: 100 * want / (nominal * n), nominal, per: genPerRow(d, b) }];
     }
     if (b.kind !== 'recipe') throw new Error(`bloco ${id} não consome pelo meio`);
     const st = solvedStage(b, bf), nominal = perMinOf(b.recipe, d, meio.item, 'ins');

@@ -125,7 +125,9 @@ for (const c of [...(porClasse.FGBuildableGeneratorFuel ?? []), ...(porClasse.FG
     const waste = x.mByproduct ? { item: x.mByproduct, perMin: arred(perMin * Number(x.mByproductAmount)) } : null;
     fuels.push({ item: x.mFuelClass, perMin: arred(perMin), water, waste });
   }
-  if (fuels.length) geradores[c.ClassName] = { id: c.ClassName, name: c.mDisplayName, power: mw, fuels };
+  const t = tamanhos[c.ClassName];
+  if (fuels.length && !t) throw new Error(`gerador sem tamanho em building-sizes.json: ${c.ClassName}`);
+  if (fuels.length) geradores[c.ClassName] = { id: c.ClassName, name: c.mDisplayName, power: mw, fuels, w: t.w, l: t.l };
 }
 
 // Energia gasta (MW a 100 %; o jogo eleva pelo clock com mPowerConsumptionExponent, 1,321929): prédios de produção e
