@@ -29,7 +29,7 @@ export function Layers({ value, onChange }: { value: MapLayers; onChange: (v: Ma
   const off = LAYER_KEYS.every(k => !value[k]);
 
   return (
-    <span className="pl-layers">
+    <span className="pl-layers" data-tour="map-layers">
       <button ref={btn} type="button" className="pl-layers-btn" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? 'pl-layers' : undefined}
         onClick={() => (open ? close(false) : setOpen(true))}>{t('plLayers')}</button>
       {open && (

@@ -28,7 +28,9 @@ const settle = async pg => {
   }
 };
 // Builder pronto: a cena exposta com ?debug=1 e todas as ligações com a montagem calculada.
-const BUILDER_STORE = ['sf-balancer:planner', 'sf-balancer:planner-hint2', 'sf-balancer:planner-layers'];
+const BUILDER_STORE = ['sf-balancer:planner', 'sf-balancer:planner-tour', 'sf-balancer:planner-layers'];
+// Tutorial já visto: as capturas do builder abrem sem o balão (o cenário builder-tutorial abre com ele).
+const TOUR_SEEN = { 'sf-balancer:planner-tour': 'done' };
 const builderReady = async pg => {
   await pg.waitForFunction(() => window.__sfPlanner && window.__sfPlanner.scene.meios.every(m => m.geo), null, { timeout: 15000 });
   await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -98,16 +100,16 @@ export const scenarios = [
   },
   // Builder (/, index.html; o Balancer fica em /balancer.html porque o vite preview não serve /balancer sem a extensão).
   // localStorage limpo = exemplo carregado. ?debug=1 liga window.__sfPlanner (cena, câmera e portas) para achar o ponto.
-  { name: 'builder', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); } },
+  { name: 'builder', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN, actions: async pg => { await builderReady(pg); } },
   {
     // Bloco selecionado (Pure Iron Ingot, o s1 do exemplo, com 330/min sobrando): o painel do bloco com a frase do
     // problema e os consertos.
-    name: 'builder-bloco', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-bloco', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => { await builderReady(pg); await clickScreen(pg, await cardCenter(pg, 's1')); await builderReady(pg); },
   },
   {
     // Seletor aberto por duplo clique no vazio (abaixo do primeiro bloco).
-    name: 'builder-seletor', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-seletor', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       const r = await pg.evaluate(() => window.__sfPlanner.view.blocks.find(b => b.id === 's1').rect);
@@ -118,7 +120,7 @@ export const scenarios = [
   },
   {
     // Seletor só no teclado: o botão "+ bloco" (Enter), busca digitada e setas.
-    name: 'builder-seletor-teclado', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-seletor-teclado', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await pg.focus('.pl-map-add');
@@ -132,12 +134,12 @@ export const scenarios = [
   },
   {
     // Mini painel do chip da ligação do ferro (s1 > s2): resumo e as três ações.
-    name: 'builder-chip', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-chip', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => { await builderReady(pg); await openIronChip(pg); await pg.waitForTimeout(300); },
   },
   {
     // Clique no chip da ligação do ferro e Ver montagem (Enter, com o foco nele): o modal com o desenho do fluxo.
-    name: 'builder-ligacao', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-ligacao', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await openIronChip(pg);
@@ -148,7 +150,7 @@ export const scenarios = [
   },
   {
     // Planta em escala (o botão da barra de cima) e Mostrar tudo: os blocos no tamanho real.
-    name: 'builder-planta', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-planta', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await pg.locator('.pl-view button').nth(1).click();
@@ -159,12 +161,12 @@ export const scenarios = [
   },
   {
     // Legenda aberta (o botão dos controles do mapa).
-    name: 'builder-legenda', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-legenda', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => { await builderReady(pg); await pg.click('.pl-leg-btn'); await pg.waitForSelector('.pl-leg[role=dialog]'); await pg.waitForTimeout(300); },
   },
   {
     // Camadas: "Só as máquinas" (tudo desligado), com o balão ainda aberto.
-    name: 'builder-camadas', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-camadas', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await pg.click('.pl-layers-btn');
@@ -176,7 +178,7 @@ export const scenarios = [
   {
     // Tela da etapa do refinador (s1, duplo clique no cartão) em "Mergers no meio", com a saída de lingote selecionada:
     // o corredor de Mergers fechando a cada 7 e descendo por Conveyor Lift, e o painel da esteira.
-    name: 'builder-etapa', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-etapa', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
@@ -188,7 +190,7 @@ export const scenarios = [
   },
   {
     // A mesma etapa na visão geral (nada selecionado): os três modelos como cartões e o resumo fixo.
-    name: 'builder-etapa-geral', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    name: 'builder-etapa-geral', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
@@ -199,7 +201,7 @@ export const scenarios = [
   },
   {
     // Celular: a etapa com o desenho na tela toda e o painel como folha de baixo, aberta na esteira de saída.
-    name: 'builder-etapa-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE,
+    name: 'builder-etapa-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE, store: TOUR_SEEN,
     actions: async pg => {
       await builderReady(pg);
       await clickScreen(pg, await cardCenter(pg, 's1'), { clickCount: 2 });
@@ -213,15 +215,25 @@ export const scenarios = [
   },
   {
     // Celular: a Montar com a folha de baixo recolhida (sem seleção).
-    name: 'builder-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); },
+    name: 'builder-celular', path: '/?debug=1', viewport: MOBILE, clearStore: BUILDER_STORE, store: TOUR_SEEN, actions: async pg => { await builderReady(pg); },
+  },
+  {
+    // Tutorial da primeira visita (localStorage limpo), no passo do chip da ligação (o terceiro).
+    name: 'builder-tutorial', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      await pg.waitForSelector('.pl-tour-box[data-ready]');
+      for (let k = 0; k < 2; k++) await pg.click('.pl-tour-box .pl-primary');
+      await pg.waitForTimeout(300);
+    },
   },
 ];
 
 // Rotas reais (/pt, /es e /pt/balancer, /es/balancer): só existem com o servidor aplicando as rewrites do vercel.json
 // (docker compose, ou o site).
 export const routeScenarios = [
-  { name: 'rota-pt', path: '/pt?debug=1', lang: 'pt', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: builderReady },
-  { name: 'rota-es', path: '/es?debug=1', lang: 'es', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: builderReady },
+  { name: 'rota-pt', path: '/pt?debug=1', lang: 'pt', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN, actions: builderReady },
+  { name: 'rota-es', path: '/es?debug=1', lang: 'es', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN, actions: builderReady },
   { name: 'rota-pt-balancer', path: '/pt/balancer', lang: 'pt', viewport: DESKTOP, actions: async () => {} },
   { name: 'rota-es-balancer', path: '/es/balancer', lang: 'es', viewport: DESKTOP, actions: async () => {} },
 ];

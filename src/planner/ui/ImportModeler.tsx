@@ -11,11 +11,11 @@ const SHOW = 12;   // nomes por lista; o resto vira "e mais N"
 type ErrKey = 'plImportErrJson' | 'plImportErrFormat' | 'plImportErrEmpty' | 'plImportErrSize';
 type State = { kind: 'error'; key: ErrKey; report?: SfmdReport } | { kind: 'ready'; factory: Factory; report: SfmdReport };
 
-export function ImportButton({ onFile, className }: { onFile: (f: File) => void; className?: string }) {
+export function ImportButton({ onFile, className, tour }: { onFile: (f: File) => void; className?: string; tour?: string }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <button type="button" className={'pl-btn ' + (className ?? '')} onClick={() => input.current?.click()}>{t('plImport')}</button>
+      <button type="button" className={'pl-btn ' + (className ?? '')} data-tour={tour} onClick={() => input.current?.click()}>{t('plImport')}</button>
       <input ref={input} type="file" accept=".sfmd,application/json" hidden aria-hidden="true" tabIndex={-1}
         onChange={e => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) onFile(f); }} />
     </>

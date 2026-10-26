@@ -14,6 +14,7 @@ import { Header } from './ui/Header.tsx';
 import { ImportDialog, useImportToast } from './ui/ImportModeler.tsx';
 import { stagesSel, type Selection, type ViewMode } from './ui/selection.ts';
 import { StageView } from './ui/StageView.tsx';
+import { Tour } from './ui/Tour.tsx';
 import { MapView, type MapViewHandle } from './ui/MapView.tsx';
 import { BalanceBar } from './ui/BalanceBar.tsx';
 import { factoryBalance, nextProblem, type PortState } from './model/portstate.ts';
@@ -174,6 +175,7 @@ export function App() {
       )}
       {impFile && <ImportDialog key={impFile.name + impFile.lastModified + impFile.size} file={impFile} data={data} onImport={importFactory} onClose={() => setImpFile(null)} />}
       {impToast.toast}
+      <Tour />
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>
   );

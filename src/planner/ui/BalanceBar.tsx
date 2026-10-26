@@ -49,7 +49,7 @@ export function BalanceBar({ balance, data, onGo, nameOf }: Props) {
   };
 
   return (
-    <section className="pl-bal" aria-label={t('plBalAria')}>
+    <section className="pl-bal" data-tour="balance" aria-label={t('plBalAria')}>
       <Group label={t('plBalIn')} rows={balance.ins} data={data} />
       <Group label={t('plBalOut')} rows={balance.outs} data={data} />
       {balance.sink.length > 0 && <Group label={t('plBalSink')} rows={balance.sink} data={data} />}

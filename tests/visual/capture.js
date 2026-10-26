@@ -20,9 +20,11 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}`;
 
-async function openPage(browser, viewport, url, clearStore) {
+async function openPage(browser, viewport, url, clearStore, store) {
   const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce', deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', permissions: ['clipboard-read', 'clipboard-write'] });
   if (clearStore) await ctx.addInitScript(ks => { for (const k of ks) try { localStorage.removeItem(k); } catch { /* sem storage */ } }, [clearStore].flat());
+  // Depois de limpar: o que o cenário quer já gravado (ex.: o tutorial visto).
+  if (store) await ctx.addInitScript(kv => { for (const [k, v] of Object.entries(kv)) try { localStorage.setItem(k, v); } catch { /* sem storage */ } }, store);
   const pg = await ctx.newPage();
   const errs = [];
   pg.on('pageerror', e => errs.push('pageerror: ' + e.message));
@@ -74,7 +76,7 @@ if (flags.has('--routes')) for (const sc of routeScenarios) list.push({ sc, lang
 for (const { sc, lang, url } of list) {
   if (only && !sc.name.includes(only)) continue;
   const key = `${sc.name}-${lang}`;
-  const { ctx, pg, errs } = await openPage(browser, sc.viewport, url, sc.clearStore);
+  const { ctx, pg, errs } = await openPage(browser, sc.viewport, url, sc.clearStore, sc.store);
   try {
     await sc.actions(pg);
     await pg.waitForLoadState('networkidle').catch(() => {});

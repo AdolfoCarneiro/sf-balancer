@@ -486,12 +486,8 @@ select.pl-field { width: auto; }
   .pl-bal-pb { padding: 0 10px; }
 }
 
-/* Dica de primeiro uso, convite da fábrica vazia e Legenda. */
-.pl-hint { position: absolute; left: 12px; bottom: 12px; max-width: min(520px, calc(100% - 24px)); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; background: rgba(10, 27, 45, .94); border: 1px solid var(--line); z-index: 4; }
-.pl-hint p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-mid); }
-.pl-hint button { flex: none; min-height: 44px; padding: 0 16px; font: 600 14px var(--body); color: var(--paper); background: var(--ficsit); border: 0; cursor: pointer; }
-.pl-hint button:hover { filter: brightness(1.1); }
-.pl-hint button:focus-visible, .pl-leg-btn:focus-visible, .pl-layers-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+/* Convite da fábrica vazia e Legenda. */
+.pl-leg-btn:focus-visible, .pl-layers-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
 .pl-invite { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 36px; text-align: center; border: 2px dashed var(--line); color: var(--ink-mid); pointer-events: none; }
 .pl-invite b { font: 600 18px var(--display); color: var(--ink); }
 .pl-invite span { font-size: 13px; color: var(--ink-dim); }
@@ -515,10 +511,6 @@ select.pl-field { width: auto; }
 .pl-leg-ic { display: flex; justify-content: center; }
 .pl-leg-d { color: var(--ink-dim); font-size: 13px; }
 
-/* A dica de primeiro uso (embaixo à esquerda) sobe acima dos controles do mapa quando os dois não cabem lado a lado
-   (depois da regra-base da .pl-hint, de propósito); no celular os controles quebram em duas linhas. */
-@media (max-width: 1100px) { .pl-hint { bottom: 68px; } }
-@media (max-width: 600px) { .pl-hint { bottom: 118px; } }
 
 /* Painel: o que entra e sai (mesmas cores das portas do mapa), a frase do problema e os consertos de um clique. */
 .pl-bp-ports { display: flex; flex-direction: column; gap: 6px; }
@@ -590,3 +582,51 @@ select.pl-field { width: auto; }
 /* Aviso depois de importar: flutua embaixo, sem empurrar o topo nem o painel. */
 .pl-imp-done { position: fixed; z-index: 30; left: 50%; bottom: 72px; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 8px 14px; font-size: 13px; color: var(--ok); background: var(--bench); border: 1px solid var(--ok); border-left-width: 4px; }
 .pl-imp-done:empty { display: none; }
+
+/* Tutorial (ui/Tour.tsx): o resto da tela escurece pela sombra do recorte, que tem os cantos de mira em holo; o balão é
+   uma chapa com a faixa FICSIT em cima, a seta apontando o alvo e a contagem com os segmentos. */
+.pl-tour { position: fixed; inset: 0; z-index: 60; }
+.pl-tour-back { position: absolute; inset: 0; }
+.pl-tour-spot {
+  position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none;
+  box-shadow: 0 0 0 200vmax rgba(4, 12, 22, .72); outline: 1px solid rgba(111, 227, 255, .3);
+  --c: linear-gradient(var(--holo), var(--holo));
+  background: var(--c) left top / 16px 2px, var(--c) left top / 2px 16px, var(--c) right top / 16px 2px, var(--c) right top / 2px 16px,
+    var(--c) left bottom / 16px 2px, var(--c) left bottom / 2px 16px, var(--c) right bottom / 16px 2px, var(--c) right bottom / 2px 16px;
+  background-repeat: no-repeat;
+  transition: left .22s ease, top .22s ease, width .22s ease, height .22s ease;
+}
+.pl-tour-box {
+  position: fixed; left: 0; top: 0; width: min(360px, calc(100vw - 24px)); visibility: hidden; padding: 12px 16px;
+  background: var(--bench); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--ficsit);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .55); transition: left .22s ease, top .22s ease;
+}
+.pl-tour-box[data-ready] { visibility: visible; }
+.pl-tour-box::before { content: ''; position: absolute; width: 12px; height: 12px; background: var(--bench); border: 1px solid var(--line); transform: rotate(45deg); }
+.pl-tour-box[data-place="below"]::before { top: -9px; left: calc(var(--arrow) - 7px); background: var(--ficsit); border: 0; }
+.pl-tour-box[data-place="above"]::before { bottom: -7px; left: calc(var(--arrow) - 7px); border-top: 0; border-left: 0; }
+.pl-tour-box[data-place="left"]::before { right: -7px; top: calc(var(--arrow) - 9px); border-left: 0; border-bottom: 0; }
+.pl-tour-box[data-place="right"]::before { left: -7px; top: calc(var(--arrow) - 9px); border-right: 0; border-top: 0; }
+.pl-tour-box[data-place="inside"]::before { display: none; }
+.pl-tour-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.pl-tour-n { flex: none; font: 600 13px var(--display); color: var(--ficsit); font-variant-numeric: tabular-nums; }
+.pl-tour-ticks { display: flex; flex: 1; gap: 3px; min-width: 0; }
+.pl-tour-ticks i { flex: 1; max-width: 20px; height: 3px; background: var(--line); }
+.pl-tour-ticks i.on { background: var(--ficsit); }
+.pl-tour-box h2 { margin: 0 0 6px; font: 600 19px/1.2 var(--display); }
+.pl-tour-box p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-mid); }
+.pl-tour-legend { margin-top: 10px; }
+.pl-tour-acts { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
+.pl-tour-acts .pl-btn { min-width: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+.pl-tour-acts .pl-tour-skip { margin-left: -14px; border-color: transparent; color: var(--ink-dim); }
+.pl-tour-acts .pl-tour-skip:hover { color: var(--ink); }
+.pl-tour-acts .pl-btn:disabled { opacity: .4; cursor: default; }
+.pl-tour .pl-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pl-tour-spot, .pl-tour-box { transition: none; } }
+/* "? Como mexer": no canto de cima à esquerda do mapa e no alto do painel, à direita. */
+.pl-tour-help { min-width: 44px; min-height: 44px; padding: 0 14px; background: var(--bench); font: 600 14px var(--body); white-space: nowrap; }
+.pl-tour-help > span:first-child { color: var(--ficsit); }
+.pl-tour-help:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+.pl-map-help { position: absolute; top: 12px; left: 12px; z-index: 4; }
+.pl-insp-help { align-self: flex-end; margin: -6px -6px 0 0; }
+@media (max-width: 720px) { .pl-tour-help-t { display: none; } }

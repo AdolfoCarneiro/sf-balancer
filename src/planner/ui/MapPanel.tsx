@@ -21,6 +21,7 @@ import { blockIcon, blockName, rateText, sizeText } from './format.ts';
 import { iconUrl } from './icons.ts';
 import { BlockPanel } from './BlockPanel.tsx';
 import { ImportButton } from './ImportModeler.tsx';
+import { TourHelp } from './Tour.tsx';
 import { LigActions, ligInfo } from './ChipPopover.tsx';
 import { pieceGap, validPieceGap } from '../model/map/sizes.ts';
 import { selKey, type Selection, type ViewMode } from './selection.ts';
@@ -124,14 +125,14 @@ export function MapPanel(p: Props) {
   }
   return (
     <aside className={'pl-inspector' + (p.open ? '' : ' closed')} data-sheet={p.sheet} aria-label={t('plMapPanel')} id="pl-inspector">
-      <button type="button" className="pl-sheet-h" aria-expanded={p.sheet !== 'peek'} aria-controls="pl-insp-body"
+      <button type="button" className="pl-sheet-h" data-tour="panel-toggle" aria-expanded={p.sheet !== 'peek'} aria-controls="pl-insp-body"
         aria-label={`${t('plPanelSheet')}: ${sheetTitle}`}
         onPointerDown={onHandleDown} onPointerUp={onHandleUp} onPointerCancel={() => { handle.current.at = -1; }}
         onClick={onHandleClick}>
         <span>{sheetTitle}</span><i aria-hidden="true" />
       </button>
       {/* key: outra seleção começa do topo (o que estava rolado na visão geral não vale para o bloco). */}
-      <div className="pl-insp" id="pl-insp-body" key={selKey(selection) ?? ''}>{body}</div>
+      <div className="pl-insp" id="pl-insp-body" key={selKey(selection) ?? ''}><TourHelp area="panel" className="pl-insp-help" />{body}</div>
     </aside>
   );
 }
@@ -226,7 +227,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
       <h3 className="pl-insp-h">{t('plMapWarnings')}</h3>
       {hasWarn
         ? (
-          <ul className="pl-map-warns">
+          <ul className="pl-map-warns" data-tour="panel-warns">
             {problems.map(q => {
               const url = iconUrl(q.item);
               return (
@@ -248,7 +249,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
             {n > 0 && <li><button type="button" onClick={goCrossing}><span>{t('plMapCrossings', fmt(n, 0))}</span></button></li>}
           </ul>
         )
-        : <p className="pl-note">{t('plMapNoWarnings')}</p>}
+        : <p className="pl-note" data-tour="panel-warns">{t('plMapNoWarnings')}</p>}
       <div className="pl-insp-hrow">
         <h3 className="pl-insp-h" id="pl-map-blocks">{t('plMapBlocks')}</h3>
         {f.blocks.length > 0 && <button type="button" className="pl-btn" onClick={p.onSelectAll}>{t('plSelAll')}</button>}
@@ -256,7 +257,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
       {f.blocks.length > 0 && <p className="pl-note">{t('plMapListHint')}</p>}
       {f.blocks.length
         ? (
-          <ul className="pl-map-blocks" aria-labelledby="pl-map-blocks">
+          <ul className="pl-map-blocks" data-tour="panel-blocks" aria-labelledby="pl-map-blocks">
             {f.blocks.map(b => {
               const bf = flow.blocks[b.id], ic = b.kind === 'recipe' ? data.recipes[b.recipe]?.building ?? null : blockIcon(b, data);
               const url = ic ? iconUrl(ic) : null, k = dot(b.id);
@@ -307,7 +308,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
       <h3 className="pl-insp-h">{t('plBpMap')}</h3>
       <button type="button" className="pl-btn" onClick={p.onPropose}>{t('plMapPropose')}</button>
       <NumField label={t('plMapPieceGap')} value={pieceGap(f)} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={p.onGap} className="pl-row" />
-      <div className="pl-ov-import"><ImportButton onFile={p.onImportFile} /></div>
+      <div className="pl-ov-import"><ImportButton onFile={p.onImportFile} tour="panel-import" /></div>
     </>
   );
 }

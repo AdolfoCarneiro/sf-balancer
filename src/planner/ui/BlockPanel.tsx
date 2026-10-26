@@ -138,7 +138,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
           <div key={p.side + p.item} className={'pl-why pl-why-' + p.kind}>
             <p>{t(s.key, ...args)}</p>
             {fixes.length > 0 && (
-              <div className="pl-fixes">
+              <div className="pl-fixes" data-tour="panel-fixes">
                 {fixes.map((x, i) => (
                   <button key={x.key} type="button" className={'pl-btn' + (i === 0 ? ' pl-primary' : '')}
                     title={x.key === 'plFixReduce' && p.side === 'out' ? t('plFixReduceTip') : undefined}

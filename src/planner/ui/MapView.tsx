@@ -26,7 +26,8 @@ import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
-import { EmptyInvite, FirstHint } from './FirstHint.tsx';
+import { EmptyInvite } from './FirstHint.tsx';
+import { TourHelp, openTour, useTourAnchor } from './Tour.tsx';
 import { Legend } from './Legend.tsx';
 import { Layers } from './Layers.tsx';
 import { cleanLayers, hitGeo, type MapLayers } from '../model/map/layers.ts';
@@ -964,6 +965,31 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     canvas.current?.focus();
   };
 
+  // Pontos do canvas para o tutorial: a primeira saída, o primeiro chip e o primeiro cartão à vista (px da janela).
+  const onCanvas = (pick: (v: ViewGeo, w: number, h: number) => { x: number; y: number; w: number; h: number } | undefined) => () => {
+    const el = canvas.current, v0 = lastView.current, c = cam.current;
+    if (!el || !v0 || !c) return null;
+    // O que dá para pegar agora (camadas desligadas ou chips de longe não contam), como o clique.
+    const v = hitGeo(v0, layers, portsLive(), !montarFar(tNow.current, c.zoom));
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return null;   // mapa escondido (etapa aberta)
+    const b = pick(v, r.width, r.height);
+    return b ? { x: r.left + b.x, y: r.top + b.y, w: b.w, h: b.h } : null;
+  };
+  const inside = (x: number, y: number, w: number, h: number) => x >= 0 && y >= 0 && x <= w && y <= h;
+  useTourAnchor('map-port', onCanvas((v, w, h) => {
+    const p = v.ports.find(q => q.side === 'out' && inside(q.x, q.y, w, h)) ?? v.ports.find(q => inside(q.x, q.y, w, h));
+    return p && { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
+  }));
+  useTourAnchor('map-chip', onCanvas((v, w, h) => {
+    const c = v.chips.find(q => inside(q.x, q.y, w, h));
+    return c && { x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h };
+  }));
+  useTourAnchor('map-block', onCanvas((v, w, h) => {
+    const b = v.blocks.find(q => inside(q.rect.x + q.rect.w / 2, q.rect.y + q.rect.h / 2, w, h));
+    return b && b.rect;
+  }));
+
   const area = sizeText(scene.bounds);
   return (
     <>
@@ -993,14 +1019,15 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
               onSwap={key => dispatch({ type: 'setMeioAlt', meio: popMeio.id, key })}
               onUnlink={() => unlink(popMeio.id)} onClose={() => closePop(true)} />
           )}
-          <FirstHint />
-          <button type="button" className={'pl-btn pl-panel-toggle' + (panelOpen ? ' on' : '')} aria-expanded={panelOpen} aria-controls="pl-inspector"
+          <TourHelp area="map" className="pl-map-help" />
+          <button type="button" className={'pl-btn pl-panel-toggle' + (panelOpen ? ' on' : '')} data-tour="panel-toggle" aria-expanded={panelOpen} aria-controls="pl-inspector"
             onClick={togglePanel}>{t(panelOpen ? 'plPanelClose' : 'plPanelOpen')}</button>
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
-            <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
+            <button type="button" className="pl-btn pl-map-add" data-tour="map-new" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
             <Layers value={layers} onChange={setLayers} />
             <Legend />
-            <button type="button" className={'pl-btn pl-together' + (together ? ' on' : '')} aria-pressed={together}
+            <button type="button" className="pl-btn" data-tour="map-tour" aria-haspopup="dialog" onClick={() => openTour()}>{t('plTourAgain')}</button>
+            <button type="button" className={'pl-btn pl-together' + (together ? ' on' : '')} data-tour="map-together" aria-pressed={together}
               title={t('plMoveTogetherTip')} onClick={() => setTogether(!together)}>{t('plMoveTogether')}</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
