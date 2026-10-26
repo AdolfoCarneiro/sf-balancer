@@ -154,6 +154,10 @@ select.pl-field { width: auto; }
 .pl-sv-belt.pl-fluid .pl-sv-belt-line { stroke-width: 4px; stroke-dasharray: 8 3; }
 .pl-sv-belt.pl-on .pl-sv-belt-line { stroke-width: 6px; }
 .pl-sv-belt-hit { fill: none; stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: pointer; }
+@media (pointer: coarse) { .pl-sv-belt-hit { stroke-width: 44px; } }
+.pl-lay-belts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pl-lay-belts li { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-lay-belts .pl-btn { flex: 1 1 auto; min-height: 44px; text-align: left; }
 .pl-sv-belt-hit:hover { stroke: color-mix(in srgb, var(--ink) 14%, transparent); }
 .pl-sv-belt-hit:focus { outline: none; }
 .pl-sv-belt-hit:focus-visible { stroke: color-mix(in srgb, var(--ficsit) 45%, transparent); }

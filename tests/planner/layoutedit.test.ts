@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { Factory, GameData, Layout, Stage } from '../../src/planner/model/types.ts';
 import { arrange } from '../../src/planner/model/layout.ts';
 import {
-  fixCut, hasEdits, joinState, moveRow, normLayout, resetModel, resetRowPlace, setBelt, setInvert, setKind, toggleJoin, toggleRow,
+  fixCut, hasEdits, joinState, moveRow, normLayout, warningFixes, resetModel, resetRowPlace, setBelt, setInvert, setKind, toggleJoin, toggleRow,
 } from '../../src/planner/model/layoutedit.ts';
 import { type History, exampleFactory, reduce } from '../../src/planner/model/factorystate.ts';
 import { historyNew } from '../../src/logic/index.js';
@@ -85,6 +85,34 @@ test('fileiras trazem a faixa (w, h) dentro do desenho', () => {
     assert.ok(r.w > 0 && r.h > 0);
     assert.ok(r.x + r.w <= a.geo.w + 1e-9 && r.y + r.h <= a.geo.h + 1e-9);
   }
+});
+
+test('avisos → consertos: tier e corte; cano sem tier reduz por fileira (fora do center); centerEnd, cutPipe, badJoin', () => {
+  const WATER = 'Desc_Water_C';
+  const fx = (s: Stage) => { const a = arrange(s, data, s.layout); return a.warnings.map(w => ({ w, f: warningFixes(w, s, a) })); };
+  // Sólido: 14 por fileira = 910 > 480 (Mk4 escolhida) → Mk6 ou fechar a cada 7 (descendo).
+  const ing = fx({ ...st(42), perRow: 14, tiers: { [INGOT]: 'Mk4' } }).find(x => x.w.kind === 'over' && x.w.item === 'Desc_IronIngot_C')!;
+  assert.deepEqual(ing.f, [
+    { kind: 'tier', tier: 'Mk6', action: { type: 'setTier', id: 's', side: 'outs', item: 'Desc_IronIngot_C', tier: 'Mk6' } },
+    { kind: 'cut', n: 7, action: { type: 'setLayout', id: 's', layout: { kind: 'simple', belts: { [INGOT]: { cut: 7, exit: 'down' } } } } },
+  ]);
+  // Água: 31 × 20 = 620 > 600 (Pipeline Mk2), sem cano maior → reduzir para 30 por fileira.
+  const water = fx({ ...st(62), perRow: 31 }).find(x => x.w.kind === 'over' && x.w.item === WATER)!;
+  assert.deepEqual(water.f, [{ kind: 'perRow', n: 30, action: { type: 'setPerRow', id: 's', perRow: 30 } }]);
+  // No center o modelo divide as máquinas: sem conserto por fileira.
+  const c: Stage = { ...st(68), tiers: { [ORE]: 'Mk6' }, layout: { kind: 'center' } };
+  const cw = fx(c).filter(x => x.w.kind === 'over' && x.w.item === WATER);
+  assert.equal(cw.length, 1);
+  assert.deepEqual(cw[0].f, []);
+  const end: Stage = { ...st(42), layout: { kind: 'center', belts: { [INGOT]: { exit: 'end' } } } };
+  assert.deepEqual(fx(end).find(x => x.w.kind === 'centerEnd')!.f,
+    [{ kind: 'down', action: { type: 'setLayout', id: 's', layout: { kind: 'center', belts: { [INGOT]: { exit: 'down' } } } } }]);
+  const pipe: Stage = { ...st(42), layout: { kind: 'simple', belts: { [`in:${WATER}`]: { cut: 3, exit: 'down' } } } };
+  assert.deepEqual(fx(pipe).find(x => x.w.kind === 'cutPipe')!.f.map(f => f.action),
+    [{ type: 'setLayout', id: 's', layout: { kind: 'simple', belts: { [`in:${WATER}`]: { exit: 'down' } } } }]);
+  const bj: Stage = { ...st(42), layout: { kind: 'simple', joins: [`${INGOT}@0`] } };
+  assert.deepEqual(fx(bj).find(x => x.w.kind === 'badJoin')!.f.map(f => f.kind), ['unjoin']);
+  assert.deepEqual(warningFixes({ kind: 'merger3', item: 'x' }, bj, arrange(bj, data, bj.layout)), []);
 });
 
 test('um gesto = um passo do desfazer', () => {

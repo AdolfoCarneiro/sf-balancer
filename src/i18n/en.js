@@ -441,6 +441,7 @@ export default {
   plLayArea: (w, d) => `Area: ${w} × ${d} m`, plLayRowsLine: (n, per) => `${n} ${n === '1' ? 'row' : 'rows'}, up to ${per} per row`,
   plLayRowAria: (n, k, m) => `Row L${n}: ${k} ${m}. Enter selects, arrow keys move 8 m.`,
   plLayBeltAria: (item, side, k, rate) => `${side === 'in' ? 'Input' : 'Output'} of ${item}: ${k} ${k === '1' ? 'machine' : 'machines'}, ${rate}`,
+  plLayFixPerRow: n => `Reduce to ${n} per row`, plLayRowBelts: 'Belts of this row',
   plStagePieces: 'Stage pieces',
   plUnbounded: 'unbounded', plNotToScale: 'not to scale', plFlowCalc: 'calculating the flow…', plNotConverged: 'the calculation did not settle',
   plFlowFailed: 'the flow calculation failed',

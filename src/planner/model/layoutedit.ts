@@ -1,6 +1,7 @@
 // Edições do arranjo feitas na tela da etapa: cada função devolve o Layout novo (null = fileira simples sem ajustes,
 // que apaga o campo), para a tela mandar um setLayout só por gesto.
-import type { Arrangement } from './layout.ts';
+import type { Arrangement, LayoutWarning } from './layout.ts';
+import type { Action } from './factorystate.ts';
 import type { GameData, Layout, LayoutExit, LayoutKind, RowEdit, Side, Stage } from './types.ts';
 import { tierKey } from './stage.ts';
 
@@ -76,6 +77,32 @@ export function joinState(arr: Arrangement, cur: Layout | undefined, key: string
   if (moved(r) || moved(r + 1)) return null;
   const faces = key.startsWith('out:') ? !top.flip && bot.flip : top.flip && !bot.flip;
   return faces ? 'can' : null;
+}
+
+// Consertos de um aviso do arranjo, sem texto: a tela põe o rótulo pelo `kind` e manda a `action` (uma só).
+export type WarningFix =
+  | { kind: 'tier'; tier: string; action: Action }
+  | { kind: 'cut'; n: number; action: Action }
+  | { kind: 'perRow'; n: number; action: Action }
+  | { kind: 'down' | 'uncut' | 'unjoin'; action: Action };
+export function warningFixes(w: LayoutWarning, stage: Stage, arr: Arrangement): WarningFix[] {
+  const lay = stage.layout, id = stage.id;
+  const set = (layout: Layout | null): Action => ({ type: 'setLayout', id, layout });
+  switch (w.kind) {
+    case 'over': {
+      const key = `${w.side}:${w.item}`, line = arr.lines.find(l => `${l.side}:${l.item}` === key);
+      const out: WarningFix[] = [];
+      if (w.fixTier) out.push({ kind: 'tier', tier: w.fixTier, action: { type: 'setTier', id, side: w.side === 'in' ? 'ins' : 'outs', item: w.item, tier: w.fixTier } });
+      if (line && !line.fluid) out.push({ kind: 'cut', n: w.fixCut, action: set(fixCut(lay, key, w.fixCut, line.exit)) });
+      // Cano sem tier que caiba: menos máquinas por fileira (no center o modelo divide as máquinas, sem esse campo).
+      else if (line?.fluid && !w.fixTier && arr.kind !== 'center') out.push({ kind: 'perRow', n: w.fixCut, action: { type: 'setPerRow', id, perRow: w.fixCut } });
+      return out;
+    }
+    case 'centerEnd': return [{ kind: 'down', action: set(setBelt(lay, tierKey(lay?.invert ? 'ins' : 'outs', w.item), { exit: 'down' })) }];
+    case 'cutPipe': return [{ kind: 'uncut', action: set(setBelt(setBelt(lay, `in:${w.item}`, { cut: null }) ?? undefined, `out:${w.item}`, { cut: null })) }];
+    case 'badJoin': return lay?.joins?.includes(w.key) ? [{ kind: 'unjoin', action: set(toggleJoin(lay, w.key)) }] : [];
+    case 'merger3': return [];
+  }
 }
 
 // A esteira compartilhada do center (a principal sólida do corredor): o padrão dela é descer, com corte.

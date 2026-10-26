@@ -47,6 +47,8 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove }:
     if (s && drag && (drag.dx || drag.dy)) onMove(s.i, drag.dx, drag.dy);
     setDrag(null);
   };
+  // Cancelado (o navegador tomou o gesto): a fileira fica onde estava.
+  const cancel = () => { start.current = null; setDrag(null); };
   const rowKey = (e: KeyboardEvent<SVGRectElement>, i: number) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSel({ t: 'row', i }); return; }
     const d = ARROWS[e.key];
@@ -77,7 +79,7 @@ export function StageDrawing({ arr, data, machine, colors, sel, onSel, onMove }:
           <rect key={r.index} className={'pl-sv-row' + (on ? ' pl-on' : '')} x={r.x} y={r.y} width={r.w} height={r.h}
             vectorEffect="non-scaling-stroke" tabIndex={0} role="button" aria-pressed={on}
             aria-label={t('plLayRowAria', String(r.index + 1), fmt(r.machines), machine)}
-            onPointerDown={e => down(e, r.index)} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+            onPointerDown={e => down(e, r.index)} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel}
             onKeyDown={e => rowKey(e, r.index)} />
         );
       })}

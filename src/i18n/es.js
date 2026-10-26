@@ -441,6 +441,7 @@ export default {
   plLayArea: (w, d) => `Área: ${w} × ${d} m`, plLayRowsLine: (n, per) => `${n} ${n === '1' ? 'fila' : 'filas'}, hasta ${per} por fila`,
   plLayRowAria: (n, k, m) => `Fila L${n}: ${k} ${m}. Enter selecciona, las flechas mueven 8 m.`,
   plLayBeltAria: (item, side, k, rate) => `${side === 'in' ? 'Entrada' : 'Salida'} de ${item}: ${k} ${k === '1' ? 'máquina' : 'máquinas'}, ${rate}`,
+  plLayFixPerRow: n => `Reducir a ${n} por fila`, plLayRowBelts: 'Cintas de esta fila',
   plStagePieces: 'Piezas de la etapa',
   plUnbounded: 'sin límite', plNotToScale: 'fuera de escala', plFlowCalc: 'calculando el flujo…', plNotConverged: 'el cálculo no se estabilizó',
   plFlowFailed: 'el cálculo del flujo dio error',

@@ -5,9 +5,8 @@ import { fmt, parseNum, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
 import type { Arrangement, LayoutWarning } from '../model/layout.ts';
 import {
-  fixCut, hasEdits, joinState, resetModel, resetRowPlace, setBelt, setInvert, setKind, sharedKeyOf, toggleJoin, toggleRow,
+  type WarningFix, hasEdits, joinState, resetModel, resetRowPlace, setBelt, setInvert, setKind, sharedKeyOf, toggleJoin, toggleRow, warningFixes,
 } from '../model/layoutedit.ts';
-import { tierKey } from '../model/stage.ts';
 import type { GameData, Layout, LayoutExit, LayoutKind, Stage } from '../model/types.ts';
 import type { StageSel } from './StageDrawing.tsx';
 import { rateText } from './format.ts';
@@ -90,7 +89,7 @@ export function LayoutModel({ stage, arr, dispatch, perRow }: Props) {
 }
 
 // O que está selecionado no desenho: fileira (virar, espelhar, voltar ao lugar) ou esteira (corte, por onde sai, juntar).
-export function LayoutSelection({ stage, data, arr, sel, dispatch }: Props) {
+export function LayoutSelection({ stage, data, arr, sel, onSel, dispatch }: Props) {
   const lay = stage.layout;
   const set = (l: Layout | null) => dispatch({ type: 'setLayout', id: stage.id, layout: l });
   const machine = data.buildings[data.recipes[stage.recipe].building].name;
@@ -99,6 +98,8 @@ export function LayoutSelection({ stage, data, arr, sel, dispatch }: Props) {
     const row = arr.rows.find(r => r.index === sel.i);
     if (!row) return <p className="pl-note pl-lay-hint">{t('plLaySelectHint')}</p>;
     const e = lay?.rows?.[sel.i];
+    // As esteiras desta fileira (por item e lado), com alvo de 44 px: selecionar e juntar com a de baixo.
+    const belts = [...new Map(arr.lines.filter(l => l.rows.includes(sel.i)).map(l => [`${l.side}:${l.item}`, l])).values()];
     return (
       <section className="pl-lay-sel" aria-label={t('plLayRow', String(sel.i + 1))}>
         <h4>{t('plLayRow', String(sel.i + 1))} <small>· {t('plLayRowInfo', fmt(row.machines), machine)}</small></h4>
@@ -108,6 +109,24 @@ export function LayoutSelection({ stage, data, arr, sel, dispatch }: Props) {
           {(e?.dx || e?.dy) ? <button type="button" className="pl-btn" onClick={() => set(resetRowPlace(lay, sel.i))}>{t('plLayRowHome')}</button> : null}
         </div>
         <p className="pl-note">{t('plLayMoveHint')}</p>
+        {belts.length > 0 && (
+          <ul className="pl-lay-belts" aria-label={t('plLayRowBelts')}>
+            {belts.map(l => {
+              const key = `${l.side}:${l.item}`, what = t('plLayBelt', data.items[l.item]?.name ?? l.item, l.side, l.fluid);
+              const join = l.fluid ? null : joinState(arr, lay, key, sel.i);
+              return (
+                <li key={key}>
+                  <button type="button" className="pl-btn" data-belt-row={key} onClick={() => onSel({ t: 'belt', key, row: sel.i })}
+                    aria-label={t('plLayAdjustAria', what)}>{what}</button>
+                  {join && (
+                    <button type="button" className="pl-btn" aria-pressed={join === 'joined'} data-join={`${key}@${sel.i}`}
+                      onClick={() => set(toggleJoin(lay, `${key}@${sel.i}`))}>{t(join === 'joined' ? 'plLayUnjoin' : 'plLayJoin')}</button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
     );
   }
@@ -144,36 +163,29 @@ export function LayoutSelection({ stage, data, arr, sel, dispatch }: Props) {
 
 // Avisos do arranjo, cada um com o conserto quando há um.
 export function LayoutWarnings({ stage, data, arr, dispatch }: Props) {
-  const lay = stage.layout;
-  const set = (l: Layout | null) => dispatch({ type: 'setLayout', id: stage.id, layout: l });
   const name = (item: string) => data.items[item]?.name ?? item;
-  const exitOf = (key: string) => arr.lines.find(l => `${l.side}:${l.item}` === key)?.exit ?? 'end';
-  const view = (w: LayoutWarning): { text: string; fixes: { label: string; run: () => void }[] } => {
+  const text = (w: LayoutWarning): string => {
     switch (w.kind) {
-      case 'over': {
-        const it = data.items[w.item], key = `${w.side}:${w.item}`, fixes: { label: string; run: () => void }[] = [];
-        if (w.fixTier) {
-          const tier = w.fixTier;
-          fixes.push({ label: t('plLayFixTier', tier), run: () => dispatch({ type: 'setTier', id: stage.id, side: w.side === 'in' ? 'ins' : 'outs', item: w.item, tier }) });
-        }
-        if (!it?.fluid) fixes.push({ label: t('plLayFixCut', fmt(w.fixCut)), run: () => set(fixCut(lay, key, w.fixCut, exitOf(key))) });
-        return { text: t('plLayWarnOver', name(w.item), rateText(it, w.rate), rateText(it, w.cap)), fixes };
-      }
-      case 'centerEnd': {
-        const key = tierKey(lay?.invert ? 'ins' : 'outs', w.item);
-        return { text: t('plLayWarnCenterEnd', name(w.item)), fixes: [{ label: t('plLayFixDown'), run: () => set(setBelt(lay, key, { exit: 'down' })) }] };
-      }
-      case 'merger3': return { text: t('plLayWarnMerger3', name(w.item)), fixes: [] };
-      case 'cutPipe': {
-        const run = () => set(setBelt(setBelt(lay, `in:${w.item}`, { cut: null }) ?? undefined, `out:${w.item}`, { cut: null }));
-        return { text: t('plLayWarnCutPipe', name(w.item)), fixes: [{ label: t('plLayFixUncut'), run }] };
-      }
-      case 'badJoin': {
-        const saved = lay?.joins?.includes(w.key);
-        return { text: t('plLayWarnBadJoin'), fixes: saved ? [{ label: t('plLayFixUnjoin'), run: () => set(toggleJoin(lay, w.key)) }] : [] };
-      }
+      case 'over': { const it = data.items[w.item]; return t('plLayWarnOver', name(w.item), rateText(it, w.rate), rateText(it, w.cap)); }
+      case 'centerEnd': return t('plLayWarnCenterEnd', name(w.item));
+      case 'merger3': return t('plLayWarnMerger3', name(w.item));
+      case 'cutPipe': return t('plLayWarnCutPipe', name(w.item));
+      case 'badJoin': return t('plLayWarnBadJoin');
     }
   };
+  const label = (f: WarningFix): string => {
+    switch (f.kind) {
+      case 'tier': return t('plLayFixTier', f.tier);
+      case 'cut': return t('plLayFixCut', fmt(f.n));
+      case 'perRow': return t('plLayFixPerRow', fmt(f.n));
+      case 'down': return t('plLayFixDown');
+      case 'uncut': return t('plLayFixUncut');
+      case 'unjoin': return t('plLayFixUnjoin');
+    }
+  };
+  const view = (w: LayoutWarning) => ({
+    text: text(w), fixes: warningFixes(w, stage, arr).map(f => ({ label: label(f), run: () => dispatch(f.action) })),
+  });
   if (!arr.warnings.length) return null;
   return (
     <ul className="pl-lay-warns" aria-label={t('plMapWarnings')}>
