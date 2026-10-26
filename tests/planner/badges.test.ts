@@ -58,9 +58,9 @@ test('limitView: fixado marcado; voltar ao padrão tira só aquele limite', () =
   const flow = solveFactory(fac([bloco]), data);   // sem limite
   const bf = flow.blocks.s2;
   const b = { ...bloco, limits: { machines: 8, inputs: { Desc_IronIngot_C: 200 } } };
-  assert.equal(limitView(b, bf).machines.fixed, true);
-  assert.equal(limitView(b, bf).machines.value, 8);
-  const v = limitView({ ...b, limits: { inputs: b.limits.inputs } }, bf);
+  assert.equal(limitView(b, bf, []).machines.fixed, true);
+  assert.equal(limitView(b, bf, []).machines.value, 8);
+  const v = limitView({ ...b, limits: { inputs: b.limits.inputs } }, bf, []);
   assert.equal(v.machines.fixed, false); assert.equal(v.inputs[0].fixed, true);
   assert.equal(v.inputs[0].item, 'Desc_IronIngot_C'); assert.equal(v.inputs[0].value, 200);
 });
@@ -84,4 +84,18 @@ test('cena: o toco da entrada bruta mostra a taxa resolvida, não a nominal', ()
   const s = buildScene(f, data, { s2: { x: 0, y: 0, rot: 0 } }, {}, flow);
   const sum = (item: string) => s.belts.filter(b => b.role === 'raw' && b.item === item).reduce((t, b) => t + b.rate, 0);
   close(sum('Desc_IronIngot_C'), 200); close(sum('Desc_Coal_C'), 200);
+});
+
+test('limitView: bloco sem limite ou travado não mostra máquinas calculadas (Enter sem editar não fixa nada)', () => {
+  const free = recipe('s2', 'Recipe_Alternate_IngotSteel_1_C');
+  const bf = solveFactory(fac([free]), data).blocks.s2;
+  assert.equal(bf.unbounded, true);
+  assert.deepEqual(limitView(free, bf, []).machines, { value: null, fixed: false });
+  // Travado (a água não tem para onde ir), com as máquinas livres: sem número.
+  const scrap = recipe('a1', 'Recipe_AluminumScrap_C', { inputs: { Desc_Coal_C: 120 } });
+  const sf = solveFactory(fac([scrap]), data).blocks.a1;
+  assert.equal(sf.stalled, 'Desc_Water_C');
+  assert.deepEqual(limitView(scrap, sf, []).machines, { value: null, fixed: false });
+  // Fixado continua mostrando o fixado.
+  assert.deepEqual(limitView({ ...scrap, limits: { machines: 2 } }, sf, []).machines, { value: 2, fixed: true });
 });

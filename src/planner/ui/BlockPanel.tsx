@@ -103,7 +103,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
 
 // Campo de limite: o calculado em texto normal com o rótulo "calculado"; o fixado em destaque, com "voltar ao padrão".
 // Digitar no calculado (mesmo o valor mostrado) fixa.
-function LimitField({ label, value, fixed, valid, bad, unbounded, onCommit, onReset, note }: {
+export function LimitField({ label, value, fixed, valid, bad, unbounded, onCommit, onReset, note }: {
   label: string; value: number | null; fixed: boolean; valid: (n: number) => boolean; bad: string; unbounded: boolean;
   onCommit: (n: number) => void; onReset: () => void; note?: string;
 }) {

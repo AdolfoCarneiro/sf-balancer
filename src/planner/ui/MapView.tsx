@@ -135,6 +135,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   const [theme, setTheme] = useState<MapTheme | null>(null);
 
   const colors = useMemo(() => (theme ? itemColors(f, data, theme) : {}), [f, data, theme]);
+  // Os blocos por id, uma vez por fábrica (os rótulos do canvas consultam a cada quadro).
+  const byId = useMemo(() => new Map(f.blocks.map(b => [b.id, b])), [f.blocks]);
   // Avisos do fluxo de cada bloco (mudam só com o fluxo).
   const badges = useMemo(() => {
     const m = new Map<StageId, Badge[]>();
@@ -157,9 +159,9 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     ports, portHover: hoverPort ? portKey(hoverPort) : null, wire: wire && { from: wire.from, to: wire.to, lit }, icon,
     names: item => data.items[item]?.name ?? item,
     badges: id => badges.get(id) ?? [],
-    badgeLabel: (id, x) => { const b = f.blocks.find(y => y.id === id); return b ? badgeText(x, b, data, false) : ''; },
+    badgeLabel: (id, x) => { const b = byId.get(id); return b ? badgeText(x, b, data, false) : ''; },
     blockText: id => {
-      const b = f.blocks.find(x => x.id === id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
+      const b = byId.get(id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
       // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
       const bs = badges.get(id) ?? [], stall = bs.find(x => x.kind === 'stalled');
       const alert = stall ? badgeText(stall, b, data, true) : '';
@@ -184,12 +186,12 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
       if (r.plan.unbounded) return { title: t('plUnbounded'), sub: '', icon };
       if (r.plan.tooLarge) return { title: t('plMeioTooLargeShort'), sub: '', icon };
       const lines = `${fmt(r.plan.src.lines.length, 0)} → ${fmt(r.plan.direct ? r.plan.src.lines.length : r.plan.dst.lines.length, 0)}`;
-      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = f.blocks.find(x => x.id === c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines, icon };
+      if (r.plan.direct) return { title: m ? m.consumers.map(c => { const b = byId.get(c); return b ? blockName(b, data) : c; }).join(', ') : '', sub: lines, icon };
       const key = chosenAlt(r.plan, f.alts?.[id]);
       const alt = r.plan.alternatives.find(a => a.key === key);
       return { title: alt?.caseLabel ?? '', sub: lines, icon };
     },
-  }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang, ports, hoverPort, wire, lit, badges]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, f, byId, flow, data, results, meioList, lang, ports, hoverPort, wire, lit, badges]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
   const latest = useRef({ scene, opts, ports });

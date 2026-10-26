@@ -27,19 +27,19 @@ export function blockBadges(bf: BlockFlow, flow: FlowResult): Badge[] {
   return out;
 }
 
-// value: o fixado, ou o calculado (null: ainda sem fluxo ou sem limite). raw: entrada sem ligação (o limite ali é o
+// value: o fixado, ou o calculado (null: ainda sem fluxo, sem limite ou travado: aí não há número a fixar com Enter). raw: entrada sem ligação (o limite ali é o
 // que existe no lugar; ligada, é teto do bloco). Entradas na ordem do fluxo (a da receita); sem fluxo, as fixadas.
 export interface LimitView {
   machines: { value: number | null; fixed: boolean };
   inputs: { item: ItemId; value: number | null; fixed: boolean; raw: boolean }[];
 }
 
-export function limitView(b: RecipeBlock, bf: BlockFlow | undefined, links: Link[] = []): LimitView {
+export function limitView(b: RecipeBlock, bf: BlockFlow | undefined, links: Link[]): LimitView {
   const lim = b.limits ?? {}, ins = lim.inputs ?? {};
   const fixedM = lim.machines !== undefined;
   const items = bf ? bf.ins.map(p => p.item) : Object.keys(ins);
   return {
-    machines: { value: fixedM ? lim.machines! : bf?.machines ?? null, fixed: fixedM },
+    machines: { value: fixedM ? lim.machines! : bf && !bf.unbounded && bf.stalled === null ? bf.machines : null, fixed: fixedM },
     inputs: items.map(item => {
       const fixed = Object.hasOwn(ins, item);
       return {

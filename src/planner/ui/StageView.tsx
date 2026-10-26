@@ -3,13 +3,15 @@ import { fmt, parseNum, t } from '../../i18n/index.js';
 import { BELTS, PIPES } from '../../logic/belts.js';
 import { stageDrawing, type Lane } from '../model/drawing.ts';
 import type { Action } from '../model/factorystate.ts';
-import { MAX_MACHINES } from '../model/factory.ts';
+import { MAX_MACHINES, machinesOk } from '../model/factory.ts';
+import { limitView } from '../model/badges.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
 import { perRowOf, portsOf, portTier, portWarnings, stageArea, stagePieces, stageRows, suggestedPerRow, tierKey } from '../model/stage.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
 import { NumField } from './NumField.tsx';
+import { LimitField } from './BlockPanel.tsx';
 
 const PX = 4;        // 1 m = 4 px
 const CELL = 32;     // fundação de 8 m
@@ -155,8 +157,11 @@ function Side({ block, stage, factory, flow, data, dispatch }: Omit<Props, 'onCl
           </select>
         </label>
         <div className="pl-note">{recipeLine(r, data)}</div>
-        <NumField label={t('plMachines')} value={stage.machines} valid={n => Number.isInteger(n) && n >= 1 && n <= MAX_MACHINES}
-          always={block.limits?.machines === undefined} onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} />
+        {/* Como no painel do bloco: calculado ou fixado, com voltar ao padrão; sem limite ou travado, sem número a fixar. */}
+        <LimitField label={t('plMachines')} value={limitView(block, bf, factory.links).machines.value} fixed={block.limits?.machines !== undefined}
+          valid={machinesOk} bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} unbounded={!!bf?.unbounded}
+          onCommit={n => dispatch({ type: 'setLimits', id: stage.id, limits: { ...block.limits, machines: n } })}
+          onReset={() => dispatch({ type: 'setLimits', id: stage.id, limits: block.limits?.inputs ? { inputs: block.limits.inputs } : null })} />
         <NumField label={t('plClock')} value={stage.clock} valid={n => n >= 1 && n <= 250}
           onCommit={n => dispatch({ type: 'setClock', id: stage.id, clock: n })} bad={t('plClockBad')} />
         <PerRowField stage={stage} data={data} dispatch={dispatch} />
