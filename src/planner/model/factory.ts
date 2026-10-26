@@ -1,7 +1,7 @@
 // Edição da fábrica v2 (fase 3): blocos de receita, de origem e de sobra, ligados com loops liberados.
 // Funções puras; os números (quanto flui) ficam com o solver.
 import type {
-  Block, BuildingId, ExtractorBlock, Factory, GameData, ItemId, LigPlace, Limits, Link, MinerBlock, Purity, Recipe,
+  Block, BuildingId, ExtractorBlock, GenFuel, GeneratorBlock, Factory, GameData, ItemId, LigPlace, Limits, Link, MinerBlock, Purity, Recipe,
   RecipeBlock, RecipeId, Side, Stage, StageId,
 } from './types.ts';
 import { suggestedPerRow, tierKey } from './stage.ts';
@@ -11,6 +11,17 @@ import type { Pt } from './map/geo.ts';
 import { BELTS, PIPES } from '../../logic/index.js';
 
 export const PURITY: Record<Purity, number> = { impure: 0.5, normal: 1, pure: 2 };
+// O combustível do gerador nos dados (undefined se o prédio ou o combustível não existem).
+export const genFuel = (d: GameData, building: unknown, fuel: unknown): GenFuel | undefined =>
+  typeof building === 'string' && typeof fuel === 'string' && d.generators && own(d.generators, building)
+    ? d.generators[building].fuels.find(x => x.item === fuel && own(d.items, x.item)) : undefined;
+const WATER: ItemId = 'Desc_Water_C';
+export const clockOk = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 250;
+// Vazão de um extrator (item/min): a do prédio, pela pureza do nó e pelo clock.
+export const extractorRate = (d: GameData, b: ExtractorBlock): number => {
+  const e = d.extractors[b.building];
+  return e ? e.perMin * (e.purity ? PURITY[b.purity] : 1) * (b.clock ?? 100) / 100 : 0;
+};
 export const MINER_DEFAULT = 60;   // Miner Mk.1 em nó normal (Docs) = padrão do Modeler
 export const MAX_EXTRACTORS = 1000, MAX_RATE = 1e6;
 // Limite de máquinas por bloco: o mesmo na leitura, nos campos e na etapa derivada.
@@ -25,6 +36,7 @@ export type BlockSpec =
   | { kind: 'miner'; item: ItemId }
   | { kind: 'extractor'; building: BuildingId; item: ItemId }
   | { kind: 'input'; item: ItemId }
+  | { kind: 'generator'; building: BuildingId; fuel: ItemId }
   | { kind: 'sink' | 'container' | 'export' };
 
 const nextId = (ids: string[], p: string) => p + (Math.max(0, ...ids.map(id => (id.match(new RegExp(`^${p}(\\d+)$`)) ?? [])[1]).filter(Boolean).map(Number)) + 1);
@@ -82,6 +94,10 @@ export function portsOf(b: Block, d: GameData): { ins: ItemId[] | 'any' | 'solid
   switch (b.kind) {
     case 'recipe': { const r = d.recipes[b.recipe]; return { ins: r.ins.map(f => f.item), outs: r.outs.map(f => f.item) }; }
     case 'miner': case 'extractor': case 'input': return { ins: [], outs: [b.item] };
+    case 'generator': {
+      const g = genFuel(d, b.building, b.fuel);
+      return g ? { ins: [g.item, ...(g.water ? [WATER] : [])], outs: g.waste ? [g.waste.item] : [] } : { ins: [], outs: [] };
+    }
     case 'sink': return { ins: 'solid', outs: [] };
     default: return { ins: 'any', outs: [] };
   }
@@ -101,6 +117,7 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
     case 'extractor': return extractable(d, spec.building, spec.item)
       ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: null } : null;
     case 'input': return typeof spec.item === 'string' && own(d.items, spec.item) ? { id, kind: 'input', item: spec.item, rate: null } : null;
+    case 'generator': return genFuel(d, spec.building, spec.fuel) ? { id, kind: 'generator', building: spec.building, fuel: spec.fuel, count: null } : null;
     case 'sink': case 'container': case 'export': return { id, kind: spec.kind };
     default: return null;
   }
@@ -250,6 +267,22 @@ export function setMinerRate(f: Factory, id: StageId, rate: number): Factory {
   return { ...f, blocks: f.blocks.map(x => (x.id === id ? { ...(x as MinerBlock), rate } : x)) };
 }
 
+// Gerador: combustível (troca e solta as ligações do combustível de antes), quantos (null = a ferramenta calcula) e clock.
+export function setGenerator(f: Factory, d: GameData, id: StageId, v: { fuel?: ItemId; count?: number | null; clock?: number }): Factory {
+  const b = get(f, id);
+  if (b?.kind !== 'generator') return f;
+  const next: GeneratorBlock = { ...b };
+  if (v.fuel !== undefined && genFuel(d, b.building, v.fuel)) next.fuel = v.fuel;
+  if (v.count !== undefined) next.count = machinesOk(v.count) ? v.count : null;
+  if (v.clock !== undefined && clockOk(v.clock)) { if (v.clock === 100) delete next.clock; else next.clock = v.clock; }
+  let g: Factory = { ...f, blocks: f.blocks.map(x => (x.id === id ? next : x)) };
+  if (next.fuel !== b.fuel) {
+    const p = portsOf(next, d);
+    g = pruneMeios({ ...g, links: g.links.filter(l => (l.to !== id || p.ins.includes(l.item)) && (l.from !== id || p.outs.includes(l.item))) });
+  }
+  return g;
+}
+
 // Limite da Entrada: taxa válida ou null (sem limite).
 export function setInputRate(f: Factory, id: StageId, rate: number | null): Factory {
   const b = get(f, id);
@@ -257,13 +290,14 @@ export function setInputRate(f: Factory, id: StageId, rate: number | null): Fact
   return { ...f, blocks: f.blocks.map(x => (x.id === id ? { ...b, rate } : x)) };
 }
 
-// count: inteiro 1..MAX_EXTRACTORS ou null (a ferramenta calcula); purity só se o extrator tem pureza.
-export function setExtractor(f: Factory, d: GameData, id: StageId, v: { count?: number | null; purity?: Purity }): Factory {
+// count: inteiro 1..MAX_EXTRACTORS ou null (a ferramenta calcula); purity só se o extrator tem pureza; clock 1..250 (100 some).
+export function setExtractor(f: Factory, d: GameData, id: StageId, v: { count?: number | null; purity?: Purity; clock?: number }): Factory {
   const b = get(f, id);
   if (b?.kind !== 'extractor') return f;
   const next: ExtractorBlock = { ...b };
   if (v.count !== undefined) next.count = countOk(v.count) ? v.count : null;
   if (v.purity !== undefined && own(PURITY, v.purity) && d.extractors[b.building]?.purity) next.purity = v.purity;
+  if (v.clock !== undefined && clockOk(v.clock)) { if (v.clock === 100) delete next.clock; else next.clock = v.clock; }
   return { ...f, blocks: f.blocks.map(x => (x.id === id ? next : x)) };
 }
 

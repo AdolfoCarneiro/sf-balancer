@@ -7,7 +7,7 @@ import { arrange, type ArrLine, type Arrangement } from './layout.ts';
 import { solvedStage } from './solved.ts';
 import type { FlowResult } from './solve.ts';
 import type { Block, Factory, GameData, ItemId, Layout, Link, RecipeBlock, StageId } from './types.ts';
-import { PURITY } from './factory.ts';
+import { PURITY, extractorRate, genFuel } from './factory.ts';
 import { countPieces, type MeioGeo, type PieceCount } from './map/geo.ts';
 
 export interface Meio { id: string; item: ItemId; producers: StageId[]; consumers: StageId[]; links: string[] }
@@ -149,15 +149,19 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
         const g = { driver: 'clock' as const, clock: 100 * x / st.machines, nominal: perMinOf(b.recipe, d, meio.item, 'outs') };
         return lines?.length ? bySize(lines, g) : [{ ...g, count: st.machines, per: perRowOf(st, d) }];
       }
+      case 'generator': {
+        const n = Math.max(1, finite(bf?.machines)), g = genFuel(d, b.building, b.fuel), each = g?.waste?.perMin ?? 1;
+        return [{ driver: 'clock', count: n, clock: 100 * x / n, nominal: each, per: Math.max(1, Math.floor(cap / each + E)) }];
+      }
       case 'miner': case 'input': {
         // Linhas iguais, cada uma dentro da esteira.
         const n = Math.max(1, Math.ceil(x / cap - E));
         return [{ driver: 'clock', count: n, clock: 100, nominal: x / n, per: 1 }];
       }
       case 'extractor': {
-        const e = d.extractors[b.building], each = e.perMin * (e.purity ? PURITY[b.purity] : 1);
+        const e = d.extractors[b.building], each = e.perMin * (e.purity ? PURITY[b.purity] : 1), run = extractorRate(d, b);
         const n = Math.max(1, finite(bf?.extractors));
-        return [{ driver: 'clock', count: n, clock: 100 * x / (n * each), nominal: each, per: Math.max(1, Math.floor(cap / each + E)) }];
+        return [{ driver: 'clock', count: n, clock: 100 * x / (n * each), nominal: each, per: Math.max(1, Math.floor(cap / run + E)) }];
       }
       default: throw new Error(`bloco ${id} não produz`);
     }
@@ -165,6 +169,13 @@ export function meioInput(meio: Meio, f: Factory, flow: FlowResult, d: GameData)
   // Consumidora: o que ela quer (o que chega mais o que falta), sempre finito; a falta aparece como "short" no meio.
   const dst = (id: StageId): MeioGroup[] => {
     const b = blockOf(f, id), bf = flow.blocks[id];
+    if (b.kind === 'generator') {
+      // Gerador: cada um queima o combustível (ou a água) por minuto; quantos cabem numa linha pela esteira.
+      const g = genFuel(d, b.building, b.fuel), nominal = meio.item === g?.item ? g.perMin : g?.water ?? 1;
+      const port = bf?.ins.find(p => p.item === meio.item), want = finite(port?.rate) + finite(port?.deficit);
+      const n = Math.max(1, finite(bf?.machines));
+      return [{ driver: 'clock', count: n, clock: 100 * want / (nominal * n), nominal, per: Math.max(1, Math.floor(cap / nominal + E)) }];
+    }
     if (b.kind !== 'recipe') throw new Error(`bloco ${id} não consome pelo meio`);
     const st = solvedStage(b, bf), nominal = perMinOf(b.recipe, d, meio.item, 'ins');
     const port = bf?.ins.find(p => p.item === meio.item);

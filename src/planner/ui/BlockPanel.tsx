@@ -5,13 +5,13 @@
 // o lugar no mapa (lado das entradas, giro, vãos), "Ver em escala" / "Voltar a montar" e apagar.
 import { fmt, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
-import { MAX_EXTRACTORS, MAX_MACHINES, countOk, machinesOk, rateOk } from '../model/factory.ts';
+import { MAX_EXTRACTORS, MAX_MACHINES, clockOk, countOk, machinesOk, rateOk } from '../model/factory.ts';
 import { blockBadges, limitView } from '../model/badges.ts';
 import type { BlockFlow, FlowResult } from '../model/solve.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
 import { isSource } from '../model/types.ts';
 import type {
-  Block, ExtractorBlock, Factory, GameData, InputBlock, ItemId, Limits, MapPlace, MinerBlock, Purity, RecipeBlock, Rot,
+  Block, ExtractorBlock, Factory, GameData, GeneratorBlock, InputBlock, ItemId, Limits, MapPlace, MinerBlock, Purity, RecipeBlock, Rot,
 } from '../model/types.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
 import { rotated } from '../model/map/edit.ts';
@@ -43,6 +43,7 @@ function buildingOf(b: Block, data: GameData): string {
     case 'recipe': { const r = data.recipes[b.recipe]; return r ? data.buildings[r.building]?.name ?? r.building : ''; }
     case 'miner': return t('plMiner');
     case 'input': return t('plInputSub');
+    case 'generator': return data.generators?.[b.building]?.name ?? b.building;
     case 'extractor': return data.extractors[b.building]?.name ?? b.building;
     default: return '';
   }
@@ -156,6 +157,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       {b.kind === 'miner' && <MinerFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'input' && <InputFields b={b} bf={bf} data={data} dispatch={dispatch} />}
+      {b.kind === 'generator' && <GeneratorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       <section className="pl-bp-sec" aria-labelledby="pl-bp-map">
         <h3 className="pl-insp-h" id="pl-bp-map">{t('plBpMap')}</h3>
         <fieldset className="pl-seg">
@@ -274,6 +276,29 @@ function MinerFields({ b, bf, data, dispatch }: { b: MinerBlock; bf: BlockFlow |
   );
 }
 
+// Gerador: o combustível (os do prédio), o clock, quantos (fixado ou calculado pelo que chega) e a potência.
+function GeneratorFields({ b, bf, data, dispatch }: { b: GeneratorBlock; bf: BlockFlow | undefined; data: GameData; dispatch: (a: Action) => void }) {
+  const g = data.generators?.[b.building], fixed = b.count !== null, calc = bf?.machines ?? null;
+  const mw = (bf?.x ?? 0) * (g?.power ?? 0);
+  return (
+    <>
+      <label className="pl-field pl-row">
+        <span>{t('plGenFuel')}</span>
+        <select value={b.fuel} onChange={ev => dispatch({ type: 'setGenerator', id: b.id, fuel: ev.target.value })}>
+          {(g?.fuels ?? []).filter(x => data.items[x.item]).map(x => <option key={x.item} value={x.item}>{data.items[x.item].name}</option>)}
+        </select>
+      </label>
+      <NumField label={t('plClock')} value={b.clock ?? 100} valid={clockOk} bad={t('plClockBad')} className="pl-row"
+        onCommit={n => dispatch({ type: 'setGenerator', id: b.id, clock: n })} />
+      <LimitField label={t('plGenCount')} value={fixed ? b.count : calc} fixed={fixed} valid={machinesOk}
+        bad={t('plMachinesBad', fmt(MAX_MACHINES, 0))} unbounded={!!bf?.unbounded}
+        onCommit={n => dispatch({ type: 'setGenerator', id: b.id, count: n })}
+        onReset={() => dispatch({ type: 'setGenerator', id: b.id, count: null })} />
+      <p className="pl-note">{t('plGenGives', fmt(mw), fmt(g?.power ?? 0))}</p>
+    </>
+  );
+}
+
 // Entrada: sem limite (dá o que pedirem, e o campo mostra quanto está dando) ou com um limite por minuto.
 function InputFields({ b, bf, data, dispatch }: { b: InputBlock; bf: BlockFlow | undefined; data: GameData; dispatch: (a: Action) => void }) {
   const fixed = b.rate !== null, out = bf?.outs[0], item = data.items[b.item];
@@ -304,6 +329,8 @@ function ExtractorFields({ b, bf, data, dispatch }: { b: ExtractorBlock; bf: Blo
           </select>
         </label>
       )}
+      <NumField label={t('plClock')} value={b.clock ?? 100} valid={clockOk} bad={t('plClockBad')} className="pl-row"
+        onCommit={n => dispatch({ type: 'setExtractor', id: b.id, clock: n })} />
       <LimitField label={t('plExtractorCount')} value={fixed ? b.count : calc} fixed={fixed} valid={countOk}
         bad={t('plExtractorBad', fmt(MAX_EXTRACTORS, 0))} unbounded={!!bf?.unbounded}
         note={!fixed && calc !== null ? t('plExtractorNeed', fmt(calc, 0)) : undefined}

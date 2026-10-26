@@ -15,7 +15,7 @@ interface Props {
 }
 
 const W = 440, H = 560, PAD = 8;
-const GROUP_KEY = { sources: 'plPickRaw', recipes: 'plPickRecipes', outlets: 'plPickOutlets', items: 'plPickItems' } as const;
+const GROUP_KEY = { sources: 'plPickRaw', recipes: 'plPickRecipes', power: 'plPickPower', outlets: 'plPickOutlets', items: 'plPickItems' } as const;
 
 function Icon({ src, size }: { src: string | null; size: number }) {
   return src ? <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" />
@@ -81,10 +81,13 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
   const option = (e: PickerEntry, i: number) => {
     const r = e.spec.kind === 'recipe' ? data.recipes[e.spec.recipe] : undefined;
     // Recurso: quadradinho com o ícone e o nome do item; o prédio (Miner, extrator) fica embaixo, pequeno.
-    if (e.spec.kind === 'miner' || e.spec.kind === 'extractor' || e.spec.kind === 'input') return (
+    if (e.spec.kind === 'miner' || e.spec.kind === 'extractor' || e.spec.kind === 'input' || e.spec.kind === 'generator') return (
       <li key={i} id={`${uid}-o${i}`} role="option" aria-selected={i === active} className="pl-pick-card pl-pick-tile"
         onMouseDown={ev => ev.preventDefault()} onClick={() => pick(e)} onMouseMove={() => { if (i !== active) setActive(i); }}>
-        <Icon src={e.icon} size={30} />
+        <span className="pl-pick-ic">
+          <Icon src={e.icon} size={30} />
+          {e.badge && <img className="pl-pick-badge" src={e.badge} alt="" width={18} height={18} loading="lazy" decoding="async" />}
+        </span>
         <span className="pl-pick-body"><b>{e.title}</b>{e.sub && <span className="pl-pick-sub">{e.sub}</span>}</span>
       </li>
     );
@@ -119,7 +122,7 @@ export function Picker({ data, filter, x, y, area, onPick, onClose }: Props) {
           return (
             <li key={g.kind} role="group" aria-labelledby={hid}>
               <p id={hid} className="pl-pick-h">{t(GROUP_KEY[g.kind])}</p>
-              <ul role="presentation" className={g.kind === 'sources' || g.kind === 'items' ? 'pl-pick-tiles' : undefined}>{g.entries.map((e, i) => option(e, start + i))}</ul>
+              <ul role="presentation" className={g.kind === 'recipes' || g.kind === 'outlets' ? undefined : 'pl-pick-tiles'}>{g.entries.map((e, i) => option(e, start + i))}</ul>
             </li>
           );
         })}

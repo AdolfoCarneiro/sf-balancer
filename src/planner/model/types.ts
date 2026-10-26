@@ -4,7 +4,11 @@ export interface Flow { item: ItemId; perMin: number }            // por máquin
 export interface Recipe { id: RecipeId; name: string; alt: boolean; building: BuildingId; ins: Flow[]; outs: Flow[] }
 export interface Building { id: BuildingId; name: string; w: number; l: number }   // metros
 export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean }   // perMin em m³/min, pureza normal
-export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building>; extractors: Record<BuildingId, Extractor> }
+export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building>; extractors: Record<BuildingId, Extractor>; generators?: Record<BuildingId, Generator> }
+// Gerador (do Docs): potência a 100 % (MW) e, por combustível, o consumo por minuto de um gerador (sólido: itens;
+// fluido: m³), a água (m³/min, carvão e nuclear) e o resíduo (nuclear).
+export interface GenFuel { item: ItemId; perMin: number; water: number | null; waste: { item: ItemId; perMin: number } | null }
+export interface Generator { id: BuildingId; name: string; power: number; fuels: GenFuel[] }
 export type Side = 'ins' | 'outs';
 // Etapa derivada de um bloco de receita resolvido (solvedStage): o que as contas de fileira e o desenho leem.
 // tiers: chave `in:<item>` ou `out:<item>` (o mesmo item pode entrar e sair da receita).
@@ -17,7 +21,7 @@ export type Rot = 0 | 1 | 2 | 3;
 export interface MapPlace { x: number; y: number; rot: Rot; gapRow?: number; gapMachine?: number }
 
 // Estado v2 (fase 3): a fábrica em blocos.
-export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'input' | 'sink' | 'container' | 'export';
+export type BlockKind = 'recipe' | 'miner' | 'extractor' | 'input' | 'generator' | 'sink' | 'container' | 'export';
 export type Purity = 'impure' | 'normal' | 'pure';
 // Valores fixados pelo usuário; ausente = livre (o solver calcula). Os dois podem coexistir.
 export interface Limits { machines?: number; inputs?: Record<ItemId, number> }
@@ -37,12 +41,15 @@ export interface Layout {
 }
 export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; clock: number; perRow: number | null; tiers: Record<string, string>; limits?: Limits; collect?: ItemId[]; layout?: Layout }
 export interface MinerBlock { id: StageId; kind: 'miner'; item: ItemId; rate: number }
-// count null = a ferramenta calcula quantos extratores.
-export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null }
+// count null = a ferramenta calcula quantos extratores; clock: o de cada um (1 a 250 %, ausente = 100).
+export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null; clock?: number }
 // Entrada (Container ou trem): qualquer item vindo de fora da fábrica; rate null = sem limite (dá o que pedirem).
 export interface InputBlock { id: StageId; kind: 'input'; item: ItemId; rate: number | null }
+// Gerador queimando um combustível: count null = queima o que chegar (a ferramenta diz quantos); clock ausente = 100.
+// A potência segue o clock em linha reta (como o consumo).
+export interface GeneratorBlock { id: StageId; kind: 'generator'; building: BuildingId; fuel: ItemId; count: number | null; clock?: number }
 export interface OutletBlock { id: StageId; kind: 'sink' | 'container' | 'export' }
-export type Block = RecipeBlock | MinerBlock | ExtractorBlock | InputBlock | OutletBlock;
+export type Block = RecipeBlock | MinerBlock | ExtractorBlock | InputBlock | GeneratorBlock | OutletBlock;
 // Origem: um bloco sem entradas que entrega um item (Miner, extrator, Entrada).
 export const isSource = (b: Block): b is MinerBlock | ExtractorBlock | InputBlock =>
   b.kind === 'miner' || b.kind === 'extractor' || b.kind === 'input';

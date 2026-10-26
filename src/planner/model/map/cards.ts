@@ -3,6 +3,7 @@
 // Puro e barato (roda a cada quadro): só lê a cena, a câmera, o fluxo e os dados do jogo, sem solver nem plano.
 import type { Block, Factory, GameData, ItemId, LigPlace, Link, StageId } from '../types.ts';
 import { groupLinks, type Meio } from '../meio.ts';
+import { portsOf } from '../factory.ts';
 import type { FlowResult } from '../solve.ts';
 import { PLANT_LIMITS, centerOn, fit, type Camera, type ZoomLimits } from './camera.ts';
 import { gateOf, toWorld, type Pt, type Rect } from './geo.ts';
@@ -59,6 +60,7 @@ export function cardSpec(b: Block, d: GameData, flow: FlowResult): CardSpec {
       return { kind: 'recipe', ins: uniq(r.ins.map(x => x.item)), outs: uniq(r.outs.map(x => x.item)) };
     }
     case 'miner': case 'extractor': case 'input': return { kind: 'marker', ins: [], outs: [b.item] };
+    case 'generator': { const p = portsOf(b, d); return { kind: 'marker', ins: p.ins as ItemId[], outs: p.outs }; }
     default: return { kind: 'marker', ins: uniq((bf?.ins ?? []).map(p => p.item)), outs: [] };
   }
 }

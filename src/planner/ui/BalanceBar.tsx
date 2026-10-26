@@ -53,6 +53,12 @@ export function BalanceBar({ balance, data, onGo, nameOf }: Props) {
       <Group label={t('plBalIn')} rows={balance.ins} data={data} />
       <Group label={t('plBalOut')} rows={balance.outs} data={data} />
       {balance.sink.length > 0 && <Group label={t('plBalSink')} rows={balance.sink} data={data} />}
+      {balance.power > 0 && (
+        <div className="pl-bal-grp">
+          <span className="pl-bal-lbl">{t('plBalPower')}</span>
+          <span className="pl-bal-it"><b>{t('plPowerMW', fmt(balance.power))}</b></span>
+        </div>
+      )}
       <div className="pl-bal-probs">
         <button type="button" className={`pl-bal-pb ${nDef ? 'def' : 'zero'}`} disabled={!nDef} onClick={() => go('deficit')}>{t('plBalDeficits', fmt(nDef, 0))}</button>
         <button type="button" className={`pl-bal-pb ${nSur ? 'sur' : 'zero'}`} disabled={!nSur} onClick={() => go('surplus')}>{t('plBalSurpluses', fmt(nSur, 0))}</button>

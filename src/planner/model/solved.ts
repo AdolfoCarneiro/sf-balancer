@@ -20,6 +20,7 @@ export function factoryTotals(f: Factory, flow: FlowResult): { blocks: number; m
     const bf = flow.blocks[b.id];
     if (b.kind === 'recipe') machines += bf?.machines ?? 0;
     else if (b.kind === 'extractor') machines += bf?.extractors ?? 0;
+    else if (b.kind === 'generator') machines += bf?.machines ?? 0;
   }
   return { blocks: f.blocks.length, machines };
 }
@@ -35,7 +36,19 @@ export function markerGeo(b: Exclude<Block, RecipeBlock>, bf: BlockFlow | undefi
   const pieces: Piece[] = [{ kind: sink ? 'sink' : 'machine', x: 0, y: 0, w, h }];
   const belts: BeltPath[] = [], ins: Anchor[] = [], outs: Anchor[] = [];
   const fluid = (item: string) => d.items[item]?.fluid ?? false;
-  if (isSource(b)) {
+  if (b.kind === 'generator') {
+    // Gerador: as entradas (combustível, água) na borda esquerda e o resíduo na direita.
+    (bf?.ins ?? []).forEach((p, k, all) => {
+      const y = (h * (k + 1)) / (all.length + 1);
+      ins.push({ x: 0, y, item: p.item, row: 0, stage: b.id });
+      belts.push({ pts: [[0, y], [w / 2, y]], item: p.item, rate: rateOf(p.rate), role: 'in', fluid: fluid(p.item) });
+    });
+    (bf?.outs ?? []).forEach((p, k, all) => {
+      const y = (h * (k + 1)) / (all.length + 1);
+      outs.push({ x: w, y, item: p.item, row: 0, stage: b.id });
+      belts.push({ pts: [[w / 2, y], [w, y]], item: p.item, rate: rateOf(p.rate), role: 'out', fluid: fluid(p.item) });
+    });
+  } else if (isSource(b)) {
     outs.push({ x: w, y: h / 2, item: b.item, row: 0, stage: b.id });
     belts.push({ pts: [[w / 2, h / 2], [w, h / 2]], item: b.item, rate: rateOf(bf?.outs[0]?.rate), role: 'out', fluid: fluid(b.item) });
   } else {

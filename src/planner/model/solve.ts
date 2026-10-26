@@ -2,7 +2,7 @@
 // reduz pelo que falta na entrada ou pelo que não escoa na saída. O item anda para a frente e o consumo limitado na frente
 // volta para trás. Puro, sem DOM; roda no worker.
 import type { Block, Factory, GameData, ItemId, StageId } from './types.ts';
-import { PURITY, meiosOf } from './factory.ts';
+import { PURITY, extractorRate, genFuel, meiosOf } from './factory.ts';
 
 // rate: o que passa na porta (null = sem limite); deficit (entrada, só bloco com limite): o que falta para o limite;
 // held (saída): represado nesta origem; exits: o que sai da fábrica pela porta (produto final sem ligação ou coleta de
@@ -12,6 +12,7 @@ export interface BlockFlow {
   id: StageId; x: number | null;            // receita: máquinas-equivalentes a 100%; miner/extrator/sobra: item/min; null = sem limite
   machines: number | null; runClock: number | null;   // receita: inteiro e clock de funcionamento (%); null fora de receita ou sem limite
   extractors: number | null;                // extrator: quantos (calculado = ceil(x / vazão); fixado = count)
+  // gerador: machines = quantos (fixado ou calculado), x = geradores a 100 % (a potência é x × MW do prédio)
   unbounded: boolean; stalled: ItemId | null; ins: PortFlow[]; outs: PortFlow[];
 }
 // links: fluxo de cada ligação (null = sem limite).
@@ -50,9 +51,18 @@ function build(f: Factory, d: GameData) {
       }
       case 'miner': case 'input':
         return { block: b, U0: b.rate ?? INF, outlet: false, limited: false, mult: 1, ins: [], outs: [{ item: b.item, b: 1, links: [], mode: 'stall' }] };
+      case 'generator': {
+        // Como uma receita sem saída (fora o resíduo): x = geradores a 100 %.
+        const g = genFuel(d, b.building, b.fuel);
+        const U0 = b.count === null ? INF : b.count * (b.clock ?? 100) / 100;
+        return {
+          block: b, U0, outlet: false, limited: b.count !== null, mult: 1,
+          ins: g ? [{ item: g.item, a: g.perMin, links: [], limit: null }, ...(g.water ? [{ item: 'Desc_Water_C', a: g.water, links: [], limit: null }] : [])] : [],
+          outs: g?.waste ? [{ item: g.waste.item, b: g.waste.perMin, links: [], mode: 'stall' as const }] : [],
+        };
+      }
       case 'extractor': {
-        const e = d.extractors[b.building];
-        const mult = e.perMin * (e.purity ? PURITY[b.purity] : 1);
+        const mult = extractorRate(d, b);
         return { block: b, U0: b.count === null ? INF : b.count * mult, outlet: false, limited: false, mult, ins: [], outs: [{ item: b.item, b: 1, links: [], mode: 'stall' }] };
       }
       default:
@@ -348,6 +358,11 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
       runClock = machines ? 100 * xi / machines : 0;
     }
     if (b.kind === 'extractor') extractors = b.count ?? (xi === INF ? null : ceilTol(xi / nd.mult));
+    if (b.kind === 'generator' && xi !== INF) {
+      const clock = b.clock ?? 100;
+      machines = b.count ?? (xi === 0 ? 0 : ceilTol(xi * 100 / clock));
+      runClock = machines ? 100 * xi / machines : 0;
+    }
     blocks[b.id] = { id: b.id, x: fin(xi), machines, runClock, extractors, unbounded: xi === INF, stalled, ins, outs };
   });
   return { blocks, links, deadlock: deadlocks(nodes, edges, x), converged, iterations };

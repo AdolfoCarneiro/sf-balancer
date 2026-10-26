@@ -38,6 +38,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = t('htmlLang');
     document.title = t('plPageTitle');
+    // A seção Sobre/FAQ embaixo do mapa (HTML base em inglês, para os buscadores).
+    for (const el of document.querySelectorAll<HTMLElement>('#about [data-i18n]')) el.textContent = t(el.dataset.i18n!);
     document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', t('plMetaDesc'));
     let canon = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
     if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }

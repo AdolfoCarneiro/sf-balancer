@@ -1,7 +1,7 @@
 // Frase do problema de uma porta e os consertos de um clique. Puro: a UI formata os números (fmt), aplica t(key, ...args)
 // e despacha a `action`; aqui só saem chaves e números crus.
 import type { Block, Factory, GameData, StageId } from './types.ts';
-import { PURITY, countOk, machinesOk, rateOk } from './factory.ts';
+import { countOk, extractorRate, machinesOk, rateOk } from './factory.ts';
 import type { Action } from './factorystate.ts';
 import type { Pt } from './map/geo.ts';
 import type { PortState } from './portstate.ts';
@@ -13,7 +13,7 @@ export interface Sentence { key: 'plWhyDeficit' | 'plWhySurplus' | 'plWhyStalled
 export interface Fix { key: 'plFixSink' | 'plFixReduce' | 'plFixRaise' | 'plFixCreate'; n?: number; action: Action | null }
 
 const OUTLET_NAME = { sink: 'Awesome Sink', container: 'Container', export: 'Export' } as const;
-const blockName = (b: Block, d: GameData): string => (b.kind === 'recipe' ? d.recipes[b.recipe]?.name ?? b.recipe : b.kind === 'miner' ? 'Miner' : b.kind === 'input' ? 'Input' : b.kind === 'extractor' ? d.extractors[b.building]?.name ?? b.building : OUTLET_NAME[b.kind]);
+const blockName = (b: Block, d: GameData): string => (b.kind === 'recipe' ? d.recipes[b.recipe]?.name ?? b.recipe : b.kind === 'miner' ? 'Miner' : b.kind === 'input' ? 'Input' : b.kind === 'generator' ? d.generators?.[b.building]?.name ?? b.building : b.kind === 'extractor' ? d.extractors[b.building]?.name ?? b.building : OUTLET_NAME[b.kind]);
 const itemName = (d: GameData, id: string): string => d.items[id]?.name ?? id;
 const num = (v: number | null): number => (v !== null && Number.isFinite(v) ? v : 0);
 const ceilTol = (v: number): number => Math.ceil(v - 1e-9);
@@ -79,9 +79,9 @@ function raiseSource(src: Block, item: string, need: number, d: GameData): Fix |
       return rateOk(rate) ? { key: 'plFixRaise', n: rate, action: { type: 'setInputRate', id, rate } } : null;
     }
     case 'extractor': {
-      const e = d.extractors[src.building];
-      if (src.count === null || !e) return null;
-      const n = src.count + ceilTol(need / (e.perMin * (e.purity ? PURITY[src.purity] : 1)));
+      const per = extractorRate(d, src);
+      if (src.count === null || !per) return null;
+      const n = src.count + ceilTol(need / per);
       return countOk(n) ? { key: 'plFixRaise', n, action: { type: 'setExtractor', id, count: n } } : null;
     }
     case 'recipe': {

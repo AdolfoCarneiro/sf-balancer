@@ -98,6 +98,144 @@
    "purity": false
   }
  },
+ "generators": {
+  "Build_GeneratorBiomass_Automated_C": {
+   "fuels": [
+    {
+     "item": "Desc_Leaves_C",
+     "perMin": 120,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_Wood_C",
+     "perMin": 18,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_Mycelia_C",
+     "perMin": 90,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_GenericBiomass_C",
+     "perMin": 10,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_Biofuel_C",
+     "perMin": 4,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_PackagedBiofuel_C",
+     "perMin": 2.4,
+     "waste": null,
+     "water": null
+    }
+   ],
+   "id": "Build_GeneratorBiomass_Automated_C",
+   "name": "Biomass Burner",
+   "power": 30
+  },
+  "Build_GeneratorCoal_C": {
+   "fuels": [
+    {
+     "item": "Desc_Coal_C",
+     "perMin": 15,
+     "waste": null,
+     "water": 45
+    },
+    {
+     "item": "Desc_CompactedCoal_C",
+     "perMin": 7.1429,
+     "waste": null,
+     "water": 45
+    },
+    {
+     "item": "Desc_PetroleumCoke_C",
+     "perMin": 25,
+     "waste": null,
+     "water": 45
+    }
+   ],
+   "id": "Build_GeneratorCoal_C",
+   "name": "Coal-Powered Generator",
+   "power": 75
+  },
+  "Build_GeneratorFuel_C": {
+   "fuels": [
+    {
+     "item": "Desc_LiquidFuel_C",
+     "perMin": 20,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_LiquidTurboFuel_C",
+     "perMin": 7.5,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_LiquidBiofuel_C",
+     "perMin": 20,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_RocketFuel_C",
+     "perMin": 4.1667,
+     "waste": null,
+     "water": null
+    },
+    {
+     "item": "Desc_IonizedFuel_C",
+     "perMin": 3,
+     "waste": null,
+     "water": null
+    }
+   ],
+   "id": "Build_GeneratorFuel_C",
+   "name": "Fuel-Powered Generator",
+   "power": 250
+  },
+  "Build_GeneratorNuclear_C": {
+   "fuels": [
+    {
+     "item": "Desc_NuclearFuelRod_C",
+     "perMin": 0.2,
+     "waste": {
+      "item": "Desc_NuclearWaste_C",
+      "perMin": 10
+     },
+     "water": 240
+    },
+    {
+     "item": "Desc_PlutoniumFuelRod_C",
+     "perMin": 0.1,
+     "waste": {
+      "item": "Desc_PlutoniumWaste_C",
+      "perMin": 1
+     },
+     "water": 240
+    },
+    {
+     "item": "Desc_FicsoniumFuelRod_C",
+     "perMin": 1,
+     "waste": null,
+     "water": 240
+    }
+   ],
+   "id": "Build_GeneratorNuclear_C",
+   "name": "Nuclear Power Plant",
+   "power": 2500
+  }
+ },
  "items": {
   "BP_ItemDescriptorPortableMiner_C": {
    "fluid": false,

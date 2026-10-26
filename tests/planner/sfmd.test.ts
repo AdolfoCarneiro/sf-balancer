@@ -72,13 +72,14 @@ test('simple pure ingot.sfmd: Water Extractor calculado, Miner Mk.3 780/min, Pur
   assert.deepEqual(report, { blocks: 4, links: 4, skipped: [], asExport: [], ignored: [], adjusted: [] });
 });
 
-test('simple coal generator.sfmd: o gerador vira Saída (listado), Water com Max = 5 extratores', () => {
+test('simple coal generator.sfmd: o gerador vira Coal-Powered Generator queimando Compacted Coal, Water com Max = 5 extratores', () => {
   const { factory: f, report } = ok(fixture('simple coal generator.sfmd'));
-  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'export', 'miner', 'Compacted Coal', 'miner']);
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'generator', 'miner', 'Compacted Coal', 'miner']);
+  assert.deepEqual({ ...f.blocks[1], id: '' }, { id: '', kind: 'generator', building: 'Build_GeneratorCoal_C', fuel: 'Desc_CompactedCoal_C', count: (f.blocks[1] as { count: number | null }).count });
   assert.equal((f.blocks[0] as ExtractorBlock).count, 5);
   const gen = f.blocks[1];
   assert.deepEqual(edges(f).filter(e => e.includes(`>${gen.id}:`)), [`${f.blocks[0].id}>${gen.id}:Water`, `${f.blocks[3].id}>${gen.id}:Compacted Coal`].sort());
-  assert.deepEqual(report.asExport, ['Compacted Coal Generator']);
+  assert.deepEqual(report.asExport, []);
   assert.deepEqual(report.skipped, []);
   assert.equal(report.links, 4);
 });
@@ -89,12 +90,14 @@ test('rocket fuel factory.sfmd: Outpost/Parent/ClockSpeed ignorados e listados, 
   assert.equal(f.blocks.length, 24);
   assert.equal(report.blocks, 24);
   assert.deepEqual(report.skipped, []);
-  assert.deepEqual(report.asExport, ['Rocket Fuel Generator']);
+  // O Rocket Fuel Generator vira um Fuel-Powered Generator queimando Rocket Fuel (o Max dele é quantos).
+  assert.deepEqual(report.asExport, []);
+  const rg = f.blocks.find(b => b.kind === 'generator') as { building: string; fuel: string } | undefined;
+  assert.deepEqual([rg?.building, rg?.fuel], ['Build_GeneratorFuel_C', 'Desc_RocketFuel_C']);
   // Estruturado: o tipo e o nome cru do Modeler (o texto em volta é da interface, nos três idiomas).
   assert.deepEqual(report.ignored, [
     { kind: 'outpost', name: 'Power factory' }, { kind: 'field', name: 'Parent' },
     { kind: 'field', name: 'Capacity' },   // a esteira do AWESOME Sink
-    { kind: 'max', name: 'Rocket Fuel Generator' },
   ]);
   // 200 m³/min no Resource Well Extractor (60 cada): 4 extratores dão 240, e o resumo diz.
   // e os dois "13 1/3" Blenders, arredondados para 14 com o clock baixado.
@@ -115,9 +118,10 @@ test('rocket fuel factory.sfmd: Outpost/Parent/ClockSpeed ignorados e listados, 
   assert.deepEqual(n2.map(b => [b.building, b.count]), [['Build_FrackingExtractor_C', 10], ['Build_FrackingExtractor_C', 4]]);
   const oil = f.blocks.find(b => b.kind === 'extractor' && b.item === 'Desc_LiquidOil_C') as ExtractorBlock;
   assert.deepEqual([oil.building, oil.count], ['Build_OilPump_C', 5]);
-  // Gerador com as 3 entradas de Rocket Fuel.
-  const gen = f.blocks.find(b => b.kind === 'export')!;
+  // Gerador com as 3 entradas de Rocket Fuel; o Max (432) é quantos geradores.
+  const gen = f.blocks.find(b => b.kind === 'generator')!;
   assert.equal(f.links.filter(l => l.to === gen.id).length, 3);
+  assert.equal((gen as { count: number | null }).count, 432);
   assert.equal(report.links, f.links.length);
 });
 
@@ -286,4 +290,20 @@ test('ClockSpeed da receita vira o clock; com máquinas fracionárias, a mesma v
   assert.deepEqual([b.limits?.machines, b.clock], [2, 150]);
   assert.deepEqual([c.limits, c.clock], [undefined, 33.3333]);
   assert.ok(!report.ignored.some(x => x.name === 'ClockSpeed'));
+});
+
+test('extrator com ClockSpeed: o clock vai para o bloco e a contagem fecha na vazão do Modeler (600 = 1 nó puro a 250 %)', () => {
+  const { factory: f, report } = ok(JSON.stringify({ Data: [
+    { Name: 'Crude Oil', X: 0, Y: 0, Max: '600', Capacity: 'Pure', ClockSpeed: '250' },
+    { Name: 'Crude Oil', X: 0, Y: 100, Max: '150', Capacity: 'Impure', ClockSpeed: '250' },
+    { Name: 'Crude Oil', X: 0, Y: 200, Max: '120' },
+  ] }));
+  const [a, b, c] = f.blocks as ExtractorBlock[];
+  assert.deepEqual([a.purity, a.count, a.clock], ['pure', 1, 250]);
+  assert.deepEqual([b.purity, b.count, b.clock], ['impure', 1, 250]);
+  assert.deepEqual([c.count, c.clock], [1, undefined]);
+  assert.deepEqual(report.adjusted, []);
+  assert.ok(!report.ignored.some(x => x.name === 'ClockSpeed'));
+  const r = solveFactory(f, data);
+  assert.deepEqual([a, b, c].map(x => r.blocks[x.id].x), [600, 150, 120]);
 });

@@ -381,9 +381,27 @@ select.pl-field { width: auto; }
 .pl-pick-item img { display: block; }
 .pl-pick-list ul.pl-pick-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 3px; }
 .pl-pick-tile { gap: 8px; min-height: 44px; padding: 5px 8px; }
+.pl-pick-ic { position: relative; flex: none; display: block; width: 34px; height: 34px; }
+.pl-pick-ic > img, .pl-pick-ic > .pl-pick-noicon { display: block; }
+.pl-pick-badge { position: absolute; right: -2px; bottom: -2px; padding: 1px; background: var(--paper); border: 1px solid var(--line); border-radius: 50%; }
 .pl-pick-tile b { font-size: 13px; line-height: 1.2; }
 .pl-pick-tile .pl-pick-sub { font-size: 11px; }
 .pl-pick-title { display: flex; align-items: center; gap: 10px; }
+/* Sobre/FAQ: texto embaixo do mapa (rolando a página), para quem chega pela busca. */
+.pl-about { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; color: var(--ink-mid); border-top: 1px solid var(--line); }
+.pl-about h1 { margin: 0 0 12px; font: 700 26px/1.25 var(--display); color: var(--ink); }
+.pl-about h2 { margin: 32px 0 10px; font: 600 19px var(--display); color: var(--ficsit); }
+.pl-about p, .pl-about li { font-size: 15px; line-height: 1.6; }
+.pl-about ul { padding-left: 20px; }
+.pl-about details { margin: 6px 0; padding: 10px 14px; background: var(--plate); border-left: 3px solid var(--line); }
+.pl-about details[open] { border-left-color: var(--ficsit); }
+.pl-about summary { min-height: 28px; font: 600 15px var(--body); color: var(--ink); cursor: pointer; }
+.pl-about summary:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+
+/* Copiado / colado: um aviso curto no canto do mapa. */
+.pl-clip-note { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); padding: 6px 12px; background: var(--bench); border: 1px solid var(--line); color: var(--ink); font: 600 13px var(--body); pointer-events: none; z-index: 4; }
+.pl-clip-note:empty { display: none; }
+
 /* Fábricas: o botão no topo (a aberta) e a lista. */
 .pl-libs-btn { max-width: 220px; }
 .pl-libs-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

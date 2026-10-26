@@ -24,6 +24,8 @@ import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, f
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
+import { CLIP_STORE, copyBlocks, pasteBlocks } from '../model/clipboard.ts';
+import { decodeFactory, encodeFactory } from '../model/factorystate.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
 import { EmptyInvite } from './FirstHint.tsx';
@@ -32,7 +34,7 @@ import { Legend } from './Legend.tsx';
 import { Layers } from './Layers.tsx';
 import { cleanLayers, hitGeo, type MapLayers } from '../model/map/layers.ts';
 import { ChipPopover } from './ChipPopover.tsx';
-import { iconImage } from './icons.ts';
+import { SPECIAL_ICON, iconImage } from './icons.ts';
 import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
 import { MapPanel, type Sheet } from './MapPanel.tsx';
 import { badgeText, blockIcon, blockName, rateText, sizeText } from './format.ts';
@@ -138,6 +140,13 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
   const spec = cardSpec(b, data, flow), bf = flow.blocks[b.id];
   const unitOf = (fluid: boolean) => t(fluid ? 'plPerMinFluid' : 'plPerMin', '').trim();
   const base = { ins: spec.ins, outs: spec.outs, icon: blockIcon(b, data), alt: false, fixed: false, clock: null, count: '', sub: '', rate: '', unit: '' };
+  if (b.kind === 'generator') {
+    // Gerador: o prédio com o combustível no canto, quantos e os MW grandes.
+    const g = data.generators?.[b.building], n = bf?.machines;
+    const building = (typeof n === 'number' ? `${fmt(n, 0)} × ` : '') + (data.items[b.fuel]?.name ?? b.fuel) + (b.clock && b.clock !== 100 ? ` · ${fmt(b.clock)}%` : '');
+    const mw = bf?.x == null ? null : bf.x * (g?.power ?? 0);
+    return { ...base, badge: b.fuel, title: g?.name ?? b.building, building, marker: true, rate: mw === null ? t('plUnbounded') : fmt(mw), unit: mw === null ? '' : 'MW' };
+  }
   if (b.kind !== 'recipe') {
     // Origem: o que sai; sobra: a soma do que chega.
     const src = isSource(b);
@@ -146,9 +155,11 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
     const fluid = ports.length > 0 && ports.every(p => !!data.items[p.item]?.fluid);
     const n = b.kind === 'extractor' ? bf?.extractors : null;
     const building = b.kind === 'miner' ? t('plMiner') : b.kind === 'input' ? t('plInputSub') : b.kind === 'extractor'
-      ? (typeof n === 'number' ? `${fmt(n, 0)} × ` : '') + (data.extractors[b.building]?.name ?? b.building) : '';
+      ? (typeof n === 'number' ? `${fmt(n, 0)} × ` : '') + (data.extractors[b.building]?.name ?? b.building) + (b.clock && b.clock !== 100 ? ` · ${fmt(b.clock)}%` : '') : '';
     const title = src ? data.items[b.item]?.name ?? b.item : blockName(b, data);
-    return { ...base, title, building, marker: true, rate: rate === null ? t('plUnbounded') : fmt(rate), unit: rate === null ? '' : unitOf(fluid) };
+    // O ícone é o prédio (o item na Entrada) e o canto leva o outro: Oil Extractor e Resource Well não se confundem.
+    const badge = b.kind === 'miner' || b.kind === 'extractor' ? b.item : b.kind === 'input' ? SPECIAL_ICON.container : null;
+    return { ...base, badge, title, building, marker: true, rate: rate === null ? t('plUnbounded') : fmt(rate), unit: rate === null ? '' : unitOf(fluid) };
   }
   const s = solvedStage(b, bf), r = data.recipes[s.recipe];
   const stalled = bs.some(x => x.kind === 'stalled' || x.kind === 'deadlock');
@@ -166,7 +177,8 @@ function cardText(b: Block, data: GameData, flow: FlowResult, bs: Badge[]): Card
     clock = rc != null && s.machines > 0 && Math.abs(rc - 100) > 0.05 ? `${fmt(rc, 1)}%` : null;
   }
   return {
-    ...base, title: r.name, building: data.buildings[r.building]?.name ?? r.building, icon: r.building, alt: r.alt, marker: false,
+    // O prédio com o produto principal no canto: de longe, só os ícones dizem o que o bloco faz.
+    ...base, title: r.name, building: data.buildings[r.building]?.name ?? r.building, icon: r.building, badge: r.outs[0]?.item ?? null, alt: r.alt, marker: false,
     count, sub, fixed: fixedN !== undefined, clock,
   };
 }
@@ -369,8 +381,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       const lock = bs.some(x => x.kind === 'deadlock') ? ` · ${t('plDeadlockShort')}` : '';
       if (b.kind !== 'recipe') {
         // Origem: o que sai; sobra: o que chega, por item.
-        const n = b.kind === 'extractor' ? bf?.extractors : undefined;
+        const n = b.kind === 'extractor' ? bf?.extractors : b.kind === 'generator' ? bf?.machines : undefined;
         const title = blockName(b, data) + (typeof n === 'number' ? ` × ${fmt(n, 0)}` : '');
+        if (b.kind === 'generator') {
+          const mw = (bf?.x ?? 0) * (data.generators?.[b.building]?.power ?? 0);
+          return { title: title + lock, sub: t('plPowerMW', fmt(mw)), icon, alert };
+        }
         const ports = (isSource(b) ? bf?.outs : bf?.ins) ?? [];
         const sub = ports.map(p => (p.rate === null ? t('plUnbounded') : rateText(data.items[p.item], p.rate))).join(' · ');
         return { title: (bf?.unbounded ? `${title} · ${t('plUnbounded')}` : title) + lock, sub, icon, alert };
@@ -685,6 +701,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    pointer.current = local(e);
     const d = drag.current, c = cam.current;
     if (!c) return;
     if (d && d.id === e.pointerId) {
@@ -889,8 +906,41 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     e.preventDefault();
     placeLig(id, next);
   };
+  // Copiar e colar: Ctrl/⌘+C copia os blocos selecionados (com as ligações entre eles) para o navegador, Ctrl/⌘+V cola
+  // onde o ponteiro está (sem ponteiro no mapa, ao lado do original) e seleciona o que colou, Ctrl/⌘+D duplica.
+  const pointer = useRef<Pt | null>(null);
+  const selIdsNow = (): StageId[] => (selection?.kind === 'stage' ? [selection.id] : selection?.kind === 'stages' ? selection.ids : []);
+  const copySel = (): boolean => {
+    const clip = copyBlocks(f, selIdsNow(), basePlaces, montarBase);
+    if (!clip) return false;
+    try { localStorage.setItem(CLIP_STORE, encodeFactory(clip)); } catch { /* sem storage */ }
+    setClipNote(t('plClipCopied', fmt(clip.blocks.length, 0)));
+    return true;
+  };
+  const pasteClip = (here: boolean) => {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(CLIP_STORE); } catch { /* sem storage */ }
+    const clip = raw ? decodeFactory(raw, data) : null;
+    if (!clip?.blocks.length) { setClipNote(t('plPasteEmpty')); return; }
+    const c = cam.current, p = pointer.current, { w, h } = size.current;
+    const at = here && c && p && p[0] >= 0 && p[1] >= 0 && p[0] <= w && p[1] <= h ? screenToWorld(c, p[0], p[1]) : null;
+    const r = pasteBlocks(f, clip, data, modeRef.current, at);
+    if (!r.ids.length) { setClipNote(t('plPasteFull')); return; }
+    dispatch({ type: 'load', factory: r.factory });
+    onSelect(r.ids.length === 1 ? { kind: 'stage', id: r.ids[0] } : stagesSel(r.ids));
+    setClipNote(t('plPasted', fmt(r.ids.length, 0)));
+    canvas.current?.focus();
+  };
+  const [clipNote, setClipNote] = useState('');
+  useEffect(() => { if (!clipNote) return; const id = window.setTimeout(() => setClipNote(''), 2500); return () => clearTimeout(id); }, [clipNote]);
   const canvasKey = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'c') { if (copySel()) e.preventDefault(); return; }
+      if (k === 'v') { e.preventDefault(); pasteClip(true); return; }
+      if (k === 'd') { e.preventDefault(); if (copySel()) pasteClip(false); return; }
+    }
     if (selection?.kind === 'meio') ligKey(e, selection.id);
     else if (selection?.kind === 'stages') manyKey(e, selection.ids);
     else blockKey(e, selStage);
@@ -1071,8 +1121,10 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
           </div>
         </div>
       </main>
+      <span className="pl-clip-note" role="status" aria-live="polite">{clipNote}</span>
       <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} onDeleteMany={removeMany} onSelectAll={selectAll}
-        onClearSel={() => { onSelect(null); canvas.current?.focus(); }} onSplit={onSplit} meioList={meioList} scene={scene} places={places}
+        onClearSel={() => { onSelect(null); canvas.current?.focus(); }} onSplit={onSplit}
+        onCopy={() => { copySel(); }} onPaste={() => pasteClip(false)} onDuplicate={() => { if (copySel()) pasteClip(false); }} meioList={meioList} scene={scene} places={places}
         selection={selection} problems={problems} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
         chip={id => chips.get(id) ?? null} results={results}
         onPlace={placePlanta} onPropose={propose} onFocus={focus} onGo={goTo}

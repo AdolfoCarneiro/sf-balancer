@@ -22,6 +22,7 @@ export function blockName(b: Block, d: GameData): string {
     case 'miner': return `${t('plMiner')} · ${item(b.item)}`;
     case 'extractor': return `${d.extractors[b.building]?.name ?? b.building} · ${item(b.item)}`;
     case 'input': return `${t('plInput')} · ${item(b.item)}`;
+    case 'generator': return `${d.generators?.[b.building]?.name ?? b.building} · ${item(b.fuel)}`;
     case 'sink': return t('plSink');
     case 'container': return t('plContainer');
     default: return t('plExport');
@@ -50,6 +51,7 @@ export function blockIcon(b: Block, d: GameData): string | null {
     case 'miner': return SPECIAL_ICON.miner;
     case 'extractor': return b.building;
     case 'input': return b.item;
+    case 'generator': return b.building;
     default: return SPECIAL_ICON[b.kind];
   }
 }

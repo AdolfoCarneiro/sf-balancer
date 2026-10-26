@@ -55,6 +55,7 @@ interface Props {
   onSeeLig: (id: string) => void; onSwap: (id: string, key: string) => void; onUnlink: (id: string) => void;
   onImportFile: (f: File) => void;   // importar do Modeler (o App mostra o resumo)
   onSplit: (ids: StageId[]) => void;   // separar a seleção numa fábrica nova
+  onCopy: () => void; onPaste: () => void; onDuplicate: () => void;   // copiar e colar (Ctrl+C, Ctrl+V, Ctrl+D)
 }
 
 export function MapPanel(p: Props) {
@@ -140,7 +141,7 @@ export function MapPanel(p: Props) {
 
 // Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer), separar numa fábrica
 // nova e limpar a seleção.
-function ManyPanel({ ids, stageName, onDeleteMany, onClearSel, onSplit }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
+function ManyPanel({ ids, stageName, onDeleteMany, onClearSel, onSplit, onCopy, onPaste, onDuplicate }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
   const n = fmt(ids.length, 0);
   return (
     <>
@@ -151,6 +152,9 @@ function ManyPanel({ ids, stageName, onDeleteMany, onClearSel, onSplit }: Props 
       </ul>
       <div className="pl-sel-acts">
         <button type="button" className="pl-btn pl-danger" onClick={() => onDeleteMany(ids)}>{t('plSelDelete', n)}</button>
+        <button type="button" className="pl-btn" onClick={onCopy} title="Ctrl+C">{t('plCopy')}</button>
+        <button type="button" className="pl-btn" onClick={onDuplicate} title="Ctrl+D">{t('plDuplicate')}</button>
+        <button type="button" className="pl-btn" onClick={onPaste} title="Ctrl+V">{t('plPaste')}</button>
         <button type="button" className="pl-btn" onClick={() => onSplit(ids)}>{t('plSplit')}</button>
         <button type="button" className="pl-btn" onClick={onClearSel}>{t('plSelClear')}</button>
       </div>
@@ -266,6 +270,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
               const bf = flow.blocks[b.id], ic = b.kind === 'recipe' ? data.recipes[b.recipe]?.building ?? null : blockIcon(b, data);
               const url = ic ? iconUrl(ic) : null, k = dot(b.id);
               const sub = b.kind === 'recipe' ? data.buildings[data.recipes[b.recipe]?.building]?.name ?? ''
+                : b.kind === 'generator' ? t('plPowerMW', fmt((bf?.x ?? 0) * (data.generators?.[b.building]?.power ?? 0)))
                 : (isSource(b) ? bf?.outs : bf?.ins)?.map(x => (x.rate === null ? t('plUnbounded') : rateText(data.items[x.item], x.rate))).join(', ') ?? '';
               return (
                 <li key={b.id}>

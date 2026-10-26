@@ -9,6 +9,7 @@ export interface Balance {
   ins: { item: ItemId; rate: number | null }[];
   outs: { item: ItemId; rate: number | null }[];
   sink: { item: ItemId; rate: number | null }[];
+  power: number;   // MW gerados (soma dos geradores)
   problems: PortState[];
 }
 
@@ -42,13 +43,15 @@ function sumBy(rows: { item: ItemId; rate: number | null }[]): { item: ItemId; r
   return [...m].map(([item, rate]) => ({ item, rate }));
 }
 
-export function factoryBalance(f: Factory, flow: FlowResult, _d: GameData): Balance {
+export function factoryBalance(f: Factory, flow: FlowResult, d: GameData): Balance {
+  let power = 0;
   const ins: { item: ItemId; rate: number | null }[] = [], outs: typeof ins = [], sink: typeof ins = [], problems: PortState[] = [];
   for (const b of f.blocks) {
     const bf = flow.blocks[b.id];
     if (!bf) continue;
     if (isSource(b)) for (const p of bf.outs) ins.push({ item: p.item, rate: num(p.rate) });
-    if (b.kind === 'recipe') {
+    if (b.kind === 'generator') power += (bf.x ?? 0) * (d.generators?.[b.building]?.power ?? 0);
+    if (b.kind === 'recipe' || b.kind === 'generator') {
       for (const p of bf.ins) if (!f.links.some(l => l.to === b.id && l.item === p.item)) ins.push({ item: p.item, rate: num(p.rate) });
     }
     // O que chega ao Awesome Sink vai para "Sink"; o que chega a Container e Saída (Export) sai da fábrica, como as saídas.
@@ -57,7 +60,7 @@ export function factoryBalance(f: Factory, flow: FlowResult, _d: GameData): Bala
     for (const p of bf.outs) if (p.exits === null || p.exits > EPS) outs.push({ item: p.item, rate: num(p.exits) });
     for (const s of portStates(bf)) if (s.kind === 'deficit' || s.kind === 'surplus' || s.kind === 'stalled') problems.push(s);
   }
-  return { ins: sumBy(ins), outs: sumBy(outs), sink: sumBy(sink), problems };
+  return { ins: sumBy(ins), outs: sumBy(outs), sink: sumBy(sink), power, problems };
 }
 
 // Próximo problema do tipo, circular: `last` é o índice devolvido da vez anterior (-1 = nenhum). "Falta" inclui a porta travada.

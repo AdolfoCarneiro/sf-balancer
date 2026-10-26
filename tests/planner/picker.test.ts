@@ -101,7 +101,7 @@ test('recursos primeiro (um por item, como no Modeler), receitas no meio, sobras
   assert.deepEqual(up.map(g => g.kind), ['sources', 'recipes']);
   // Sem filtro (duplo clique ou botão direito no vazio), com e sem busca: recursos primeiro também.
   const all = pickerGroups(pickerEntries(data, ''), undefined);
-  assert.deepEqual(all.map(g => g.kind), ['sources', 'recipes', 'outlets']);
+  assert.deepEqual(all.map(g => g.kind), ['sources', 'recipes', 'power', 'outlets']);
   assert.deepEqual(pickerGroups(pickerEntries(data, 'iron'), undefined).map(g => g.kind), ['sources', 'recipes']);
   // O recurso tem o nome e o ícone do item; o prédio vai no subtítulo.
   const ore = all[0].entries.find(e => e.spec.kind === 'miner' && e.spec.item === 'Desc_OreIron_C')!;

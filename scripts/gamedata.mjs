@@ -1,6 +1,7 @@
 // Gera src/planner/data/game.json (itens, receitas, prédios de produção e extratores de fluido) a partir do Docs do jogo.
 //
 // Uso: node scripts/gamedata.mjs <en-US.json> [saida]
+//      node scripts/gamedata.mjs <en-US.json> --generators   (só troca os geradores no game.json que já existe)
 //
 // Fonte usada hoje: cópia do Docs da versão 1.1 mantida pelo projeto satisfactory-logistics,
 //   https://raw.githubusercontent.com/rockfactory/satisfactory-logistics/main/data/docs-en.json
@@ -14,7 +15,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
-const [entrada, saida = resolve(aqui, '../src/planner/data/game.json')] = process.argv.slice(2);
+const args = process.argv.slice(2), soGeradores = args.includes('--generators');
+const [entrada, saida = resolve(aqui, '../src/planner/data/game.json')] = args.filter(a => a !== '--generators');
 if (!entrada) { console.error('uso: node scripts/gamedata.mjs <en-US.json> [saida]'); process.exit(1); }
 
 // UTF-16LE com BOM (arquivo do jogo) ou UTF-8.
@@ -106,7 +108,34 @@ for (const c of porClasse.FGRecipe ?? []) {
 const itens = {};
 for (const id of [...usados]) itens[id] = todosItens[id];
 
-const out = { buildings: ordenar(predios), extractors: ordenar(extratores), items: ordenar(itens), recipes: ordenar(receitas) };
+// Geradores (Biomass Burner, Coal, Fuel, Nuclear): potência (MW a 100 %) e, por combustível, o consumo por minuto
+// (sólido: itens; fluido: m³, a energia do Docs é por litro), a água (mSupplementalToPowerRatio: litros por MJ) e o
+// resíduo (mByproductAmount por combustível queimado). O Geotérmico não queima nada: fica de fora.
+const geradores = {};
+const energia = {};
+for (const lista of Object.values(porClasse)) for (const c of lista) if (c.mEnergyValue !== undefined) energia[c.ClassName] = { mj: Number(c.mEnergyValue), fluido: c.mForm === 'RF_LIQUID' || c.mForm === 'RF_GAS' };
+for (const c of [...(porClasse.FGBuildableGeneratorFuel ?? []), ...(porClasse.FGBuildableGeneratorNuclear ?? [])]) {
+  const mw = Number(c.mPowerProduction), agua = Number(c.mSupplementalToPowerRatio || 0);
+  const fuels = [];
+  for (const x of c.mFuel ?? []) {
+    const e = energia[x.mFuelClass];
+    if (!e || !(e.mj > 0)) continue;
+    const perMin = mw * 60 / (e.mj * (e.fluido ? 1000 : 1));
+    const water = x.mSupplementalResourceClass && agua > 0 ? arred(mw * agua * 60 / 1000) : null;
+    const waste = x.mByproduct ? { item: x.mByproduct, perMin: arred(perMin * Number(x.mByproductAmount)) } : null;
+    fuels.push({ item: x.mFuelClass, perMin: arred(perMin), water, waste });
+  }
+  if (fuels.length) geradores[c.ClassName] = { id: c.ClassName, name: c.mDisplayName, power: mw, fuels };
+}
+
+if (soGeradores) {
+  const atual = JSON.parse(readFileSync(saida, 'utf8'));
+  for (const g of Object.values(geradores)) g.fuels = g.fuels.filter(f => atual.items[f.item] && (!f.waste || atual.items[f.waste.item]));
+  atual.generators = ordenar(geradores);
+  writeFileSync(saida, JSON.stringify(ordenar(atual), (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? ordenar(v) : v), 1) + '\n');
+  process.exit(0);
+}
+const out = { buildings: ordenar(predios), extractors: ordenar(extratores), generators: ordenar(geradores), items: ordenar(itens), recipes: ordenar(receitas) };
 // Chaves ordenadas também dentro de cada objeto, para saída determinística.
 const estavel = (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? ordenar(v) : v);
 writeFileSync(saida, JSON.stringify(out, estavel, 1) + '\n');

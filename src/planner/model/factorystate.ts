@@ -5,9 +5,9 @@ import type {
 import { tierKey } from './stage.ts';
 import { cleanLayout } from './layout.ts';
 import {
-  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, countOk, disconnect, disconnectMany,
+  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, clockOk, countOk, machinesOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
-  setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
+  genFuel, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
@@ -62,7 +62,8 @@ export type Action =
   | { type: 'setCollect'; id: StageId; item: ItemId; on: boolean }
   | { type: 'setMinerRate'; id: StageId; rate: number }
   | { type: 'setInputRate'; id: StageId; rate: number | null }
-  | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity }
+  | { type: 'setGenerator'; id: StageId; fuel?: ItemId; count?: number | null; clock?: number }
+  | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity; clock?: number }
   // Posições: na vista dada (sem ela, a Planta). together: "Mover junto" (o mesmo deslocamento na outra vista); auto e
   // shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
   | { type: 'placeLig'; meio: string; place: LigPlace | null; view?: PlaceView; together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
@@ -155,8 +156,11 @@ function cleanBlock(r: Record<string, any>, id: StageId, data: GameData): Block 
     case 'extractor': {
       if (!extractable(data, r.building, r.item)) return null;
       const purity: Purity = data.extractors[r.building].purity && typeof r.purity === 'string' && Object.hasOwn(PURITY, r.purity) ? r.purity as Purity : 'normal';
-      return { id, kind: 'extractor', building: r.building, item: r.item, purity, count: countOk(r.count) ? r.count : null };
+      return { id, kind: 'extractor', building: r.building, item: r.item, purity, count: countOk(r.count) ? r.count : null, ...(clockOk(r.clock) && r.clock !== 100 ? { clock: r.clock } : {}) };
     }
+    case 'generator':
+      return genFuel(data, r.building, r.fuel)
+        ? { id, kind: 'generator', building: r.building, fuel: r.fuel, count: machinesOk(r.count) ? r.count : null, ...(clockOk(r.clock) && r.clock !== 100 ? { clock: r.clock } : {}) } : null;
     case 'input':
       return typeof r.item === 'string' && Object.hasOwn(data.items, r.item) && (r.rate === null || rateOk(r.rate))
         ? { id, kind: 'input', item: r.item, rate: r.rate } : null;
@@ -253,7 +257,8 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' |
     case 'setCollect': return setCollect(f, d, a.id, a.item, a.on);
     case 'setMinerRate': return setMinerRate(f, a.id, a.rate);
     case 'setInputRate': return setInputRate(f, a.id, a.rate);
-    case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity });
+    case 'setGenerator': return setGenerator(f, d, a.id, { fuel: a.fuel, count: a.count, clock: a.clock });
+    case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity, clock: a.clock });
     case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { together: a.together === true, shown: a.shown });
     case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { together: a.together === true, auto: a.auto });
     case 'setPlaces': return isObj(a.places) ? setPlacesIn(f, view(a.view), a.places, { together: a.together === true, auto: a.auto }) : f;

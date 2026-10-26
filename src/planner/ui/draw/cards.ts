@@ -16,14 +16,22 @@ import { fitText, wrapText } from './text.ts';
 // sobra; rate: a taxa grande do marcador e unit, a unidade pequena ao lado (campo a mais que o plano: o protótipo põe
 // "/min" menor que o número).
 export interface CardText {
-  title: string; building: string; icon: string | null; count: string; sub: string; fixed: boolean; clock: string | null; alt: boolean;
+  title: string; building: string; icon: string | null; badge?: string | null; count: string; sub: string; fixed: boolean; clock: string | null; alt: boolean;
   ins: ItemId[]; outs: ItemId[]; marker: boolean; rate: string; unit: string;
 }
 export interface CardLook { selected: boolean; hover: boolean; lock: boolean; bad: boolean; flash: number }
 
 const HEAD = 62, ICON = 42, PAD_X = 14;
-// Abaixo desta escala na tela o cartão é desenhado enxuto (ícone e número).
-const COMPACT = 0.45;
+// Ícone pequeno no canto de baixo do ícone grande, num disco da cor da chapa (s: lado do ícone grande).
+function drawBadge(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, x: number, y: number, s: number, th: MapTheme): void {
+  if (!img) return;
+  const b = s * 0.48, cx = x + s - b / 2 + s * 0.08, cy = y + s - b / 2 + s * 0.08;
+  ctx.fillStyle = th.paper; ctx.beginPath(); ctx.arc(cx, cy, b / 2 + s * 0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(img, cx - b / 2, cy - b / 2, b, b);
+}
+// Abaixo desta escala na tela o cartão é desenhado enxuto (ícone e número): é o tamanho mínimo de perto (70 %), então
+// assim que o mapa se afasta e o cartão encolhe com ele, o texto miúdo (menos de 10 px) dá lugar ao ícone e ao número.
+const COMPACT = 0.7 - 1e-6;
 
 export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardText, look: CardLook, th: MapTheme,
   icon: (id: string) => HTMLImageElement | null): void {
@@ -60,6 +68,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
     // Enxuto: o ícone na altura do cartão, à esquerda, e o número (máquinas ou a taxa) ocupando o resto.
     const img = c.icon ? icon(c.icon) : null, gap = 8, s = H - 2 * gap;
     if (img) ctx.drawImage(img, gap, gap, s, s);
+    if (img && c.badge) drawBadge(ctx, icon(c.badge), gap, gap, s, th);
     const x = (img ? s + gap : 0) + gap, max = W - x - gap;
     const num = fitText(ctx, c.marker ? c.rate : c.count, max, p => `700 ${p}px ${th.display}`, Math.round(H * 0.62), 14);
     ctx.font = num.font; ctx.fillStyle = c.fixed && !c.marker ? th.ficsitSoft : th.ink;
@@ -75,6 +84,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
   const pad = c.marker ? PAD_X : Math.min(44, Math.max(PAD_X, (PORT_D / 2 + 6) * px));
   const img = c.icon ? icon(c.icon) : null;
   if (img) ctx.drawImage(img, pad, (HEAD - ICON) / 2, ICON, ICON);
+  if (img && c.badge) drawBadge(ctx, icon(c.badge), pad, (HEAD - ICON) / 2, ICON, th);
   const tx = pad + ICON + 8;
   let right = W - pad;
   if (!c.marker) {

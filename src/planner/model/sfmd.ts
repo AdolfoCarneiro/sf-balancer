@@ -83,8 +83,22 @@ const SINKS = new Set(['awesome sink']);
 // Peças que só passam item adiante (Splurger, Priority Splitter/Merger/Splurger).
 const isRelayName = (k: string) => k.includes('splurger') || /^priority (splitter|merger)$/.test(k);
 const CONTAINERS = new Set(['dimensional depot uploader', 'dimensional depot', 'storage container', 'industrial storage container', 'fluid buffer', 'industrial fluid buffer']);
-// Geradores e o Space Elevator: consomem e não produzem item; viram Saída (a energia fica fora).
+// Space Elevator e o Alien Power Augmenter (e gerador que não se reconhece): consomem e não produzem item; viram Saída.
 const EXPORT_RE = /^(.*(generator|biomass burner|nuclear power plant)|space elevator phase \d+|alien power augmenter)$/;
+// Gerador do Modeler: o prédio pelo nome ("Fuel Generator", "Turbofuel Generator", "Coal Generator", "Nuclear Power
+// Plant"…) e o combustível pela peça que chega nele (Inputs), ou pelo nome sem "Generator" ("Turbofuel" -> Turbofuel).
+function generatorOf(node: Record<string, unknown>, k: string, L: Lookup, d: GameData): { building: BuildingId; fuel: ItemId } | null {
+  if (!/generator|biomass burner|nuclear power plant/.test(k) || !d.generators) return null;
+  const want = /nuclear|uranium|plutonium|ficsonium/.test(k) ? 'nuclear' : /coal|coke/.test(k) ? 'coal' : /biomass|leaves|wood|mycelia/.test(k) ? 'biomass' : 'fuel';
+  const g = Object.values(d.generators).find(x => low(x.name).includes(want === 'fuel' ? 'fuel-powered' : want));
+  if (!g) return null;
+  const keys = isObj(node.Inputs) ? Object.keys(node.Inputs) : [];
+  const byInput = keys.map(x => L.items.get(low(x))).find(it => it && g.fuels.some(f => f.item === it));
+  const byName = L.items.get(k.replace(/s*(generator|power plant|burner)$/, '').trim());
+  const fuel = byInput ?? (byName && g.fuels.some(f => f.item === byName) ? byName : g.fuels[0]?.item);
+  return fuel ? { building: g.id, fuel } : null;
+}
+
 // Sem fluxo de item nenhum: não vira bloco.
 const NO_FLOW = new Set(['geothermal generator', 'resource well pressurizer']);
 // Campos que a importação lê (o resto do nó entra em ignored).
@@ -126,7 +140,9 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
     const building = L.extractors.get(low(ex.building)), item = L.items.get(low(ex.item));
     if (!building || !item) return { kind: 'unknown' };
     const pur = d.extractors[building].purity ? purityOf(node.Capacity) : 'normal';
-    const per = d.extractors[building].perMin * PURITY[pur];
+    // ClockSpeed: o clock de cada extrator (o Max de vazão já vem com ele: 600 de petróleo = nó puro a 250 %).
+    const cs = clamp(parseMax(node.ClockSpeed) ?? 100, 1, 250), clock = Math.round(cs * 1e4) / 1e4;
+    const per = d.extractors[building].perMin * PURITY[pur] * clock / 100;
     let count: number | null = null;
     if (ex.ppm) {
       // Vazão: extratores inteiros que dão pelo menos o pedido; sobrando, diz quanto dá.
@@ -137,7 +153,10 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
       count = upTo(max, MAX_EXTRACTORS, name, adj);
       if (!adj.length && count > max + EPS) adj.push({ kind: 'extractorCount', name, asked: max, count });
     }
-    return { kind: 'block', block: { kind: 'extractor', building, item, purity: pur, count }, used: d.extractors[building].purity ? ['Capacity'] : [], adj };
+    return {
+      kind: 'block', block: { kind: 'extractor', building, item, purity: pur, count, ...(clock !== 100 ? { clock } : {}) },
+      used: d.extractors[building].purity ? ['Capacity', 'ClockSpeed'] : ['ClockSpeed'], adj,
+    };
   }
   const ore = L.items.get(k);
   if (ore && minable(d, ore)) {
@@ -163,6 +182,17 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
   }
   if (SINKS.has(k)) return { kind: 'block', block: { kind: 'sink' }, used: [], adj };
   if (CONTAINERS.has(k)) return { kind: 'block', block: { kind: 'container' }, used: ['Machine'], adj };
+  const gen = generatorOf(node, k, L, d);
+  if (gen) {
+    // Gerador: Max é quantos (fracionário arredonda para cima e baixa o clock, a mesma potência), ClockSpeed o clock.
+    const cs = clamp(parseMax(node.ClockSpeed) ?? 100, 1, 250);
+    let count: number | null = null, clock = Math.round(cs * 1e4) / 1e4;
+    if (max !== null) {
+      count = upTo(max, MAX_MACHINES, name, adj);
+      if (max < count - EPS) { clock = clamp(Math.round(cs * max / count * 1e4) / 1e4, 1, 250); adj.push({ kind: 'machines', name, asked: max, count, clock }); }
+    }
+    return { kind: 'block', block: { kind: 'generator', ...gen, count, ...(clock !== 100 ? { clock } : {}) }, used: ['ClockSpeed'], adj };
+  }
   if (EXPORT_RE.test(k)) return { kind: 'block', block: { kind: 'export' }, used: [], adj, export: true };
   return { kind: 'unknown' };
 }
