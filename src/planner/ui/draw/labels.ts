@@ -151,16 +151,19 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
   // Ordem: o selecionado, os blocos de receita (os maiores antes), as origens e sobras (marcadores fora de escala).
   const order = [...blocks].sort((a, b) => +o.selected.has(b.stage) - +o.selected.has(a.stage) || +!!a.marker - +!!b.marker
     || b.rect.w * b.rect.h - a.rect.w * a.rect.h);
+  // Sem a camada dos nomes: a placa fica só com o ícone e o número (sem ícone também, nem placa).
+  const names = o.layers.names;
   for (const b of order) {
     const r = boxOfId.get(b.stage)!;
     if (r.w < 12) continue;
     const on = o.selected.has(b.stage), hov = o.hover === b.stage, txt = o.blockText(b.stage);
+    if (!names && !(txt.icon && o.icon(txt.icon))) continue;
     // Placa de nome: ícone, receita e o número de máquinas em laranja.
-    const title: Line = { s: txt.title, font: NAME, color: on ? th.ficsit : th.ink, h: 28, icon: txt.icon, iconPx: 22, accent: on ? th.ficsit : null, num: txt.num };
+    const title: Line = { s: names ? txt.title : '', font: NAME, color: on ? th.ficsit : th.ink, h: 28, icon: txt.icon, iconPx: 22, accent: on ? th.ficsit : null, num: txt.num };
     // De perto o motivo do travado fica só na porta parada; de longe ele vai no lugar das fileiras.
     const subText = !near && txt.alert ? txt.alert : txt.sub;
     const sub: Line = { s: subText, font: SMALL, color: !near && txt.alert ? th.ficsit : th.inkDim, h: 15 };
-    const wantSub = !!subText && (on || hov || z >= SUB_ZOOM || (!near && !!txt.alert));
+    const wantSub = names && !!subText && (on || hov || z >= SUB_ZOOM || (!near && !!txt.alert));
     let done: Rect[] | null = null;
     if (wantSub) done = put([title, sub], around(r, [title, sub], !detail), b.stage);
     if (!done) done = put([title], around(r, [title], !detail), b.stage, detail || on || hov, on || hov);
@@ -191,7 +194,7 @@ export function drawPlantLabels(ctx: CanvasRenderingContext2D, scene: Scene, cam
     put([{ s: extra, font: SMALL, color: th.inkDim, h: 15 }], [[r.x, r.y + r.h + GAP], [r.x, r.y - 15 - GAP]], m.meio);
   }
   // Entradas brutas: uma etiqueta por item e bloco (não uma por fileira), atrás da ponta do primeiro toco.
-  if (detail && z >= RAW_ZOOM) {
+  if (detail && z >= RAW_ZOOM && o.layers.links) {
     const groups = new Map<string, { belts: BeltPath[]; own: string }>();
     for (const bp of scene.belts) {
       if (bp.role !== 'raw' || bp.pts.length < 2 || !visible(boxOf(bp.pts), cam, vw, vh)) continue;

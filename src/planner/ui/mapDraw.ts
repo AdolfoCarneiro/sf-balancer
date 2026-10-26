@@ -1,7 +1,8 @@
 // Desenho do mapa num canvas 2D: junta as partes de draw/. Duas vistas e a transição entre elas (t de 0 a 1):
 // - Montar (t = 0): fundo pontilhado, cartões com a faixa de fileiras, esteiras animadas porta → chip → porta;
 // - Planta (t = 1): o desenho em escala (grade, blocos, peças, ligações), os leques porta → fileira e as placas de nome.
-// Nas duas: portas de 44 px pelo estado e o chip de cada ligação. Só desenha o que aparece na tela.
+// Nas duas: portas de 44 px pelo estado e o chip de cada ligação. Só desenha o que aparece na tela e o que as camadas
+// deixam (layers: ícones, nomes, ligações, portas).
 import { visible, type Camera } from '../model/map/camera.ts';
 import { montarFar, type ViewGeo, type ViewPort } from '../model/map/cards.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
@@ -11,6 +12,7 @@ import type { Meio } from '../model/meio.ts';
 import type { PortState } from '../model/portstate.ts';
 import type { Scene } from '../model/map/scene.ts';
 import type { ItemId, StageId } from '../model/types.ts';
+import type { MapLayers } from '../model/map/layers.ts';
 import { beltCurve, curveBox, drawFans, strokeBelt, type WorldCtx } from './draw/belts.ts';
 import { drawCard, drawMontarFloor, type CardText } from './draw/cards.ts';
 import { drawChips } from './draw/chips.ts';
@@ -52,6 +54,8 @@ export interface DrawOpts {
   // (Date.now()).
   flash: { id: string; port?: string; until: number } | null;
   icon: (item: ItemId) => HTMLImageElement | null;
+  // Camadas ligadas (desligada: não desenha; o MapView também tira do clique).
+  layers: MapLayers;
 }
 
 const near = (r: Rect, vw: number, vh: number, m: number) => r.x + r.w >= -m && r.y + r.h >= -m && r.x <= vw + m && r.y <= vh + m;
@@ -61,7 +65,10 @@ const boxOfPts = (pts: Pt[]): Rect => {
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 };
 
-export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: ViewGeo, cam: Camera, vw: number, vh: number, o: DrawOpts): void {
+export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: ViewGeo, cam: Camera, vw: number, vh: number, opts: DrawOpts): void {
+  const L0 = opts.layers;
+  // Sem ícones: nenhum ícone em cartões, placas, portas e chips.
+  const o: DrawOpts = L0.icons ? opts : { ...opts, icon: () => null };
   const th = o.theme, z = cam.zoom, t = Math.min(1, Math.max(0, o.t)), now = Date.now(), far = montarFar(t, z);
   const sx = (x: number) => (x - cam.x) * z, sy = (y: number) => (y - cam.y) * z;
 
@@ -71,7 +78,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   if (t > 0) { ctx.globalAlpha = t; drawPlantFloor(ctx, cam, vw, vh, th); ctx.globalAlpha = 1; }
 
   const blocks = t > 0 ? scene.blocks.filter(b => visible(b.rect, cam, vw, vh)) : [];
-  const meios = t > 0 ? scene.meios.filter(m => visible(m.rect, cam, vw, vh)) : [];
+  const meios = t > 0 && L0.links ? scene.meios.filter(m => visible(m.rect, cam, vw, vh)) : [];
 
   // Planta em escala, em metros.
   if (t > 0) {
@@ -85,12 +92,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   }
 
   // Portas e chips que aparecem (de longe, nas duas vistas, só puxando uma porta).
-  const showPorts = (t < 0.5 ? !far : z >= PORT_ZOOM) || !!o.wire;
+  const showPorts = L0.ports && ((t < 0.5 ? !far : z >= PORT_ZOOM) || !!o.wire);
   const byKey = new Map<string, ViewPort>(view.ports.map(p => [viewPortId(p), p]));
   const ports = showPorts ? view.ports.filter(p => near({ x: p.x, y: p.y, w: 0, h: 0 }, vw, vh, PORT_R + 160)) : [];
 
-  // Leques da Planta: porta → fileiras.
-  if (t > 0 && showPorts) {
+  // Leques da Planta: porta → fileiras (com as ligações e as portas).
+  if (t > 0 && showPorts && L0.links) {
     ctx.globalAlpha = t;
     drawFans(ctx, view.ports.filter(p => p.lanes.length && near(boxOfPts([[p.x, p.y], ...p.lanes]), vw, vh, 4)), o.colors, th);
     ctx.globalAlpha = 1;
@@ -99,7 +106,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   // Montar: esteiras porta → chip → porta, por baixo dos cartões.
   if (t < 1) {
     ctx.globalAlpha = 1 - t;
-    for (const c of view.chips) {
+    for (const c of L0.links ? view.chips : []) {
       const g = o.meio(c.meio), lab = o.chip(c.meio);
       if (!g) continue;
       const m: Pt = [c.x, c.y], dm: Pt = [1, 0];
@@ -123,7 +130,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       if (!near(b.rect, vw, vh, 8)) continue;
       const bs = o.badges(b.id);
       const flash = o.flash && o.flash.id === b.id && now < o.flash.until ? (o.flash.until - now) / FLASH_MS : 0;
-      drawCard(ctx, b, o.card(b.id), {
+      const card = o.card(b.id);
+      drawCard(ctx, b, L0.names ? card : { ...card, title: '', building: '', alt: false }, {
         selected: o.selected.has(b.id), hover: o.hover === b.id, flash: Math.min(1, flash),
         lock: bs.some(x => x.kind === 'deadlock' || x.kind === 'stalled'), bad: bs.some(x => x.kind === 'deficit'),
       }, th, o.icon);
@@ -132,7 +140,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   }
 
   // Portas e os rótulos de estado; depois os chips, por cima.
-  const chips = far ? [] : view.chips.filter(c => near({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }, vw, vh, 4));
+  const chips = far || !L0.links ? [] : view.chips.filter(c => near({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }, vw, vh, 4));
   const chipRects = chips.map(c => ({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }));
   const portLabels = drawPorts(ctx, ports, o, vw, vh, now, chipRects);
   drawChips(ctx, chips, o);

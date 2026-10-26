@@ -1,0 +1,51 @@
+import { useEffect, useRef, useState } from 'react';
+import { t } from '../../i18n/index.js';
+import { LAYER_KEYS, NO_LAYERS, type MapLayers } from '../model/map/layers.ts';
+
+const LABEL: Record<keyof MapLayers, string> = { icons: 'plLayerIcons', names: 'plLayerNames', links: 'plLayerLinks', ports: 'plLayerPorts' };
+
+// Botão "Camadas" (44 px) e o balão acima dele: uma caixa por camada e "Só as máquinas" (desliga as quatro). Esc ou
+// clicar fora fecha; Esc devolve o foco ao botão.
+export function Layers({ value, onChange }: { value: MapLayers; onChange: (v: MapLayers) => void }) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const close = (refocus: boolean) => { setOpen(false); if (refocus) btn.current?.focus(); };
+
+  useEffect(() => {
+    if (!open) return;
+    box.current?.querySelector<HTMLInputElement>('input')?.focus();
+    const out = (e: PointerEvent) => {
+      const n = e.target as Node;
+      if (!box.current?.contains(n) && !btn.current?.contains(n)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', out);
+    return () => document.removeEventListener('pointerdown', out);
+  }, [open]);
+
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(true); }
+  };
+  const off = LAYER_KEYS.every(k => !value[k]);
+
+  return (
+    <span className="pl-layers">
+      <button ref={btn} type="button" className="pl-layers-btn" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? 'pl-layers' : undefined}
+        onClick={() => (open ? close(false) : setOpen(true))}>{t('plLayers')}</button>
+      {open && (
+        <div className="pl-layers-pop" id="pl-layers" role="dialog" aria-label={t('plLayersTitle')} ref={box} onKeyDown={onKey}>
+          <fieldset>
+            <legend>{t('plLayersTitle')}</legend>
+            {LAYER_KEYS.map(k => (
+              <label key={k}>
+                <input type="checkbox" checked={value[k]} onChange={e => onChange({ ...value, [k]: e.target.checked })} />
+                {t(LABEL[k])}
+              </label>
+            ))}
+          </fieldset>
+          <button type="button" className="pl-btn" aria-pressed={off} onClick={() => onChange(NO_LAYERS)}>{t('plLayersOnly')}</button>
+        </div>
+      )}
+    </span>
+  );
+}

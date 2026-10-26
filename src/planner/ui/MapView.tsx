@@ -27,6 +27,8 @@ import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
 import { EmptyInvite, FirstHint } from './FirstHint.tsx';
 import { Legend } from './Legend.tsx';
+import { Layers } from './Layers.tsx';
+import { cleanLayers, hitGeo, type MapLayers } from '../model/map/layers.ts';
 import { ChipPopover } from './ChipPopover.tsx';
 import { iconImage } from './icons.ts';
 import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
@@ -65,6 +67,7 @@ const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 const PANEL_STORE = 'sf-balancer:planner-panel';   // painel aberto sem seleção (lembrado neste navegador)
+const LAYERS_STORE = 'sf-balancer:planner-layers';   // camadas do mapa (lembradas neste navegador, não no Factory)
 const FIX_GAP = 48;   // px de tela entre o bloco e o bloco que o conserto cria
 const PICKER_W = 380;   // largura do seletor, para abri-lo à esquerda de uma entrada
 // Animação das esteiras da Montar: no máximo 30 quadros/s; um quadro acima de 12 ms deixa o desenho parado até o próximo
@@ -216,6 +219,14 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     if (selKey && sheet === 'peek') setSheet('half');
   }
   const panelOpen = panelSel ?? panelPref;
+  // Camadas: ícones, nomes, ligações e portas (padrão tudo ligado).
+  const [layers, setLayersState] = useState<MapLayers>(() => {
+    try { return cleanLayers(JSON.parse(localStorage.getItem(LAYERS_STORE) ?? 'null')); } catch { return cleanLayers(null); }
+  });
+  const setLayers = (v: MapLayers) => {
+    setLayersState(v);
+    try { localStorage.setItem(LAYERS_STORE, JSON.stringify(v)); } catch { /* sem storage: vale só nesta visita */ }
+  };
   const togglePanel = () => {
     if (selKey) { setPanelSel(!panelOpen); return; }
     setPanelPref(!panelOpen);
@@ -291,7 +302,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     chip: id => chips.get(id) ?? null,
     meio: id => meioById.get(id),
     card: id => cards.get(id)!,
-    flash,
+    flash, layers,
     blockText: id => {
       const b = byId.get(id)!, bf = flow.blocks[id], icon = blockIcon(b, data);
       // Travado: o motivo à parte (o canvas decide onde ele aparece); loop travado no título.
@@ -312,7 +323,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       // Placa da Planta: o ícone do prédio, a receita e o número em laranja.
       return { title: r.name + lock, num, sub, icon: r.building, alert };
     },
-  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards, flash]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, hover, colors, theme, byId, flow, data, lang, hoverPort, wire, lit, badges, portStateMap, chips, meioById, cards, flash, layers]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // A vista: t vai de 0 (Montar) a 1 (Planta) em TRANS_MS ao trocar; a câmera usa os limites de zoom da vista atual.
   const tNow = useRef(montar ? 0 : 1);
@@ -365,7 +376,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const T = tNow.current, A = anim.current;
     const { v: view, belts } = geoFor(sc, c, T, fs, dt, fl, meios);
     lastView.current = view;
-    const moving = belts && !document.hidden && !reduced.current;
+    const moving = belts && o.layers.links && !document.hidden && !reduced.current;
     if (moving && !A.slow) A.time = performance.now();
     const wireTo = o.wire && ([(o.wire.to[0] - c.x) * c.zoom, (o.wire.to[1] - c.y) * c.zoom] as Pt);
     const t0 = performance.now();
@@ -472,7 +483,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
 
   // Mini painel: só enquanto a ligação dele é a selecionada; posicionado já no primeiro quadro e quando muda de tamanho
   // (a lista de montagens abre e fecha dentro dele).
-  const popMeio = popId && selection?.kind === 'meio' && selection.id === popId ? meioById.get(popId) : undefined;
+  // Sem a camada das ligações não há chip para o mini painel ficar junto (o painel lateral tem as mesmas ações).
+  const popMeio = popId && layers.links && selection?.kind === 'meio' && selection.id === popId ? meioById.get(popId) : undefined;
   useLayoutEffect(() => {
     const el = popEl.current;
     if (!el) return;
@@ -548,13 +560,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return !!c && ((tNow.current < 0.5 ? !montarFar(tNow.current, c.zoom) : c.zoom >= PORT_ZOOM) || !!drag.current?.port);
   };
   // O que está sob o ponteiro, pela geometria de tela do último quadro: porta, chip, cartão/bloco; na Planta, o corpo
-  // da ligação também vale como ela.
+  // da ligação também vale como ela. Camada desligada não pega o ponteiro.
   const hitAt = (e: React.PointerEvent | React.MouseEvent): ViewHit => {
     const v = lastView.current, c = cam.current;
     if (!v || !c) return null;
     const [x, y] = local(e);
-    const h = viewHit(portsLive() ? v : { ...v, ports: [], chips: montarFar(tNow.current, c.zoom) ? [] : v.chips }, x, y);
-    if (h || tNow.current < 0.5) return h;
+    const h = viewHit(hitGeo(v, layers, portsLive(), !montarFar(tNow.current, c.zoom)), x, y);
+    if (h || tNow.current < 0.5 || !layers.links) return h;
     const w = screenToWorld(c, x, y), sh = hitTest(scene, w[0], w[1]);
     return sh?.kind === 'meio' ? { kind: 'chip', meio: sh.id } : null;
   };
@@ -928,6 +940,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
             onClick={togglePanel}>{t(panelOpen ? 'plPanelClose' : 'plPanelOpen')}</button>
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
             <button type="button" className="pl-btn pl-map-add" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
+            <Layers value={layers} onChange={setLayers} />
             <Legend />
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>

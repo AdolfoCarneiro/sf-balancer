@@ -94,8 +94,9 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
       ctx.stroke();
     }
   }
-  // Esteiras entre blocos e meios (e as entradas brutas).
-  strokeBelts(w, scene.belts, true);
+  // Esteiras entre blocos e meios (e as entradas brutas), com a camada das ligações (sem ela, meios chega vazio).
+  const links = o.layers.links;
+  if (links) strokeBelts(w, scene.belts, true);
   // Meios: faixa tracejada; de perto, as peças.
   for (const m of meios) {
     const r = m.rect, on = o.selected.has(m.meio), hov = o.hover === m.meio;
@@ -110,12 +111,13 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
   }
   // Avisos: a área sobreposta pintada e os dois retângulos com contorno de aviso; cruzamento de esteira, um anel.
   if (scene.overlaps.length) {
-    const rects = new Map<string, Rect>();
+    const rects = new Map<string, Rect>(), meioIds = new Set<string>();
     for (const b of scene.blocks) rects.set(b.stage, b.rect);
-    for (const m of scene.meios) rects.set(m.meio, m.rect);
+    for (const m of scene.meios) { rects.set(m.meio, m.rect); meioIds.add(m.meio); }
     const outline = new Set<string>();
     ctx.fillStyle = th.sink;
     for (const [a, b] of scene.overlaps) {
+      if (!links && (meioIds.has(a) || meioIds.has(b))) continue;   // sem ligações, só o aviso entre blocos
       const p = rects.get(a), q = rects.get(b);
       if (!p || !q) continue;
       outline.add(a); outline.add(b);
@@ -129,7 +131,7 @@ export function drawPlantWorld(w: WorldCtx, scene: Scene, blocks: SceneBlock[], 
       if (visible(r, cam, vw, vh)) ctx.strokeRect(r.x, r.y, r.w, r.h);
     }
   }
-  if (scene.crossings.length) {
+  if (links && scene.crossings.length) {
     const rad = px(6);
     ctx.strokeStyle = th.sink; ctx.lineWidth = px(2);
     for (const [x, y] of scene.crossings) {
