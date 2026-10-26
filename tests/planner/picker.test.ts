@@ -102,3 +102,19 @@ test('seletor vindo de uma porta: receitas primeiro, depois Sink, Container e Sa
   const miner = pickerEntries(data, '', { produces: 'Desc_OreIron_C' }).special;
   assert.deepEqual(pickerGroups({ special: miner, recipes: [] }, { produces: 'Desc_OreIron_C' }).map(g => g.kind), ['special']);
 });
+
+test('seletor: dentro de cada grupo, as receitas de prédio mais simples vêm antes (relevância), depois o nome', () => {
+  const titles = (f: { consumes?: string; produces?: string }) => pickerEntries(data, '', f).recipes.map(e => e.title);
+  // Barra de ferro: as do Constructor antes; Solid Steel antes do Ficsite.
+  const iron = titles({ consumes: 'Desc_IronIngot_C' });
+  assert.deepEqual(iron.slice(0, 2), ['Iron Plate', 'Iron Rod']);
+  assert.ok(iron.indexOf('Solid Steel Ingot') < iron.indexOf('Ficsite Ingot (Iron)'));
+  // Alternativas também: Constructor (Cast Screws, Iron Pipe, Iron Wire) antes de Assembler e Foundry.
+  const alts = pickerEntries(data, '', { consumes: 'Desc_IronIngot_C' }).recipes.filter(e => e.alt).map(e => e.title);
+  assert.deepEqual(alts.slice(0, 3), ['Cast Screws', 'Iron Pipe', 'Iron Wire']);
+  // Água: Refinery e Packager antes do Blender (Biochemical Sculptor e Cooling System no fim das normais).
+  const water = pickerEntries(data, '', { consumes: 'Desc_Water_C' }).recipes.filter(e => !e.alt).map(e => e.title);
+  assert.ok(water.indexOf('Packaged Water') < water.indexOf('Biochemical Sculptor'));
+  assert.ok(water.indexOf('Sulfuric Acid') < water.indexOf('Biochemical Sculptor'));
+  assert.ok(water.indexOf('Alumina Solution') < water.indexOf('Cooling System'));
+});

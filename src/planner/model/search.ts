@@ -14,8 +14,18 @@ function recipeTier(r: Recipe): number {
   return r.alt ? 1 : 0;
 }
 
+// Relevância dentro de cada grupo: prédio mais simples (o que aparece antes no jogo) primeiro. Prédio desconhecido fica
+// no meio.
+const BUILDING_RANK: Record<string, number> = {
+  Build_SmelterMk1_C: 0, Build_ConstructorMk1_C: 0,
+  Build_AssemblerMk1_C: 1, Build_FoundryMk1_C: 1, Build_OilRefinery_C: 1, Build_Packager_C: 1,
+  Build_ManufacturerMk1_C: 2, Build_Blender_C: 2,
+  Build_HadronCollider_C: 3, Build_QuantumEncoder_C: 3, Build_Converter_C: 3,
+};
+const buildingRank = (r: Recipe) => BUILDING_RANK[r.building] ?? 2;
+
 // Casa com o nome da receita ou de um item de saída. Ordem: saída de nome exato; normais, alternativas, Converter e
-// FICSMAS; nome.
+// FICSMAS; prédio mais simples; nome.
 export function searchRecipes(data: GameData, query: string, filter: { produces?: ItemId; consumes?: ItemId } = {}): Recipe[] {
   const q = norm(query);
   const outNames = (r: Recipe) => r.outs.map(f => norm(data.items[f.item]?.name ?? f.item));
@@ -23,7 +33,8 @@ export function searchRecipes(data: GameData, query: string, filter: { produces?
   return Object.values(data.recipes)
     .filter(r => (!filter.produces || r.outs.some(f => f.item === filter.produces)) && (!filter.consumes || r.ins.some(f => f.item === filter.consumes)))
     .filter(r => !q || norm(r.name).includes(q) || outNames(r).some(n => n.includes(q)))
-    .sort((a, b) => rank(a) - rank(b) || recipeTier(a) - recipeTier(b) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    .sort((a, b) => rank(a) - rank(b) || recipeTier(a) - recipeTier(b) || buildingRank(a) - buildingRank(b)
+      || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
 export function recipesFor(data: GameData, item: ItemId): Recipe[] {
