@@ -47,6 +47,10 @@ export function applyStatic() {
   if (onVercel && location.pathname !== LANG_PATH[getLang()]) history.replaceState(null, '', LANG_PATH[getLang()] + location.hash);
   const pl = document.getElementById('plLink');
   if (pl) pl.href = BUILDER_PATH[getLang()];
+  // A aba Balancer aponta para a própria página (no site, o caminho do idioma; fora dele, o caminho aberto), e não para
+  // "#", que apagaria o #s= de um cenário compartilhado.
+  const bl = document.getElementById('balLink');
+  if (bl) bl.href = onVercel ? BALANCER_PATH[getLang()] : location.pathname + location.search;
   const roots = [document, $('grpTpl').content];
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
