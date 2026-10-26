@@ -46,10 +46,11 @@ export function drawCard(ctx: CanvasRenderingContext2D, vb: ViewBlock, c: CardTe
   }
   if (look.flash > 0) {
     const g = (1 - look.flash) * 22 * px;
+    ctx.save();
     ctx.globalAlpha *= look.flash;
     ctx.lineWidth = 3 * px; ctx.strokeStyle = th.ficsit;
     ctx.strokeRect(-g, -g, W + 2 * g, H + 2 * g);
-    ctx.globalAlpha /= look.flash;
+    ctx.restore();
   }
 
   // Cabeçalho: ícone do prédio, nome (até 2 linhas) e o prédio com o selo Alt; à direita o número.

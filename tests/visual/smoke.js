@@ -1,7 +1,7 @@
 // uso: node tests/visual/smoke.js <url-base>   (ex.: npm run smoke -- http://localhost:4173, contra o npm run preview)
 // Smoke dos gestos do builder, de ponta a ponta: canvas vazio -> duplo clique -> "Pure Iron" + Enter cria o bloco;
 // arrastar da saída para o vazio -> "Solid Steel Ingot" cria o próximo já ligado; segunda perna "Steel Pipe";
-// Ctrl+Z desfaz a última; clicar na ligação abre o modal e Esc fecha com o foco no canvas; /#s= antigo cai em /balancer.
+// Ctrl+Z desfaz a última; clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco no canvas; /#s= antigo cai em /balancer.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera e portas), ligado por ?debug=1. Sai com código != 0 se um passo
 // falhar.
 import { chromium } from 'playwright';
@@ -107,11 +107,15 @@ await step('Ctrl+Z desfaz a última', async () => {
   await nBlocks(2);
   await nMeios(1);
 });
-await step('clicar na ligação abre o modal; Esc fecha com o foco no canvas', async () => {
+await step('clicar no chip abre o mini painel; Ver montagem abre o modal; Esc fecha com o foco no canvas', async () => {
   await settled();
-  const m = (await state()).meios[0];
-  const [x, y] = await toScreen([m.rect.x + m.rect.w / 2, m.rect.y + m.rect.h / 2]);
-  await pg.mouse.click(x, y);
+  must((await pg.evaluate(() => window.__sfPlanner.mode)) === 'montar', 'o builder não abriu na Montar');
+  const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);
+  must(ch, 'sem chip na tela');
+  await pg.mouse.click(b.x + ch.x, b.y + ch.y);
+  await pg.waitForSelector('.pl-chip-pop[role=dialog]', { timeout: 5000 });
+  must(await pg.evaluate(() => document.activeElement?.classList.contains('pl-primary')), 'o foco não foi para Ver montagem');
+  await pg.keyboard.press('Enter');
   await pg.waitForSelector('dialog.pl-lig[open]', { timeout: 10000 });
   await pg.keyboard.press('Escape');
   await pg.waitForSelector('dialog.pl-lig', { state: 'detached' });

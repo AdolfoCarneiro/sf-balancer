@@ -6,7 +6,7 @@ import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
 import { solvedStage } from '../solved.ts';
 import { stageRows } from '../stage.ts';
-import type { Camera } from './camera.ts';
+import { PLANT_LIMITS, fit, type Camera, type ZoomLimits } from './camera.ts';
 import { toWorld, type Pt, type Rect } from './geo.ts';
 import type { Scene, SceneBlock } from './scene.ts';
 import { MAP_GRID } from './sizes.ts';
@@ -175,4 +175,43 @@ export function viewHit(v: ViewGeo, sx: number, sy: number): ViewHit {
 export function chipWorld(cam: Camera, sx: number, sy: number, size: { w: number; h: number }): LigPlace {
   const snap = (v: number) => Math.round(v / MAP_GRID) * MAP_GRID + 0;
   return { x: snap(cam.x + sx / cam.zoom - size.w / 2), y: snap(cam.y + sy / cam.zoom - size.h / 2), rot: 0 };
+}
+
+// Zoom da Montar: de 35 % a 300 % do zoom de referência (o cartão não passa de 70 %/115 %, mas o mapa ainda aproxima).
+export const MONTAR_LIMITS: ZoomLimits = { min: MONTAR_REF * 0.35, max: MONTAR_REF * 3 };
+export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMITS : PLANT_LIMITS);
+
+// Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas por fora, e os
+// chips postos. Vazio sem blocos.
+export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: FlowResult, z: number, phone: boolean): Rect {
+  const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b])), m = (PORT_D / 2 + 8) / z;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const add = (ax: number, ay: number, bx: number, by: number) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, bx); y1 = Math.max(y1, by); };
+  for (const sb of scene.blocks) {
+    const b = byId.get(sb.stage);
+    if (!b) continue;
+    const size = blockCardSize(b, data, flow);
+    add(sb.rect.x - m, sb.rect.y, sb.rect.x + size.w * s / z + m, sb.rect.y + size.h * s / z);
+  }
+  if (x0 === Infinity) return { x: 0, y: 0, w: 0, h: 0 };
+  for (const sm of scene.meios) {
+    if (!(f.ligs && Object.hasOwn(f.ligs, sm.meio))) continue;
+    const cx = sm.rect.x + sm.rect.w / 2, cy = sm.rect.y + sm.rect.h / 2, hw = CHIP_W / 2 / z, hh = CHIP_H / 2 / z;
+    add(cx - hw, cy - hh, cx + hw, cy + hh);
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// "Mostrar tudo" da Montar: o zoom muda o tamanho do cartão no mundo, então enquadra algumas vezes até assentar.
+// null sem blocos (quem chama decide o enquadramento do mapa vazio).
+export function fitMontar(scene: Scene, f: Factory, data: GameData, flow: FlowResult, vw: number, vh: number, phone: boolean, pad = 40): Camera | null {
+  let z = MONTAR_REF, c: Camera | null = null;
+  for (let k = 0; k < 4; k++) {
+    const r = montarBounds(scene, f, data, flow, z, phone);
+    if (!r.w && !r.h) return null;
+    c = fit(r, vw, vh, pad, MONTAR_LIMITS);
+    if (Math.abs(c.zoom - z) < 1e-6) break;
+    z = c.zoom;
+  }
+  return c;
 }

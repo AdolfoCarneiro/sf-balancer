@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DETAIL_ZOOM, ZOOM_MAX, ZOOM_MIN, fit, pan, screenToWorld, visible, zoomAt } from '../../src/planner/model/map/camera.ts';
+import { DETAIL_ZOOM, ZOOM_MAX, ZOOM_MIN, clampCam, fit, pan, screenToWorld, visible, zoomAt } from '../../src/planner/model/map/camera.ts';
 
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 
@@ -50,4 +50,15 @@ test('pan move em px de tela, convertido pelo zoom', () => {
   const c = pan({ x: 10, y: 20, zoom: 4 }, 40, -80);
   assert.deepEqual(c, { x: 20, y: 0, zoom: 4 });
   assert.deepEqual(screenToWorld({ x: 10, y: 20, zoom: 4 }, 40, 80), [20, 40]);
+});
+
+test('clampCam: zoom dentro dos limites da vista, com o centro da tela parado', () => {
+  const c0 = { x: 10, y: 20, zoom: 0.5 }, lim = { min: 1.4, max: 12 };
+  const c = clampCam(c0, lim, 800, 600);
+  assert.equal(c.zoom, 1.4);
+  const [ax, ay] = screenToWorld(c, 400, 300), [bx, by] = screenToWorld(c0, 400, 300);
+  near(ax, bx); near(ay, by);
+  const ok = { x: 1, y: 2, zoom: 4 };
+  assert.equal(clampCam(ok, lim, 800, 600), ok);
+  assert.equal(zoomAt(ok, 100, 0, 0, lim).zoom, 12);
 });

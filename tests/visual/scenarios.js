@@ -34,14 +34,12 @@ const builderReady = async pg => {
   await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   await pg.waitForTimeout(300);
 };
-const blockRect = (pg, id) => pg.evaluate(i => window.__sfPlanner.scene.blocks.find(b => b.stage === i).rect, id);
-const blockCenter = async (pg, id) => { const r = await blockRect(pg, id); return [r.x + r.w / 2, r.y + r.h / 2]; };
-// Ponto do mundo (m) -> clique na tela, pela câmera do último quadro.
-const clickWorld = async (pg, [wx, wy], opts) => {
+// Clique num ponto da tela do mapa (px do canvas), como a geometria de tela do último quadro (window.__sfPlanner.view).
+const clickScreen = async (pg, [x, y], opts) => {
   const box = await pg.locator('canvas.pl-map-canvas').boundingBox();
-  const c = await pg.evaluate(() => window.__sfPlanner.cam);
-  await pg.mouse.click(box.x + (wx - c.x) * c.zoom, box.y + (wy - c.y) * c.zoom, opts);
+  await pg.mouse.click(box.x + x, box.y + y, opts);
 };
+const cardCenter = (pg, id) => pg.evaluate(i => { const r = window.__sfPlanner.view.blocks.find(b => b.id === i).rect; return [r.x + r.w / 2, r.y + r.h / 2]; }, id);
 const toLibrary = pg => pg.locator('#library').scrollIntoViewIfNeeded();
 
 export const scenarios = [
@@ -98,15 +96,15 @@ export const scenarios = [
   {
     // Bloco selecionado (Solid Steel Ingot, o s2 do exemplo): painel do bloco e cantoneiras.
     name: 'builder-bloco', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
-    actions: async pg => { await builderReady(pg); await clickWorld(pg, await blockCenter(pg, 's2')); await builderReady(pg); },
+    actions: async pg => { await builderReady(pg); await clickScreen(pg, await cardCenter(pg, 's2')); await builderReady(pg); },
   },
   {
     // Seletor aberto por duplo clique no vazio (abaixo do primeiro bloco).
     name: 'builder-seletor', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
     actions: async pg => {
       await builderReady(pg);
-      const r = await blockRect(pg, 's1');
-      await clickWorld(pg, [r.x + r.w / 2, r.y + r.h + 24], { clickCount: 2 });
+      const r = await pg.evaluate(() => window.__sfPlanner.view.blocks.find(b => b.id === 's1').rect);
+      await clickScreen(pg, [r.x + r.w / 2, r.y + r.h + 60], { clickCount: 2 });
       await pg.waitForSelector('.pl-pick');
       await pg.waitForTimeout(300);
     },
@@ -126,12 +124,14 @@ export const scenarios = [
     },
   },
   {
-    // Clique na ligação do ferro (s1 > s2): o modal com o desenho do fluxo.
+    // Clique no chip da ligação do ferro (s1 > s2) e Ver montagem (Enter, com o foco nele): o modal com o desenho do fluxo.
     name: 'builder-ligacao', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
     actions: async pg => {
       await builderReady(pg);
-      const r = await pg.evaluate(() => window.__sfPlanner.scene.meios.find(m => m.meio.startsWith('Desc_IronIngot_C')).rect);
-      await clickWorld(pg, [r.x + r.w / 2, r.y + r.h / 2]);
+      const c = await pg.evaluate(() => window.__sfPlanner.view.chips.find(m => m.meio.startsWith('Desc_IronIngot_C')));
+      await clickScreen(pg, [c.x, c.y]);
+      await pg.waitForSelector('.pl-chip-pop');
+      await pg.keyboard.press('Enter');
       await pg.waitForSelector('dialog.pl-lig[open] .pl-lig-svg svg', { timeout: 10000 });
       await pg.waitForTimeout(300);
     },

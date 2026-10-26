@@ -12,7 +12,7 @@ import { buildScene, placesOf } from '../../src/planner/model/map/scene.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  cardScale, cardSize, chipWorld, stripRows, viewGeo, viewHit,
+  MONTAR_LIMITS, MONTAR_REF, cardScale, cardSize, chipWorld, fitMontar, montarBounds, stripRows, viewGeo, viewHit, viewLimits,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -178,4 +178,24 @@ test('bloco sem limite e bloco com 120 fileiras: cartão finito, faixa de no má
   const a = v.blocks.find(b => b.id === 's1')!, b = v.blocks.find(x => x.id === 's2')!;
   near(a.card.h, cardSize('recipe', [1], 1, 1).h * a.scale);
   near(b.card.h, cardSize('recipe', Array(120).fill(40), 1, 1).h * b.scale);
+});
+
+test('Montar: limites de zoom de 35 % a 300 % do zoom de referência; Planta, os globais', () => {
+  assert.deepEqual(MONTAR_LIMITS, { min: MONTAR_REF * 0.35, max: MONTAR_REF * 3 });
+  assert.equal(viewLimits(true), MONTAR_LIMITS);
+  assert.ok(viewLimits(false).min < MONTAR_LIMITS.min && viewLimits(false).max > MONTAR_LIMITS.max);
+});
+
+test('Montar: mostrar tudo enquadra os cartões (com as portas) dentro dos limites; vazio dá null', () => {
+  const { scene, flow } = view(ex, 0);
+  const vw = 1200, vh = 800, c = fitMontar(scene, ex, data, flow, vw, vh, false)!;
+  assert.ok(c && c.zoom >= MONTAR_LIMITS.min && c.zoom <= MONTAR_LIMITS.max);
+  // Cada cartão desse zoom cabe na tela.
+  const v = viewGeo(scene, c, 0, false, ex, data, flow);
+  for (const b of v.blocks) assert.ok(b.rect.x >= 0 && b.rect.y >= 0 && b.rect.x + b.rect.w <= vw && b.rect.y + b.rect.h <= vh, JSON.stringify(b.rect));
+  for (const p of v.ports) assert.ok(p.x - 22 >= 0 && p.x + 22 <= vw, `porta fora: ${p.x}`);
+  const empty: Factory = { ...ex, blocks: [], links: [] }, fe = solveFactory(empty, data);
+  const se = buildScene(empty, data, {}, {}, fe);
+  assert.equal(fitMontar(se, empty, data, fe, vw, vh, false), null);
+  assert.deepEqual(montarBounds(se, empty, data, fe, 4, false), { x: 0, y: 0, w: 0, h: 0 });
 });
