@@ -1,4 +1,4 @@
-import type { ItemId, StageId } from '../types.ts';
+import type { ItemId, Rot, StageId } from '../types.ts';
 
 export type Pt = [number, number];
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -60,4 +60,18 @@ export function route(a: Pt, b: Pt, dirA: 'x' | 'y'): Pt[] {
     const q = out[k - 1], r = out[k + 1];
     return !((q[0] === p[0] && p[0] === r[0]) || (q[1] === p[1] && p[1] === r[1]));
   });
+}
+
+export const rotSize = (geo: { w: number; h: number }, rot: Rot): { w: number; h: number } => (rot % 2 ? { w: geo.h, h: geo.w } : { w: geo.w, h: geo.h });
+
+// Ponto local (rot 0, tamanho `size`) para o mundo, com o bloco girado `rot` quartos de volta no sentido horário
+// e o canto superior esquerdo do retângulo já girado em (place.x, place.y).
+export function toWorld(p: Pt, size: { w: number; h: number }, place: { x: number; y: number; rot: Rot }): Pt {
+  const [x, y] = p, { w, h } = size;
+  switch (place.rot) {
+    case 1: return [place.x + h - y, place.y + x];
+    case 2: return [place.x + w - x, place.y + h - y];
+    case 3: return [place.x + y, place.y + w - x];
+    default: return [place.x + x, place.y + y];
+  }
 }

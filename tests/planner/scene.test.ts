@@ -13,6 +13,7 @@ import type { MeioGeo, Rect } from '../../src/planner/model/map/geo.ts';
 import { buildScene as build, hitTest, placesOf as places0, proposeMap as propose0, rotSize, toWorld, type Geos } from '../../src/planner/model/map/scene.ts';
 import { crossings, overlaps } from '../../src/planner/model/map/checks.ts';
 import { vf } from './fixtures.ts';
+import { MARK_H, MONTAR_REF } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
 const ex = exampleFactory(data);
@@ -354,4 +355,14 @@ test('placeLig null volta para a posição colada', () => {
   const s = buildScene(f, data, p, geos);
   assert.deepEqual(meioOf(s, STEEL_MEIO).rect, before);
   assert.equal(meioOf(s, STEEL_MEIO).rot, 0);
+});
+
+test('proposeMap: marcadores empilhados não se sobrepõem como cartões', () => {
+  const f: Factory = { v: 2, links: [], blocks: [
+    { id: 'm1', kind: 'miner', item: 'Desc_OreIron_C', rate: 60 },
+    { id: 'm2', kind: 'miner', item: 'Desc_OreCopper_C', rate: 60 },
+  ] };
+  const p = proposeMap(f, data, {});
+  assert.equal(p.m1.x, p.m2.x);
+  assert.ok(Math.abs(p.m2.y - p.m1.y) >= MARK_H / MONTAR_REF, `${p.m1.y} e ${p.m2.y}`);
 });

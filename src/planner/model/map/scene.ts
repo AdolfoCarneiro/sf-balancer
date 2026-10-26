@@ -6,9 +6,10 @@ import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
 import { markerGeo, solvedStage } from '../solved.ts';
 import { blockGeo } from './block.ts';
-import { clean, cutsRect, route, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
+import { clean, cutsRect, rotSize, route, toWorld, type BeltPath, type BlockGeo, type MeioGeo, type Pt, type Rect } from './geo.ts';
 import { FOUNDATION, MEIO_GAP, RAW_STUB } from './sizes.ts';
 import { crossings, intersects, overlaps } from './checks.ts';
+import { blockCardSize, MONTAR_REF } from './cards.ts';
 
 // marker: origem ou sobra, desenhada fora de escala.
 export interface SceneBlock { stage: StageId; rect: Rect; place: MapPlace; geo: BlockGeo; marker: boolean }
@@ -25,19 +26,8 @@ const STRIP: Size = { w: 16, h: 8 };
 const snap = (v: number) => Math.ceil(v / FOUNDATION - 1e-9) * FOUNDATION || 0;   // || 0: sem -0
 const ORIGIN: MapPlace = { x: 0, y: 0, rot: 0 };
 
-export const rotSize = (geo: Size, rot: Rot): Size => (rot % 2 ? { w: geo.h, h: geo.w } : { w: geo.w, h: geo.h });
+export { rotSize, toWorld } from './geo.ts';
 
-// Ponto local (rot 0, tamanho `size`) para o mundo, com o bloco girado `rot` quartos de volta no sentido horário
-// e o canto superior esquerdo do retângulo já girado em (place.x, place.y).
-export function toWorld(p: Pt, size: Size, place: { x: number; y: number; rot: Rot }): Pt {
-  const [x, y] = p, { w, h } = size;
-  switch (place.rot) {
-    case 1: return [place.x + h - y, place.y + x];
-    case 2: return [place.x + w - x, place.y + h - y];
-    case 3: return [place.x + y, place.y + w - x];
-    default: return [place.x + x, place.y + y];
-  }
-}
 // Direção do x local no mundo (sentido do fluxo dentro do bloco).
 const DIR: Record<Rot, Pt> = { 0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1] };
 const axis = (rot: Rot): 'x' | 'y' => (rot % 2 ? 'y' : 'x');
@@ -115,10 +105,15 @@ const gapsOf = (p?: MapPlace): Pick<MapPlace, 'gapRow' | 'gapMachine'> =>
 
 export function proposeMap(f: Factory, data: GameData, geos: Geos, flow: FlowResult): Record<StageId, MapPlace> {
   const size = new Map(f.blocks.map(b => [b.id, geoOf(b, data, flow, f.map?.[b.id]) as Size]));
+  // Para empilhar: o maior entre o bloco real e o cartão da Montar em 100 % (os cartões não se sobrepõem nesse zoom).
+  const stack = new Map(f.blocks.map(b => {
+    const z = size.get(b.id)!, c = blockCardSize(b, data, flow);
+    return [b.id, { w: Math.max(z.w, c.w / MONTAR_REF), h: Math.max(z.h, c.h / MONTAR_REF) }];
+  }));
   const att = attach(groupLinks(f.links), geos, id => size.get(id)!);
   // Faixa vertical (no referencial do bloco) e largura do maior meio colado em cada bloco.
   const ext = new Map<StageId, { top: number; bottom: number; meioW: number }>();
-  for (const b of f.blocks) { const z = size.get(b.id)!; ext.set(b.id, { top: 0, bottom: z.h, meioW: 0 }); }
+  for (const b of f.blocks) ext.set(b.id, { top: 0, bottom: stack.get(b.id)!.h, meioW: 0 });
   for (const a of att.values()) {
     const e = ext.get(a.owner)!;
     e.top = Math.min(e.top, a.at[1]); e.bottom = Math.max(e.bottom, a.at[1] + a.size.h); e.meioW = Math.max(e.meioW, a.size.w);
@@ -140,7 +135,7 @@ export function proposeMap(f: Factory, data: GameData, geos: Geos, flow: FlowRes
       const e = ext.get(b.id)!, y = snap(cursor - e.top);
       out[b.id] = { x, y, rot: 0, ...gapsOf(f.map?.[b.id]) };
       cursor = y + e.bottom + FOUNDATION;
-      blockW = Math.max(blockW, size.get(b.id)!.w); meioW = Math.max(meioW, e.meioW);
+      blockW = Math.max(blockW, stack.get(b.id)!.w); meioW = Math.max(meioW, e.meioW);
     }
     x = snap(x + blockW + MEIO_GAP + meioW + MEIO_GAP);
   }
