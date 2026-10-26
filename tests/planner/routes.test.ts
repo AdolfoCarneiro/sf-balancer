@@ -69,10 +69,13 @@ test('vercel.json e nginx.conf: /planner* redireciona para o builder e /balancer
   ]);
   assert.deepEqual(v.rewrites, [{ source: '/:lang(pt|es)', destination: '/' }, { source: '/:lang(pt|es)/balancer', destination: '/balancer' }]);
   const n = read('nginx.conf');
-  for (const s of ['location = /en { return 301 /; }', 'location = /en/balancer { return 301 /balancer; }', 'location = /planner { return 301 /; }', 'location = /planner.html { return 301 /; }',
-    'location = /en/planner { return 301 /; }', 'location ~ ^/(pt|es)/planner/?$ { return 301 /$1; }',
+  // Redirects com a query, como a Vercel ($is_args$args).
+  for (const s of ['location = /en { return 301 /$is_args$args; }', 'location = /en/balancer { return 301 /balancer$is_args$args; }',
+    'location = /planner { return 301 /$is_args$args; }', 'location = /planner.html { return 301 /$is_args$args; }',
+    'location = /en/planner { return 301 /$is_args$args; }', 'location ~ ^/(pt|es)/planner/?$ { return 301 /$1$is_args$args; }',
     'location ~ ^/(pt|es)/?$ { try_files /index.html =404; }', 'location ~ ^/(pt|es)/balancer/?$ { try_files /balancer.html =404; }']) assert.ok(n.includes(s), s);
   assert.ok(!n.includes('try_files /planner.html'));
+  assert.ok(!/return 301 [^;$]*;/.test(n), 'redirect sem a query');
   assert.match(read('vite.config.js'), /input: \{ main: 'index.html', balancer: 'balancer.html' \}/);
 });
 
