@@ -26,7 +26,15 @@ const lerpPt = (a: Pt, b: Pt, t: number): Pt => [lerp(a[0], b[0], t), lerp(a[1],
 const lerpRect = (a: Rect, b: Rect, t: number): Rect => ({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t), w: lerp(a.w, b.w, t), h: lerp(a.h, b.h, t) });
 const mean = (ps: Pt[]): Pt | null => (ps.length ? [ps.reduce((s, p) => s + p[0], 0) / ps.length, ps.reduce((s, p) => s + p[1], 0) / ps.length] : null);
 
-export const cardScale = (zoom: number, phone: boolean): number => clamp(zoom / MONTAR_REF, phone ? 0.6 : 0.7, 1.15);
+// Até MONTAR_FAR o cartão não fica abaixo de 70 % (60 % no celular); mais de longe ele segue o mapa (o tamanho no
+// mundo fica parado) e as portas e os chips somem, para ver a fábrica inteira.
+export const MONTAR_FAR = MONTAR_REF * 0.35;
+export const cardScale = (zoom: number, phone: boolean): number => {
+  const lo = phone ? 0.6 : 0.7;
+  return zoom >= MONTAR_FAR ? clamp(zoom / MONTAR_REF, lo, 1.15) : lo * zoom / MONTAR_FAR;
+};
+// Montar (t < 0.5) de longe: sem portas nem chips na tela e no ponteiro.
+export const montarFar = (t: number, zoom: number): boolean => t < 0.5 && zoom < MONTAR_FAR;
 
 // repeat: a linha "+ N fileiras iguais" no lugar das do meio.
 export interface StripRow { machines: number; repeat?: number }
@@ -177,8 +185,9 @@ export function chipWorld(cam: Camera, sx: number, sy: number, size: { w: number
   return { x: snap(cam.x + sx / cam.zoom - size.w / 2), y: snap(cam.y + sy / cam.zoom - size.h / 2), rot: 0 };
 }
 
-// Zoom da Montar: de 35 % a 300 % do zoom de referência (o cartão não passa de 70 %/115 %, mas o mapa ainda aproxima).
-export const MONTAR_LIMITS: ZoomLimits = { min: MONTAR_REF * 0.35, max: MONTAR_REF * 3 };
+// Zoom da Montar: de longe como a Planta, de perto até 300 % do zoom de referência (o cartão não passa de 115 %, mas o
+// mapa ainda aproxima).
+export const MONTAR_LIMITS: ZoomLimits = { min: PLANT_LIMITS.min, max: MONTAR_REF * 3 };
 export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMITS : PLANT_LIMITS);
 
 // Do lado de fora de cada porta cabe o rótulo do estado ("sai 1.200/min", "faltam 120/min", "+330 sobrando"): sem essa

@@ -3,7 +3,7 @@
 // - Planta (t = 1): o desenho em escala (grade, blocos, peças, ligações), os leques porta → fileira e as placas de nome.
 // Nas duas: portas de 44 px pelo estado e o chip de cada ligação. Só desenha o que aparece na tela.
 import { visible, type Camera } from '../model/map/camera.ts';
-import type { ViewGeo, ViewPort } from '../model/map/cards.ts';
+import { montarFar, type ViewGeo, type ViewPort } from '../model/map/cards.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
 import type { Badge } from '../model/badges.ts';
 import type { ChipLabel } from '../model/chip.ts';
@@ -61,7 +61,7 @@ const boxOfPts = (pts: Pt[]): Rect => {
 };
 
 export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: ViewGeo, cam: Camera, vw: number, vh: number, o: DrawOpts): void {
-  const th = o.theme, z = cam.zoom, t = Math.min(1, Math.max(0, o.t)), now = Date.now();
+  const th = o.theme, z = cam.zoom, t = Math.min(1, Math.max(0, o.t)), now = Date.now(), far = montarFar(t, z);
   const sx = (x: number) => (x - cam.x) * z, sy = (y: number) => (y - cam.y) * z;
 
   ctx.save();
@@ -83,8 +83,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
     ctx.restore();
   }
 
-  // Portas que aparecem (na Planta, de longe, só puxando uma).
-  const showPorts = t < 0.5 || z >= PORT_ZOOM || !!o.wire;
+  // Portas e chips que aparecem (de longe, nas duas vistas, só puxando uma porta).
+  const showPorts = (t < 0.5 ? !far : z >= PORT_ZOOM) || !!o.wire;
   const byKey = new Map<string, ViewPort>(view.ports.map(p => [viewPortId(p), p]));
   const ports = showPorts ? view.ports.filter(p => near({ x: p.x, y: p.y, w: 0, h: 0 }, vw, vh, PORT_R + 160)) : [];
 
@@ -103,13 +103,18 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       if (!g) continue;
       const m: Pt = [c.x, c.y], dm: Pt = [1, 0];
       const look = { color: o.colors[g.item] ?? th.flow, fluid: o.fluid(g.item), short: !!lab?.short, selected: o.selected === c.meio };
+      // De longe, a esteira vira uma linha fina na cor do item (a de 12 px cobriria os cartões pequenos).
+      const belt = (path: Path2D) => {
+        if (!far) { strokeBelt(ctx, path, look, o.time, th); return; }
+        ctx.strokeStyle = look.short ? th.deficit : look.color; ctx.lineWidth = 2; ctx.stroke(path);
+      };
       for (const id of g.producers) {
         const p = byKey.get(`${id}|out|${g.item}`);
-        if (p && near(curveBox([p.x, p.y], m), vw, vh, 0)) strokeBelt(ctx, beltCurve([p.x, p.y], p.dir, m, dm), look, o.time, th);
+        if (p && near(curveBox([p.x, p.y], m), vw, vh, 0)) belt(beltCurve([p.x, p.y], p.dir, m, dm));
       }
       for (const id of g.consumers) {
         const p = byKey.get(`${id}|in|${g.item}`);
-        if (p && near(curveBox(m, [p.x, p.y]), vw, vh, 0)) strokeBelt(ctx, beltCurve(m, dm, [p.x, p.y], [-p.dir[0], -p.dir[1]]), look, o.time, th);
+        if (p && near(curveBox(m, [p.x, p.y]), vw, vh, 0)) belt(beltCurve(m, dm, [p.x, p.y], [-p.dir[0], -p.dir[1]]));
       }
     }
     // Cartões.
@@ -126,7 +131,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
   }
 
   // Portas e os rótulos de estado; depois os chips, por cima.
-  const chips = view.chips.filter(c => near({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }, vw, vh, 4));
+  const chips = far ? [] : view.chips.filter(c => near({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }, vw, vh, 4));
   const chipRects = chips.map(c => ({ x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h }));
   const portLabels = drawPorts(ctx, ports, o, vw, vh, now, chipRects);
   drawChips(ctx, chips, o);
