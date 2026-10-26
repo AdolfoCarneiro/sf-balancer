@@ -40,7 +40,7 @@ test('fábrica: mineradora, extrator e blocos de sobra nascem com os padrões; s
   f = addBlock(f, data, { kind: 'sink' }, [0, 0]);
   assert.deepEqual(f.blocks, [
     { id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: MINER_DEFAULT },
-    { id: 's2', kind: 'extractor', building: 'Build_OilPump_C', item: 'Desc_LiquidOil_C', purity: 'normal', count: null },
+    { id: 's2', kind: 'extractor', building: 'Build_OilPump_C', item: 'Desc_LiquidOil_C', purity: 'normal', count: 1 },
     { id: 's3', kind: 'sink' },
   ]);
   assert.equal(MINER_DEFAULT, 60);

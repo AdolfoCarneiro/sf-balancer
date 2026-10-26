@@ -114,8 +114,9 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
       return free ? b : { ...b, limits: { machines: suggestedPerRow(asStage(b), d) } };
     }
     case 'miner': return minable(d, spec.item) ? { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT } : null;
+    // Extrator novo: um, como o nó do Modeler (um extrator por nó); "calcular" fica no painel.
     case 'extractor': return extractable(d, spec.building, spec.item)
-      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: null } : null;
+      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: 1 } : null;
     case 'input': return typeof spec.item === 'string' && own(d.items, spec.item) ? { id, kind: 'input', item: spec.item, rate: null } : null;
     case 'generator': return genFuel(d, spec.building, spec.fuel) ? { id, kind: 'generator', building: spec.building, fuel: spec.fuel, count: null } : null;
     case 'sink': case 'container': case 'export': return { id, kind: spec.kind };
