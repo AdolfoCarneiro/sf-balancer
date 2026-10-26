@@ -27,7 +27,17 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 }
 .pl-langs button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
 .pl-grow { flex: 1 1 auto; }
-.pl-status { color: var(--ficsit); font-size: 12px; }
+.pl-status { color: var(--ficsit); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Desktop largo: o topo numa linha só; quem encolhe é o texto do fluxo (com reticências e o texto todo no title). */
+@media (min-width: 1280px) {
+  .pl-top { flex-wrap: nowrap; }
+  .pl-top > * { flex-shrink: 0; }
+  .pl-top > .pl-status { flex: 0 1 auto; }
+}
+/* Importar: só o ícone até sobrar largura (o texto fica no aria-label e no title). */
+@media (max-width: 1599px) { .pl-top .pl-import .pl-lbl { display: none; } }
+/* Desfazer/Refazer: só o ícone abaixo de 1366 px, para o texto do fluxo ter onde aparecer. */
+@media (max-width: 1365px) { .pl-top .pl-pair .pl-lbl { display: none; } }
 .pl-status:empty { display: none; }
 .pl-pair { display: flex; }
 .pl-pair .pl-btn + .pl-btn { border-left: 0; }
@@ -95,7 +105,6 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-malt input { margin-top: 3px; accent-color: var(--ficsit); }
 .pl-malt > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pl-malt small { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-.pl-meio-calc { opacity: .7; font-style: italic; }
 .pl-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .pl-pieces li { display: flex; justify-content: space-between; padding: 3px 8px; background: var(--plate); font-size: 14px; font-variant-numeric: tabular-nums; }
 
@@ -152,12 +161,6 @@ select.pl-field { width: auto; }
 .pl-sv-auto { min-height: 32px; padding: 0 6px; background: none; border: 1px solid var(--line); color: var(--ink-dim); font: 600 12px var(--display); cursor: pointer; }
 .pl-sv-auto:hover { color: var(--ink); border-color: var(--ink-dim); }
 .pl-sv-auto:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
-.pl-sv-help { min-height: 44px; padding: 0 14px; font-size: 14px; background: var(--bench); white-space: nowrap; }
-.pl-sv-help > span:first-child { color: var(--ficsit); }
-.pl-leg .pl-sv-tips { list-style: disc; padding-left: 18px; gap: 8px; font-size: 14px; }
-.pl-leg .pl-sv-tips li { display: list-item; }
-.pl-leg .pl-legend2 { display: flex; }
-.pl-leg .pl-legend2 li { display: flex; font-size: 12px; }
 
 .pl-sv-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
 .pl-sv-canvas { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--paper); touch-action: none; cursor: grab; }
@@ -272,8 +275,6 @@ select.pl-field { width: auto; }
   .pl-crumb > :first-child, .pl-crumb > .pl-crumb-sep:nth-child(2) { display: none; }
   .pl-crumb b { overflow: hidden; text-overflow: ellipsis; }
   .pl-crumb:has(> b) > .pl-crumb-h, .pl-crumb:has(> b) > .pl-crumb-sep { display: none; }
-  .pl-sv-help { padding: 0 14px; }
-  .pl-sv-help-t { display: none; }
   .pl-sv-chips { order: 5; flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; }
   .pl-sv-chip { flex: none; }
   .pl-sv-body { position: relative; display: block; }
@@ -322,6 +323,16 @@ select.pl-field { width: auto; }
 .pl-map-ctrl .pl-together::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid var(--ink-dim); }
 .pl-map-ctrl .pl-together.on { border-color: var(--ficsit); }
 .pl-map-ctrl .pl-together.on::before { background: var(--ficsit); border-color: var(--ficsit); }
+/* Celular: Tutorial, Mover junto e Mostrar tudo só no ícone (44 px), para os controles caberem em duas linhas; o Mover
+   junto ligado fica com o ícone e a borda em laranja, sem a caixinha. */
+.pl-ctrl-ico { display: none; }
+@media (max-width: 720px) {
+  .pl-map-ctrl .pl-ctrl-lbl { display: none; }
+  .pl-map-ctrl .pl-ctrl-ico { display: block; }
+  .pl-map-ctrl .pl-btn:has(> .pl-ctrl-ico) { padding: 0; justify-content: center; display: inline-flex; align-items: center; }
+  .pl-map-ctrl .pl-together::before { display: none; }
+  .pl-map-ctrl .pl-together.on { color: var(--ficsit); }
+}
 
 .pl-map-blocks, .pl-map-warns { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .pl-map-block, .pl-map-warns button { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; text-align: left; background: none; color: var(--ink); border: 1px solid var(--line); font: 13px/1.35 var(--body); cursor: pointer; }
@@ -582,6 +593,7 @@ select.pl-field { width: auto; }
 /* Aviso depois de importar: flutua embaixo, sem empurrar o topo nem o painel. */
 .pl-imp-done { position: fixed; z-index: 30; left: 50%; bottom: 72px; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 8px 14px; font-size: 13px; color: var(--ok); background: var(--bench); border: 1px solid var(--ok); border-left-width: 4px; }
 .pl-imp-done:empty { display: none; }
+.pl-imp-loop { display: block; margin-top: 4px; color: var(--ficsit); }
 
 /* Tutorial (ui/Tour.tsx): o resto da tela escurece pela sombra do recorte, que tem os cantos de mira em holo; o balão é
    uma chapa com a faixa FICSIT em cima, a seta apontando o alvo e a contagem com os segmentos. */

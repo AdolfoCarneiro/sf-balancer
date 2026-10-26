@@ -14,6 +14,8 @@ export interface BeltInfo {
   defCut: number | null;    // o corte padrão (na compartilhada, rec; nas outras, sem corte)
   longest: number;          // máquinas da maior linha
   cut: number | null;       // o corte em vigor (null pela ponta ou sem corte)
+  splits: boolean;          // o corte divide alguma fileira (ou par) em mais de uma saída: "Dividir igual" tem o que dividir
+  even: boolean;            // "Dividir igual" ligado e valendo (há o que dividir)
   recLayout: () => Layout | null;   // o Layout do botão "Recomendado"
 }
 
@@ -28,19 +30,24 @@ export function beltInfo(stage: Stage, data: GameData, arr: Arrangement, key: st
   const defCut = shared ? rec : null;
   const longest = lines.reduce((m, l) => Math.max(m, l.machines), 0);
   const cut = first.exit === 'end' ? null : edit?.cut ?? defCut;
+  // Duas saídas das mesmas fileiras: o corte dividiu a esteira delas.
+  const seen = new Set<string>();
+  const splits = cut !== null && lines.some(l => { const k = l.rows.join(','); if (seen.has(k)) return true; seen.add(k); return false; });
+  const even = splits && !!edit?.even;
   // Recomendado: o padrão do modelo (na compartilhada, o maior corte que cabe); uma esteira sem corte que passa do limite
   // fecha no maior que cabe (descendo, se saía pela ponta).
   const fits = lines.every(l => l.rate <= l.cap + E);
   const recLayout = (): Layout | null =>
     (shared || edit?.cut || fits || rec === null ? setBelt(lay, key, { cut: null }) : fixCut(lay, key, rec, first.exit));
-  return { lines, first, shared, per, rec, defCut, longest, cut, recLayout };
+  return { lines, first, shared, per, rec, defCut, longest, cut, splits, even, recLayout };
 }
 
 // A conta do corte: n máquinas × a taxa de cada uma; 'max' = cabe e com n + 1 passaria, 'fits' = cabe com folga,
-// 'over' = passa do limite. null sem máquinas (nada a explicar).
-export function cutMath(info: BeltInfo): { n: number; per: number; total: number; state: 'max' | 'fits' | 'over' } | null {
+// 'over' = passa do limite, 'even' = "Dividir igual": n é a maior saída de verdade (não o corte) e cabe. null sem máquinas
+// (nada a explicar).
+export function cutMath(info: BeltInfo): { n: number; per: number; total: number; state: 'max' | 'fits' | 'over' | 'even' } | null {
   if (info.per <= 0) return null;
-  const n = info.cut ?? info.longest, total = n * info.per, cap = info.first.cap;
-  const state = total > cap + E ? 'over' : (n + 1) * info.per > cap + E ? 'max' : 'fits';
+  const n = info.even ? info.longest : info.cut ?? info.longest, total = n * info.per, cap = info.first.cap;
+  const state = total > cap + E ? 'over' : info.even ? 'even' : (n + 1) * info.per > cap + E ? 'max' : 'fits';
   return { n, per: info.per, total, state };
 }

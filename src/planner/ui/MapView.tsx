@@ -20,7 +20,7 @@ import { buildScene, hitTest, placesOf, proposeMap, type Scene } from '../model/
 import { montarLig, montarPlaces } from '../model/views.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
-import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, montarFar, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
+import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, montarFar, switchCam, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
@@ -72,6 +72,8 @@ const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 const PANEL_STORE = 'sf-balancer:planner-panel';   // painel aberto sem seleção (lembrado neste navegador)
 const LAYERS_STORE = 'sf-balancer:planner-layers';   // camadas do mapa (lembradas neste navegador, não no Factory)
+// Ícone dos controles do mapa: só aparece no celular, no lugar do texto.
+const ctrlIco = (d: string) => <svg className="pl-ctrl-ico" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>;
 const TOGETHER_STORE = 'sf-balancer:planner-together';   // "Mover junto" (lembrado neste navegador; padrão desligado)
 const FIX_GAP = 48;   // px de tela entre o bloco e o bloco que o conserto cria
 const PICKER_W = 380;   // largura do seletor, para abri-lo à esquerda de uma entrada
@@ -470,12 +472,20 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   };
 
   // Trocar de vista: a câmera mantém o centro (com o zoom nos limites da nova) e t anda até a ponta em TRANS_MS
-  // (na hora com movimento reduzido).
+  // (na hora com movimento reduzido). Se nenhum bloco da nova vista fica na tela (as posições das duas são próprias),
+  // vai ao bloco selecionado no lugar dele lá, ou enquadra a nova vista.
   const firstMode = useRef(true);
   useEffect(() => {
     if (firstMode.current) { firstMode.current = false; return; }
     const to = mode === 'planta' ? 1 : 0, from = tNow.current;
-    if (cam.current) setCam(cam.current);
+    if (cam.current) {
+      setCam(cam.current);
+      const { w, h } = size.current, { scene: sc, f: fs, data: dt, flow: fl } = latest.current;
+      if (w && cam.current) {
+        const v = viewGeo(sc, cam.current, to, phone.current, fs, dt, fl);
+        setCam(switchCam(v, cam.current, w, h, selStage) ?? fitView());
+      }
+    }
     if (reduced.current || from === to) { tNow.current = to; request(); return; }
     const t0 = performance.now();
     let id = 0;
@@ -1026,12 +1036,19 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
             <button type="button" className="pl-btn pl-map-add" data-tour="map-new" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
             <Layers value={layers} onChange={setLayers} />
             <Legend />
-            <button type="button" className="pl-btn" data-tour="map-tour" aria-haspopup="dialog" onClick={() => openTour()}>{t('plTourAgain')}</button>
+            {/* No celular, Tutorial, Mover junto e Mostrar tudo ficam só no ícone (o texto no aria-label), em duas linhas. */}
+            <button type="button" className="pl-btn" data-tour="map-tour" aria-haspopup="dialog" aria-label={t('plTourAgain')} onClick={() => openTour()}>
+              {ctrlIco('M9 2a7 7 0 100 14A7 7 0 009 2zM7 6v6l5-3z')}<span className="pl-ctrl-lbl">{t('plTourAgain')}</span>
+            </button>
             <button type="button" className={'pl-btn pl-together' + (together ? ' on' : '')} data-tour="map-together" aria-pressed={together}
-              title={t('plMoveTogetherTip')} onClick={() => setTogether(!together)}>{t('plMoveTogether')}</button>
+              aria-label={t('plMoveTogether')} title={t('plMoveTogetherTip')} onClick={() => setTogether(!together)}>
+              {ctrlIco('M7 11l4-4M5 9L3 11a2.5 2.5 0 003.5 3.5L8.5 12.5M13 9l2-2a2.5 2.5 0 00-3.5-3.5L9.5 5.5')}<span className="pl-ctrl-lbl">{t('plMoveTogether')}</span>
+            </button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
             <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
-            <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{t('plMapFit')}</button>
+            <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>
+              {ctrlIco('M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4')}<span className="pl-ctrl-lbl">{t('plMapFit')}</span>
+            </button>
           </div>
         </div>
       </main>

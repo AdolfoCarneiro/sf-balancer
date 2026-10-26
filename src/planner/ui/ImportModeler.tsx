@@ -11,11 +11,17 @@ const SHOW = 12;   // nomes por lista; o resto vira "e mais N"
 type ErrKey = 'plImportErrJson' | 'plImportErrFormat' | 'plImportErrEmpty' | 'plImportErrSize';
 type State = { kind: 'error'; key: ErrKey; report?: SfmdReport } | { kind: 'ready'; factory: Factory; report: SfmdReport };
 
-export function ImportButton({ onFile, className, tour }: { onFile: (f: File) => void; className?: string; tour?: string }) {
+// icon: no topo, o ícone com o texto escondível (pl-lbl, como Desfazer/Refazer).
+export function ImportButton({ onFile, className, tour, icon }: { onFile: (f: File) => void; className?: string; tour?: string; icon?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <button type="button" className={'pl-btn ' + (className ?? '')} data-tour={tour} onClick={() => input.current?.click()}>{t('plImport')}</button>
+      <button type="button" className={'pl-btn ' + (className ?? '')} data-tour={tour} onClick={() => input.current?.click()}
+        aria-label={icon ? t('plImport') : undefined} title={icon ? t('plImport') : undefined}>
+        {icon
+          ? <><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2v9M5 7l4 4 4-4M2 12v4h14v-4" fill="none" stroke="currentColor" strokeWidth="2" /></svg><span className="pl-lbl">{t('plImport')}</span></>
+          : t('plImport')}
+      </button>
       <input ref={input} type="file" accept=".sfmd,application/json" hidden aria-hidden="true" tabIndex={-1}
         onChange={e => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) onFile(f); }} />
     </>
@@ -38,6 +44,7 @@ const adjustedText = (x: SfmdAdjusted): string => {
   switch (x.kind) {
     case 'extractorRate': return t('plImportAdjRate', x.name, num(x.rate), fmt(x.count, 0), num(x.total));
     case 'extractorCount': return t('plImportAdjCount', x.name, num(x.asked), fmt(x.count, 0));
+    case 'machines': return t('plImportAdjMachines', x.name, num(x.asked), fmt(x.count, 0), num(x.clock));
     case 'clamp': return t('plImportAdjClamp', x.name, num(x.asked), num(x.max));
   }
 };
@@ -129,16 +136,21 @@ export function ImportDialog({ file, data, onImport, onClose }: DialogProps) {
   );
 }
 
-// O aviso depois de importar (5 s); o texto segue o idioma.
-export function useImportToast() {
+// O aviso depois de importar (5 s); o texto segue o idioma. deadlock: o fluxo da fábrica (já calculado) tem loop travado;
+// aí o aviso explica numa linha e fica mais tempo.
+export function useImportToast(deadlock: boolean) {
   const [done, setDone] = useState<{ blocks: number; links: number } | null>(null);
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const show = (r: SfmdReport) => {
-    setDone({ blocks: r.blocks, links: r.links });
-    clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setDone(null), 5000);
-  };
-  const toast = <span className="pl-imp-done" role="status">{done ? t('plImportDone', fmt(done.blocks, 0), fmt(done.links, 0)) : ''}</span>;
+  const hold = (ms: number) => { clearTimeout(timer.current); timer.current = window.setTimeout(() => setDone(null), ms); };
+  const show = (r: SfmdReport) => { setDone({ blocks: r.blocks, links: r.links }); hold(5000); };
+  const stuck = !!done && deadlock;
+  useEffect(() => { if (stuck) hold(10000); }, [stuck]);
+  const toast = (
+    <span className="pl-imp-done" role="status">
+      {done ? t('plImportDone', fmt(done.blocks, 0), fmt(done.links, 0)) : ''}
+      {stuck && <span className="pl-imp-loop">{t('plImportDeadlock')}</span>}
+    </span>
+  );
   return { show, toast };
 }

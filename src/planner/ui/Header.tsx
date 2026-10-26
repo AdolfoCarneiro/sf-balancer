@@ -46,12 +46,12 @@ export function Header({ lang, onLang, status, canUndo, canRedo, onUndo, onRedo,
         <button type="button" aria-pressed={view === 'planta'} onClick={() => onView('planta')}>{t('plViewPlanta')}</button>
       </div>
       <div className="pl-grow" />
-      <div className="pl-status" role="status">{status.join(' · ')}</div>
+      <div className="pl-status" role="status" title={status.join(' · ') || undefined}>{status.join(' · ')}</div>
       <div className="pl-pair">
         <button type="button" className="pl-btn" disabled={!canUndo} onClick={onUndo} aria-label={t('plUndo')} title={t('plUndo') + ' (Ctrl+Z)'}>{ico('M6 4L2 8l4 4M2 8h9a5 5 0 010 10H8')}<span className="pl-lbl">{t('plUndo')}</span></button>
         <button type="button" className="pl-btn" disabled={!canRedo} onClick={onRedo} aria-label={t('plRedo')} title={t('plRedo') + ' (Ctrl+Shift+Z)'}>{ico('M12 4l4 4-4 4M16 8H7a5 5 0 000 10h3')}<span className="pl-lbl">{t('plRedo')}</span></button>
       </div>
-      <ImportButton onFile={onImportFile} className="pl-import" tour="import" />
+      <ImportButton onFile={onImportFile} className="pl-import" tour="import" icon />
       <button type="button" className="pl-btn pl-primary" data-tour="share" onClick={share}>{t('plShare')}</button>
       <span className="pl-copied" aria-live="polite">{copied ? t('plCopied') : ''}</span>
       {manual && <input className="pl-url" readOnly value={manual} aria-label={t('plShareLink')} onFocus={e => e.currentTarget.select()} ref={el => el?.select()} />}

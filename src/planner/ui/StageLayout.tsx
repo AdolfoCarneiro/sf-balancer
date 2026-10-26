@@ -235,7 +235,7 @@ export function BeltAdjust(p: Props & { beltKey: string; row: number }) {
             onCommit={v => set(setBelt(lay, key, { cut: v }))}
             after={<button type="button" className="pl-btn" disabled={recNow} onClick={() => set(info.recLayout())}>{t('plSvRecommended')}</button>} />
           {(exit === 'end' || why) && <p className="pl-note">{exit === 'end' ? t('plLayCutEnd') : why}</p>}
-          {exit !== 'end' && (
+          {info.splits && (
             <label className="pl-check pl-lay-check">
               <input type="checkbox" checked={!!edit?.even} onChange={e => set(setEven(lay, key, e.target.checked))} />
               <span>{t('plSvEven')} <small className="pl-dim">· {t('plSvEvenHint')}</small></span>

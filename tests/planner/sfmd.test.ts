@@ -6,6 +6,8 @@ import type { Block, ExtractorBlock, Factory, GameData, MinerBlock, RecipeBlock 
 import { parseMax, parseSfmd, type SfmdReport } from '../../src/planner/model/sfmd.ts';
 import { decodeFactory, encodeFactory } from '../../src/planner/model/factorystate.ts';
 import { MAP_GRID } from '../../src/planner/model/map/sizes.ts';
+import { CARD_MAX_M_PER_PX, blockCardSize } from '../../src/planner/model/map/cards.ts';
+import { solveFactory } from '../../src/planner/model/solve.ts';
 
 const data = game as GameData;
 // Exemplos do SatisfactorySolver (BSD-3, licença ao lado dos arquivos).
@@ -95,7 +97,9 @@ test('rocket fuel factory.sfmd: Outpost/Parent/ClockSpeed ignorados e listados, 
     { kind: 'max', name: 'Rocket Fuel Generator' },
   ]);
   // 200 m³/min no Resource Well Extractor (60 cada): 4 extratores dão 240, e o resumo diz.
-  assert.deepEqual(report.adjusted, [{ kind: 'extractorRate', name: 'Nitrogen Gas', rate: 200, count: 4, total: 240 }]);
+  // e os dois "13 1/3" Blenders, arredondados para 14 com o clock baixado.
+  const blend = { kind: 'machines', name: 'Turbo Blend Fuel', asked: 40 / 3, count: 14, clock: 95.2381 };
+  assert.deepEqual(report.adjusted, [blend, blend, { kind: 'extractorRate', name: 'Nitrogen Gas', rate: 200, count: 4, total: 240 }]);
   const byName = (n: string) => f.blocks.filter(b => b.kind === 'recipe' && data.recipes[b.recipe].name === n) as RecipeBlock[];
   // "13 1/3" Blenders: 14 máquinas a 95,24 % (a mesma vazão).
   for (const b of byName('Turbo Blend Fuel')) {
@@ -207,4 +211,36 @@ test('números ajustados: contagem fracionária, vazão acima do que os extrator
     { kind: 'clamp', name: 'Iron Ore', asked: 2000000, max: 1e6 },
   ]);
   assert.deepEqual(f.blocks.map(b => (b.kind === 'extractor' ? b.count : b.kind === 'miner' ? b.rate : (b as RecipeBlock).limits?.machines)), [3, 1, 10000, 1000, 1e6, 2]);
+});
+
+test('Max fracionário de receita ("13 1/5"): 14 máquinas a 94,29 % e o resumo diz; inteiro não entra em ajustados', () => {
+  const text = JSON.stringify({ Data: [{ Name: 'Iron Rod', Max: '13 1/5' }, { Name: 'Iron Plate', Max: '14' }] });
+  const { factory: f, report } = ok(text);
+  const [rod, plate] = f.blocks as RecipeBlock[];
+  assert.equal(rod.limits?.machines, 14);
+  assert.equal(rod.clock, 94.2857);
+  assert.equal(plate.limits?.machines, 14);
+  assert.equal(plate.clock, 100);
+  assert.deepEqual(report.adjusted, [{ kind: 'machines', name: 'Iron Rod', asked: 13.2, count: 14, clock: 94.2857 }]);
+});
+
+test('rocket fuel factory.sfmd: nenhum cartão da Montar em cima de outro em zoom nenhum, com o desenho do Modeler', () => {
+  const { factory: f } = ok(fixture('rocket fuel factory.sfmd'));
+  const flow = solveFactory(f, data);
+  // O maior que o cartão fica no mundo (de longe): sem cruzar assim, não cruza em zoom nenhum.
+  const rects = f.blocks.map(b => {
+    const p = f.montar![b.id], sz = blockCardSize(b, data, flow);
+    return { id: b.id, x0: p.x, y0: p.y, x1: p.x + sz.w * CARD_MAX_M_PER_PX, y1: p.y + sz.h * CARD_MAX_M_PER_PX };
+  });
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i], b = rects[j];
+      assert.ok(!(a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1), `${a.id} e ${b.id} se cruzam`);
+    }
+  }
+  // O desenho cresce por igual: quem estava à esquerda no Modeler continua à esquerda (ou na mesma coluna).
+  const raw = JSON.parse(fixture('rocket fuel factory.sfmd')).Data.filter((n: { Name: string }) => n.Name !== 'Outpost');
+  f.blocks.forEach((a, i) => f.blocks.forEach((b, j) => {
+    if (raw[i].X < raw[j].X) assert.ok(f.montar![a.id].x <= f.montar![b.id].x, `${a.id} à esquerda de ${b.id}`);
+  }));
 });

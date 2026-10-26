@@ -4,7 +4,7 @@
 import type { Block, Factory, GameData, ItemId, LigPlace, Link, StageId } from '../types.ts';
 import { groupLinks, type Meio } from '../meio.ts';
 import type { FlowResult } from '../solve.ts';
-import { PLANT_LIMITS, fit, type Camera, type ZoomLimits } from './camera.ts';
+import { PLANT_LIMITS, centerOn, fit, type Camera, type ZoomLimits } from './camera.ts';
 import { gateOf, toWorld, type Pt, type Rect } from './geo.ts';
 import type { Scene, SceneBlock } from './scene.ts';
 import { MAP_GRID } from './sizes.ts';
@@ -27,10 +27,14 @@ const mean = (ps: Pt[]): Pt | null => (ps.length ? [ps.reduce((s, p) => s + p[0]
 // Até MONTAR_FAR o cartão não fica abaixo de 70 % (60 % no celular); mais de longe ele segue o mapa (o tamanho no
 // mundo fica parado) e as portas e os chips somem, para ver a fábrica inteira.
 export const MONTAR_FAR = MONTAR_REF * 0.35;
+const CARD_LO = 0.7, CARD_LO_PHONE = 0.6;
 export const cardScale = (zoom: number, phone: boolean): number => {
-  const lo = phone ? 0.6 : 0.7;
+  const lo = phone ? CARD_LO_PHONE : CARD_LO;
   return zoom >= MONTAR_FAR ? clamp(zoom / MONTAR_REF, lo, 1.15) : lo * zoom / MONTAR_FAR;
 };
+// O maior tamanho do cartão no mundo, em metros por px do cartão a 100 %: de longe (zoom ≤ MONTAR_FAR) no desktop; em
+// qualquer outro zoom o cartão ocupa menos mundo.
+export const CARD_MAX_M_PER_PX = CARD_LO / MONTAR_FAR;
 // Montar (t < 0.5) de longe: sem portas nem chips na tela e no ponteiro.
 export const montarFar = (t: number, zoom: number): boolean => t < 0.5 && zoom < MONTAR_FAR;
 
@@ -182,6 +186,18 @@ export function chipWorld(cam: Camera, sx: number, sy: number, size: { w: number
 // mapa ainda aproxima).
 export const MONTAR_LIMITS: ZoomLimits = { min: PLANT_LIMITS.min, max: MONTAR_REF * 3 };
 export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMITS : PLANT_LIMITS);
+
+// Trocar de vista (v: a geometria da nova vista com a câmera de agora): a câmera fica se algum bloco aparece na tela
+// (vw × vh px); senão vai ao bloco selecionado (sel) no lugar dele na nova vista; sem ele, null (quem chama enquadra
+// tudo). As duas vistas têm posições próprias, então o centro de uma pode ser o vazio da outra.
+export function switchCam(v: ViewGeo, cam: Camera, vw: number, vh: number, sel: StageId | null): Camera | null {
+  const seen = (r: Rect) => r.x < vw && r.x + r.w > 0 && r.y < vh && r.y + r.h > 0;
+  if (!v.blocks.length || v.blocks.some(b => seen(b.rect))) return cam;
+  const b = sel ? v.blocks.find(x => x.id === sel) : undefined;
+  if (!b) return null;
+  const z = cam.zoom, r = b.rect;
+  return centerOn(cam, { x: cam.x + r.x / z, y: cam.y + r.y / z, w: r.w / z, h: r.h / z }, vw, vh);
+}
 
 // Do lado de fora de cada porta cabe o rótulo do estado ("sai 1.200/min", "faltam 120/min", "+330 sobrando"): sem essa
 // folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.

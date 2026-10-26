@@ -14,7 +14,7 @@ import {
   MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_RATE, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, minable, portsOf,
 } from './factory.ts';
 import { MAP_GRID, cleanPlace } from './map/sizes.ts';
-import { MONTAR_REF } from './map/cards.ts';
+import { CARD_MAX_M_PER_PX, MONTAR_REF, cardSize } from './map/cards.ts';
 
 export interface SfmdReport {
   blocks: number; links: number;
@@ -29,8 +29,10 @@ export interface SfmdReport {
 // name: sempre o nome cru do Modeler.
 export interface SfmdIgnored { kind: 'field' | 'setting' | 'outpost' | 'max' | 'noFlow' | 'waypoints'; name: string }
 // extractorRate: vazão pedida que não fecha em extratores inteiros (count × per = total); extractorCount: contagem
-// fracionária arredondada; clamp: acima do máximo da ferramenta (máquinas, extratores ou vazão).
+// fracionária arredondada; machines: máquinas fracionárias arredondadas para cima com o clock baixado (a mesma vazão);
+// clamp: acima do máximo da ferramenta (máquinas, extratores ou vazão).
 export type SfmdAdjusted =
+  | { kind: 'machines'; name: string; asked: number; count: number; clock: number }
   | { kind: 'extractorRate'; name: string; rate: number; count: number; total: number }
   | { kind: 'extractorCount'; name: string; asked: number; count: number }
   | { kind: 'clamp'; name: string; asked: number; max: number };
@@ -142,7 +144,10 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
     let machines: number | null = null, clock = 100;
     if (max !== null) {
       machines = upTo(max, MAX_MACHINES, name, adj);
-      if (max < machines) clock = clamp(Math.round(max / machines * 1e6) / 1e4, 1, 250);
+      if (max < machines - EPS) {
+        clock = clamp(Math.round(max / machines * 1e6) / 1e4, 1, 250);
+        adj.push({ kind: 'machines', name, asked: max, count: machines, clock });
+      }
     }
     return { kind: 'block', block: { kind: 'recipe', recipe, clock, perRow: null, tiers: {}, ...(machines !== null ? { limits: { machines } } : {}) }, used: [], adj };
   }
@@ -177,21 +182,51 @@ function inputRefs(raw: unknown): { refs: Ref[]; extra: boolean } {
 // Escala das posições: o cartão da Montar (CARD_W px a 100 %, MONTAR_REF px por metro) contra o nó do Modeler; 2 px
 // nossos por px do Modeler: o vão entre colunas (≈ 240 px lá) passa de um cartão e o de linhas (≈ 110 px) cabe um cartão médio.
 const PX_PER_MODELER = 2;
-// Posições do Modeler em metros na grade de 8 m, a partir de (0, 0), sem dois blocos no mesmo ponto.
-export function modelerPlaces(pts: { id: StageId; x: number; y: number }[]): Record<StageId, MapPlace> {
-  const s = PX_PER_MODELER / MONTAR_REF;
+// Folga entre cartões (m).
+const GAP = MAP_GRID, MAX_SPREAD = 3;
+// Posições do Modeler em metros na grade de 8 m, a partir de (0, 0). w/h: o cartão da Montar a 100 % (px), que no mundo
+// chega a w × CARD_MAX_M_PER_PX (de longe). Primeiro o desenho todo cresce por igual (até MAX_SPREAD vezes) o bastante
+// para cada par de cartões ficar lado a lado ou um em cima do outro sem se tocar, então o desenho relativo do Modeler fica;
+// o que ainda cair em cima de outro (nós empilhados no Modeler, arredondamento da grade) desce na grade até ficar livre,
+// de cima para baixo.
+export function modelerPlaces(pts: { id: StageId; x: number; y: number; w?: number; h?: number }[]): Record<StageId, MapPlace> {
+  const s0 = PX_PER_MODELER / MONTAR_REF;
+  const size = (p: { w?: number; h?: number }) => ({ w: (p.w ?? 0) * CARD_MAX_M_PER_PX, h: (p.h ?? 0) * CARD_MAX_M_PER_PX });
+  let k = 1;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const a = pts[i], b = pts[j], dx = (b.x - a.x) * s0, dy = (b.y - a.y) * s0;
+      const needX = dx ? (size(dx > 0 ? a : b).w + GAP) / Math.abs(dx) : Infinity;
+      const needY = dy ? (size(dy > 0 ? a : b).h + GAP) / Math.abs(dy) : Infinity;
+      k = Math.max(k, Math.min(needX, needY, MAX_SPREAD));
+    }
+  }
+  const s = s0 * k;
   const x0 = Math.min(...pts.map(p => p.x)), y0 = Math.min(...pts.map(p => p.y));
   const snap = (v: number) => Math.round(v * s / MAP_GRID) * MAP_GRID;
-  const taken = new Set<string>(), out: Record<StageId, MapPlace> = {};
-  for (const p of pts) {
-    const x = snap(p.x - x0);
-    let y = snap(p.y - y0);
-    while (taken.has(`${x},${y}`)) y += MAP_GRID;
-    taken.add(`${x},${y}`);
+  const placed: { x0: number; y0: number; x1: number; y1: number }[] = [], out: Record<StageId, MapPlace> = {};
+  const order = pts.map(p => ({ p, x: snap(p.x - x0), y: snap(p.y - y0) })).sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const { p, x, y: y1 } of order) {
+    const { w, h } = size(p);
+    const box = (y: number) => ({ x0: x - GAP / 2, y0: y - GAP / 2, x1: x + w + GAP / 2, y1: y + h + GAP / 2 });
+    const hits = (b: ReturnType<typeof box>) => placed.some(q => b.x0 < q.x1 && q.x0 < b.x1 && b.y0 < q.y1 && q.y0 < b.y1);
+    let y = y1;
+    // Sem tamanho (w = h = 0) a caixa é só a folga: dois no mesmo ponto continuam sem caber.
+    while (hits(box(y))) y += MAP_GRID;
+    placed.push(box(y));
     const place = cleanPlace({ x, y, rot: 0 });
     if (place) out[p.id] = place;
   }
   return out;
+}
+
+// O cartão da Montar de um bloco importado (px a 100 %), como o cardSpec: receita pelos itens da receita, Miner e
+// extrator com uma saída, e as sobras com uma entrada por item que chega pelas ligações.
+function importedCard(f: Factory, b: Block, d: GameData): { w: number; h: number } {
+  const uniq = (xs: string[]) => new Set(xs).size;
+  if (b.kind === 'recipe') { const r = d.recipes[b.recipe]; return cardSize('recipe', uniq(r.ins.map(x => x.item)), uniq(r.outs.map(x => x.item))); }
+  if (b.kind === 'miner' || b.kind === 'extractor') return cardSize('marker', 0, 1);
+  return cardSize('marker', uniq(f.links.filter(l => l.to === b.id).map(l => l.item)), 0);
 }
 
 export function parseSfmd(text: string, d: GameData): SfmdResult {
@@ -255,7 +290,10 @@ export function parseSfmd(text: string, d: GameData): SfmdResult {
   });
 
   // Posições do Modeler só na Montar; a Planta (`map` vazio) fica com a proposta automática.
-  if (pts.length) f = { ...f, montar: modelerPlaces(pts) };
+  if (pts.length) {
+    const byId = new Map(f.blocks.map(b => [b.id, b]));
+    f = { ...f, montar: modelerPlaces(pts.map(p => ({ ...p, ...importedCard(f, byId.get(p.id)!, d) }))) };
+  }
   report.blocks = f.blocks.length;
   report.links = f.links.length;
   return { factory: f, report };

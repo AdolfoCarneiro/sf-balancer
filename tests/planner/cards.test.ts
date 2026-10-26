@@ -14,7 +14,7 @@ import { arrange } from '../../src/planner/model/layout.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  MONTAR_FAR, MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, viewGeo, viewHit, viewLimits, montarFar,
+  MONTAR_FAR, MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, switchCam, viewGeo, viewHit, viewLimits, montarFar,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -299,4 +299,24 @@ test('Montar e Planta com posições próprias: o cartão no lugar da Montar, o 
   const wf = view(f, 0), b1 = montarBounds(wf.scene, f, data, wf.flow, MONTAR_REF, false);
   assert.ok(b1.x + b1.w >= base.x + 80 + CARD_W / MONTAR_REF);
   assert.ok(b1.y + b1.h > base.y + 40);
+});
+
+test('trocar de vista: a câmera fica se algum bloco aparece; senão vai ao selecionado na nova vista, ou enquadra (null)', () => {
+  // A Montar longe da Planta (como depois de importar): a câmera da Planta cai no vazio da Montar.
+  const f: Factory = { ...ex, montar: Object.fromEntries(ex.blocks.map((b, i) => [b.id, { x: 2000 + i * 80, y: 2000, rot: 0 }])) };
+  const W = 1280, H = 720;
+  const { v: planta } = view(f, 1);
+  assert.ok(planta.blocks.some(b => b.rect.x < W && b.rect.x + b.rect.w > 0 && b.rect.y < H && b.rect.y + b.rect.h > 0));
+  assert.equal(switchCam(planta, CAM, W, H, null), CAM);
+  const { v: montar } = view(f, 0);
+  assert.equal(switchCam(montar, CAM, W, H, null), null);
+  // Com s1 selecionado: o cartão dele no meio da tela, no mesmo zoom.
+  const c = switchCam(montar, CAM, W, H, 's1')!;
+  assert.equal(c.zoom, CAM.zoom);
+  const { v: after } = view(f, 0, undefined, c);
+  const r = after.blocks.find(b => b.id === 's1')!.rect;
+  near(r.x + r.w / 2, W / 2);
+  near(r.y + r.h / 2, H / 2);
+  // Fábrica vazia: nada a procurar, a câmera fica.
+  assert.equal(switchCam({ blocks: [], ports: [], chips: [] }, CAM, W, H, null), CAM);
 });

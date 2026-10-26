@@ -116,7 +116,8 @@ export function App() {
   const mapRef = useRef<MapViewHandle>(null);
   // Importar do Modeler: o arquivo escolhido (no topo ou no painel), o resumo e o aviso moram aqui.
   const [impFile, setImpFile] = useState<File | null>(null);
-  const impToast = useImportToast();
+  // O loop travado só conta com o fluxo da fábrica nova já calculado (pending: ainda é o da anterior).
+  const impToast = useImportToast(!pending && flow.deadlock.length > 0);
   const importFactory = (nf: Factory, r: SfmdReport) => {
     setOpenStage(null);
     mapRef.current?.importFactory(nf);

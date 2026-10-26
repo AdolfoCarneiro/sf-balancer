@@ -87,7 +87,14 @@ export function Tour() {
     const on = (e: Event) => start((e as CustomEvent<TourArea | null>).detail);
     window.addEventListener(OPEN_EVENT, on);
     const timer = readSeen() ? 0 : window.setTimeout(() => { if (!runRef.current && !readSeen()) start(null); }, FIRST_DELAY_MS);
-    return () => { window.removeEventListener(OPEN_EVENT, on); clearTimeout(timer); };
+    // Quem já começou a mexer (ponteiro ou tecla) antes do tutorial aparecer não é interrompido por ele nesta visita.
+    const cancel = () => clearTimeout(timer);
+    const opts = { capture: true, once: true } as const;
+    if (timer) { window.addEventListener('pointerdown', cancel, opts); window.addEventListener('keydown', cancel, opts); }
+    return () => {
+      window.removeEventListener(OPEN_EVENT, on); clearTimeout(timer);
+      window.removeEventListener('pointerdown', cancel, opts); window.removeEventListener('keydown', cancel, opts);
+    };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const finish = (how: 'done' | 'skipped') => {

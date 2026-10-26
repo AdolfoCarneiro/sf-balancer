@@ -10,6 +10,7 @@ import { recipesFor } from '../model/search.ts';
 import { arrange } from '../model/layout.ts';
 import { joinState, moveRow, setBelt, setEven, toggleJoin, toggleRow, sharedKeyOf } from '../model/layoutedit.ts';
 import { suggestedPerRow } from '../model/stage.ts';
+import { beltInfo } from '../model/stagebelt.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData, Layout, Recipe, RecipeBlock, Stage } from '../model/types.ts';
 import { rateText } from './format.ts';
@@ -130,7 +131,7 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
     const shared = sharedKeyOf(stage, data, lay) === key, defExit = shared ? 'down' : 'end';
     const next = EXITS[(EXITS.indexOf(exit) + 1) % EXITS.length];
     const join = joinState(arr, lay, key, live.row);
-    const even = !!lay?.belts?.[key]?.even;
+    const even = !!lay?.belts?.[key]?.even, splits = !!beltInfo(stage, data, arr, key)?.splits;
     const focusCut = () => {
       if (sheet === 'peek' && phone()) setSheet('half');
       requestAnimationFrame(() => document.getElementById(CUT_ID)?.focus());
@@ -140,7 +141,7 @@ export function StageView({ block, stage, factory, flow, data, dispatch, onClose
         {exit !== 'end' && <button type="button" className="pl-btn" onClick={focusCut}>{t('plSvCutAct')}</button>}
         <button type="button" className="pl-btn" aria-label={t('plSvExitNext', exitLabel(side, exit), exitLabel(side, next))}
           onClick={() => set(setBelt(lay, key, { exit: next === defExit ? null : next }))}>{exitLabel(side, exit)}</button>
-        {exit !== 'end' && <button type="button" className="pl-btn" aria-pressed={even} onClick={() => set(setEven(lay, key, !even))}>{t('plSvEven')}</button>}
+        {splits && <button type="button" className="pl-btn" aria-pressed={even} onClick={() => set(setEven(lay, key, !even))}>{t('plSvEven')}</button>}
         {join && <button type="button" className="pl-btn" aria-pressed={join === 'joined'}
           onClick={() => set(toggleJoin(lay, `${key}@${live.row}`))}>{t(join === 'joined' ? 'plSvUnjoinShort' : 'plSvJoinShort')}</button>}
       </div>

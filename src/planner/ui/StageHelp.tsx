@@ -13,5 +13,5 @@ export function StageHelp({ items }: { items: { name: string; color: string }[] 
       <li className="pl-dim">{t('plSvFoundation')}</li>
     </ul>
   ));
-  return <TourHelp area="stage" className="pl-sv-help" tour="stage-help" />;
+  return <TourHelp area="stage" tour="stage-help" />;
 }
