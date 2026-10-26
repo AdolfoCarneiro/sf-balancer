@@ -9,10 +9,17 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 - Vai surgindo jogando. Cada caso esquisito vira um teste em `tests/logic.test.js`, partindo do link do cenário (`#s=`) ou do botão de reportar no GitHub.
 - **Smart / Programmable Splitter (Overflow, Any):** em alguns cenários pode resolver com menos peças que um balancer exato. Confirmar a mecânica antes de implementar.
 
-### 2. Planner 2D: fases 1 e 2 (mapa) feitas
+### 2. Builder (planner 2D): fases 1, 2 e 3 feitas
 
-- Spec: [`docs/superpowers/specs/2026-10-25-planner-2d-design.md`](superpowers/specs/2026-10-25-planner-2d-design.md). A fase 1 (cadeia em grafo, meio nas ligações, etapa aberta) e a fase 2 (aba Mapa, em escala, com arrastar/girar e avisos) estão em `/planner`.
-- **Ficou para a fase 4:** andares (o mapa é plano), portas reais dos prédios e entradas de um mesmo prédio em lados diferentes por item.
+- Specs: [`2026-10-25-planner-2d-design.md`](superpowers/specs/2026-10-25-planner-2d-design.md) (fase 1: cadeia, meio nas ligações, etapa aberta), [`…-fase2-design.md`](superpowers/specs/2026-10-25-planner-2d-fase2-design.md) (fase 2: mapa em escala) e [`…-fase3-design.md`](superpowers/specs/2026-10-25-planner-2d-fase3-design.md) (fase 3: montar como no Modeler, fluxo físico, ligação arrastável com modal, origens e sobras, ícones). O builder é a página inicial (`/`) e a ferramenta original foi para `/balancer`.
+- **Fase 4 (próxima):**
+  - Outros jeitos de montar as fileiras: Mergers no meio da fileira, uma entrada e duas saídas.
+  - Portas reais dos prédios (e entradas de um mesmo prédio em lados diferentes por item).
+  - Andares (o mapa é plano).
+  - Blueprint Designer no mapa do builder (as marcações já existem na planta da biblioteca do Balancer).
+- **Medidas reais de Miner, extratores (Water, Oil, Resource Well) e Container:** hoje são marcadores de 8×8 m rotulados "fora de escala". Pergunta ao dono (não chutar).
+- **Ficou de fora da fase 3:** copiar e colar, seleção múltipla, gerar a cadeia pela meta no mesmo canvas (só como ajuda, nunca o fluxo principal), importar `.sfmd` (falta um arquivo de exemplo), energia, somersloop, sub-fábricas.
+- **Adiados das revisões da fase 3 (pequenos):** "Propor de novo" também deveria soltar as ligações postas; ligação colada fora da grade pula até 4 m no primeiro empurrão; o seletor pode perder o foco sem fechar; `model/picker.ts` importa de `ui/icons.ts`; nomes de receita forçados podem cobrir vizinhos; o desenho proposto para fábricas grandes cruza muita esteira (10 blocos de 200 máquinas: colunas de ~1,4 km e 1.753 cruzamentos, mesmo com "Propor de novo") até o usuário arrumar.
 - **Conhecido:** a borboleta com loop é desenhada plana (a pegada fica maior que a real, rotulada "N andares"); os tamanhos das peças de fluido (cano, Junction, Valve) são estimativas e vêm marcados como tal.
 - Ideia original da planta:
 

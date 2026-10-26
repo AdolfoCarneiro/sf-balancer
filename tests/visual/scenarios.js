@@ -27,6 +27,21 @@ const settle = async pg => {
     prev = cur;
   }
 };
+// Builder pronto: a cena exposta com ?debug=1 e todas as ligações com a montagem calculada.
+const BUILDER_STORE = ['sf-balancer:planner', 'sf-balancer:planner-map-hint', 'sf-balancer:planner-legend'];
+const builderReady = async pg => {
+  await pg.waitForFunction(() => window.__sfPlanner && window.__sfPlanner.scene.meios.every(m => m.geo), null, { timeout: 15000 });
+  await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await pg.waitForTimeout(300);
+};
+const blockRect = (pg, id) => pg.evaluate(i => window.__sfPlanner.scene.blocks.find(b => b.stage === i).rect, id);
+const blockCenter = async (pg, id) => { const r = await blockRect(pg, id); return [r.x + r.w / 2, r.y + r.h / 2]; };
+// Ponto do mundo (m) -> clique na tela, pela câmera do último quadro.
+const clickWorld = async (pg, [wx, wy], opts) => {
+  const box = await pg.locator('canvas.pl-map-canvas').boundingBox();
+  const c = await pg.evaluate(() => window.__sfPlanner.cam);
+  await pg.mouse.click(box.x + (wx - c.x) * c.zoom, box.y + (wy - c.y) * c.zoom, opts);
+};
 const toLibrary = pg => pg.locator('#library').scrollIntoViewIfNeeded();
 
 export const scenarios = [
@@ -77,34 +92,59 @@ export const scenarios = [
       await pg.waitForTimeout(2500);
     },
   },
-  // Builder (/; o Balancer em /balancer.html: o vite preview não serve /balancer sem a extensão). localStorage limpo = exemplo carregado.
-  { name: 'planner', path: '/', viewport: DESKTOP, clearStore: 'sf-balancer:planner', actions: async pg => { await pg.waitForSelector('.react-flow__node-stage'); } },
+  // Builder (/, index.html; o Balancer fica em /balancer.html porque o vite preview não serve /balancer sem a extensão).
+  // localStorage limpo = exemplo carregado. ?debug=1 liga window.__sfPlanner (cena, câmera e portas) para achar o ponto.
+  { name: 'builder', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: async pg => { await builderReady(pg); } },
   {
-    name: 'planner-etapa', path: '/', viewport: DESKTOP, clearStore: 'sf-balancer:planner',
+    // Bloco selecionado (Solid Steel Ingot, o s2 do exemplo): painel do bloco e cantoneiras.
+    name: 'builder-bloco', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => { await builderReady(pg); await clickWorld(pg, await blockCenter(pg, 's2')); await builderReady(pg); },
+  },
+  {
+    // Seletor aberto por duplo clique no vazio (abaixo do primeiro bloco).
+    name: 'builder-seletor', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
     actions: async pg => {
-      await pg.waitForSelector('.react-flow__node-stage');
-      const f = pg.locator('.react-flow__node-stage', { hasText: 'Foundry' });
-      await (await f.count() ? f.first() : pg.locator('.react-flow__node-stage').last()).dblclick();
-      await pg.waitForTimeout(500);
+      await builderReady(pg);
+      const r = await blockRect(pg, 's1');
+      await clickWorld(pg, [r.x + r.w / 2, r.y + r.h + 24], { clickCount: 2 });
+      await pg.waitForSelector('.pl-pick');
+      await pg.waitForTimeout(300);
     },
   },
   {
-    // O mapa abre pela aba do cabeçalho; limpa também a vista lembrada. Espera o canvas e um quadro desenhado.
-    name: 'planner-mapa', path: '/', viewport: DESKTOP, clearStore: ['sf-balancer:planner', 'sf-balancer:planner-view', 'sf-balancer:planner-map-hint'],
+    // Seletor só no teclado: o botão "+ bloco" (Enter), busca digitada e setas.
+    name: 'builder-seletor-teclado', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
     actions: async pg => {
-      await pg.waitForSelector('.react-flow__node-stage');
-      await pg.locator('[role=tablist] [data-view=map]').click();
-      await pg.waitForSelector('canvas.pl-map-canvas');
-      await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await pg.waitForTimeout(800);
+      await builderReady(pg);
+      await pg.focus('.pl-map-add');
+      await pg.keyboard.press('Enter');
+      await pg.waitForSelector('.pl-pick-in');
+      await pg.keyboard.type('iron');
+      await pg.keyboard.press('ArrowDown');
+      await pg.keyboard.press('ArrowDown');
+      await pg.waitForTimeout(300);
+    },
+  },
+  {
+    // Clique na ligação do ferro (s1 > s2): o modal com o desenho do fluxo.
+    name: 'builder-ligacao', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE,
+    actions: async pg => {
+      await builderReady(pg);
+      const r = await pg.evaluate(() => window.__sfPlanner.scene.meios.find(m => m.meio.startsWith('Desc_IronIngot_C')).rect);
+      await clickWorld(pg, [r.x + r.w / 2, r.y + r.h / 2]);
+      await pg.waitForSelector('dialog.pl-lig[open] .pl-lig-svg svg', { timeout: 10000 });
+      await pg.waitForTimeout(300);
     },
   },
 ];
 
-// Rotas reais (/pt e /es): só existem com o servidor aplicando as rewrites do vercel.json.
+// Rotas reais (/pt, /es e /pt/balancer, /es/balancer): só existem com o servidor aplicando as rewrites do vercel.json
+// (docker compose, ou o site).
 export const routeScenarios = [
-  { name: 'rota-pt', path: '/pt/balancer', lang: 'pt', viewport: DESKTOP, actions: async () => {} },
-  { name: 'rota-es', path: '/es/balancer', lang: 'es', viewport: DESKTOP, actions: async () => {} },
+  { name: 'rota-pt', path: '/pt?debug=1', lang: 'pt', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: builderReady },
+  { name: 'rota-es', path: '/es?debug=1', lang: 'es', viewport: DESKTOP, clearStore: BUILDER_STORE, actions: builderReady },
+  { name: 'rota-pt-balancer', path: '/pt/balancer', lang: 'pt', viewport: DESKTOP, actions: async () => {} },
+  { name: 'rota-es-balancer', path: '/es/balancer', lang: 'es', viewport: DESKTOP, actions: async () => {} },
 ];
 
 export const LANGS = ['pt', 'en', 'es'];

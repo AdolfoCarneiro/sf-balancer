@@ -2,9 +2,9 @@
 
 # SF Balancer
 
-**Belt balancer & logistics planner for [Satisfactory](https://www.satisfactorygame.com/)**
+**Factory planner & belt balancer for [Satisfactory](https://www.satisfactorygame.com/)**
 
-Your production planner tells you how many machines. This tells you how to wire them.
+Build the chain like in your production planner, see it to scale, and get how to wire it.
 
 [**Open the planner →**](https://sf-balancer.vercel.app)
 
@@ -24,7 +24,21 @@ One stage of your factory makes **6 lines of 455/min** (7 refineries each). The 
 
 You can do that math by hand every time, or you can type the machine counts and let the planner draw it.
 
-## What it does
+## The factory builder (home page)
+
+Open the site and you land on the builder: build the factory block by block, like in Satisfactory Modeler, except every block is already its rows of machines to scale on an 8 m foundation grid.
+
+- **Build with the Modeler's gestures.** Double-click (or right-click) empty space to open the recipe picker right there (search, icons, arrow keys + Enter). Drag from a block's port to empty space and the picker opens filtered to the recipes that take (or make) that item; the new block is born connected. Drop on a matching port to just connect. Delete removes, arrows move 8 m, R rotates, Ctrl+Z undoes.
+- **Numbers like the Modeler, with the physical flow.** A new block consumes what reaches it; fix machines or an input rate when you want. Shortage shows in red on the port, backed-up surplus in green, and freed surplus flows to the other branches. A byproduct with nowhere to go stalls its block, as in the game. Loops (recycled rubber and plastic) are fine, and a deadlocked loop is pointed out.
+- **Sources and outlets.** Miner (type what it gives), Water, Oil and Resource Well extractors (it says how many you need, with purity where the game has it), and Awesome Sink, Container and Export blocks to take the surplus on purpose.
+- **Connections.** Each link between blocks is a Connection on the map: the belts, Mergers, Splitters and balancer it needs, drawn to scale and draggable. Click it to see the animated flow, the alternative layouts, the step-by-step build, or open it in the Balancer.
+- Saved in your browser, shared with a link. Old `/planner` links and shared factories still open.
+
+Game icons and data come from the game files: © Coffee Stain Studios.
+
+## The Balancer (`/balancer`)
+
+The original tool, for one connection typed by hand: rates in, belts, splitters, mergers and balancers out. Old `#s=` scenario links open it.
 
 - **Groups machines into belt lines.** Machines per line = belt capacity ÷ rate per machine, rounded down. On the destination the machines are split into equal lines (14 that fit 8 per line become 7 + 7), and each group keeps its own lines. Editable, with a warning when you overload a belt.
 - **Connects the lines.** Lists every layout it finds, best first: direct, merging whole lines, a donor line split into equal parts, or a Smart Splitter overflow passing excess to a line that's short. Choose what happens to the excess: back up at the source (machines slow down) or go to the Awesome Sink, in which case the recommended layout fills every destination with nothing backed up, using a Smart Splitter at the exit of each line with surplus.
@@ -43,10 +57,6 @@ You can do that math by hand every time, or you can type the machine counts and 
 - **Explains itself.** Every field and result has a `?` with a short explanation, and there's a "How it works" section at the bottom.
 - **Three languages:** English, Português (Brasil) and Español.
 
-## Planner 2D (beta)
-
-A separate page, `/planner`, links several recipe stages into a chain and shows the middle of each link (the same logic as the main tool), with a button that opens the tool already filled in. Open a stage to see its machine rows to scale. The Map tab lays the whole chain out on a top-down map to scale (8 m foundation grid): drag and rotate blocks, belts and each link's middle drawn between them, with overlap and belt-crossing warnings; each block and middle shows its size in meters and foundations, and the gap between a middle's pieces is adjustable (phase 2). The game data is generated from the game's Docs (`node scripts/gamedata.mjs <en-US.json>`).
-
 ## Game rules it follows
 
 | Piece | Behavior |
@@ -58,7 +68,7 @@ A separate page, `/planner`, links several recipe stages into a chain and shows 
 | Awesome Sink | Takes any leftover item. Backing up at the source is fine too: the machines just slow down. It doesn't take fluids. |
 | Pipes | Pipeline Mk1 300, Mk2 600 m³/min. No splitter: a Pipeline Junction (4 ports) joins or divides and the fluid goes wherever there's room, with no guarantee of equal parts. For an exact flow, use a Valve. |
 
-The planner knows no recipes. You type the rates from your production planner or the game.
+The Balancer knows no recipes: you type the rates from your production planner or the game. The builder uses the game's recipes.
 
 ## Running it locally
 
@@ -72,29 +82,33 @@ npm run dev       # local dev server
 npm run build     # production build into dist/
 ```
 
-Tests (logic and i18n):
+Tests (logic, i18n and the builder's model), the builder's type check and an end-to-end smoke of its gestures against the preview:
 
 ```bash
 npm test
+npm run typecheck
+npm run build && npm run preview   # then, in another terminal:
+npm run smoke -- http://localhost:4173
 ```
 
-To try it as in production (nginx serving the build, with the `/pt`, `/es` routes), run `docker compose up --build` and open http://localhost:8080. Clean up with `docker compose down --rmi local`.
+To try it as in production (nginx serving the build, with the `/pt`, `/es`, `/balancer`, `/pt/balancer` and `/es/balancer` routes), run `docker compose up --build` and open http://localhost:8080. Clean up with `docker compose down --rmi local`.
 
 ## How the code is organized
 
 ```
-index.html            base HTML (in English, for search engines)
-planner.html         2D planner entry (React + TypeScript)
-src/planner/          planner: model/ (pure; model/map/ is the map scene), worker/ (middles off the main thread) and ui/
-src/main.js           entry point
+index.html            the builder (React + TypeScript; base HTML in English, for search engines)
+balancer.html         the Balancer (plain JavaScript)
+src/planner/          builder: model/ (pure: factory state, flow solver, map scene), worker/ (solver and connections off the main thread) and ui/
+src/main.js           Balancer entry point
 src/logic/            pure functions, no DOM (grouping, case classification, splitter trees, flow simulation)
 src/i18n/             texts in pt, en and es
 src/ui/               interface
 src/view3d/           3D scene (three.js, loaded only when the 3D tab opens)
 src/styles/main.css   styles
-public/               static files (favicon, og.png, robots.txt, sitemap.xml)
+public/               static files (favicon, og.png, robots.txt, sitemap.xml, game icons in icons/)
 tests/                logic tests and the visual comparison harness
-vercel.json           build, headers, CSP and /pt, /es routes
+vercel.json           build, headers, CSP, routes and redirects
+scripts/              game data and icons generators (gamedata.mjs, icons.mjs; run by hand, not in the build)
 Dockerfile, nginx.conf, docker-compose.yml   local production-like test (nginx serving dist/)
 ```
 
@@ -104,7 +118,7 @@ The logic is pure functions imported straight by the tests in Node, so the UI ne
 
 Issues and pull requests are welcome. A few rules keep the project healthy:
 
-1. **Plain JavaScript, no framework.** ES modules built with Vite; `src/logic` stays free of the DOM.
+1. **Keep the layers.** The Balancer is plain JavaScript and the builder is React + TypeScript, both built with Vite; `src/logic` and `src/planner/model` stay free of the DOM.
 2. **Every visible text exists in three languages.** Strings live in `src/i18n/` (`pt.js`, `en.js`, `es.js`) and are read with `t('key')`. A new key goes into all three in the same change; the test `idiomas: as mesmas chaves...` fails otherwise.
 3. **Logic goes in pure functions with tests.** Add a test case to `tests/logic.test.js` for any new layout or rule.
 4. **Don't invent game mechanics.** If you're not sure how a piece behaves in the game, open an issue first.
@@ -117,4 +131,4 @@ If the tool saved you some math, you can [buy me a coffee on Ko-fi](https://ko-f
 
 ## License
 
-[MIT](LICENSE). Fan-made tool, not affiliated with Coffee Stain Studios. Satisfactory is a trademark of Coffee Stain Studios.
+[MIT](LICENSE). Fan-made tool, not affiliated with Coffee Stain Studios. Satisfactory is a trademark of Coffee Stain Studios; the game icons and data in the builder are © Coffee Stain Studios.

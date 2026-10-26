@@ -50,6 +50,9 @@ const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
 const HINT_STORE = 'sf-balancer:planner-map-hint';
 const LEGEND_STORE = 'sf-balancer:planner-legend';   // legenda aberta ou fechada (lembrado neste navegador)
 const PORT_PX = 8;   // raio de pegar uma porta, em px de tela
+// Gancho de teste (tests/visual/smoke.js): a cena, a câmera e as portas do último quadro em window.__sfPlanner; só com
+// ?debug=1 ou no servidor de desenvolvimento.
+const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 const NOTICE_MS = 3500;
 const WHY = { self: 'plLinkWhySelf', item: 'plLinkWhyItem', dup: 'plLinkWhyDup', fluidSink: 'plLinkWhyFluidSink' } as const;
 export const portKey = (p: ScenePort): string => `${p.block}|${p.side}|${p.item}`;
@@ -188,8 +191,8 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
   }, [selected, hover, colors, theme, f, flow, data, results, meioList, lang, ports, hoverPort, wire, lit, badges]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desenho num requestAnimationFrame: vários pedidos no mesmo quadro viram um desenho só.
-  const latest = useRef({ scene, opts });
-  latest.current = { scene, opts };
+  const latest = useRef({ scene, opts, ports });
+  latest.current = { scene, opts, ports };
   const frame = useRef(0);
   const draw = () => {
     frame.current = 0;
@@ -200,6 +203,7 @@ export function MapView({ factory: f, flow, data, lang, meioList, results, selec
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawScene(ctx, sc, c, size.current.w, size.current.h, o);
     el.dataset.cam = `${c.x.toFixed(2)},${c.y.toFixed(2)},${c.zoom.toFixed(4)}`;
+    if (DEBUG) (window as unknown as { __sfPlanner: unknown }).__sfPlanner = { scene: sc, cam: c, ports: latest.current.ports };
   };
   const request = () => { if (!frame.current) frame.current = requestAnimationFrame(draw); };
   redraw.current = request;

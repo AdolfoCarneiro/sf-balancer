@@ -2,9 +2,9 @@
 
 # SF Balancer
 
-**Balanceador de cintas y planificador de logística para [Satisfactory](https://www.satisfactorygame.com/)**
+**Planificador de fábricas y balanceador de cintas para [Satisfactory](https://www.satisfactorygame.com/)**
 
-Tu planificador te dice cuántas máquinas. Esto te dice cómo conectarlas.
+Arma la cadena como en tu planificador, mírala a escala y descubre cómo conectarla.
 
 [**Abrir el planificador →**](https://sf-balancer.vercel.app/es)
 
@@ -24,7 +24,21 @@ Una etapa de la fábrica entrega **6 líneas de 455/min** (7 refinerías cada un
 
 Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el planificador lo dibuje.
 
-## Qué hace
+## El constructor de fábricas (página de inicio)
+
+Al abrir el sitio llegas al constructor: arma la fábrica bloque a bloque, como en Satisfactory Modeler, solo que cada bloque ya son sus filas de máquinas a escala, en la cuadrícula de cimientos de 8 m.
+
+- **Arma con los gestos del Modeler.** Doble clic (o clic derecho) en un espacio vacío abre ahí mismo el selector de recetas (búsqueda, iconos, flechas + Enter). Arrastra desde el puerto de un bloque a un espacio vacío y el selector se abre filtrado en las recetas que consumen (o producen) ese ítem; el bloque nuevo nace conectado. Si lo sueltas en un puerto compatible, solo conecta. Supr borra, las flechas mueven 8 m, R gira, Ctrl+Z deshace.
+- **Números como en el Modeler, con el flujo físico.** El bloque nuevo consume lo que le llega; fija máquinas o la entrada cuando quieras. Lo que falta aparece en rojo en el puerto, el excedente retenido en verde, y el excedente liberado va a las otras ramas. Un subproducto sin salida atasca su bloque, como en el juego. Los bucles (goma y plástico reciclados) funcionan, y se señala el bucle atascado.
+- **Orígenes y excedentes.** Miner (escribes cuánto sale), extractores de agua, petróleo y Resource Well (te dice cuántos hacen falta, con pureza donde el juego la tiene) y los bloques Awesome Sink, Container y Salida para recibir el excedente a propósito.
+- **Conexiones.** Cada enlace entre bloques es una pieza del mapa: las cintas, Mergers, Splitters y el balanceador que necesita, a escala y arrastrable. Haz clic para ver el flujo animado, los montajes alternativos, el paso a paso o abrirla en el Balancer.
+- Se guarda en tu navegador y se comparte con un enlace. Los enlaces antiguos de `/planner` y las fábricas compartidas siguen abriendo.
+
+Los iconos y datos vienen de los archivos del juego: © Coffee Stain Studios.
+
+## El Balancer (`/es/balancer`)
+
+La herramienta original, para una conexión escrita a mano: entran las tasas, salen cintas, splitters, mergers y balanceadores. Los enlaces antiguos de escenario (`#s=`) abren en ella.
 
 - **Agrupa las máquinas en líneas de cinta.** Máquinas por línea = capacidad de la cinta ÷ tasa por máquina, redondeado hacia abajo. En el destino las máquinas se dividen en líneas iguales (14 que caben 8 por línea quedan en 7 + 7), y cada grupo tiene sus propias líneas. Editable, con aviso cuando la cinta se pasa.
 - **Conecta las líneas.** Lista todos los montajes que encuentra, el mejor primero: directo, juntando líneas enteras, una línea donante dividida en partes iguales, o el overflow de un Smart Splitter pasando el exceso a una línea a la que le falta. Eliges qué pasa con el exceso: se retiene en el origen (las máquinas se frenan) o va al Awesome Sink, y entonces la recomendada llena todos los destinos sin retener nada, con un Smart Splitter a la salida de cada línea que sobra.
@@ -43,10 +57,6 @@ Puedes hacer esa cuenta a mano cada vez, o escribir las máquinas y dejar que el
 - **Se explica.** Cada campo y cada resultado tiene un `?` con una explicación corta, y al final de la página está la sección "Cómo funciona".
 - **Tres idiomas:** English, Português (Brasil) y Español.
 
-## Planner 2D (beta)
-
-Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra el medio de cada enlace (la misma lógica de la herramienta), con un botón que abre la herramienta ya rellenada. Al abrir una etapa ves las filas de máquinas a escala. La pestaña Mapa coloca toda la cadena en un plano visto desde arriba a escala (cuadrícula de cimientos de 8 m): arrastra y gira los bloques, y ve las cintas y el medio de cada enlace dibujados entre ellos, con avisos de solapamiento y cruce de cintas; cada bloque y medio muestra su medida en metros y en cimientos, y el espacio entre las piezas del medio es ajustable (fase 2). Los datos del juego se generan del Docs del juego (`node scripts/gamedata.mjs <en-US.json>`).
-
 ## Reglas del juego que respeta
 
 | Pieza | Comportamiento |
@@ -58,7 +68,7 @@ Una página aparte, `/es/planner`, encadena varias etapas de recetas y muestra e
 | Awesome Sink | Recibe cualquier sobrante de ítems. Retener en el origen también vale: las máquinas solo desaceleran. No acepta fluidos. |
 | Tubería | Pipeline Mk1 300, Mk2 600 m³/min. Sin splitter: la Pipeline Junction (4 puertos) junta o divide y el fluido va adonde hay espacio, sin garantizar partes iguales. Para un caudal exacto, usa una Valve. |
 
-El planificador no conoce recetas. Tú escribes las tasas de tu planificador o del juego.
+El Balancer no conoce recetas: tú escribes las tasas de tu planificador o del juego. El constructor usa las recetas del juego.
 
 ## Ejecutarlo en local
 
@@ -72,29 +82,33 @@ npm run dev       # servidor local
 npm run build     # build de producción en dist/
 ```
 
-Tests (lógica e idiomas):
+Tests (lógica, idiomas y el modelo del constructor), la comprobación de tipos del constructor y un smoke de punta a punta de sus gestos contra el preview:
 
 ```bash
 npm test
+npm run typecheck
+npm run build && npm run preview   # luego, en otra terminal:
+npm run smoke -- http://localhost:4173
 ```
 
-Para probarlo como en producción (nginx sirviendo el build, con las rutas `/pt` y `/es`), ejecuta `docker compose up --build` y abre http://localhost:8080. Para limpiar: `docker compose down --rmi local`.
+Para probarlo como en producción (nginx sirviendo el build, con las rutas `/pt`, `/es`, `/balancer`, `/pt/balancer` y `/es/balancer`), ejecuta `docker compose up --build` y abre http://localhost:8080. Para limpiar: `docker compose down --rmi local`.
 
 ## Cómo está organizado el código
 
 ```
-index.html            HTML base (en inglés, para los buscadores)
-planner.html         entrada del planner 2D (React + TypeScript)
-src/planner/          planner: model/ (puro; model/map/ es la escena del mapa), worker/ (medios fuera del hilo principal) y ui/
-src/main.js           punto de entrada
+index.html            el constructor (React + TypeScript; HTML base en inglés, para los buscadores)
+balancer.html         el Balancer (JavaScript puro)
+src/planner/          constructor: model/ (puro: estado de la fábrica, solver del flujo, escena del mapa), worker/ (solver y conexiones fuera del hilo principal) y ui/
+src/main.js           punto de entrada del Balancer
 src/logic/            funciones puras, sin DOM (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo)
 src/i18n/             textos en pt, en y es
 src/ui/               interfaz
 src/view3d/           escena 3D (three.js, se carga solo al abrir la pestaña 3D)
 src/styles/main.css   estilos
-public/               estáticos (favicon, og.png, robots.txt, sitemap.xml)
+public/               estáticos (favicon, og.png, robots.txt, sitemap.xml, iconos del juego en icons/)
 tests/                tests de la lógica y la comparación visual
-vercel.json           build, headers, CSP y las rutas /pt y /es
+vercel.json           build, headers, CSP, rutas y redirecciones
+scripts/              generadores de los datos y los iconos del juego (gamedata.mjs, icons.mjs; se ejecutan a mano, fuera del build)
 Dockerfile, nginx.conf, docker-compose.yml   prueba local como en producción (nginx sirviendo dist/)
 ```
 
@@ -104,7 +118,7 @@ La lógica son funciones puras que los tests importan directamente en Node, sin 
 
 Los issues y pull requests son bienvenidos. Unas pocas reglas mantienen el proyecto en orden:
 
-1. **JavaScript puro, sin framework.** Módulos ES construidos con Vite; `src/logic` no toca el DOM.
+1. **Respeta las capas.** El Balancer es JavaScript puro y el constructor es React + TypeScript, los dos construidos con Vite; `src/logic` y `src/planner/model` no tocan el DOM.
 2. **Todo texto visible existe en los tres idiomas.** Los textos están en `src/i18n/` (`pt.js`, `en.js`, `es.js`) y se leen con `t('clave')`. Una clave nueva entra en los tres en el mismo cambio; el test `idiomas: as mesmas chaves...` falla si falta alguna.
 3. **La lógica va en funciones puras con tests.** Un montaje o regla nueva lleva su caso en `tests/logic.test.js`.
 4. **No inventes mecánicas del juego.** Si no sabes cómo se comporta una pieza, abre un issue primero.
@@ -117,4 +131,4 @@ Si la herramienta te ahorró algunas cuentas, puedes [invitarme un café en Ko-f
 
 ## Licencia
 
-[MIT](LICENSE). Herramienta hecha por fans, sin relación con Coffee Stain Studios. Satisfactory es una marca registrada de Coffee Stain Studios.
+[MIT](LICENSE). Herramienta hecha por fans, sin relación con Coffee Stain Studios. Satisfactory es una marca registrada de Coffee Stain Studios; los iconos y datos del juego en el constructor son © Coffee Stain Studios.

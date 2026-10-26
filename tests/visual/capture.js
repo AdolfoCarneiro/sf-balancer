@@ -1,14 +1,15 @@
 // uso: node tests/visual/capture.js <url-base> <pasta> [--routes] [--fixtures]
 // Salva <pasta>/<nome>-<lang>.png e <pasta>/console.json (erros de console por cenário).
-// --routes também captura /pt e /es (precisam das rewrites do vercel.json).
+// --routes também captura /pt, /es, /pt/balancer e /es/balancer (precisam das rewrites do vercel.json).
 // --only=<trecho do nome> limita os cenários.
 // --fixtures grava tests/visual/fixtures.json (link #s= e localStorage reais, entradas antigas).
+// Os cenários do builder abrem com ?debug=1 (window.__sfPlanner); o ?lang= entra depois com &.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scenarios, routeScenarios, LANGS } from './scenarios.js';
+import { chromeOrExit } from './chrome.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2).filter(a => !a.startsWith('--'));
@@ -16,23 +17,6 @@ const flags = new Set(process.argv.slice(2).filter(a => a.startsWith('--')));
 const [base, outDir] = args;
 if (!base || !outDir) { console.error('uso: capture.js <url-base> <pasta> [--routes] [--fixtures]'); process.exit(2); }
 fs.mkdirSync(outDir, { recursive: true });
-
-// Usa o Chromium já instalado (nunca baixa browser). CHROME_PATH sobrepõe.
-function chromePath() {
-  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-  const root = path.join(os.homedir(), '.cache', 'ms-playwright');
-  if (!fs.existsSync(root)) throw new Error(`Chromium não encontrado: ${root} não existe. Instale um browser do Playwright ou defina CHROME_PATH.`);
-  const dirs = fs.readdirSync(root).filter(d => /^chromium-\d+$/.test(d)).sort();
-  for (const d of dirs.reverse()) {
-    const p = path.join(root, d, 'chrome-linux64', 'chrome');
-    if (fs.existsSync(p)) return p;
-  }
-  throw new Error('nenhum chromium em ' + root);
-}
-
-function chromeOrExit() {
-  try { return chromePath(); } catch (e) { console.error(e.message); process.exit(1); }
-}
 
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}`;
 
@@ -84,7 +68,7 @@ const browser = await chromium.launch({ executablePath: chromeOrExit(), args: ['
 const consoleLog = {};
 const only = [...flags].find(f => f.startsWith('--only='))?.slice(7);
 const list = [];
-for (const sc of scenarios) for (const lang of LANGS) list.push({ sc, lang, url: `${base}${sc.path}?lang=${lang}` });
+for (const sc of scenarios) for (const lang of LANGS) list.push({ sc, lang, url: `${base}${sc.path}${sc.path.includes('?') ? '&' : '?'}lang=${lang}` });
 if (flags.has('--routes')) for (const sc of routeScenarios) list.push({ sc, lang: sc.lang, url: `${base}${sc.path}` });
 
 for (const { sc, lang, url } of list) {
