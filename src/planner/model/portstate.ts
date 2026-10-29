@@ -10,7 +10,7 @@ export interface Balance {
   outs: { item: ItemId; rate: number | null }[];
   sink: { item: ItemId; rate: number | null }[];
   power: number;   // MW gerados (soma dos geradores)
-  use: number;     // MW gastos (receitas e extratores; o Miner fica de fora: o bloco não sabe o Mk)
+  use: number;     // MW gastos (receitas, extratores e Miners; o Miner antigo, de vazão digitada, fica de fora)
   problems: PortState[];
 }
 
@@ -47,7 +47,7 @@ function sumBy(rows: { item: ItemId; rate: number | null }[]): { item: ItemId; r
 // O jogo eleva o gasto pelo clock com este expoente (mPowerConsumptionExponent do Docs): 250 % gasta 3,36 vezes.
 export const POWER_EXP = 1.321929;
 // MW que um bloco gasta: máquinas × MW do prédio (ou da receita, nos de energia variável) × (clock / 100)^POWER_EXP;
-// extrator pelo clock dele. Miner: 0 (o bloco só tem a vazão, não o Mk); sem limite ou parado: 0.
+// extrator (e Miner) pelo clock dele. Miner antigo, de vazão digitada: 0 (não sabe o Mk); sem limite ou parado: 0.
 export function blockPowerUse(b: Block, bf: BlockFlow | undefined, d: GameData): number {
   if (!bf) return 0;
   if (b.kind === 'recipe') {

@@ -4,7 +4,8 @@ export interface Flow { item: ItemId; perMin: number }            // por máquin
 // power: MW gastos a 100 % (do Docs). Na receita, só nos prédios de energia variável (a média da faixa da receita).
 export interface Recipe { id: RecipeId; name: string; alt: boolean; building: BuildingId; ins: Flow[]; outs: Flow[]; power?: number }
 export interface Building { id: BuildingId; name: string; w: number; l: number; power?: number }   // metros
-export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean; power?: number }   // perMin em m³/min, pureza normal
+// perMin em m³/min (item/min no Miner), pureza normal; mk: o Miner (1, 2, 3), que troca de Mk no mesmo bloco.
+export interface Extractor { id: BuildingId; name: string; perMin: number; items: ItemId[]; purity: boolean; power?: number; mk?: number }
 export interface GameData { items: Record<ItemId, Item>; recipes: Record<RecipeId, Recipe>; buildings: Record<BuildingId, Building>; extractors: Record<BuildingId, Extractor>; generators?: Record<BuildingId, Generator> }
 // Gerador (do Docs): potência a 100 % (MW) e, por combustível, o consumo por minuto de um gerador (sólido: itens;
 // fluido: m³), a água (m³/min, carvão e nuclear) e o resíduo (nuclear).
@@ -42,6 +43,7 @@ export interface Layout {
   joins?: string[];                        // `${tierKey}@${r}`: junta a esteira desse item da fileira r com a da r+1
 }
 export interface RecipeBlock { id: StageId; kind: 'recipe'; recipe: RecipeId; clock: number; perRow: number | null; tiers: Record<string, string>; limits?: Limits; collect?: ItemId[]; layout?: Layout }
+// Miner antigo, só com a vazão digitada (o novo é um extrator Miner Mk.N); escolher o Mk converte (minerToExtractor).
 export interface MinerBlock { id: StageId; kind: 'miner'; item: ItemId; rate: number }
 // count null = a ferramenta calcula quantos extratores; clock: o de cada um (1 a 250 %, ausente = 100).
 export interface ExtractorBlock { id: StageId; kind: 'extractor'; building: BuildingId; item: ItemId; purity: Purity; count: number | null; clock?: number }

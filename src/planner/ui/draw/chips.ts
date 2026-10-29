@@ -1,6 +1,7 @@
 // Chip da ligação (os dois modos): retângulo CHIP_W × CHIP_H com, em cima, o ícone do item e quanto passa, e embaixo o
 // glifo do tipo (balancer, direto, cano) e o texto ("6 → 8", "direto", "3 → 4 + sink", "cano 2 → 6"). Borda pelo tipo:
-// balancer laranja, falta na ponta de lá coral, selecionado laranja 2 px com um anel por fora.
+// balancer laranja, falta na ponta de lá coral, selecionado laranja 2 px com um anel por fora. Nas ligações compactas, o
+// chip fechado é só o ponto (drawDot).
 import { fmt, t } from '../../../i18n/index.js';
 import type { ViewChip } from '../../model/map/cards.ts';
 import type { ChipKind, ChipLabel } from '../../model/chip.ts';
@@ -35,12 +36,32 @@ export function chipText(c: ChipLabel): string {
 }
 
 const GW = 18;   // glifo desenhado com 18 px
+const DOT_R = 7;
+
+// Ligação compacta (como no Modeler): um ponto grosso no meio da esteira e, em cima, o ícone do item e a vazão. O ponto
+// leva a cor do chip: falta coral, balancer laranja, o resto claro.
+function drawDot(ctx: CanvasRenderingContext2D, c: ViewChip, lab: ChipLabel, o: DrawOpts): void {
+  const th = o.theme, bal = lab.kind === 'balancer' || lab.kind === 'sink';
+  ctx.beginPath(); ctx.arc(c.x, c.y, DOT_R, 0, Math.PI * 2);
+  ctx.fillStyle = lab.short ? th.deficit : bal ? th.ficsit : th.lineHi; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = th.bench; ctx.stroke();
+  const rate = lab.rate === null ? t('plUnbounded') : fmt(lab.rate);
+  ctx.font = `700 13px ${th.body}`;
+  const rw = ctx.measureText(rate).width, img = o.icon(lab.item), iw = img ? 18 + 4 : 0;
+  let x = c.x - (iw + rw) / 2;
+  const y = c.y - DOT_R - 13;
+  if (img) { ctx.drawImage(img, x, y - 9, 18, 18); x += iw; }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.lineWidth = 4; ctx.strokeStyle = th.bench; ctx.strokeText(rate, x, y + 1);
+  ctx.fillStyle = lab.short ? th.deficitInk : th.ink; ctx.fillText(rate, x, y + 1);
+}
 
 export function drawChips(ctx: CanvasRenderingContext2D, chips: ViewChip[], o: DrawOpts): void {
   const th = o.theme;
   for (const c of chips) {
     const lab = o.chip(c.meio);
     if (!lab) continue;
+    if (c.compact) { drawDot(ctx, c, lab, o); continue; }
     const on = o.selected.has(c.meio), hov = o.hover === c.meio;
     const x = c.x - c.w / 2, y = c.y - c.h / 2;
     ctx.fillStyle = on ? '#2b2010' : th.bench;

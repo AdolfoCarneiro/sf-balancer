@@ -552,6 +552,7 @@ select.pl-field { width: auto; }
 .pl-layers-pop legend { padding: 0 0 4px; font: 600 14px var(--display); }
 .pl-layers-pop label { display: flex; align-items: center; gap: 10px; min-height: 44px; font: 14px var(--body); cursor: pointer; }
 .pl-layers-pop input { width: 18px; height: 18px; margin: 0; accent-color: var(--ficsit); }
+.pl-layers-pop .pl-layers-compact { margin-top: 4px; border-top: 1px solid var(--line); }
 .pl-layers-pop .pl-btn { min-height: 44px; }
 .pl-leg-back { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(5, 12, 22, .66); }
 .pl-leg { width: min(560px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 18px; padding: 16px 20px 20px; background: var(--paper); border: 1px solid var(--line); border-top: 2px solid var(--ficsit); }

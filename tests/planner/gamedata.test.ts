@@ -48,5 +48,8 @@ test('extratores: vazão do Docs, itens e pureza', () => {
   assert.equal(data.extractors.Build_OilPump_C.purity, true);
   assert.equal(data.extractors.Build_FrackingExtractor_C.perMin, 60);
   assert.deepEqual(data.extractors.Build_FrackingExtractor_C.items, ['Desc_LiquidOil_C', 'Desc_NitrogenGas_C', 'Desc_Water_C']);
-  assert.ok(!Object.keys(data.extractors).some(id => id.startsWith('Build_Miner')));
+  // Miner Mk.1–3: de nó (pureza), qualquer item cru sólido, 60/120/240 por minuto e 5/15/45 MW.
+  const solids = Object.values(data.items).filter(i => i.raw && !i.fluid).map(i => i.id).sort();
+  assert.deepEqual([1, 2, 3].map(n => data.extractors[`Build_MinerMk${n}_C`]).map(e => [e.mk, e.perMin, e.power, e.purity, e.items]),
+    [[1, 60, 5, true, solids], [2, 120, 15, true, solids], [3, 240, 45, true, solids]]);
 });

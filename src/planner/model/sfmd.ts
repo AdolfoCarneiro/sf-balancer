@@ -16,7 +16,7 @@
 //   Outpost/Title e o que mais vier: ignorados e listados no resumo.
 import { isSource, type Block, type BuildingId, type Factory, type GameData, type ItemId, type MapPlace, type Purity, type RecipeId, type StageId } from './types.ts';
 import {
-  MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_RATE, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, minable, portsOf,
+  MAX_EXTRACTORS, MAX_LINKS, MAX_MACHINES, MAX_RATE, MAX_STAGES, MINER_DEFAULT, PURITY, canConnect, connect, extractable, isMiner, minable, portsOf,
 } from './factory.ts';
 import { MAP_GRID, cleanPlace } from './map/sizes.ts';
 import { CARD_MAX_M_PER_PX, MONTAR_REF, cardSize } from './map/cards.ts';
@@ -160,7 +160,21 @@ function makeBlock(node: Record<string, unknown>, name: string, L: Lookup, d: Ga
   }
   const ore = L.items.get(k);
   if (ore && minable(d, ore)) {
-    // A vazão já considera o Mk do Miner, a pureza e o clock.
+    // Machine ("Miner Mk.3", sem ela Mk.1), Capacity (pureza) e ClockSpeed; o Max é a vazão e já considera os três. Vira
+    // os Miners inteiros que dão a vazão, com o clock baixado para dar exatamente ela (780 em Mk.3 normal = 4 a 81,25 %).
+    const building = L.extractors.get(low(typeof node.Machine === 'string' ? node.Machine : 'Miner Mk.1'));
+    if (building && isMiner(d, building) && extractable(d, building, ore)) {
+      const pur = purityOf(node.Capacity), cs = clamp(parseMax(node.ClockSpeed) ?? 100, 1, 250);
+      const each = d.extractors[building].perMin * PURITY[pur], per = each * cs / 100;
+      let count = 1, clock = cs;
+      if (max !== null) {
+        count = upTo(max / (each * 2.5), MAX_EXTRACTORS, name, adj);
+        if (!adj.length) { count = Math.max(count, Math.ceil(max / per - EPS)); clock = clamp(max / (count * each) * 100, 1, 250); }
+      }
+      clock = Math.round(clock * 1e4) / 1e4;
+      return { kind: 'block', block: { kind: 'extractor', building, item: ore, purity: pur, count, ...(clock !== 100 ? { clock } : {}) }, used: ['Machine', 'Capacity', 'ClockSpeed'], adj };
+    }
+    // Sem o Miner nos dados: a vazão digitada.
     let rate = max ?? MINER_DEFAULT;
     if (rate > MAX_RATE) { adj.push({ kind: 'clamp', name, asked: rate, max: MAX_RATE }); rate = MAX_RATE; }
     return { kind: 'block', block: { kind: 'miner', item: ore, rate }, used: ['Machine', 'Capacity', 'ClockSpeed'], adj };

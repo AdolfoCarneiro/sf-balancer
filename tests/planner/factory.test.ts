@@ -4,7 +4,7 @@ import game from '../../src/planner/data/game.json' with { type: 'json' };
 import type { ExtractorBlock, Factory, GameData, MinerBlock, RecipeBlock } from '../../src/planner/model/types.ts';
 import {
   PURITY, MINER_DEFAULT, portsOf, addBlock, addLinkedBlock, removeBlock, canConnect, connect, disconnect, setRecipe, setLimits,
-  setClock, setPerRow, setTier, setCollect, setMinerRate, setExtractor, placeLig, meiosOf,
+  setClock, setPerRow, setTier, setCollect, setMinerRate, setExtractor, placeLig, meiosOf, minerToExtractor, extractorRate,
 } from '../../src/planner/model/factory.ts';
 import { exampleFactory } from '../../src/planner/model/factorystate.ts';
 import { MAX_LINKS, MAX_STAGES } from '../../src/planner/model/factory.ts';
@@ -39,7 +39,8 @@ test('fábrica: mineradora, extrator e blocos de sobra nascem com os padrões; s
   f = addBlock(f, data, { kind: 'extractor', building: 'Build_OilPump_C', item: 'Desc_LiquidOil_C' }, [0, 0]);
   f = addBlock(f, data, { kind: 'sink' }, [0, 0]);
   assert.deepEqual(f.blocks, [
-    { id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: MINER_DEFAULT },
+    // Miner: Mk.1 em nó normal, um só (60/min, o padrão do Modeler).
+    { id: 's1', kind: 'extractor', building: 'Build_MinerMk1_C', item: 'Desc_OreIron_C', purity: 'normal', count: 1 },
     { id: 's2', kind: 'extractor', building: 'Build_OilPump_C', item: 'Desc_LiquidOil_C', purity: 'normal', count: 1 },
     { id: 's3', kind: 'sink' },
   ]);
@@ -159,11 +160,21 @@ test('fábrica: setCollect ignora saída fluida; setExtractor ignora pureza no W
   assert.equal((o.blocks[0] as ExtractorBlock).purity, 'pure');
   assert.equal((setExtractor(o, data, 's1', { count: 2.5 }).blocks[0] as ExtractorBlock).count, null);
   assert.equal((setExtractor(o, data, 's1', { count: null }).blocks[0] as ExtractorBlock).count, null);
-  let m = addBlock(empty, data, { kind: 'miner', item: 'Desc_OreIron_C' }, [0, 0]);
+  // Miner antigo (vazão digitada): setMinerRate; escolher o Mk converte com a mesma vazão.
+  let m: Factory = { ...empty, blocks: [{ id: 's1', kind: 'miner', item: 'Desc_OreIron_C', rate: 60 }] };
   m = setMinerRate(m, 's1', 780);
   assert.equal((m.blocks[0] as MinerBlock).rate, 780);
   assert.equal(setMinerRate(m, 's1', -5), m);
   assert.equal(setMinerRate(m, 's1', 1e9), m);
+  const conv = (rate: number, building: string) => minerToExtractor(setMinerRate(m, 's1', rate), data, 's1', building).blocks[0];
+  assert.deepEqual(conv(780, 'Build_MinerMk3_C'), { id: 's1', kind: 'extractor', building: 'Build_MinerMk3_C', item: 'Desc_OreIron_C', purity: 'normal', count: 2, clock: 162.5 });
+  assert.deepEqual(conv(60, 'Build_MinerMk1_C'), { id: 's1', kind: 'extractor', building: 'Build_MinerMk1_C', item: 'Desc_OreIron_C', purity: 'normal', count: 1 });
+  assert.equal(minerToExtractor(m, data, 's1', 'Build_OilPump_C'), m);
+  // Trocar o Mk: só entre Miners que tiram o item.
+  const mk = addBlock(empty, data, { kind: 'miner', item: 'Desc_Coal_C' }, [0, 0]);
+  assert.equal((setExtractor(mk, data, 's1', { building: 'Build_MinerMk3_C' }).blocks[0] as ExtractorBlock).building, 'Build_MinerMk3_C');
+  assert.deepEqual(setExtractor(mk, data, 's1', { building: 'Build_OilPump_C' }).blocks[0], mk.blocks[0]);
+  assert.equal(extractorRate(data, { ...(mk.blocks[0] as ExtractorBlock), building: 'Build_MinerMk2_C', purity: 'pure', clock: 250 }), 600);
 });
 
 test('fábrica: meiosOf agrupa como os meios da fase 1; placeLig só em ligação que existe', () => {

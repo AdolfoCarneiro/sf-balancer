@@ -59,7 +59,7 @@ for (const c of [...(porClasse.FGBuildableManufacturer ?? []), ...(porClasse.FGB
 }
 
 // Extratores de fluido/gás: Water Extractor, Oil Extractor (e outros ResourceExtractor só de
-// líquido/gás com recurso fixo) e Resource Well Extractor. A Miner fica de fora (sólido).
+// líquido/gás com recurso fixo) e Resource Well Extractor. A Miner entra mais abaixo (precisa dos itens).
 // Pureza (impura 0,5 / normal 1 / pura 2) só vale para o Oil e o Resource Well: decisão do dono,
 // o Water Extractor não tem pureza.
 const PUREZA = { Build_OilPump_C: true, Build_FrackingExtractor_C: true };
@@ -151,6 +151,16 @@ if (soGeradores) {
   atual.generators = ordenar(geradores);
   writeFileSync(saida, JSON.stringify(ordenar(atual), (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? ordenar(v) : v), 1) + '\n');
   process.exit(0);
+}
+// Miner Mk.1–3: extratores de nó (com pureza) de qualquer item cru sólido; `mk` separa o Miner dos outros.
+const minerios = Object.keys(itens).filter(id => itens[id].raw && !itens[id].fluid).sort();
+for (const c of porClasse.FGBuildableResourceExtractor ?? []) {
+  const mk = /^Build_MinerMk(\d)_C$/.exec(c.ClassName)?.[1];
+  if (!mk) continue;
+  extratores[c.ClassName] = {
+    id: c.ClassName, name: c.mDisplayName, mk: Number(mk), perMin: arred(Number(c.mItemsPerCycle) / Number(c.mExtractCycleTime) * 60),
+    items: minerios, purity: true, power: gasto[c.ClassName],
+  };
 }
 const out = { buildings: ordenar(predios), extractors: ordenar(extratores), generators: ordenar(geradores), items: ordenar(itens), recipes: ordenar(receitas) };
 // Chaves ordenadas também dentro de cada objeto, para saída determinística.

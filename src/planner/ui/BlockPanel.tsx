@@ -1,11 +1,11 @@
 // Painel lateral do bloco selecionado: ícone, nome e prédio; o que entra e sai (taxa e estado de cada porta, nas cores
 // das portas do mapa) com a frase de cada problema e os consertos de um clique; a miniatura das fileiras com "Montar
 // fileiras"; a receita (troca no lugar), os limites (máquinas e entrada por porta: calculado em texto normal, fixado em
-// destaque com "voltar ao padrão"), clock, coleta do excesso, a origem (taxa da Miner; pureza e quantidade do extrator),
+// destaque com "voltar ao padrão"), clock, coleta do excesso, a origem (Mk do Miner; pureza, clock e quantidade do extrator),
 // o lugar no mapa (lado das entradas, giro, vãos), "Ver em escala" / "Voltar a montar" e apagar.
 import { fmt, t } from '../../i18n/index.js';
 import type { Action } from '../model/factorystate.ts';
-import { MAX_EXTRACTORS, MAX_MACHINES, clockOk, countOk, machinesOk, rateOk } from '../model/factory.ts';
+import { MAX_EXTRACTORS, MAX_MACHINES, clockOk, countOk, machinesOk, minerMks, rateOk } from '../model/factory.ts';
 import { blockBadges, limitView } from '../model/badges.ts';
 import type { BlockFlow, FlowResult } from '../model/solve.ts';
 import { recipeLine, recipesFor } from '../model/search.ts';
@@ -269,10 +269,24 @@ function MinerFields({ b, bf, data, dispatch }: { b: MinerBlock; bf: BlockFlow |
   const out = bf?.outs[0];
   return (
     <>
+      <MkField data={data} item={b.item} value="" onPick={building => dispatch({ type: 'minerToExtractor', id: b.id, building })} />
       <NumField label={t('plMinerRate')} value={b.rate} valid={rateOk} bad={t('plRateBad')} className="pl-row"
         onCommit={n => dispatch({ type: 'setMinerRate', id: b.id, rate: n })} />
       {out && out.rate !== null && <p className="pl-note">{t('plPortOut', data.items[b.item]?.name ?? b.item)}: {rateText(data.items[b.item], out.rate)}</p>}
     </>
+  );
+}
+
+// O Mk do Miner (os que tiram o item). value "": o Miner antigo, de vazão digitada, que escolher um Mk converte.
+function MkField({ data, item, value, onPick }: { data: GameData; item: ItemId; value: string; onPick: (building: string) => void }) {
+  return (
+    <label className="pl-field pl-row">
+      <span>{t('plMinerMk')}</span>
+      <select value={value} onChange={ev => ev.target.value && onPick(ev.target.value)}>
+        {!value && <option value="">{t('plMinerMkTyped')}</option>}
+        {minerMks(data).filter(e => e.items.includes(item)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -321,6 +335,9 @@ function ExtractorFields({ b, bf, data, dispatch }: { b: ExtractorBlock; bf: Blo
   const out = bf?.outs[0];
   return (
     <>
+      {e?.mk !== undefined && (
+        <MkField data={data} item={b.item} value={b.building} onPick={building => dispatch({ type: 'setExtractor', id: b.id, building })} />
+      )}
       {e?.purity && (
         <label className="pl-field pl-row">
           <span>{t('plPurity')}</span>
@@ -331,7 +348,7 @@ function ExtractorFields({ b, bf, data, dispatch }: { b: ExtractorBlock; bf: Blo
       )}
       <NumField label={t('plClock')} value={b.clock ?? 100} valid={clockOk} bad={t('plClockBad')} className="pl-row"
         onCommit={n => dispatch({ type: 'setExtractor', id: b.id, clock: n })} />
-      <LimitField label={t('plExtractorCount')} value={fixed ? b.count : calc} fixed={fixed} valid={countOk}
+      <LimitField label={t(e?.mk !== undefined ? 'plMinerCount' : 'plExtractorCount')} value={fixed ? b.count : calc} fixed={fixed} valid={countOk}
         bad={t('plExtractorBad', fmt(MAX_EXTRACTORS, 0))} unbounded={!!bf?.unbounded}
         note={!fixed && calc !== null ? t('plExtractorNeed', fmt(calc, 0)) : undefined}
         onCommit={n => dispatch({ type: 'setExtractor', id: b.id, count: n })}

@@ -32,7 +32,7 @@ import { EmptyInvite } from './FirstHint.tsx';
 import { TourHelp, openTour, useTourAnchor } from './Tour.tsx';
 import { Legend } from './Legend.tsx';
 import { Layers } from './Layers.tsx';
-import { cleanViewLayers, hitGeo, type MapLayers, type ViewLayers } from '../model/map/layers.ts';
+import { cleanViewLayers, compactChips, hitGeo, type MapLayers, type ViewLayers } from '../model/map/layers.ts';
 import { ChipPopover } from './ChipPopover.tsx';
 import { SPECIAL_ICON, iconImage } from './icons.ts';
 import { FLASH_MS, PORT_ZOOM, drawScene, readTheme, type CardText, type DrawOpts, type MapTheme } from './mapDraw.ts';
@@ -455,7 +455,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const T = tNow.current, A = anim.current;
-    const { v: view, belts } = geoFor(sc, c, T, fs, dt, fl, meios);
+    const { v: geo, belts } = geoFor(sc, c, T, fs, dt, fl, meios);
+    const view = compactChips(geo, o.layers.compact, id => id === o.hover || o.selected.has(id));
     lastView.current = view;
     const moving = belts && o.layers.links && !document.hidden && !reduced.current;
     if (moving && !A.slow) A.time = performance.now();

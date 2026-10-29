@@ -40,7 +40,7 @@ test('seletor sem filtro: Miner por minério sólido, extrator por item, depois 
   const kinds = r.special.map(e => e.spec.kind);
   const raws = Object.values(data.items).filter(i => i.raw && !i.fluid).map(i => i.id).sort();
   assert.deepEqual(r.special.filter(e => e.spec.kind === 'miner').map(e => (e.spec as any).item).sort(), raws);
-  assert.equal(r.special.filter(e => e.spec.kind === 'extractor').length, Object.values(data.extractors).reduce((n, x) => n + x.items.length, 0));
+  assert.equal(r.special.filter(e => e.spec.kind === 'extractor').length, Object.values(data.extractors).filter(x => x.mk === undefined).reduce((n, x) => n + x.items.length, 0));
   assert.deepEqual(kinds.slice(-3), ['sink', 'container', 'export']);
   assert.equal(r.recipes.length, Object.keys(data.recipes).length);
   // Cartão de receita: ícone do produto, prédio no subtítulo.

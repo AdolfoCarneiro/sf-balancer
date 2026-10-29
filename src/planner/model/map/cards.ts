@@ -74,8 +74,8 @@ export interface ViewBlock { id: StageId; rect: Rect; scale: number; card: Rect;
 // x/y: centro da porta; dir: para fora do bloco; lanes: na Planta, o ponto de tela de cada fileira daquela porta (na
 // transição, saindo da porta da Montar).
 export interface ViewPort { block: StageId; side: 'in' | 'out'; item: ItemId; x: number; y: number; dir: Pt; lanes: Pt[] }
-// x/y: centro do chip.
-export interface ViewChip { meio: string; x: number; y: number; w: number; h: number }
+// x/y: centro do chip; compact: desenhado como o ponto da ligação compacta (w/h: o que pega o ponteiro).
+export interface ViewChip { meio: string; x: number; y: number; w: number; h: number; compact?: true }
 export interface ViewGeo { blocks: ViewBlock[]; ports: ViewPort[]; chips: ViewChip[] }
 
 // Sentido do fluxo dentro do bloco no mundo, por giro.

@@ -20,7 +20,7 @@ function specials(d: GameData, filter: PickerFilter): PickerEntry[] {
     spec: { kind: 'miner', item }, title: name(item), sub: t('plMiner'), icon: iconUrl(item), badge: iconUrl(SPECIAL_ICON.miner), alt: false, ins: [], outs: [item],
   });
   const extractors = (item?: ItemId) => {
-    for (const x of Object.values(d.extractors)) for (const it of x.items) {
+    for (const x of Object.values(d.extractors)) for (const it of x.mk === undefined ? x.items : []) {   // o Miner tem a entrada própria
       if (item && it !== item) continue;
       out.push({ spec: { kind: 'extractor', building: x.id, item: it }, title: name(it), sub: x.name, icon: iconUrl(it), badge: iconUrl(x.id), alt: false, ins: [], outs: [it] });
     }

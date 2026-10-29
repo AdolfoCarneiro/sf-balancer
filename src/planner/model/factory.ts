@@ -1,7 +1,7 @@
 // Edição da fábrica v2 (fase 3): blocos de receita, de origem e de sobra, ligados com loops liberados.
 // Funções puras; os números (quanto flui) ficam com o solver.
 import type {
-  Block, BuildingId, ExtractorBlock, GenFuel, GeneratorBlock, Factory, GameData, ItemId, LigPlace, Limits, Link, MinerBlock, Purity, Recipe,
+  Block, BuildingId, Extractor, ExtractorBlock, GenFuel, GeneratorBlock, Factory, GameData, ItemId, LigPlace, Limits, Link, MinerBlock, Purity, Recipe,
   RecipeBlock, RecipeId, RowBlock, Side, Stage, StageId,
 } from './types.ts';
 import { suggestedPerRow, tierKey } from './stage.ts';
@@ -47,6 +47,10 @@ export const extractorRate = (d: GameData, b: ExtractorBlock): number => {
   return e ? e.perMin * (e.purity ? PURITY[b.purity] : 1) * (b.clock ?? 100) / 100 : 0;
 };
 export const MINER_DEFAULT = 60;   // Miner Mk.1 em nó normal (Docs) = padrão do Modeler
+// O Miner de cada Mk (extrator com `mk`), do menor para o maior.
+export const minerMks = (d: GameData): Extractor[] =>
+  Object.values(d.extractors).filter(e => e.mk !== undefined).sort((a, b) => a.mk! - b.mk!);
+export const isMiner = (d: GameData, building: BuildingId): boolean => d.extractors[building]?.mk !== undefined;
 export const MAX_EXTRACTORS = 1000, MAX_RATE = 1e6;
 // Limite de máquinas por bloco: o mesmo na leitura, nos campos e na etapa derivada.
 export const MAX_MACHINES = 10000;
@@ -141,7 +145,12 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
       // Criado no vazio: uma fileira cheia, já fixada (bloco solto sem limite não teria número).
       return free ? b : { ...b, limits: { machines: suggestedPerRow(asStage(b), d) } };
     }
-    case 'miner': return minable(d, spec.item) ? { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT } : null;
+    // Miner novo: Mk.1 em nó normal, um só (60/min, como o nó do Modeler); sem o Miner nos dados, o de vazão digitada.
+    case 'miner': {
+      if (!minable(d, spec.item)) return null;
+      const mk1 = minerMks(d).find(e => e.items.includes(spec.item));
+      return mk1 ? { id, kind: 'extractor', building: mk1.id, item: spec.item, purity: 'normal', count: 1 } : { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT };
+    }
     // Extrator novo: o de nó (Oil Extractor, Resource Well, os que têm pureza) nasce com um, como o nó do Modeler; o
     // Water Extractor vai em qualquer água, então a ferramenta calcula quantos.
     case 'extractor': return extractable(d, spec.building, spec.item)
@@ -327,11 +336,24 @@ export function setInputRate(f: Factory, id: StageId, rate: number | null): Fact
   return { ...f, blocks: f.blocks.map(x => (x.id === id ? { ...b, rate } : x)) };
 }
 
-// count: inteiro 1..MAX_EXTRACTORS ou null (a ferramenta calcula); purity só se o extrator tem pureza; clock 1..250 (100 some).
-export function setExtractor(f: Factory, d: GameData, id: StageId, v: { count?: number | null; purity?: Purity; clock?: number }): Factory {
+// Miner antigo (só a vazão) vira o Miner do Mk escolhido, em nó normal, com a mesma vazão: um Miner com o clock que
+// a dá, ou quantos precisar a 250 %. Abaixo de 1 % fica 1 %.
+export function minerToExtractor(f: Factory, d: GameData, id: StageId, building: BuildingId): Factory {
+  const b = get(f, id), e = d.extractors[building];
+  if (b?.kind !== 'miner' || !e?.mk || !e.items.includes(b.item)) return f;
+  const count = Math.min(MAX_EXTRACTORS, Math.max(1, Math.ceil(b.rate / (e.perMin * 2.5) - 1e-9)));
+  const clock = Math.min(250, Math.max(1, Math.round(b.rate / (count * e.perMin) * 1e6) / 1e4));
+  const next: ExtractorBlock = { id, kind: 'extractor', building, item: b.item, purity: 'normal', count, ...(clock !== 100 ? { clock } : {}) };
+  return { ...f, blocks: f.blocks.map(x => (x.id === id ? next : x)) };
+}
+
+// count: inteiro 1..MAX_EXTRACTORS ou null (a ferramenta calcula); purity só se o extrator tem pureza; clock 1..250 (100 some);
+// building: outro Mk do Miner (só entre Miners que tiram o mesmo item).
+export function setExtractor(f: Factory, d: GameData, id: StageId, v: { count?: number | null; purity?: Purity; clock?: number; building?: BuildingId }): Factory {
   const b = get(f, id);
   if (b?.kind !== 'extractor') return f;
   const next: ExtractorBlock = { ...b };
+  if (v.building !== undefined && isMiner(d, b.building) && isMiner(d, v.building) && extractable(d, v.building, b.item)) next.building = v.building;
   if (v.count !== undefined) next.count = countOk(v.count) ? v.count : null;
   if (v.purity !== undefined && own(PURITY, v.purity) && d.extractors[b.building]?.purity) next.purity = v.purity;
   if (v.clock !== undefined && clockOk(v.clock)) { if (v.clock === 100) delete next.clock; else next.clock = v.clock; }

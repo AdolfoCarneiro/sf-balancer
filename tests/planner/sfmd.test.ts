@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import game from '../../src/planner/data/game.json' with { type: 'json' };
-import type { Block, ExtractorBlock, Factory, GameData, MinerBlock, RecipeBlock } from '../../src/planner/model/types.ts';
+import type { Block, ExtractorBlock, Factory, GameData, RecipeBlock } from '../../src/planner/model/types.ts';
 import { parseMax, parseSfmd, type SfmdReport } from '../../src/planner/model/sfmd.ts';
 import { decodeFactory, encodeFactory } from '../../src/planner/model/factorystate.ts';
 import { MAP_GRID } from '../../src/planner/model/map/sizes.ts';
 import { CARD_MAX_M_PER_PX, blockCardSize } from '../../src/planner/model/map/cards.ts';
 import { solveFactory } from '../../src/planner/model/solve.ts';
+import { extractorRate } from '../../src/planner/model/factory.ts';
 
 const data = game as GameData;
 // Exemplos do SatisfactorySolver (BSD-3, licença ao lado dos arquivos).
@@ -33,9 +34,10 @@ test('Max do Modeler: inteiro, fração, misto ("13 1/3"), decimal; vazio ou lix
 
 test('duo.sfmd: Miner de Iron Ore 180/min, 2 Iron Ingot livres, 3 Iron Rod fixados 8/2/2, ligações do consumidor', () => {
   const { factory: f, report } = ok(fixture('duo.sfmd'));
-  assert.deepEqual(f.blocks.map(recipeName), ['miner', 'Iron Ingot', 'Iron Ingot', 'Iron Rod', 'Iron Rod', 'Iron Rod']);
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'Iron Ingot', 'Iron Ingot', 'Iron Rod', 'Iron Rod', 'Iron Rod']);
   const [ore, i1, i2, r1, r2, r3] = f.blocks;
-  assert.deepEqual(ore, { id: ore.id, kind: 'miner', item: 'Desc_OreIron_C', rate: 180 } satisfies MinerBlock);
+  // 180/min sem Machine: 3 Miners Mk.1 em nó normal.
+  assert.deepEqual(ore, { id: ore.id, kind: 'extractor', building: 'Build_MinerMk1_C', item: 'Desc_OreIron_C', purity: 'normal', count: 3 } satisfies ExtractorBlock);
   assert.equal((i1 as RecipeBlock).limits, undefined);
   assert.equal((i2 as RecipeBlock).limits, undefined);
   assert.deepEqual([r1, r2, r3].map(b => (b as RecipeBlock).limits?.machines), [8, 2, 2]);
@@ -64,17 +66,19 @@ test('duo.sfmd: posições do Modeler na grade de 8 m, mesma ordem relativa, sem
 
 test('simple pure ingot.sfmd: Water Extractor calculado, Miner Mk.3 780/min, Pure Iron Ingot (alternativa)', () => {
   const { factory: f, report } = ok(fixture('simple pure ingot.sfmd'));
-  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'Pure Iron Ingot', 'Pure Iron Ingot', 'miner']);
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'Pure Iron Ingot', 'Pure Iron Ingot', 'extractor']);
   const [water, , , ore] = f.blocks;
   assert.deepEqual(water, { id: water.id, kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C', purity: 'normal', count: null } satisfies ExtractorBlock);
-  assert.equal((ore as MinerBlock).rate, 780);
+  // Mk.3 a 780/min: 4 Miners a 81,25 % (a mesma vazão).
+  assert.deepEqual({ ...ore, id: '' }, { id: '', kind: 'extractor', building: 'Build_MinerMk3_C', item: 'Desc_OreIron_C', purity: 'normal', count: 4, clock: 81.25 });
+  assert.equal(extractorRate(data, ore as ExtractorBlock) * 4, 780);
   assert.equal(f.links.length, 4);
   assert.deepEqual(report, { blocks: 4, links: 4, skipped: [], asExport: [], ignored: [], adjusted: [] });
 });
 
 test('simple coal generator.sfmd: o gerador vira Coal-Powered Generator queimando Compacted Coal, Water com Max = 5 extratores', () => {
   const { factory: f, report } = ok(fixture('simple coal generator.sfmd'));
-  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'generator', 'miner', 'Compacted Coal', 'miner']);
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'generator', 'extractor', 'Compacted Coal', 'extractor']);
   assert.deepEqual({ ...f.blocks[1], id: '' }, { id: '', kind: 'generator', building: 'Build_GeneratorCoal_C', fuel: 'Desc_CompactedCoal_C', count: (f.blocks[1] as { count: number | null }).count });
   assert.equal((f.blocks[0] as ExtractorBlock).count, 5);
   const gen = f.blocks[1];
@@ -145,7 +149,8 @@ test('ligação para índice que não existe, peça errada ou que o produtor nã
   ] });
   const { factory: f, report } = ok(text);
   assert.equal(f.links.length, 2);
-  assert.equal((f.blocks[0] as MinerBlock).rate, 60);   // sem Max: o padrão do Modeler
+  assert.equal(extractorRate(data, f.blocks[0] as ExtractorBlock), 60);   // sem Max: o padrão do Modeler (um Mk.1)
+  assert.equal((f.blocks[0] as ExtractorBlock).count, 1);
   assert.equal(report.skipped.length, 5);
   assert.ok(report.skipped.every(s => s.reason === 'badLink'));
 });
@@ -212,9 +217,9 @@ test('números ajustados: contagem fracionária, vazão acima do que os extrator
     { kind: 'extractorRate', name: 'Crude Oil', rate: 130, count: 1, total: 240 },
     { kind: 'clamp', name: 'Iron Rod', asked: 20000, max: 10000 },
     { kind: 'clamp', name: 'Nitrogen Gas', asked: 1000000 / 60, max: 1000 },
-    { kind: 'clamp', name: 'Iron Ore', asked: 2000000, max: 1e6 },
+    { kind: 'clamp', name: 'Iron Ore', asked: 2000000 / 150, max: 1000 },   // Miners Mk.1 a 250 %
   ]);
-  assert.deepEqual(f.blocks.map(b => (b.kind === 'extractor' ? b.count : b.kind === 'miner' ? b.rate : (b as RecipeBlock).limits?.machines)), [3, 1, 10000, 1000, 1e6, 2]);
+  assert.deepEqual(f.blocks.map(b => (b.kind === 'extractor' ? b.count : (b as RecipeBlock).limits?.machines)), [3, 1, 10000, 1000, 1000, 2]);
 });
 
 test('Max fracionário de receita ("13 1/5"): 14 máquinas a 94,29 % e o resumo diz; inteiro não entra em ajustados', () => {
@@ -262,7 +267,7 @@ test('Splurger e Container com quem puxa viram ligação direta; Container vazio
     { Name: 'Storage Container', X: 300, Y: 300, Inputs: [[]] },
     { Name: 'Iron Plate', X: 400, Y: 300, Inputs: { 'Iron Ingot': [[8, [[350, 320]]]] } },
   ] }));
-  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'miner', 'miner', 'Iron Ingot', 'Iron Rod', 'container', 'Iron Plate', 'input']);
+  assert.deepEqual(f.blocks.map(recipeName), ['extractor', 'extractor', 'extractor', 'Iron Ingot', 'Iron Rod', 'container', 'Iron Plate', 'input']);
   const [, m1, m2, ingot, rod, box, plate, inp] = f.blocks;
   assert.deepEqual(inp, { id: inp.id, kind: 'input', item: 'Desc_IronIngot_C', rate: null });
   // No lugar do Container vazio.

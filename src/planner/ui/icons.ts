@@ -8,7 +8,9 @@ export const SPECIAL_ICON = {
 } as const;
 
 const have = new Set<string>(icons);
-export const iconUrl = (id: string): string | null => (have.has(id) ? `/icons/${id}.webp` : null);
+// Miner Mk.2/Mk.3 sem ícone baixado ainda: o do Mk.1.
+const real = (id: string) => (have.has(id) || !/^Build_MinerMk\d_C$/.test(id) ? id : SPECIAL_ICON.miner);
+export const iconUrl = (id: string): string | null => (have.has(real(id)) ? `/icons/${real(id)}.webp` : null);
 
 const cache = new Map<string, HTMLImageElement | null>();
 // Imagem para o canvas, com cache por id; null sem ícone ou fora do navegador.

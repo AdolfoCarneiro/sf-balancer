@@ -83,7 +83,7 @@ test('separar a seleção: a parte leva os blocos e as ligações de dentro; o q
   assert.ok(part.links.some(l => l.from === ingot && part.blocks.find(b => b.id === l.to)?.kind === 'export'));
   assert.ok(part.map![ingot]);
   // No que ficou: o Miner manda para uma Saída e o Iron Plate recebe de uma Entrada de Iron Ingot.
-  assert.deepEqual(kinds(rest), ['export', 'input', 'miner', 'recipe']);
+  assert.deepEqual(kinds(rest), ['export', 'extractor', 'input', 'recipe']);
   const rin = rest.blocks.find(b => b.kind === 'input') as InputBlock;
   assert.equal(rin.item, 'Desc_IronIngot_C');
   assert.ok(rest.links.some(l => l.from === rin.id && l.to === plate));

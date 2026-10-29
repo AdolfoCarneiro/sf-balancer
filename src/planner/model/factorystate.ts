@@ -1,13 +1,13 @@
 // Estado salvo da fábrica v2: ações com desfazer, leitura segura (link #p= e localStorage) e migração da v1.
 import type {
-  Block, Factory, GameData, ItemId, Layout, LigPlace, Limits, Link, MapPlace, Purity, RecipeId, Side, StageId,
+  Block, BuildingId, Factory, GameData, ItemId, Layout, LigPlace, Limits, Link, MapPlace, Purity, RecipeId, Side, StageId,
 } from './types.ts';
 import { tierKey } from './stage.ts';
 import { cleanLayout } from './layout.ts';
 import {
   MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, clockOk, countOk, machinesOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
-  genData, genFuel, genRecipeId, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
+  genData, genFuel, genRecipeId, minerToExtractor, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
 import { PIECE_GAP, cleanPlace, validPieceGap } from './map/sizes.ts';
 import type { Pt } from './map/geo.ts';
@@ -63,7 +63,8 @@ export type Action =
   | { type: 'setMinerRate'; id: StageId; rate: number }
   | { type: 'setInputRate'; id: StageId; rate: number | null }
   | { type: 'setGenerator'; id: StageId; fuel?: ItemId; count?: number | null; clock?: number }
-  | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity; clock?: number }
+  | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity; clock?: number; building?: BuildingId }
+  | { type: 'minerToExtractor'; id: StageId; building: BuildingId }   // Miner antigo: escolhe o Mk (mesma vazão)
   // Posições: na vista dada (sem ela, a Planta). together: "Mover junto" (o mesmo deslocamento na outra vista); auto e
   // shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
   | { type: 'placeLig'; meio: string; place: LigPlace | null; view?: PlaceView; together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
@@ -263,7 +264,8 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' |
     case 'setMinerRate': return setMinerRate(f, a.id, a.rate);
     case 'setInputRate': return setInputRate(f, a.id, a.rate);
     case 'setGenerator': return setGenerator(f, d, a.id, { fuel: a.fuel, count: a.count, clock: a.clock });
-    case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity, clock: a.clock });
+    case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity, clock: a.clock, building: a.building });
+    case 'minerToExtractor': return minerToExtractor(f, d, a.id, a.building);
     case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { together: a.together === true, shown: a.shown });
     case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { together: a.together === true, auto: a.auto });
     case 'setPlaces': return isObj(a.places) ? setPlacesIn(f, view(a.view), a.places, { together: a.together === true, auto: a.auto }) : f;

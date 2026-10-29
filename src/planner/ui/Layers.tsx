@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n/index.js';
 import { LAYER_KEYS, NO_LAYERS, type MapLayers } from '../model/map/layers.ts';
 
-const LABEL: Record<keyof MapLayers, string> = { icons: 'plLayerIcons', names: 'plLayerNames', links: 'plLayerLinks', ports: 'plLayerPorts' };
+const LABEL: Record<(typeof LAYER_KEYS)[number], string> = { icons: 'plLayerIcons', names: 'plLayerNames', links: 'plLayerLinks', ports: 'plLayerPorts' };
 
-// Botão "Camadas" (44 px) e o balão acima dele: uma caixa por camada e "Só as máquinas" (desliga as quatro). Esc ou
+// Botão "Camadas" (44 px) e o balão acima dele: uma caixa por camada, "Ligações compactas" (o chip vira um ponto) e
+// "Só as máquinas" (desliga as quatro). Esc ou
 // clicar fora fecha; Esc devolve o foco ao botão.
 export function Layers({ value, onChange }: { value: MapLayers; onChange: (v: MapLayers) => void }) {
   const [open, setOpen] = useState(false);
@@ -42,8 +43,12 @@ export function Layers({ value, onChange }: { value: MapLayers; onChange: (v: Ma
                 {t(LABEL[k])}
               </label>
             ))}
+            <label className="pl-layers-compact">
+              <input type="checkbox" checked={value.compact} onChange={e => onChange({ ...value, compact: e.target.checked })} />
+              {t('plLayerCompact')}
+            </label>
           </fieldset>
-          <button type="button" className="pl-btn" aria-pressed={off} onClick={() => onChange(NO_LAYERS)}>{t('plLayersOnly')}</button>
+          <button type="button" className="pl-btn" aria-pressed={off} onClick={() => onChange({ ...NO_LAYERS, compact: value.compact })}>{t('plLayersOnly')}</button>
         </div>
       )}
     </span>

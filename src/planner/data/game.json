@@ -91,6 +91,66 @@
    "power": 0,
    "purity": true
   },
+  "Build_MinerMk1_C": {
+   "id": "Build_MinerMk1_C",
+   "items": [
+    "Desc_Coal_C",
+    "Desc_OreBauxite_C",
+    "Desc_OreCopper_C",
+    "Desc_OreGold_C",
+    "Desc_OreIron_C",
+    "Desc_OreUranium_C",
+    "Desc_RawQuartz_C",
+    "Desc_SAM_C",
+    "Desc_Stone_C",
+    "Desc_Sulfur_C"
+   ],
+   "mk": 1,
+   "name": "Miner Mk.1",
+   "perMin": 60,
+   "power": 5,
+   "purity": true
+  },
+  "Build_MinerMk2_C": {
+   "id": "Build_MinerMk2_C",
+   "items": [
+    "Desc_Coal_C",
+    "Desc_OreBauxite_C",
+    "Desc_OreCopper_C",
+    "Desc_OreGold_C",
+    "Desc_OreIron_C",
+    "Desc_OreUranium_C",
+    "Desc_RawQuartz_C",
+    "Desc_SAM_C",
+    "Desc_Stone_C",
+    "Desc_Sulfur_C"
+   ],
+   "mk": 2,
+   "name": "Miner Mk.2",
+   "perMin": 120,
+   "power": 15,
+   "purity": true
+  },
+  "Build_MinerMk3_C": {
+   "id": "Build_MinerMk3_C",
+   "items": [
+    "Desc_Coal_C",
+    "Desc_OreBauxite_C",
+    "Desc_OreCopper_C",
+    "Desc_OreGold_C",
+    "Desc_OreIron_C",
+    "Desc_OreUranium_C",
+    "Desc_RawQuartz_C",
+    "Desc_SAM_C",
+    "Desc_Stone_C",
+    "Desc_Sulfur_C"
+   ],
+   "mk": 3,
+   "name": "Miner Mk.3",
+   "perMin": 240,
+   "power": 45,
+   "purity": true
+  },
   "Build_OilPump_C": {
    "id": "Build_OilPump_C",
    "items": [
