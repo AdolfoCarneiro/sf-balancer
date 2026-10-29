@@ -13,6 +13,8 @@ import { Dn, O, Result, tierLabel, type Plan } from './Result.tsx';
 import { Workbench, type BenchProps } from './Workbench.tsx';
 import { designKey } from './balancerSvg.js';
 import { useBps } from './prefs.ts';
+import { openNM } from './Library.tsx';
+import { nmOf } from '../seo/routes.js';
 import {
   convertInputs, defaults, editGroup, emptyGroup, loadSaved, nextStage, normalize, readInput, save, withMedium,
   type Field, type Inputs, type Saved, type Side,
@@ -147,6 +149,15 @@ export function Balancer({ nav, active }: { nav: Nav; active: boolean }) {
   }, [active]);
   useEffect(dropStaleTip);
   const root = useRef<HTMLDivElement>(null);
+
+  // Endereço de um balancer N→M (/balancer/3-to-4): abre a biblioteca nele, ao chegar e ao voltar pelo navegador.
+  useLayoutEffect(() => {
+    const open = (smooth: boolean) => { const nm = nmOf(location.pathname); if (nm) openNM(nm.n, nm.m, smooth); };
+    open(false);
+    const onPop = () => open(true);
+    addEventListener('popstate', onPop);
+    return () => removeEventListener('popstate', onPop);
+  }, []);
 
   // ---- O plano ----
   const read = useMemo(() => readInput(inp, bps), [inp, bps, lang]);   // eslint-disable-line react-hooks/exhaustive-deps

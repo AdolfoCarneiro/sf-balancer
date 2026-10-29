@@ -111,6 +111,7 @@ src/main.tsx          el punto de entrada único de las dos páginas
 src/shell/            el shell de la app (React): cambio entre las dos páginas, barra superior común, idioma, título
 src/planner/          página Fábrica (React + TypeScript): model/ (puro: estado de la fábrica, solver del flujo, escena del mapa), worker/ (solver y conexiones fuera del hilo principal) y ui/
 src/balancer/         página Balancer (React + TypeScript, se carga bajo demanda), el banco de trabajo y balancer.css
+src/seo/              páginas estáticas para los buscadores (una por ruta, idioma y balanceador N→M) y el sitemap, generadas en el build
 src/logic/            funciones puras, sin DOM (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo)
 src/i18n/             textos en pt, en y es
 src/view3d/           escena 3D (three.js, se carga solo al abrir la pestaña 3D)

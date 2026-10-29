@@ -9,6 +9,8 @@ import game from '../planner/data/game.json';
 import { BalancerPage, loadBalancer, type BalancerModule } from '../balancer/BalancerPage.tsx';
 import type { Nav } from './SiteBar.tsx';
 import { LANG_STORE, pageOf, pagePath, type Lang, type Page } from './site.ts';
+import { nmOf } from '../seo/routes.js';
+import { nmMeta } from '../seo/nm.js';
 
 const SITE = 'https://sf-balancer.vercel.app';
 const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
@@ -28,6 +30,10 @@ export function Shell({ start, balancer }: { start: Page; balancer: BalancerModu
   balRef.current = bal;
   // A Fábrica só monta quando aparece pela primeira vez (abrir direto no Balancer não liga o mapa nem o tutorial).
   const [factorySeen, setFactorySeen] = useState(start === 'factory');
+  // O endereço de agora: no Balancer, o balancer N→M aberto pela biblioteca tem página própria (título, canonical).
+  // Quem muda o endereço sem trocar de página (a lista da biblioteca) avisa com o evento 'sf:path'.
+  const [path, setPath] = useState(location.pathname);
+  const nm = page === 'balancer' ? nmOf(path) : null;
 
   const show = (p: Page, mod: BalancerModule | null) => {
     const apply = () => flushSync(() => {
@@ -48,14 +54,17 @@ export function Shell({ start, balancer }: { start: Page; balancer: BalancerModu
       try { mod = await loadBalancer(); } catch { location.assign(pagePath(p, lang)); return; }   // sem rede: a página de verdade
     }
     if (push) history.pushState(null, '', pagePath(p, lang) + location.search);
+    setPath(location.pathname);
     show(p, mod);
   };
   const goRef = useRef(go);
   goRef.current = go;
   useEffect(() => {
-    const onPop = () => { void goRef.current(pageOf(location.pathname), false); };
+    const onPop = () => { setPath(location.pathname); void goRef.current(pageOf(location.pathname), false); };
+    const onPath = () => setPath(location.pathname);
     addEventListener('popstate', onPop);
-    return () => removeEventListener('popstate', onPop);
+    addEventListener('sf:path', onPath);
+    return () => { removeEventListener('popstate', onPop); removeEventListener('sf:path', onPath); };
   }, []);
   // Na Fábrica, o Balancer baixa quando o navegador está à toa: a primeira troca de aba já não espera a rede.
   useEffect(() => {
@@ -77,11 +86,13 @@ export function Shell({ start, balancer }: { start: Page; balancer: BalancerModu
     const factory = page === 'factory';
     document.documentElement.dataset.page = page;   // o layout de cada página (shell.css)
     document.documentElement.lang = t('htmlLang');
-    document.title = t(factory ? 'plPageTitle' : 'pageTitle');
-    document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', t(factory ? 'plMetaDesc' : 'metaDesc'));
+    // O mesmo título e a mesma descrição das páginas geradas no build (src/seo/pages.js).
+    const meta = nm ? nmMeta(nm.n, nm.m) : null;
+    document.title = meta ? meta.title : t(factory ? 'plPageTitle' : 'pageTitle');
+    document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', meta ? meta.desc : t(factory ? 'plMetaDesc' : 'metaDesc'));
     let canon = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
     if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
-    canon.href = SITE + pagePath(page, lang);
+    canon.href = SITE + pagePath(page, lang, nm);
     const about = document.getElementById('about');
     if (about) {
       about.hidden = !factory;
@@ -89,8 +100,8 @@ export function Shell({ start, balancer }: { start: Page; balancer: BalancerModu
       for (const el of about.querySelectorAll<HTMLElement>('[data-i18n]')) el.textContent = t(el.dataset.i18n!);
     }
     // No site, o endereço acompanha o idioma; fora dele (localhost, docker), fica como está.
-    if (onVercel && location.pathname !== pagePath(page, lang)) history.replaceState(history.state, '', pagePath(page, lang) + location.hash);
-  }, [page, lang]);
+    if (onVercel && location.pathname !== pagePath(page, lang, nm)) history.replaceState(history.state, '', pagePath(page, lang, nm) + location.hash);
+  }, [page, lang, nm?.n, nm?.m]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Voltar ao exemplo depois de um erro na Fábrica: a fábrica salva vira o exemplo, o #p= sai do endereço e ela remonta.
   const [gen, setGen] = useState(0);

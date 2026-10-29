@@ -1,5 +1,5 @@
 import { t, fmt } from '../i18n/index.js';
-import { designerSize } from '../logic/index.js';
+import { designerSize, pieceText3d } from '../logic/index.js';
 import { EPS } from '../logic/belts.js';
 import { esc } from './common.js';
 
@@ -26,6 +26,16 @@ export const PIECE_ICON = {
   mixed: `<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><path d="M1,6 H10 L16,10 H25 M1,14 H10 L16,10" stroke="${'#ffd166'}" stroke-width="2" fill="none"/><path d="M16,10 H25" stroke="#c6a6ff" stroke-width="2.6"/></svg>`,
   num: '<svg class="picon" viewBox="0 0 26 20" aria-hidden="true"><text x="13" y="14" text-anchor="middle" style="fill:var(--ink-dim);font:700 11px var(--display)">#1</text></svg>',
 };
+// O texto de cada passo de uma montagem (L: layout3d ou byPiece3d dela; view: 'flat', 'towers' ou 'floors') e, por passo,
+// a peça nova (para o ícone). O passo a passo do app e as páginas geradas de cada balancer usam este mesmo texto.
+export function stepTexts(d, L, labels, view) {
+  return {
+    kinds: L.steps.map(st => (st.key === 'piece' ? { t: st.t, ways: st.ways } : null)),
+    steps: L.steps.map(st => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
+      : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, view)
+      : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))),
+  };
+}
 export const pieceIcon = k => (k.t === 's' ? PIECE_ICON.splitter(k.ways) : PIECE_ICON.merger);
 
 // Desenho 2D a partir da montagem 'flat' (vista de cima): cada esteira sai e entra pelo lado de verdade da peça

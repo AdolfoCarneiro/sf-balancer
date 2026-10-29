@@ -10,10 +10,6 @@
     { "source": "/en/planner", "destination": "/", "permanent": true },
     { "source": "/:lang(pt|es)/planner", "destination": "/:lang", "permanent": true }
   ],
-  "rewrites": [
-    { "source": "/:lang(pt|es)", "destination": "/" },
-    { "source": "/:lang(pt|es)/balancer", "destination": "/balancer" }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",

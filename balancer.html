@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Satisfactory Belt Balancer &amp; Logistics Planner</title>
-<meta name="description" content="Free Satisfactory belt planner: turn machine counts into belt lines, mergers, splitters and load balancers between two factory stages. No sign-up.">
+<title>Satisfactory Load Balancer &amp; Belt Calculator | SF Balancer</title>
+<meta name="description" content="Free Satisfactory balancer calculator: from machine counts to belt lines, the exact splitters and mergers, and N→M load balancers, including 5 and 7 with loop or sink. Step by step, 2D and 3D.">
 <meta name="theme-color" content="#0d2136">
 <meta name="google-site-verification" content="2h-6PSSVAV2SRrTRHCR5VE-JYggT4UCPsifdsTf6jzI">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -14,8 +14,8 @@
 <link rel="alternate" hreflang="x-default" href="https://sf-balancer.vercel.app/balancer">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SF Balancer">
-<meta property="og:title" content="Satisfactory Belt Balancer &amp; Logistics Planner">
-<meta property="og:description" content="Turn machine counts into belt lines, mergers, splitters and load balancers between two stages of your Satisfactory factory.">
+<meta property="og:title" content="Satisfactory Load Balancer &amp; Belt Calculator">
+<meta property="og:description" content="Free Satisfactory balancer calculator: from machine counts to belt lines, the exact splitters and mergers, and N→M load balancers, including 5 and 7 with loop or sink. Step by step, 2D and 3D.">
 <meta property="og:url" content="https://sf-balancer.vercel.app/balancer">
 <meta property="og:image" content="https://sf-balancer.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
@@ -48,9 +48,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<!-- O mesmo app do index.html (src/main.tsx), que abre no Balancer por este caminho; este arquivo existe pelo <head> (título,
-     descrição e dados para os buscadores do /balancer). -->
-<script type="module" src="/src/main.tsx" blocking="render"></script>
+<!-- O mesmo app do index.html, pela entrada src/main-balancer.tsx (que já traz o Balancer). No build, src/seo/pages.js gera
+     daqui uma página por idioma e por balancer N→M, com o <head> e o texto do #root no idioma. -->
+<script type="module" src="/src/main-balancer.tsx" blocking="render"></script>
 </head>
 <body>
 <div id="root"></div>

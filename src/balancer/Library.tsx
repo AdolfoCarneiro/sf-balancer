@@ -10,6 +10,16 @@ import { flatLayout, type Marks } from './Ponder.tsx';
 import { BeltSelect } from './Form.tsx';
 import { Workbench } from './Workbench.tsx';
 import { setBps, setLib, useBps, useLib } from './prefs.ts';
+import { BALANCER_PAGES, nmPath } from '../seo/routes.js';
+import { NM_BELT, nmInfo } from '../seo/nm.js';
+
+// Abre um balancer N→M no gerador (o endereço /balancer/3-to-4 e a lista "Balancers prontos"): esteira Mk4 cheia, como a
+// página dele, na aba da melhor montagem; e rola até o gerador.
+export function openNM(n: number, m: number, smooth = true) {
+  setLib({ n: String(n), m: String(m), rate: '', belt: NM_BELT.id, view: null, style: nmInfo(n, m).style });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(() => document.getElementById('gen')?.scrollIntoView({ behavior: smooth && !reduce ? 'smooth' : 'auto', block: 'start' }));
+}
 
 const CATALOG = [
   { kind: 'matrix', n: 3, m: 4, rate: 240, ds: 'dsMatrix' },
@@ -142,6 +152,26 @@ export const Library = memo(function Library({ lang }: { lang: string }) {
             </div>
           ))}
         </div>
+      </div>
+      <div className="ready">
+        <h3>{t('libReady')}</h3>
+        <p className="lead">{t('libReadyLead')}</p>
+        <ul className="nm-list">
+          {BALANCER_PAGES.map(([n, m]) => {
+            const href = nmPath(lang, n, m);
+            return (
+              <li key={href}>
+                <a href={href} className="num" onClick={e => {
+                  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                  e.preventDefault();
+                  history.pushState(null, '', href + location.search);
+                  dispatchEvent(new Event('sf:path'));
+                  openNM(n, m);
+                }}>{`${n} → ${m}`}</a>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );

@@ -3,8 +3,8 @@
 // montagem ou o jeito de mostrar muda: o passo volta para o fim, com tudo montado.
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent } from 'react';
 import { getLang, t, fmt } from '../i18n/index.js';
-import { layout3d, focus3d, byPiece3d, pieceText3d, planFootprint, designerSize, placeMark, defaultMarks, addMark, panView, zoomView, tapGesture, designPieces } from '../logic/index.js';
-import { MARK_TAB, PIECE_ICON, PLAN_PX, balancerBuild, cap1, designKey, flatSvg, inColor, pieceIcon, planMarksSvg, rateList } from './balancerSvg.js';
+import { layout3d, focus3d, byPiece3d, planFootprint, designerSize, placeMark, defaultMarks, addMark, panView, zoomView, tapGesture, designPieces } from '../logic/index.js';
+import { MARK_TAB, PIECE_ICON, PLAN_PX, balancerBuild, cap1, designKey, flatSvg, inColor, pieceIcon, planMarksSvg, stepTexts } from './balancerSvg.js';
 import { Tip } from './help.tsx';
 import { mount3d } from '../view3d/scene.js';
 
@@ -56,14 +56,8 @@ export function Ponder({ d, labels, mode, lay, per: perIn, view2d, marks, onView
     const lay0 = in3d || flat2d ? lay || (flat2d ? flatLayout(d) : layout3d(d, mode)) : null;
     const L = lay0 && per === 'piece' ? byPiece3d(lay0) : lay0;
     if (!L) return { lay0, L, ...balancerBuild(d, labels), kinds: [] as any[] };
-    return {
-      lay0, L,
-      svg: flat2d ? flatSvg(d, L, labels, per, plan) : '',
-      kinds: L.steps.map((st: any) => (st.key === 'piece' ? { t: st.t, ways: st.ways } : null)),
-      steps: L.steps.map((st: any) => (st.key === 'in' ? t('stIn', d.N, labels.ins.join(', '), rateList(d.rates))
-        : st.key === 'out' ? t('stOut', d.M, fmt(d.perOut)) : st.key === 'piece' ? pieceText3d(st, labels, view)
-        : t('stLevel3d', view, st.level, st.sp, st.ways, st.mg, st.up, st.down))) as string[],
-    };
+    const { steps, kinds } = stepTexts(d, L, labels, view);
+    return { lay0, L, svg: flat2d ? flatSvg(d, L, labels, per, plan) : '', kinds, steps: steps as string[] };
   }, [d, labels, lay, mode, in3d, flat2d, plan, per, view, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
   const K = B.steps.length;
   const [cur, setCur] = useState(K);
