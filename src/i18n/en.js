@@ -403,6 +403,8 @@ export default {
   plLigOpenBalancer: 'Open in the Balancer', plLigLinks: 'Links between blocks', plLigUnlink: 'Unlink', plLigBack: 'Back to the drawing',
   plMapListHint: 'Enter selects and goes to the map · arrows move 8 m · R rotates',
   plWhyDeficit: (item, rate, def) => `${rate} ${item} per minute arrive. ${def} per minute short of running the machines full.`,
+  plWhyChoke: (item, acc, made, pct) => `${item} clogs up: the rest of the chain only takes ${acc} of the ${made} per minute (${pct}%), and what it takes depends on this block. The output fills, the block slows down, the chain follows and everything stops. Send what isn't taken out of the factory or to another destination.`,
+  plFixExport: 'Send the surplus to an Export',
   plWhySurplus: (who, rate, held) => `${who} only takes ${rate} per minute. ${held} per minute are left over here, held back in the machines.`,
   plWhyStalled: (item, n) => (n === '0' ? `${item} has nowhere to go, so the block stops.` : `${item} has nowhere to go, so the block stops. It would make ${n} per minute.`),
   plWhyEntry: (item, n) => `Nothing connected here: ${n} ${item} per minute must come from outside (Miner, extractor or Input).`,

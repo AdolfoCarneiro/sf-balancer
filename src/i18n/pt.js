@@ -403,6 +403,8 @@ export default {
   plLigOpenBalancer: 'Abrir no Balancer', plLigLinks: 'Ligações entre os blocos', plLigUnlink: 'Desligar', plLigBack: 'Voltar ao desenho',
   plMapListHint: 'Enter seleciona e vai ao mapa · setas movem 8 m · R gira',
   plWhyDeficit: (item, rate, def) => `Chegam ${rate} de ${item} por minuto. Faltam ${def} por minuto para as máquinas rodarem cheias.`,
+  plWhyChoke: (item, acc, made, pct) => `O ${item} entope: o resto da cadeia só escoa ${acc} dos ${made} por minuto (${pct} %), e o que escoa depende deste bloco. A saída enche, o bloco desacelera, a cadeia acompanha e tudo para. Mande o que não escoa para fora ou para outro destino.`,
+  plFixExport: 'Mandar o que sobra para uma Saída',
   plWhySurplus: (who, rate, held) => `${who} só consome ${rate} por minuto. Sobram ${held} por minuto aqui, represados nas máquinas.`,
   plWhyStalled: (item, n) => (n === '0' ? `O ${item} não tem para onde ir, então o bloco para.` : `O ${item} não tem para onde ir, então o bloco para. Sairiam ${n} por minuto.`),
   plWhyEntry: (item, n) => `Nada ligado aqui: precisam chegar ${n} de ${item} por minuto de fora (Miner, extrator ou Entrada).`,

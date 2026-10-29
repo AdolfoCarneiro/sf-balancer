@@ -403,6 +403,8 @@ export default {
   plLigOpenBalancer: 'Abrir en el Balancer', plLigLinks: 'Enlaces entre los bloques', plLigUnlink: 'Desconectar', plLigBack: 'Volver al dibujo',
   plMapListHint: 'Enter selecciona y va al mapa · las flechas mueven 8 m · R gira',
   plWhyDeficit: (item, rate, def) => `Llegan ${rate} de ${item} por minuto. Faltan ${def} por minuto para que las máquinas funcionen llenas.`,
+  plWhyChoke: (item, acc, made, pct) => `El ${item} se atasca: el resto de la cadena solo saca ${acc} de los ${made} por minuto (${pct} %), y lo que saca depende de este bloque. La salida se llena, el bloque se frena, la cadena lo acompaña y todo se detiene. Manda lo que no sale fuera de la fábrica o a otro destino.`,
+  plFixExport: 'Mandar el sobrante a una Salida',
   plWhySurplus: (who, rate, held) => `${who} solo consume ${rate} por minuto. Sobran ${held} por minuto aquí, retenidos en las máquinas.`,
   plWhyStalled: (item, n) => (n === '0' ? `El ${item} no tiene adónde ir, así que el bloque se detiene.` : `El ${item} no tiene adónde ir, así que el bloque se detiene. Saldrían ${n} por minuto.`),
   plWhyEntry: (item, n) => `Nada conectado aquí: tienen que llegar ${n} de ${item} por minuto de fuera (Miner, extractor o Entrada).`,

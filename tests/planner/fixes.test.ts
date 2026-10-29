@@ -6,6 +6,7 @@ import { solveFactory } from '../../src/planner/model/solve.ts';
 import { portStates, type PortState } from '../../src/planner/model/portstate.ts';
 import { fixesFor, problemSentence } from '../../src/planner/model/fixes.ts';
 import type { Pt } from '../../src/planner/model/map/geo.ts';
+import { addLinkedBlock } from '../../src/planner/model/factory.ts';
 import { close } from './fixtures.ts';
 
 const data = game as GameData;
@@ -107,4 +108,46 @@ test('porta ok: sem frase nem consertos; travada: sink só em sólido', () => {
   const ok: PortState = { block: 'a1', side: 'in', item: ORE, kind: 'ok', amount: null, rate: 1 };
   assert.equal(problemSentence(ok, f, solveFactory(f, data), data), null);
   assert.deepEqual(fixesFor(ok, f, solveFactory(f, data), data, at), []);
+});
+
+test('sobra de fluido: mandar para uma Saída', () => {
+  const f = fac([{ id: 'e', kind: 'extractor', building: 'Build_WaterPump_C', item: 'Desc_Water_C', purity: 'normal', count: 2 },
+    { ...recipe('s', 'Recipe_AluminaSolution_C', { machines: 1 }), collect: ['Desc_Silica_C'] }], [link('l', 'Desc_Water_C', 'e', 's')]);
+  const fx = run(f, port(f, 'e', 'out', 'Desc_Water_C')).fx;
+  assert.equal(fx[0].key, 'plFixExport');
+  assert.deepEqual(fx[0].action, { type: 'addLinkedBlock', spec: { kind: 'export' }, port: { block: 'e', item: 'Desc_Water_C', side: 'out' }, at });
+});
+
+// Heavy Oil Residue fixada em 42, as duas saídas indo para Residual Fuel e Residual Rubber, e as duas para a Recycled
+// Plastic (Rubber + Fuel meio a meio). Só 37,5 % da Heavy Oil Residue escoa; a refinaria desacelera e a cadeia vai junto até 0.
+const HOR = 'Desc_HeavyOilResidue_C', RESIN = 'Desc_PolymerResin_C';
+const entope = () => fac([recipe('h', 'Recipe_Alternate_HeavyOilResidue_C', { machines: 42 }), recipe('f', 'Recipe_ResidualFuel_C'),
+  recipe('r', 'Recipe_ResidualRubber_C'), recipe('p', 'Recipe_Alternate_Plastic_1_C')],
+[link('l1', HOR, 'h', 'f'), link('l2', RESIN, 'h', 'r'), link('l3', 'Desc_LiquidFuel_C', 'f', 'p'), link('l4', 'Desc_Rubber_C', 'r', 'p')]);
+
+test('saída que entope a cadeia até parar: a frase diz quanto escoa, e só nela', () => {
+  const f = entope();
+  close(solveFactory(f, data).blocks.h.x, 0);
+  const { s, fx } = run(f, port(f, 'h', 'out', HOR));
+  assert.equal(s?.key, 'plWhyChoke');
+  assert.equal(s!.args[0], 'Heavy Oil Residue');
+  close(s!.args[1] as number, 630); close(s!.args[2] as number, 1680); close(s!.args[3] as number, 37.5);
+  assert.deepEqual(fx.map(x => x.key), ['plFixExport', 'plFixCreate']);
+  // A resina não é o problema: sem frase.
+  assert.equal(run(f, port(f, 'h', 'out', RESIN)).s, null);
+});
+
+test('o conserto da Saída destrava a cadeia', () => {
+  const f = entope();
+  const fx = run(f, port(f, 'h', 'out', HOR)).fx[0];
+  const a = fx.action!;
+  assert.equal(a.type, 'addLinkedBlock');
+  const g = a.type === 'addLinkedBlock' ? addLinkedBlock(f, data, a.spec, a.port, a.at) : f;
+  const r = solveFactory(g, data);
+  close(r.blocks.h.x, 42); close(r.blocks.p.x, 14); close(r.blocks.f.x, 10.5);
+});
+
+test('sobra comum (sem parar a cadeia) continua com a frase de sobra', () => {
+  const f = caso1();
+  assert.equal(run(f, port(f, 's1', 'out', IRON)).s?.key, 'plWhySurplus');
 });
