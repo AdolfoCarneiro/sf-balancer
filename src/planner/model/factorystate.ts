@@ -5,7 +5,7 @@ import type {
 import { tierKey } from './stage.ts';
 import { cleanLayout } from './layout.ts';
 import {
-  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, canConnect, cleanCollect, cleanLigPlace, cleanLimits, connect, clockOk, countOk, machinesOk, disconnect, disconnectMany,
+  MAX_LINKS, MAX_MACHINES, MAX_STAGES, PURITY, addBlock, addLinkedBlock, bendLinks, canConnect, cleanBend, cleanCollect, cleanLigPlace, cleanLimits, connect, clockOk, countOk, machinesOk, disconnect, disconnectMany,
   extractable, meiosOf, minable, nextLinkId, perRowOk, rateOk, removeBlock, removeBlocks, setClock, setCollect, setExtractor, setLimits,
   genData, genFuel, genRecipeId, minerToExtractor, setGenerator, setInputRate, setMinerRate, setPerRow, setRecipe, setTier, type BlockSpec,
 } from './factory.ts';
@@ -65,12 +65,12 @@ export type Action =
   | { type: 'setGenerator'; id: StageId; fuel?: ItemId; count?: number | null; clock?: number }
   | { type: 'setExtractor'; id: StageId; count?: number | null; purity?: Purity; clock?: number; building?: BuildingId }
   | { type: 'minerToExtractor'; id: StageId; building: BuildingId }   // Miner antigo: escolhe o Mk (mesma vazão)
-  // Posições: na vista dada (sem ela, a Planta). together: "Mover junto" (o mesmo deslocamento na outra vista); auto e
-  // shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
-  | { type: 'placeLig'; meio: string; place: LigPlace | null; view?: PlaceView; together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
-  | { type: 'placeBlock'; id: StageId; place: MapPlace; view?: PlaceView; together?: boolean; auto?: Record<StageId, MapPlace> }
-  | { type: 'setPlaces'; places: Record<StageId, MapPlace>; view?: PlaceView; together?: boolean; auto?: Record<StageId, MapPlace> }
+  // Posições: na vista dada (sem ela, a Planta). auto e shown: onde as coisas aparecem agora sem posição salva (ver views.ts).
+  | { type: 'placeLig'; meio: string; place: LigPlace | null; view?: PlaceView; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
+  | { type: 'placeBlock'; id: StageId; place: MapPlace; view?: PlaceView; auto?: Record<StageId, MapPlace> }
+  | { type: 'setPlaces'; places: Record<StageId, MapPlace>; view?: PlaceView; auto?: Record<StageId, MapPlace> }
   | { type: 'proposeMap'; places: Record<StageId, MapPlace>; view?: PlaceView; auto?: Record<StageId, MapPlace> }   // propor de novo: posições novas e ligações soltas
+  | { type: 'bendLinks'; links: string[]; off: [number, number] | null }   // o ponto da esteira na Montar (null: de volta ao meio)
   | { type: 'setMeioAlt'; meio: string; key: string | null }
   | { type: 'setMapGap'; gap: number | null }
   | { type: 'undo' }
@@ -224,6 +224,14 @@ function cleanFactory(raw: unknown, data: GameData): Factory | null {
     // montarLigs vale mesmo vazio: a Montar deixou de seguir as ligs.
     if (Object.keys(ligs).length || k === 'montarLigs') f = { ...f, [k]: ligs };
   }
+  if (isObj(raw.bends)) {
+    const linkIds = new Set(f.links.map(l => l.id)), bends: Record<string, [number, number]> = {};
+    for (const [key, v] of Object.entries(raw.bends)) {
+      const b = cleanBend(v);
+      if (linkIds.has(key) && b && (b[0] !== 0 || b[1] !== 0)) bends[key] = b;
+    }
+    if (Object.keys(bends).length) f = { ...f, bends };
+  }
   return f;
 }
 
@@ -266,11 +274,12 @@ function apply(f: Factory, a: Exclude<Action, { type: 'undo' | 'redo' | 'load' |
     case 'setGenerator': return setGenerator(f, d, a.id, { fuel: a.fuel, count: a.count, clock: a.clock });
     case 'setExtractor': return setExtractor(f, d, a.id, { count: a.count, purity: a.purity, clock: a.clock, building: a.building });
     case 'minerToExtractor': return minerToExtractor(f, d, a.id, a.building);
-    case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { together: a.together === true, shown: a.shown });
-    case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { together: a.together === true, auto: a.auto });
-    case 'setPlaces': return isObj(a.places) ? setPlacesIn(f, view(a.view), a.places, { together: a.together === true, auto: a.auto }) : f;
+    case 'placeLig': return placeLigIn(f, view(a.view), a.meio, a.place, { shown: a.shown });
+    case 'placeBlock': return placeBlockIn(f, view(a.view), a.id, a.place, { auto: a.auto });
+    case 'setPlaces': return isObj(a.places) ? setPlacesIn(f, view(a.view), a.places, { auto: a.auto }) : f;
     // As ligações postas também voltam ao lugar automático: a vista inteira é proposta de novo.
     case 'proposeMap': return isObj(a.places) ? proposeIn(f, view(a.view), a.places, a.auto) : f;
+    case 'bendLinks': return Array.isArray(a.links) ? bendLinks(f, a.links.filter((x: unknown) => typeof x === 'string'), a.off) : f;
     case 'setMeioAlt': {
       // Como na leitura: só meio que existe e chave curta.
       if (!meiosOf(f).some(m => m.id === a.meio) || (a.key !== null && (typeof a.key !== 'string' || a.key.length > ALT_KEY_MAX))) return f;

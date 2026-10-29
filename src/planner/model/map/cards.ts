@@ -67,8 +67,14 @@ export interface ViewBlock { id: StageId; rect: Rect; scale: number; card: Rect;
 // x/y: centro da porta; r: o raio na tela (encolhe com o cartão na Montar); dir: para fora do bloco; lanes: na Planta, o ponto de tela de cada fileira daquela porta (na
 // transição, saindo da porta da Montar).
 export interface ViewPort { block: StageId; side: 'in' | 'out'; item: ItemId; x: number; y: number; r: number; dir: Pt; lanes: Pt[] }
-// x/y: centro do chip; compact: desenhado como o ponto da ligação compacta (w/h: o que pega o ponteiro).
-export interface ViewChip { meio: string; x: number; y: number; w: number; h: number; compact?: true }
+// x/y: centro do chip; compact: desenhado como o ponto da ligação compacta (w/h: o que pega o ponteiro). link: na Montar,
+// cada link da ligação é uma esteira só da saída à entrada, com o ponto no meio dela (como no Modeler); rate: o que passa
+// nele; bend: quanto (px de tela) o ponto foi puxado do meio automático (Factory.bends). extra: um link além do primeiro
+// (sempre ponto; só na Montar).
+export interface ViewChip {
+  meio: string; x: number; y: number; w: number; h: number; compact?: true;
+  link?: { id: string; from: StageId; to: StageId; item: ItemId; rate: number | null; bend: Pt }; extra?: true;
+}
 // k: a escala de portas, chips e esteiras (overlayScale); w/h dos chips já vêm nela.
 export interface ViewGeo { blocks: ViewBlock[]; ports: ViewPort[]; chips: ViewChip[]; k: number }
 
@@ -136,37 +142,66 @@ export function viewGeo(scene: Scene, cam: Camera, t: number, phone: boolean, f:
       });
     }
   }
-  const groups = groupsOf(f.links), chips: ViewChip[] = [];
+  const groups = groupsOf(f.links), linkById = new Map(f.links.map(l => [l.id, l])), chips: ViewChip[] = [];
   for (const sm of scene.meios) {
     const center = toS([sm.rect.x + sm.rect.w / 2, sm.rect.y + sm.rect.h / 2]);
-    let m0 = sm.chip ? toS(sm.chip) : center;
     const g = groups.get(sm.meio);
-    // Sem posição na Montar: lá, no meio entre as saídas das produtoras e as entradas das consumidoras.
-    if (g && !sm.chip) {
-      const pick = (ids: StageId[], side: 'in' | 'out') => ids.map(id => montar.get(`${id}|${side}|${g.item}`)).filter((p): p is Pt => !!p);
-      const a = mean(pick(g.producers, 'out')), b = mean(pick(g.consumers, 'in'));
-      m0 = a && b ? lerpPt(a, b, 0.5) : a ?? b ?? center;
-    }
-    const [x, y] = lerpPt(m0, center, t);
-    chips.push({ meio: sm.meio, x, y, w: CHIP_W * k, h: CHIP_H * k });
+    // Na Montar, um ponto por link, no meio da esteira dele (não se arrasta: segue os cartões). O primeiro vira o chip
+    // da ligação na Planta; os outros só existem na Montar.
+    const legs = (g?.links ?? []).map(id => linkById.get(id)).filter((l): l is Link => !!l).flatMap(l => {
+      const a = montar.get(`${l.from}|out|${l.item}`), b = montar.get(`${l.to}|in|${l.item}`);
+      const off = f.bends?.[l.id], bend: Pt = off ? [off[0] * z, off[1] * z] : [0, 0];
+      return a && b ? [{ l, bend, mid: bezierAt(linkBezier(a, b, k, bend), 0.5) }] : [];
+    });
+    if (!legs.length) { const [x, y] = center; chips.push({ meio: sm.meio, x, y, w: CHIP_W * k, h: CHIP_H * k }); continue; }
+    legs.forEach(({ l, bend, mid }, i) => {
+      if (i > 0 && t >= 1) return;
+      const [x, y] = lerpPt(mid, center, t), rate = flow.links[l.id];
+      chips.push({
+        meio: sm.meio, x, y, w: CHIP_W * k, h: CHIP_H * k, link: { id: l.id, from: l.from, to: l.to, item: l.item, rate: rate === undefined ? 0 : rate, bend },
+        ...(i > 0 ? { extra: true as const } : {}),
+      });
+    });
   }
   return { blocks, ports, chips, k };
 }
 
-export type ViewHit = { kind: 'port'; port: ViewPort } | { kind: 'chip'; meio: string } | { kind: 'block'; id: StageId } | null;
+// A esteira de um link na Montar (px de tela; k: a escala do desenho), como no Modeler: uma curva só da saída (a) à
+// entrada (b), saindo e chegando na horizontal, alças de metade da distância (no mínimo 30 px). Entrada atrás da saída
+// (a volta de um subproduto): a curva desce por baixo dos dois e volta, em vez de cruzar os cartões. bend (px): o ponto
+// puxado; as duas alças andam bend / 0,75, e o meio da curva (que pesa 3/8 de cada alça) cai bem nele.
+export function linkBezier(a: Pt, b: Pt, k: number, bend: Pt = [0, 0]): [Pt, Pt, Pt, Pt] {
+  const dx = b[0] - a[0], [ox, oy] = [bend[0] / 0.75, bend[1] / 0.75];
+  if (dx >= 0) { const h = Math.max(30 * k, dx * 0.5); return [a, [a[0] + h + ox, a[1] + oy], [b[0] - h + ox, b[1] + oy], b]; }
+  const h = Math.max(90 * k, -dx * 0.3), low = Math.max(a[1], b[1]) + 120 * k;
+  return [a, [a[0] + h + ox, low + oy], [b[0] - h + ox, low + oy], b];
+}
+export function bezierAt([p0, p1, p2, p3]: [Pt, Pt, Pt, Pt], u: number): Pt {
+  const v = 1 - u, A = v * v * v, B = 3 * v * v * u, C = 3 * v * u * u, D = u * u * u;
+  return [A * p0[0] + B * p1[0] + C * p2[0] + D * p3[0], A * p0[1] + B * p1[1] + C * p2[1] + D * p3[1]];
+}
+
+// chip: link é o da esteira daquele ponto (só na Montar).
+export type ViewHit = { kind: 'port'; port: ViewPort } | { kind: 'chip'; meio: string; link?: string } | { kind: 'block'; id: StageId } | null;
 
 // O que está desenhado por cima ganha: chip antes de porta antes de bloco; dentro de cada um, o último desenhado ganha.
-export function viewHit(v: ViewGeo, sx: number, sy: number): ViewHit {
+// plant (Planta em escala): o corpo do bloco ganha do chip que o cobre (um Miner de 8 m tem uns 32 px e a ligação fica
+// colada nele); só o círculo do ponto (DOT_HIT px do centro) continua pegando ali.
+export const DOT_HIT = 12;
+export function viewHit(v: ViewGeo, sx: number, sy: number, plant = false): ViewHit {
+  let body: StageId | null = null;
+  for (let i = v.blocks.length - 1; i >= 0 && !body; i--) {
+    const b = v.blocks[i].rect;
+    if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) body = v.blocks[i].id;
+  }
   for (let i = v.chips.length - 1; i >= 0; i--) {
     const c = v.chips[i];
-    if (Math.abs(sx - c.x) <= c.w / 2 && Math.abs(sy - c.y) <= c.h / 2) return { kind: 'chip', meio: c.meio };
+    if (Math.abs(sx - c.x) > c.w / 2 || Math.abs(sy - c.y) > c.h / 2) continue;
+    if (plant && body && !(c.compact && Math.hypot(sx - c.x, sy - c.y) <= DOT_HIT * v.k)) continue;
+    return c.link ? { kind: 'chip', meio: c.meio, link: c.link.id } : { kind: 'chip', meio: c.meio };
   }
   for (let i = v.ports.length - 1; i >= 0; i--) if (Math.hypot(v.ports[i].x - sx, v.ports[i].y - sy) <= v.ports[i].r + 6) return { kind: 'port', port: v.ports[i] };
-  for (let i = v.blocks.length - 1; i >= 0; i--) {
-    const b = v.blocks[i].rect;
-    if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) return { kind: 'block', id: v.blocks[i].id };
-  }
-  return null;
+  return body ? { kind: 'block', id: body } : null;
 }
 
 // Canto do retângulo do meio (size em metros, já girado), preso na grade, para o centro ficar sob (sx, sy). rot 0:
@@ -197,7 +232,7 @@ export function switchCam(v: ViewGeo, cam: Camera, vw: number, vh: number, sel: 
 // folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.
 export const PORT_LABEL_ROOM = 104;
 // Retângulo do mundo que a Montar ocupa no zoom z: cada cartão (que tem tamanho de tela) com as portas e os rótulos
-// delas por fora (de longe, sem portas na tela, sem essa folga), e os chips postos (no lugar da Montar). Vazio sem blocos.
+// delas por fora (de longe, sem portas na tela, sem essa folga); os pontos ficam entre as portas. Vazio sem blocos.
 export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: FlowResult, z: number, phone: boolean): Rect {
   const s = cardScale(z, phone), byId = new Map(f.blocks.map(b => [b.id, b]));
   const m = (PORT_D / 2 + PORT_LABEL_ROOM) * s / z;
@@ -211,11 +246,6 @@ export function montarBounds(scene: Scene, f: Factory, data: GameData, flow: Flo
     add(x - m, y, x + size.w * s / z + m, y + size.h * s / z);
   }
   if (x0 === Infinity) return { x: 0, y: 0, w: 0, h: 0 };
-  for (const sm of scene.meios) {
-    if (!sm.chip) continue;
-    const [cx, cy] = sm.chip, hw = CHIP_W / 2 * s / z, hh = CHIP_H / 2 * s / z;
-    add(cx - hw, cy - hh, cx + hw, cy + hh);
-  }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 

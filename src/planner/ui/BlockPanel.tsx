@@ -159,7 +159,8 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
       {b.kind === 'extractor' && <ExtractorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'input' && <InputFields b={b} bf={bf} data={data} dispatch={dispatch} />}
       {b.kind === 'generator' && <GeneratorFields b={b} bf={bf} data={data} dispatch={dispatch} />}
-      <section className="pl-bp-sec" aria-labelledby="pl-bp-map">
+      {/* Lado das entradas, giro e vãos só mudam a Planta em escala: na Montar não aparecem. */}
+      {view === 'planta' && <section className="pl-bp-sec" aria-labelledby="pl-bp-map">
         <h3 className="pl-insp-h" id="pl-bp-map">{t('plBpMap')}</h3>
         <fieldset className="pl-seg">
           <legend>{t('plMapInSide')}</legend>
@@ -178,7 +179,7 @@ export function BlockPanel({ block: b, flow, factory: f, data, rect, place, onPl
           {gap(t('plMapGapRow'), 'gapRow')}
           {gap(t('plMapGapMachine'), 'gapMachine')}
         </div>
-      </section>
+      </section>}
       <div className="pl-bp-foot">
         {view === 'montar'
           ? <button type="button" className="pl-btn" onClick={onScale}>{t('plSeeScale')}</button>

@@ -30,7 +30,7 @@ export function strokeBelts(w: WorldCtx, belts: BeltPath[], cull: boolean): void
   ctx.setLineDash([]);
 }
 
-// ---- Montar: esteiras em px de tela, da porta ao chip e do chip à porta ----
+// ---- Montar: esteiras em px de tela (a de cada link vem de linkBezier, em map/cards.ts) ----
 
 export type BeltLook = { color: string; fluid: boolean; short: boolean; selected: boolean; temp?: boolean };
 
@@ -43,11 +43,6 @@ export function beltCurve(a: Pt, da: Pt, b: Pt, db: Pt): Path2D {
   p.bezierCurveTo(a[0] + da[0] * k, a[1] + da[1] * k, b[0] - db[0] * k, b[1] - db[1] * k, b[0], b[1]);
   return p;
 }
-// Caixa (com folga) de uma curva, pelas pontas e alças, para pular a que não aparece.
-export const curveBox = (a: Pt, b: Pt): Rect => {
-  const pad = 40 + Math.abs(b[0] - a[0]) * 0.5;
-  return { x: Math.min(a[0], b[0]) - pad, y: Math.min(a[1], b[1]) - pad, w: Math.abs(b[0] - a[0]) + 2 * pad, h: Math.abs(b[1] - a[1]) + 2 * pad };
-};
 
 // Três traços: casca escura (12 px), borda na cor do item (10 px) e o tracejado claro (3 px) andando com o tempo.
 // Fluido: sem casca, o tracejado azul do cano. Com falta na ponta de lá: coral.

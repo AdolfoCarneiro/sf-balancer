@@ -17,7 +17,6 @@ import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData } from '../model/types.ts';
 import type { Lang } from '../lang.ts';
 import { useFlowView } from '../meios.ts';
-import { montarLig } from '../model/views.ts';
 import type { ViewMode } from './selection.ts';
 import { blockName, sizeText } from './format.ts';
 
@@ -98,8 +97,10 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
   const sum = plan && !plan.unbounded ? meioSummary(plan, altKey ?? undefined, result?.geos) : null;
   const geo = result ? chosenGeo(result, f.alts?.[meio.id]) : null;
   const lig = f.ligs && Object.hasOwn(f.ligs, meio.id) ? f.ligs[meio.id] : null;
-  // Posta na vista aberta (a Montar sem lugar próprio segue a Planta).
-  const placed = mapView === 'planta' ? !!lig : !!montarLig(f, meio.id);
+  // Posta na Planta (na Montar o ponto fica no meio da esteira e segue os cartões: não tem lugar para voltar).
+  const placed = mapView === 'planta' && !!lig;
+  // Na Montar: alguma esteira desta ligação puxada (o ponto fora do meio).
+  const bent = mapView === 'montar' && meio.links.some(id => !!f.bends?.[id]);
   const rot = lig ? lig.rot : f.map?.[meio.producers[0]]?.rot ?? 0;
   const links = meio.links.flatMap(id => f.links.filter(l => l.id === id));
   // Sem limite ou só para blocos de sobra: a página Balancer não tem o que planejar.
@@ -167,8 +168,9 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
             ))}
           </ul>
           {geo && <div className="pl-insp-sub">{t('plMapMeioSize')}: {sizeText(rotSize(geo, rot))}</div>}
-          <p className="pl-note">{t('plLigMoveHint')}</p>
+          <p className="pl-note">{t(mapView === 'planta' ? 'plLigMoveHint' : 'plLigBendHint')}</p>
           {placed && <button type="button" className="pl-btn" onClick={() => dispatch({ type: 'placeLig', meio: meio.id, place: null, view: mapView })}>{t('plLigReset')}</button>}
+          {bent && <button type="button" className="pl-btn" onClick={() => dispatch({ type: 'bendLinks', links: meio.links, off: null })}>{t('plLigStraighten')}</button>}
           {canOpen && (
             <>
               <a className="pl-btn pl-link" href={balancerUrl(meio, f, flow, data, lang, altKey)} target="_blank" rel="noopener">{t('plLigOpenBalancer')}</a>

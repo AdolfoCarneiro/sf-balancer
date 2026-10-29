@@ -32,7 +32,9 @@ export function Layers({ value, onChange }: { value: MapLayers; onChange: (v: Ma
   return (
     <span className="pl-layers" data-tour="map-layers">
       <button ref={btn} type="button" className="pl-layers-btn" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? 'pl-layers' : undefined}
-        onClick={() => (open ? close(false) : setOpen(true))}>{t('plLayers')}</button>
+        aria-label={t('plLayers')} title={t('plLayers')} onClick={() => (open ? close(false) : setOpen(true))}>
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2l7 3.5L9 9 2 5.5zM2 9l7 3.5L16 9M2 12.5L9 16l7-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
+      </button>
       {open && (
         <div className="pl-layers-pop" id="pl-layers" role="dialog" aria-label={t('plLayersTitle')} ref={box} onKeyDown={onKey}>
           <fieldset>

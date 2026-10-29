@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { setLang } from '../i18n/index.js';
 import { LANG_STORE } from '../ui/common.js';
@@ -27,4 +28,7 @@ function Root() {
   return <ErrorBoundary key={gen} onReset={reset}><App /></ErrorBoundary>;
 }
 
-createRoot(document.getElementById('root')!).render(<Root />);
+// Monta já na primeira tarefa (o script segura a pintura, blocking="render"): a página nova aparece pronta, sem um quadro
+// vazio entre a Fábrica e o Balancer.
+const root = createRoot(document.getElementById('root')!);
+flushSync(() => root.render(<Root />));

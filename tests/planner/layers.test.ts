@@ -58,4 +58,10 @@ test('ligações compactas: o chip fechado vira o ponto (menor no clique); o abe
   assert.equal(viewHit(compactChips(V, true, () => false), 400 + 50, 50)?.kind, undefined);
   assert.equal(viewHit(compactChips(V, true, () => false), 400, 50)?.kind, 'chip');
   assert.deepEqual(compactChips(V, true, id => id === 'm1').chips[0], V.chips[0]);
+  // O ponto extra de uma ligação (o segundo link dela na Montar) é sempre ponto, aberta ou não, compacta ou não.
+  const W: ViewGeo = { ...V, chips: [V.chips[0], { ...V.chips[0], x: 500, extra: true }] };
+  for (const on of [true, false]) {
+    const cs = compactChips(W, on, () => true).chips;
+    assert.equal(cs[0].compact, undefined); assert.equal(cs[1].compact, true);
+  }
 });

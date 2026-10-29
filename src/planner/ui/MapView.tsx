@@ -29,8 +29,8 @@ import { decodeFactory, encodeFactory } from '../model/factorystate.ts';
 import type { PickerEntry, PickerFilter } from '../model/picker.ts';
 import { Picker } from './Picker.tsx';
 import { EmptyInvite } from './FirstHint.tsx';
-import { TourHelp, openTour, useTourAnchor } from './Tour.tsx';
-import { Legend } from './Legend.tsx';
+import { openTour, useTourAnchor } from './Tour.tsx';
+import { HelpMenu } from './HelpMenu.tsx';
 import { Layers } from './Layers.tsx';
 import { cleanViewLayers, compactChips, hitGeo, type MapLayers, type ViewLayers } from '../model/map/layers.ts';
 import { ChipPopover } from './ChipPopover.tsx';
@@ -78,7 +78,6 @@ const PANEL_STORE = 'sf-balancer:planner-panel';   // painel aberto sem seleçã
 const LAYERS_STORE = 'sf-balancer:planner-layers';   // camadas do mapa (lembradas neste navegador, não no Factory)
 // Ícone dos controles do mapa: só aparece no celular, no lugar do texto.
 const ctrlIco = (d: string) => <svg className="pl-ctrl-ico" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>;
-const TOGETHER_STORE = 'sf-balancer:planner-together';   // "Mover junto" (lembrado neste navegador; padrão desligado)
 const FIX_GAP = 48;   // px de tela entre o bloco e o bloco que o conserto cria
 const PICKER_W = 380;   // largura do seletor, para abri-lo à esquerda de uma entrada
 // Animação das esteiras da Montar: no máximo 30 quadros/s; um quadro acima de 12 ms deixa o desenho parado até o próximo
@@ -206,12 +205,15 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const viewBase = montar ? montarBase : basePlaces;
   // Arrastando vários blocos (seleção múltipla): as posições provisórias de todos (na vista atual).
   const [moving, setMoving] = useState<{ kind: 'block'; id: StageId; place: MapPlace } | { kind: 'meio'; id: string; place: LigPlace }
+    | { kind: 'bend'; link: string; off: [number, number] }
     | { kind: 'blocks'; places: Record<StageId, MapPlace> } | null>(null);
   const movedIn = (base: Record<StageId, MapPlace>) => (moving?.kind === 'block' ? withPlace(base, moving.id, moving.place)
     : moving?.kind === 'blocks' ? { ...base, ...moving.places } : base);
   const places = useMemo(() => (montar ? basePlaces : movedIn(basePlaces)), [basePlaces, moving, montar]);   // eslint-disable-line react-hooks/exhaustive-deps
   const shown = useMemo((): Factory => {
     if (!moving) return f;
+    // Puxando o ponto de uma esteira na Montar: a curva passa por ele enquanto arrasta.
+    if (moving.kind === 'bend') return { ...f, bends: { ...f.bends, [moving.link]: moving.off } };
     // Arrastando a ligação na Planta, os chips da Montar ficam onde estão (os que seguiam as ligs, presos nelas).
     if (moving.kind === 'meio') return montar
       ? { ...f, montarLigs: { ...(f.montarLigs ?? f.ligs), [moving.id]: moving.place } }
@@ -220,12 +222,6 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return { ...f, montar: montar ? movedIn(montarBase) : montarBase };
   }, [f, moving, montar, montarBase]);   // eslint-disable-line react-hooks/exhaustive-deps
   const scene = useMemo(() => buildScene(shown, data, places, geos, flow), [shown, data, places, geos, flow]);
-  // "Mover junto": arrastar (setas, girar não) numa vista leva o mesmo deslocamento à outra.
-  const [together, setTogetherState] = useState(() => { try { return localStorage.getItem(TOGETHER_STORE) === '1'; } catch { return false; } });
-  const setTogether = (v: boolean) => {
-    setTogetherState(v);
-    try { localStorage.setItem(TOGETHER_STORE, v ? '1' : '0'); } catch { /* sem storage: vale só nesta visita */ }
-  };
   // Portas de cada bloco (lado e item, na ordem do cartão), para saber quais aceitam a porta puxada.
   const portIds = useMemo(() => f.blocks.flatMap(b => {
     const c = cardSpec(b, data, flow), mk = (side: 'in' | 'out') => (item: ItemId): ScenePort => ({ block: b.id, side, item, x: 0, y: 0, fluid: !!data.items[item]?.fluid });
@@ -247,7 +243,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     [wireFrom, portIds, f, data]);
   // Toda edição grava todas as posições da vista de uma vez: ela fica fixa inteira num passo só do desfazer.
   const setPlaces = (ps: Record<StageId, MapPlace>, view: ViewMode = mode) =>
-    dispatch({ type: 'setPlaces', places: ps, view, together, auto: basePlaces });
+    dispatch({ type: 'setPlaces', places: ps, view, auto: basePlaces });
   const place = (id: StageId, p: MapPlace) => setPlaces(withPlace(viewBase, id, p));
   // O painel (lado das entradas, giro e vãos) mexe no bloco real: sempre na Planta.
   const placePlanta = (id: StageId, p: MapPlace) => setPlaces(withPlace(basePlaces, id, p), 'planta');
@@ -273,7 +269,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   };
   const ligAt = (id: string) => (montar ? ligAtMontar(id) : ligAtPlanta(id));
   const placeLig = (id: string, p: LigPlace | null, view: ViewMode = mode) =>
-    dispatch({ type: 'placeLig', meio: id, place: p, view, together, shown: { planta: ligAtPlanta(id), montar: ligAtMontar(id) } });
+    dispatch({ type: 'placeLig', meio: id, place: p, view, shown: { planta: ligAtPlanta(id), montar: ligAtMontar(id) } });
 
 
   // Painel no desktop: sem seleção aparece só se a pessoa o abriu (lembrado); uma seleção nova o abre, e fechar com algo
@@ -456,7 +452,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const T = tNow.current, A = anim.current;
     const { v: geo, belts } = geoFor(sc, c, T, fs, dt, fl, meios);
-    const view = compactChips(geo, o.layers.compact, id => id === o.hover || o.selected.has(id));
+    const view = compactChips(geo, o.layers.compact, id => o.selected.has(id));
     lastView.current = view;
     const moving = belts && o.layers.links && !document.hidden && !reduced.current;
     if (moving && !A.slow) A.time = performance.now();
@@ -550,12 +546,18 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   useEffect(() => {
     const box = wrap.current, el = canvas.current;
     if (!box || !el) return;
+    // Mudar o tamanho apaga o canvas: redesenha na hora (o ResizeObserver roda antes da pintura), senão a gaveta do
+    // painel, que muda a largura a cada quadro, mostra o mapa vazio piscando.
     const resize = () => {
       const w = box.clientWidth, h = box.clientHeight, dpr = window.devicePixelRatio || 1;
       size.current = { w, h };
-      el.width = Math.max(1, Math.round(w * dpr)); el.height = Math.max(1, Math.round(h * dpr));
+      const cw = Math.max(1, Math.round(w * dpr)), ch = Math.max(1, Math.round(h * dpr));
+      if (el.width === cw && el.height === ch) return;
+      el.width = cw; el.height = ch;
       if (!cam.current && w && h) setCam(fitView());
-      request();
+      if (frame.current) { cancelAnimationFrame(frame.current); frame.current = 0; }
+      anim.current.slow = false;
+      draw();
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -621,7 +623,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   }, []);
 
   // Arrastar uma porta puxa uma esteira; arrastar um cartão/bloco o muda de lugar; arrastar o chip muda a ligação de
-  // lugar; arrastar o resto move o mapa; sem arrastar, é um clique (seleciona; no chip, abre o mini painel).
+  // lugar na Planta; na Montar, arrastar o ponto entorta a esteira daquele link (a curva passa por ele); arrastar o resto
+  // move o mapa; sem arrastar, é um clique (seleciona; no chip, abre o mini painel).
   type Hit = { kind: 'block' | 'meio'; id: string } | null;
   const drag = useRef<{
     id: number; button: number; x0: number; y0: number; x: number; y: number; moved: boolean;
@@ -629,6 +632,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     shift: boolean;   // Shift no aperto: clique põe ou tira da seleção; no vazio, arrastar desenha o retângulo
     group: Record<StageId, MapPlace> | null; moved2: Record<StageId, MapPlace> | null;   // vários blocos: de onde e para onde
     marquee: boolean;
+    bend: { link: string; base: [number, number]; to: [number, number] | null } | null;   // Montar: puxando o ponto de uma esteira
   } | null>(null);
   const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | 'marquee' | null>(null);
   // Retângulo de seleção (Shift + arrastar no vazio), em px do mapa.
@@ -655,7 +659,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const v = lastView.current, c = cam.current;
     if (!v || !c) return null;
     const [x, y] = local(e);
-    const h = viewHit(hitGeo(v, layers, portsLive(), true), x, y);
+    const h = viewHit(hitGeo(v, layers, portsLive(), true), x, y, tNow.current >= 0.5);
     if (h || tNow.current < 0.5 || !layers.links) return h;
     const w = screenToWorld(c, x, y), sh = hitTest(scene, w[0], w[1]);
     return sh?.kind === 'meio' ? { kind: 'chip', meio: sh.id } : null;
@@ -698,7 +702,9 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const h = e.button === 0 ? hitAt(e) : null;
     const port = h?.kind === 'port' ? scenePort(h.port) : null;
     const hit: Hit = h?.kind === 'block' ? { kind: 'block', id: h.id } : h?.kind === 'chip' ? { kind: 'meio', id: h.meio } : null;
-    const from = hit?.kind === 'block' ? viewBase[hit.id] ?? null : hit?.kind === 'meio' ? ligAt(hit.id) : null;
+    // Na Montar o ponto não muda a ligação de lugar: puxa a esteira do link dele (e segue os cartões).
+    const from = hit?.kind === 'block' ? viewBase[hit.id] ?? null : hit?.kind === 'meio' && !montar ? ligAt(hit.id) : null;
+    const bend = montar && h?.kind === 'chip' && h.link ? { link: h.link, base: f.bends?.[h.link] ?? [0, 0] as [number, number], to: null } : null;
     const ch = hit?.kind === 'meio' ? lastView.current?.chips.find(x => x.meio === hit.id) : undefined;
     // Bloco que faz parte da seleção múltipla: arrastar leva todos.
     const group = hit?.kind === 'block' && selMany?.includes(hit.id)
@@ -707,7 +713,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null, port,
       // Shift ou Ctrl/⌘ + clique põe ou tira o bloco da seleção; Shift ou Ctrl/⌘ + arrastar no vazio, o retângulo.
       chip: ch ? [ch.x, ch.y] : null, shift: e.shiftKey || e.ctrlKey || e.metaKey, group, moved2: null,
-      marquee: e.button === 0 && (e.shiftKey || e.ctrlKey || e.metaKey) && !h,
+      marquee: e.button === 0 && (e.shiftKey || e.ctrlKey || e.metaKey) && !h, bend,
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -718,7 +724,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       if (!d.moved) {
         if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK_PX) return;
         d.moved = true;
-        setDragging(d.marquee ? 'marquee' : d.port ? 'link' : d.from ? 'block' : 'pan');
+        setDragging(d.marquee ? 'marquee' : d.port ? 'link' : d.from || d.bend ? 'block' : 'pan');
         if (d.hit?.kind === 'meio') setPopId(null);
       }
       if (d.marquee) {
@@ -729,6 +735,10 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         if (w) setWire({ from: d.port, to: w });
         const over = portUnder(e);
         if ((over && portKey(over)) !== (hoverPort && portKey(hoverPort))) setHoverPort(over);
+      } else if (d.bend) {
+        const b = d.bend, to: [number, number] = [b.base[0] + (e.clientX - d.x0) / c.zoom, b.base[1] + (e.clientY - d.y0) / c.zoom];
+        b.to = to;
+        setMoving({ kind: 'bend', link: b.link, off: to });
       } else if (d.from && d.hit) {
         const dx = e.clientX - d.x0, dy = e.clientY - d.y0, { id, kind } = d.hit;
         let p: LigPlace;
@@ -751,7 +761,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
           p = { ...chipWorld(c, cx + dx, cy + dy, sz), rot: d.from.rot };
         }
         d.to = p;
-        setMoving(m => (m && m.kind !== 'blocks' && m.id === id && m.place.x === p.x && m.place.y === p.y ? m
+        setMoving(m => (m && (m.kind === 'block' || m.kind === 'meio') && m.id === id && m.place.x === p.x && m.place.y === p.y ? m
           : kind === 'block' ? { kind, id, place: p as MapPlace } : { kind, id, place: p }));
       } else {
         moveCam(pan(c, d.x - e.clientX, d.y - e.clientY));
@@ -817,6 +827,11 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       return;
     }
     if (d.port) { dropPort(e, d.port); return; }
+    if (d.bend && d.hit) {
+      if (d.bend.to) dispatch({ type: 'bendLinks', links: [d.bend.link], off: d.bend.to });
+      onSelect({ kind: 'meio', id: d.hit.id });
+      return;
+    }
     if (d.from && d.hit) {
       const changed = d.to && (d.to.x !== d.from.x || d.to.y !== d.from.y);
       if (d.hit.kind === 'meio') {
@@ -903,7 +918,8 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     if (e.key === 'Escape') { e.preventDefault(); if (popMeio) closePop(true); else onSelect(null); return; }
     if (e.key === 'Enter') { e.preventDefault(); setPopId(id); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); unlink(id); return; }
-    // R gira a ligação na Planta (o chip da Montar fica onde está); as setas andam na vista atual.
+    // R gira a ligação na Planta (o ponto da Montar fica onde está); as setas a andam na Planta (na Montar o ponto segue
+    // os cartões).
     if (e.key === 'r' || e.key === 'R') {
       const cur = ligAtPlanta(id);
       if (!cur) return;
@@ -911,7 +927,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       placeLig(id, ligRotated(cur), 'planta');
       return;
     }
-    const cur = ligAt(id), next = cur && nudged(cur, e.key);
+    const cur = montar ? null : ligAt(id), next = cur && nudged(cur, e.key);
     if (!next) return;
     e.preventDefault();
     placeLig(id, next);
@@ -1108,26 +1124,22 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
               onSwap={key => dispatch({ type: 'setMeioAlt', meio: popMeio.id, key })}
               onUnlink={() => unlink(popMeio.id)} onClose={() => closePop(true)} />
           )}
-          <TourHelp area="map" className="pl-map-help" />
+          <HelpMenu />
           <button type="button" className={'pl-btn pl-panel-toggle' + (panelOpen ? ' on' : '')} data-tour="panel-toggle" aria-expanded={panelOpen} aria-controls="pl-inspector"
             onClick={togglePanel}>{t(panelOpen ? 'plPanelClose' : 'plPanelOpen')}</button>
+          {/* Embaixo: criar à esquerda (a ação principal do mapa); à direita, a coluna de ícones de sempre de um mapa:
+              camadas e, juntos, aproximar, afastar e mostrar tudo. Legenda e tutorial ficam no menu Ajuda, em cima. */}
+          <button type="button" className="pl-map-add" data-tour="map-new" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.2" /></svg>
+            {t('plNewBlock')}
+          </button>
           <div className="pl-map-ctrl" role="group" aria-label={t('plMapControls')}>
-            <button type="button" className="pl-btn pl-map-add" data-tour="map-new" onClick={() => openPicker(size.current.w / 2 - 190, 56)}>{t('plNewBlock')}</button>
             <Layers value={layers} onChange={setLayers} />
-            <Legend />
-            {/* No celular, Tutorial, Mover junto e Mostrar tudo ficam só no ícone (o texto no aria-label), em duas linhas. */}
-            <button type="button" className="pl-btn" data-tour="map-tour" aria-haspopup="dialog" aria-label={t('plTourAgain')} onClick={() => openTour()}>
-              {ctrlIco('M9 2a7 7 0 100 14A7 7 0 009 2zM7 6v6l5-3z')}<span className="pl-ctrl-lbl">{t('plTourAgain')}</span>
-            </button>
-            <button type="button" className={'pl-btn pl-together' + (together ? ' on' : '')} data-tour="map-together" aria-pressed={together}
-              aria-label={t('plMoveTogether')} title={t('plMoveTogetherTip')} onClick={() => setTogether(!together)}>
-              {ctrlIco('M7 11l4-4M5 9L3 11a2.5 2.5 0 003.5 3.5L8.5 12.5M13 9l2-2a2.5 2.5 0 00-3.5-3.5L9.5 5.5')}<span className="pl-ctrl-lbl">{t('plMoveTogether')}</span>
-            </button>
-            <button type="button" className="pl-btn" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>−</button>
-            <button type="button" className="pl-btn" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>+</button>
-            <button type="button" className="pl-btn" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>
-              {ctrlIco('M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4')}<span className="pl-ctrl-lbl">{t('plMapFit')}</span>
-            </button>
+            <div className="pl-zoom">
+              <button type="button" onClick={() => zoomCenter(BUTTON_ZOOM)} aria-label={t('plMapZoomIn')} title={t('plMapZoomIn')}>{ctrlIco('M9 3v12M3 9h12')}</button>
+              <button type="button" onClick={() => zoomCenter(1 / BUTTON_ZOOM)} aria-label={t('plMapZoomOut')} title={t('plMapZoomOut')}>{ctrlIco('M3 9h12')}</button>
+              <button type="button" onClick={showAll} aria-label={t('plMapFit')} title={t('plMapFit')}>{ctrlIco('M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4')}</button>
+            </div>
           </div>
         </div>
       </main>

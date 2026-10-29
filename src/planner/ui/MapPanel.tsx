@@ -2,7 +2,7 @@
 // mesmos botões do chip; sem seleção, a visão geral: área, totais, avisos clicáveis (sobreposição, cruzamento e as
 // faltas e sobras do Balanço) e a lista de blocos e de ligações (o caminho do teclado até cada um no mapa).
 // No desktop o MapView decide se o painel aparece; no celular (≤ 720 px) ele é uma folha de baixo com alça.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { hasRows, isSource, type Factory, type GameData, type MapPlace, type StageId } from '../model/types.ts';
 import type { FlowResult } from '../model/solve.ts';
@@ -125,8 +125,23 @@ export function MapPanel(p: Props) {
       <Overview {...p} nameOf={nameOf} />
     );
   }
+  // Fechar (desktop): a gaveta sai com o que mostrava (sem trocar para a visão geral no meio do caminho) e só depois some.
+  const shown = useRef<{ body: React.ReactNode; key: string }>({ body, key: selKey(selection) ?? '' });
+  const [wasOpen, setWasOpen] = useState(p.open);
+  const [closing, setClosing] = useState(false);
+  if (wasOpen !== p.open) {
+    setWasOpen(p.open);
+    setClosing(!p.open && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  useEffect(() => {
+    if (!closing) return;
+    const id = setTimeout(() => setClosing(false), PANEL_OUT_MS);
+    return () => clearTimeout(id);
+  }, [closing]);
+  if (p.open) shown.current = { body, key: selKey(selection) ?? '' };
+  const view = closing ? shown.current : { body, key: selKey(selection) ?? '' };
   return (
-    <aside className={'pl-inspector' + (p.open ? '' : ' closed')} data-sheet={p.sheet} aria-label={t('plMapPanel')} id="pl-inspector">
+    <aside className={'pl-inspector' + (p.open ? '' : closing ? ' closing' : ' closed')} data-sheet={p.sheet} aria-label={t('plMapPanel')} id="pl-inspector">
       <button type="button" className="pl-sheet-h" data-tour="panel-toggle" aria-expanded={p.sheet !== 'peek'} aria-controls="pl-insp-body"
         aria-label={`${t('plPanelSheet')}: ${sheetTitle}`}
         onPointerDown={onHandleDown} onPointerUp={onHandleUp} onPointerCancel={() => { handle.current.at = -1; }}
@@ -134,10 +149,13 @@ export function MapPanel(p: Props) {
         <span>{sheetTitle}</span><i aria-hidden="true" />
       </button>
       {/* key: outra seleção começa do topo (o que estava rolado na visão geral não vale para o bloco). */}
-      <div className="pl-insp" id="pl-insp-body" key={selKey(selection) ?? ''}><TourHelp area="panel" className="pl-insp-help" />{body}</div>
+      <div className="pl-insp" id="pl-insp-body" key={view.key}><TourHelp area="panel" className="pl-insp-help" />{view.body}</div>
     </aside>
   );
 }
+
+// Quanto dura a gaveta saindo (o mesmo da animação pl-insp-out em planner.css).
+const PANEL_OUT_MS = 240;
 
 // Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer), separar numa fábrica
 // nova e limpar a seleção.
@@ -317,7 +335,7 @@ function Overview(p: Props & { nameOf: (id: string) => string }) {
       )}
       <h3 className="pl-insp-h">{t('plBpMap')}</h3>
       <button type="button" className="pl-btn" onClick={p.onPropose}>{t('plMapPropose')}</button>
-      <NumField label={t('plMapPieceGap')} value={pieceGap(f)} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={p.onGap} className="pl-row" />
+      {p.view === 'planta' && <NumField label={t('plMapPieceGap')} value={pieceGap(f)} valid={validPieceGap} bad={t('plMapPieceGapBad')} onCommit={p.onGap} className="pl-row" />}
       <div className="pl-ov-import"><ImportButton onFile={p.onImportFile} tour="panel-import" /></div>
     </>
   );

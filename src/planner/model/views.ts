@@ -1,26 +1,21 @@
 // Posições por vista: a Montar e a Planta em escala guardam cada uma o lugar dos blocos e das ligações. O giro é só da
 // Planta (o cartão da Montar nunca é desenhado girado): `montar` guarda rot 0, e o rot de `montarLigs` só diz em que
 // orientação estava o retângulo que centra o chip quando ele foi posto (nunca muda por um giro). Mexer numa vista não
-// muda a outra ("congela" na outra o lugar de antes, quando ela ainda seguia esta); com "Mover junto", a outra anda o
-// mesmo deslocamento. Puro.
+// muda a outra ("congela" na outra o lugar de antes, quando ela ainda seguia esta). Puro.
 import type { Factory, LigPlace, MapPlace, StageId } from './types.ts';
 import { cleanLigPlace, meiosOf, placeLig } from './factory.ts';
 import { cleanPlace } from './map/sizes.ts';
 
 export type PlaceView = 'montar' | 'planta';
 // auto: as posições da Planta mostradas agora (as derivadas, de quem não tem posição salva).
-export interface PlaceOpts { together?: boolean; auto?: Record<StageId, MapPlace> }
+export interface PlaceOpts { auto?: Record<StageId, MapPlace> }
 // shown: onde a ligação aparece agora em cada vista (a automática, quando não tem posição salva).
-export interface LigOpts { together?: boolean; shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
+export interface LigOpts { shown?: { montar?: LigPlace | null; planta?: LigPlace | null } }
 
 const own = Object.hasOwn;
 // Lugar na Montar: sem vãos nem giro.
 export const bare = (p: { x: number; y: number }): MapPlace => ({ x: p.x, y: p.y, rot: 0 });
 const same = (a: MapPlace, b: MapPlace) => a.x === b.x && a.y === b.y;
-const shift = <P extends LigPlace>(p: P, dx: number, dy: number): P | null => {
-  const q = cleanPlace({ ...p, x: p.x + dx, y: p.y + dy });
-  return q && ({ ...p, x: q.x, y: q.y });
-};
 
 // Posição do bloco na Montar: a dela, senão o lugar da Planta (sem giro nem vãos).
 export const montarPlace = (f: Factory, id: StageId): MapPlace | undefined =>
@@ -52,32 +47,19 @@ export function setPlacesIn(f: Factory, view: PlaceView, places: Record<StageId,
     if (p && ids.has(id)) next[id] = view === 'montar' ? bare(p) : p;
   }
   const was = (id: StageId) => (view === 'montar' ? montarAt : plantaAt)(f, id, o.auto);
-  // Quem mudou de lugar nesta vista e quanto andou (girar na Planta não muda o cartão da Montar).
-  const changed: StageId[] = [], moved = new Map<StageId, [number, number]>();
+  // Quem mudou de lugar nesta vista (girar na Planta não muda o cartão da Montar).
+  const changed: StageId[] = [];
   for (const [id, p] of Object.entries(next)) {
     const w = was(id);
     if (!w || !same(w, p)) changed.push(id);
-    if (w && (w.x !== p.x || w.y !== p.y)) moved.set(id, [p.x - w.x, p.y - w.y]);
   }
-  if (view === 'montar') {
-    const g: Factory = { ...f, montar: next };
-    if (!o.together || !moved.size) return g;
-    // A Planta inteira fica salva (as derivadas também), para as outras não mudarem de lugar.
-    const map: Record<StageId, MapPlace> = {};
-    for (const id of ids) { const p = plantaAt(f, id, o.auto); if (p) map[id] = p; }
-    for (const [id, [dx, dy]] of moved) { const p = map[id] && shift(map[id], dx, dy); if (p) map[id] = p; }
-    return { ...g, map };
-  }
+  if (view === 'montar') return { ...f, montar: next };
   // Planta: quem andou e ainda seguia a Planta na Montar fica onde estava lá.
   const montar: Record<StageId, MapPlace> = { ...f.montar };
   for (const id of changed) {
     if (own(montar, id)) continue;
     const p = plantaAt(f, id, o.auto);
     if (p) montar[id] = bare(p);
-  }
-  if (o.together) for (const [id, [dx, dy]] of moved) {
-    const cur = montar[id] ?? montarAt(f, id, o.auto), p = cur && shift(bare(cur), dx, dy);
-    if (p) montar[id] = p;
   }
   return { ...f, map: next, ...(f.montar || Object.keys(montar).length ? { montar } : {}) };
 }
@@ -90,7 +72,7 @@ export function placeBlockIn(f: Factory, view: PlaceView, id: StageId, place: Ma
 
 // Propor de novo só na vista atual: posições novas e as ligações dela voltam ao lugar automático.
 export function proposeIn(f: Factory, view: PlaceView, places: Record<StageId, MapPlace>, auto?: Record<StageId, MapPlace>): Factory {
-  if (view === 'montar') return { ...setPlacesIn(f, 'montar', places), montarLigs: {} };
+  if (view === 'montar') { const { bends: _b, ...g } = setPlacesIn(f, 'montar', places); return { ...g, montarLigs: {} }; }
   const g = setPlacesIn(f, 'planta', places, { auto });
   // A Montar continua com as ligações que seguia da Planta.
   const { ligs: _l, ...rest } = g;
@@ -102,21 +84,10 @@ export function proposeIn(f: Factory, view: PlaceView, places: Record<StageId, M
 export function placeLigIn(f: Factory, view: PlaceView, meio: string, place: LigPlace | null, o: LigOpts = {}): Factory {
   const p = place === null ? null : cleanLigPlace(place);
   if ((place !== null && !p) || !meiosOf(f).some(m => m.id === meio)) return f;
-  // Onde ela está agora em cada vista.
-  const atPlanta = (f.ligs && own(f.ligs, meio) ? f.ligs[meio] : o.shown?.planta) ?? null;
-  const atMontar = montarLig(f, meio) ?? o.shown?.montar ?? null;
   // A Montar passa a ter as suas (copiadas das da Planta, se ainda as seguia).
   if (view === 'planta' && p === null) return placeLig(f, meio, null);
   const ml: Record<string, LigPlace> = { ...(f.montarLigs ?? f.ligs) };
-  const [from, to] = view === 'montar' ? [atMontar, atPlanta] : [atPlanta, atMontar];
-  const other = o.together && p && from && to ? shift(to, p.x - from.x, p.y - from.y) : null;
-  let g = f;
-  if (view === 'planta') {
-    g = placeLig(f, meio, p);
-    if (other) ml[meio] = other;
-  } else {
-    if (p) ml[meio] = p; else delete ml[meio];
-    if (other) g = placeLig(f, meio, other);
-  }
-  return { ...g, montarLigs: ml };
+  if (view === 'planta') return { ...placeLig(f, meio, p), montarLigs: ml };
+  if (p) ml[meio] = p; else delete ml[meio];
+  return { ...f, montarLigs: ml };
 }

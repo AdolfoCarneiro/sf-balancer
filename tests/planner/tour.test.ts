@@ -21,7 +21,7 @@ test('tutorial: o completo passa pelas três áreas, cada área só pelos seus',
 test('tutorial: os passos pedidos estão lá e os ids são únicos', () => {
   const ids = tourSteps().map(s => s.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ['new', 'port', 'chip', 'balance', 'panel', 'view', 'together', 'layers', 'block', 'import', 'share']) assert.ok(ids.includes(id), id);
+  for (const id of ['new', 'port', 'chip', 'balance', 'panel', 'view', 'layers', 'block', 'import', 'share']) assert.ok(ids.includes(id), id);
   // O primeiro é criar o bloco (o alvo do botão Novo bloco está sempre na tela do mapa).
   assert.equal(ids[0], 'new');
 });

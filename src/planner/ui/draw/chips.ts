@@ -38,14 +38,16 @@ export function chipText(c: ChipLabel): string {
 const GW = 18;   // glifo desenhado com 18 px
 const DOT_R = 7;
 
-// Ligação compacta (como no Modeler): um ponto grosso no meio da esteira e, em cima, o ícone do item e a vazão. O ponto
-// leva a cor do chip: falta coral, balancer laranja, o resto claro.
+// Ligação compacta (como no Modeler): um ponto grosso no meio da esteira e, em cima, o ícone do item e a vazão (na
+// Montar, a do link daquela esteira). O ponto leva a cor do chip: falta coral, balancer laranja, o resto claro; com a
+// ligação selecionada, um anel laranja.
 function drawDot(ctx: CanvasRenderingContext2D, c: ViewChip, lab: ChipLabel, o: DrawOpts): void {
   const th = o.theme, bal = lab.kind === 'balancer' || lab.kind === 'sink';
   ctx.beginPath(); ctx.arc(c.x, c.y, DOT_R, 0, Math.PI * 2);
   ctx.fillStyle = lab.short ? th.deficit : bal ? th.ficsit : th.lineHi; ctx.fill();
   ctx.lineWidth = 2; ctx.strokeStyle = th.bench; ctx.stroke();
-  const rate = lab.rate === null ? t('plUnbounded') : fmt(lab.rate);
+  if (o.selected.has(c.meio)) { ctx.beginPath(); ctx.arc(c.x, c.y, DOT_R + 4, 0, Math.PI * 2); ctx.strokeStyle = th.ficsit; ctx.stroke(); }
+  const r = c.link ? c.link.rate : lab.rate, rate = r === null ? t('plUnbounded') : fmt(r);
   ctx.font = `700 13px ${th.body}`;
   const rw = ctx.measureText(rate).width, img = o.icon(lab.item), iw = img ? 18 + 4 : 0;
   let x = c.x - (iw + rw) / 2;

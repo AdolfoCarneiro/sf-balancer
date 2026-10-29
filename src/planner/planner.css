@@ -7,7 +7,7 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-app { display: flex; flex-direction: column; height: 100%; }
 
 /* Cabeçalho: marca e link do Balancer à esquerda; fluxo, totais, desfazer, compartilhar e idioma à direita. */
-.pl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); min-width: 0; }
+.pl-top { flex: none; view-transition-name: site-top; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); min-width: 0; }
 .pl-brand { font: 700 18px var(--display); letter-spacing: .02em; color: var(--ficsit); white-space: nowrap; }
 .pl-brand span { color: var(--ink-dim); font-weight: 500; }
 /* Montar | Planta: alvos de 44 px; o grupo sem padding fica da altura das abas (38 + 2 × 3). */
@@ -66,6 +66,24 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-dim); }
 .pl-center { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; padding: 0; }
 .pl-inspector { flex: 0 0 340px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: var(--bench); }
+/* Chegando na Fábrica (a aba da esquerda): o Balancer sai pela direita e ela entra pela esquerda (ver parts.css). */
+::view-transition-old(root) { animation-name: vt-out-right; }
+::view-transition-new(root) { animation-name: vt-in-left; }
+
+/* Abrir e fechar o painel (desktop): uma gaveta. A largura vai de 0 a 340 px e o mapa cede o espaço junto; o conteúdo
+   tem a largura inteira desde o começo, então ele desliza para dentro em vez de se espremer. Ao fechar, o mesmo ao
+   contrário (.closing dura PANEL_OUT_MS em MapPanel.tsx). Sem movimento, seco. */
+@media (min-width: 721px) {
+  .pl-inspector { overflow: hidden; }
+  .pl-inspector > .pl-insp { min-width: 340px; }
+  .pl-inspector.closing { pointer-events: none; }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) {
+  .pl-inspector:not(.closed):not(.closing) { animation: pl-insp-in .3s cubic-bezier(.2, .8, .2, 1); }
+  .pl-inspector.closing { animation: pl-insp-out .24s cubic-bezier(.4, 0, 1, 1) forwards; }
+  @keyframes pl-insp-in { from { flex-basis: 0; opacity: .4; } }
+  @keyframes pl-insp-out { to { flex-basis: 0; opacity: .4; } }
+}
 .pl-inspector > .pl-insp { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 18px 24px; scrollbar-color: var(--line) transparent; }
 .pl-sheet-h { display: none; }
 @media (min-width: 721px) { .pl-inspector.closed { display: none; } }
@@ -315,24 +333,22 @@ select.pl-field { width: auto; }
 .pl-insp-hrow .pl-insp-h { flex: 1; }
 .pl-insp-hrow .pl-btn { min-height: 44px; margin-top: 6px; }
 .pl-map-canvas:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
-/* Controles do mapa: o grupo de baixo à direita (Novo bloco, Legenda, −, +, Mostrar tudo), todos com 44 px. */
-.pl-map-ctrl { position: absolute; right: 12px; bottom: 12px; z-index: 4; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: calc(100% - 24px); }
-.pl-map-ctrl .pl-btn, .pl-map-ctrl .pl-leg-btn, .pl-map-ctrl .pl-layers-btn { min-width: 44px; min-height: 44px; padding: 0 14px; background: var(--bench); font: 600 14px var(--body); }
-.pl-map-ctrl .pl-map-add { color: var(--ficsit); border-color: var(--ficsit); }
-/* "Mover junto": alternador; ligado, a marca e a borda em laranja. */
-.pl-map-ctrl .pl-together::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid var(--ink-dim); }
-.pl-map-ctrl .pl-together.on { border-color: var(--ficsit); }
-.pl-map-ctrl .pl-together.on::before { background: var(--ficsit); border-color: var(--ficsit); }
-/* Celular: Tutorial, Mover junto e Mostrar tudo só no ícone (44 px), para os controles caberem em duas linhas; o Mover
-   junto ligado fica com o ícone e a borda em laranja, sem a caixinha. */
-.pl-ctrl-ico { display: none; }
-@media (max-width: 720px) {
-  .pl-map-ctrl .pl-ctrl-lbl { display: none; }
-  .pl-map-ctrl .pl-ctrl-ico { display: block; }
-  .pl-map-ctrl .pl-btn:has(> .pl-ctrl-ico) { padding: 0; justify-content: center; display: inline-flex; align-items: center; }
-  .pl-map-ctrl .pl-together::before { display: none; }
-  .pl-map-ctrl .pl-together.on { color: var(--ficsit); }
-}
+/* Controles do mapa. Embaixo à esquerda, "Novo bloco": a ação principal do mapa, cheia em laranja com o canto chanfrado
+   da casa (o único laranja cheio do mapa). Embaixo à direita, uma coluna de ícones de 44 px, como em qualquer mapa:
+   Camadas sozinha e, num bloco só, aproximar, afastar e mostrar tudo. Legenda e tutorial ficam no menu Ajuda (em cima). */
+.pl-map-add { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px 0 14px; border: 0; background: var(--ficsit); color: var(--bench); font: 700 14px var(--display); cursor: pointer; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
+.pl-map-add:hover { filter: brightness(1.08); }
+.pl-map-add:focus-visible { outline: 2px solid var(--bench); outline-offset: -5px; }
+.pl-map-ctrl { position: absolute; right: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.pl-zoom { display: flex; flex-direction: column; }
+.pl-map-ctrl .pl-layers-btn, .pl-zoom button { width: 44px; height: 44px; min-width: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--bench); color: var(--ink-mid); border: 1px solid var(--line); cursor: pointer; }
+.pl-zoom button + button { border-top-color: var(--plate-2); margin-top: -1px; }
+.pl-map-ctrl .pl-layers-btn:hover, .pl-zoom button:hover { color: var(--ink); background: var(--plate-2); }
+.pl-zoom button:focus-visible { position: relative; outline: 2px solid var(--holo); outline-offset: -2px; }
+.pl-map-ctrl .pl-layers-btn[aria-expanded="true"] { color: var(--ficsit); border-color: var(--ficsit); }
+/* Camadas abre para o lado, junto da coluna (e não por cima do zoom). */
+.pl-map-ctrl .pl-layers-pop { right: calc(100% + 8px); bottom: 0; }
+.pl-ctrl-ico { display: block; }
 
 .pl-map-blocks, .pl-map-warns { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .pl-map-block, .pl-map-warns button { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; text-align: left; background: none; color: var(--ink); border: 1px solid var(--line); font: 13px/1.35 var(--body); cursor: pointer; }
@@ -516,7 +532,7 @@ select.pl-field { width: auto; }
 /* Faixa Balanço: o que entra, sai e vai pro sink numa linha só (os totais rolam de lado, para o mapa ficar com a altura);
    à direita, presos, os botões de faltas e sobras. */
 .pl-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.pl-bal { position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 22px; padding: 4px 0 4px 16px; overflow-x: auto; background: var(--paper); border-bottom: 1px solid var(--line); min-width: 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.pl-bal { flex: none; position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 22px; padding: 4px 0 4px 16px; overflow-x: auto; background: var(--paper); border-bottom: 1px solid var(--line); min-width: 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .pl-bal-grp { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 12px; }
 .pl-bal-lbl { font: 600 13px var(--display); color: var(--ink-soft); }
 .pl-bal-none { color: var(--ink-dim); }
@@ -539,12 +555,12 @@ select.pl-field { width: auto; }
 }
 
 /* Convite da fábrica vazia e Legenda. */
-.pl-leg-btn:focus-visible, .pl-layers-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+.pl-layers-btn:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
 .pl-invite { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 36px; text-align: center; border: 2px dashed var(--line); color: var(--ink-mid); pointer-events: none; }
 .pl-invite b { font: 600 18px var(--display); color: var(--ink); }
 .pl-invite span { font-size: 13px; color: var(--ink-dim); }
-.pl-leg-btn, .pl-layers-btn { min-width: 44px; min-height: 44px; padding: 0 14px; font: 600 14px var(--body); color: var(--ink); background: var(--plate-2); border: 1px solid var(--line); cursor: pointer; }
-.pl-leg-btn:hover, .pl-layers-btn:hover { border-color: var(--ink-dim); }
+.pl-layers-btn { min-width: 44px; min-height: 44px; padding: 0 14px; font: 600 14px var(--body); color: var(--ink); background: var(--plate-2); border: 1px solid var(--line); cursor: pointer; }
+.pl-layers-btn:hover { border-color: var(--ink-dim); }
 /* Camadas: balão acima do botão, alinhado à direita (os controles ficam no canto de baixo à direita). */
 .pl-layers { position: relative; display: inline-flex; }
 .pl-layers-pop { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 6; width: 260px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; background: var(--bench); border: 1px solid var(--line); border-top: 2px solid var(--ficsit); box-shadow: 0 12px 30px rgba(0, 0, 0, .45); color: var(--ink); }
@@ -681,6 +697,11 @@ select.pl-field { width: auto; }
 .pl-tour-help { min-width: 44px; min-height: 44px; padding: 0 14px; background: var(--bench); font: 600 14px var(--body); white-space: nowrap; }
 .pl-tour-help > span:first-child { color: var(--ficsit); }
 .pl-tour-help:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
-.pl-map-help { position: absolute; top: 12px; left: 12px; z-index: 4; }
+.pl-help { position: absolute; top: 12px; left: 12px; z-index: 5; }
+/* Menu Ajuda: Como mexer neste mapa, Legenda, Tutorial completo. */
+.pl-help-menu { position: absolute; top: calc(100% + 6px); left: 0; min-width: 240px; display: flex; flex-direction: column; padding: 4px; background: var(--bench); border: 1px solid var(--line); border-top: 2px solid var(--ficsit); box-shadow: 0 12px 30px rgba(0, 0, 0, .45); }
+.pl-help-menu button { min-height: 44px; padding: 0 12px; text-align: left; background: none; border: 0; color: var(--ink); font: 500 14px var(--body); cursor: pointer; }
+.pl-help-menu button:hover { background: var(--plate-2); }
+.pl-help-menu button:focus-visible { outline: none; background: var(--plate-2); box-shadow: inset 3px 0 0 var(--ficsit); }
 .pl-insp-help { align-self: flex-end; margin: -6px -6px 0 0; }
 @media (max-width: 720px) { .pl-tour-help-t { display: none; } }

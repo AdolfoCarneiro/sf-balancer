@@ -23,8 +23,15 @@
     padding: 16px 18px 18px;
   }
 
+  /* Barra do topo: a mesma da Fábrica (.pl-top no builder), com a marca, as abas e o idioma. */
+  .langbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); }
+  .site-brand { font: 700 18px var(--display); letter-spacing: .02em; color: var(--ficsit); white-space: nowrap; }
+  .site-grow { flex: 1 1 auto; }
+  .langbar .langs button { min-height: 44px; padding: 0 12px; }
+  .wrap > .top { padding-top: 22px; }
+  @media (max-width: 720px) { .langbar { gap: 8px; padding: 8px 12px; } .site-brand { font-size: 16px; } .site-grow { display: none; } }
+
   /* Seletor de idioma */
-  .langbar { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 14px; }
   .langs { display: flex; border: 1px solid var(--line); }
   .langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 5px 10px; font: 600 13px var(--display); }
   .langs svg { width: 20px; height: 14px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); opacity: .7; }

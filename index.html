@@ -106,6 +106,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Segura a primeira pintura até o app montar: trocar de página não mostra um quadro vazio. -->
+<script type="module" src="/src/planner/main.tsx" blocking="render"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -129,6 +131,5 @@
   <details><summary data-i18n="plFaq6Q">Which game version?</summary><p data-i18n="plFaq6A">Satisfactory 1.0 and later (recipe data from 1.1), with belts from Mk1 (60/min) to Mk6 (1,200/min) and pipes Mk1 (300 m³/min) and Mk2 (600 m³/min).</p></details>
 </section>
 <noscript><p style="text-align:center">This planner needs JavaScript to calculate.</p></noscript>
-<script type="module" src="/src/planner/main.tsx"></script>
 </body>
 </html>

@@ -51,13 +51,18 @@
 <!-- Idioma que não é inglês: esconde o corpo até o app traduzir (evita piscar em inglês); some sozinho em 3 s se algo falhar. Mesma ordem do pickLang (src/ui/lang.js, caminho pelo pathLang de src/planner/lang.ts): idioma novo ou chave nova precisa mudar nos dois lugares. -->
 <script>try{var l=(location.pathname.match(/^\/(pt|es|en)(?:\/balancer)?\/?$/)||[])[1]||new URLSearchParams(location.search).get('lang')||localStorage.getItem('sf-balancer:lang');if(l&&l!=='en'){document.documentElement.classList.add('lang-pending');setTimeout(function(){document.documentElement.classList.remove('lang-pending')},3000)}}catch(e){}</script>
 <link rel="stylesheet" href="/src/styles/main.css">
+<!-- Segura a primeira pintura até o app traduzir e montar: trocar de página não pisca. -->
+<script type="module" src="/src/main.js" blocking="render"></script>
 </head>
 <body>
+<!-- A mesma barra do topo da Fábrica (marca, abas e idiomas no mesmo lugar): trocar de página não parece trocar de site. -->
+<nav class="langbar sitebar">
+  <div class="site-brand">SF Balancer</div>
+  <div class="navtabs" role="navigation" data-i18n-aria="navAria" aria-label="Sections"><a id="plLink" href="/" data-i18n="navFactory">Factory</a><a id="balLink" href="/balancer" aria-current="page" data-i18n="navBalancer">Balancer</a></div>
+  <div class="site-grow"></div>
+  <div class="langs" role="group" id="langs" data-i18n-aria="langLabel" aria-label="Language"></div>
+</nav>
 <div class="wrap">
-  <nav class="langbar">
-    <div class="navtabs" role="navigation" data-i18n-aria="navAria" aria-label="Sections"><a id="plLink" href="/" data-i18n="navFactory">Factory</a><a id="balLink" href="/balancer" aria-current="page" data-i18n="navBalancer">Balancer</a></div>
-    <div class="langs" role="group" id="langs" data-i18n-aria="langLabel" aria-label="Language"></div>
-  </nav>
   <header class="top">
     <div>
       <h1 class="kicker" data-i18n="kicker">Satisfactory belt balancer · logistics between stages</h1>
@@ -249,6 +254,5 @@
   </div>
 </template>
 
-<script type="module" src="/src/main.js"></script>
 </body>
 </html>

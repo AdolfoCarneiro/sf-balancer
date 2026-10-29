@@ -70,9 +70,11 @@ export interface LigPlace { x: number; y: number; rot: Rot }
 // dos meios no mapa (m, inteiro de 1 a 8; sem ele, 2); ligs: id do meio -> posição da ligação.
 // map e ligs são da Planta em escala; montar e montarLigs, da Montar (só o lugar: sem vãos e sem giro, que são da
 // Planta; montar tem sempre rot 0 e o rot de montarLigs só orienta o retângulo que centra o chip). Bloco sem `montar`
-// usa o `map`; sem o objeto `montarLigs` inteiro, a Montar usa as `ligs` (com ele, ligação fora dele fica no automático).
+// usa o `map`. montarLigs é de antes do ponto seguir a esteira: fica salvo, mas a Montar não o usa mais.
+// bends: na Montar, id do link -> quanto (m) o ponto da esteira dele foi puxado do meio automático; a curva passa por
+// ele e ele segue os cartões.
 export interface Factory {
   v: 2; blocks: Block[]; links: Link[];
   map?: Record<StageId, MapPlace>; alts?: Record<string, string>; mapGap?: number; ligs?: Record<string, LigPlace>;
-  montar?: Record<StageId, MapPlace>; montarLigs?: Record<string, LigPlace>;
+  montar?: Record<StageId, MapPlace>; montarLigs?: Record<string, LigPlace>; bends?: Record<string, [number, number]>;
 }

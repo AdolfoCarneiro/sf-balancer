@@ -42,13 +42,13 @@ test('vistas: placeBlock na Planta muda só o map; na Montar, só o montar', () 
 
 test('vistas: o giro é só da Planta (R na Montar gira o bloco real); a Montar guarda só o lugar', () => {
   // R na Montar = o Girar do painel: placeBlock na Planta com o giro novo. A Montar não muda (nem ganha posição própria).
-  for (const together of [false, true]) {
+  {
     const f: Factory = { ...placed, montar: { s1: { x: 200, y: 200, rot: 0 } } };
-    let h = run(f, { type: 'placeBlock', id: 's2', place: { ...MAP.s2, rot: 1 }, view: 'planta', together });
+    let h = run(f, { type: 'placeBlock', id: 's2', place: { ...MAP.s2, rot: 1 }, view: 'planta' });
     assert.equal(h.present.map!.s2.rot, 1);
     assert.deepEqual(h.present.montar, f.montar);
     assert.deepEqual(montarPlace(h.present, 's2'), { x: 64, y: 0, rot: 0 });   // segue o lugar do map, que não andou
-    h = run(f, { type: 'placeBlock', id: 's1', place: { x: 0, y: 0, rot: 3 }, view: 'planta', together });
+    h = run(f, { type: 'placeBlock', id: 's1', place: { x: 0, y: 0, rot: 3 }, view: 'planta' });
     assert.deepEqual(h.present.montar!.s1, { x: 200, y: 200, rot: 0 });
   }
   // Montar grava sem giro (e sem vãos).
@@ -72,24 +72,10 @@ test('vistas: Planta derivada (sem map) arrastada congela a Montar onde ela esta
   assert.deepEqual(h.present.montar, { s1: { x: 0, y: 0, rot: 0 } });
 });
 
-test('vistas: Mover junto leva o mesmo deslocamento à outra vista, num passo só', () => {
-  // Montar com s1 em outro lugar; arrastar na Planta +16, +8.
+test('vistas: arrastar numa vista não leva a outra junto', () => {
   const f: Factory = { ...placed, montar: { s1: { x: 200, y: 200, rot: 0 } } };
-  let h = run(f, { type: 'placeBlock', id: 's1', place: { x: 16, y: 8, rot: 0 }, view: 'planta', together: true });
-  assert.equal(h.past.length, 1);
+  const h = run(f, { type: 'placeBlock', id: 's1', place: { x: 16, y: 8, rot: 0 }, view: 'planta' });
   assert.deepEqual(h.present.map!.s1, { x: 16, y: 8, rot: 0 });
-  assert.deepEqual(h.present.montar!.s1, { x: 216, y: 208, rot: 0 });
-  assert.deepEqual(reduce(h, { type: 'undo' }, data).present, f);
-  // Da Montar para a Planta (o giro da Planta fica).
-  const g: Factory = { ...f, map: { ...MAP, s1: { x: 0, y: 0, rot: 1 } } };
-  h = run(g, { type: 'setPlaces', view: 'montar', together: true, places: { ...montarPlaces(g, g.map!), s1: { x: 208, y: 192, rot: 0 } } });
-  assert.deepEqual(h.present.map!.s1, { x: 8, y: -8, rot: 1 });
-  assert.deepEqual(h.present.map!.s2, MAP.s2);
-  // Sem map, a Planta derivada (auto) fica toda salva, para as outras não pularem.
-  h = run(ex, { type: 'setPlaces', view: 'montar', together: true, auto: MAP, places: { ...MAP, s4: { x: 136, y: 64, rot: 0 } } });
-  assert.deepEqual(h.present.map, { ...MAP, s4: { x: 136, y: 64, rot: 0 } });
-  // Desligado: a outra não anda.
-  h = run(f, { type: 'placeBlock', id: 's1', place: { x: 16, y: 8, rot: 0 }, view: 'planta', together: false });
   assert.deepEqual(h.present.montar!.s1, { x: 200, y: 200, rot: 0 });
 });
 
@@ -147,19 +133,10 @@ test('vistas: ligação (chip) por vista, com Mover junto e o congelamento da Mo
   h = reduce(h, { type: 'placeLig', meio: STEEL, place: null, view: 'montar' }, data);
   assert.deepEqual(h.present.montarLigs, {});
   assert.deepEqual(h.present.ligs, f.ligs);
-  // Mover junto: o mesmo deslocamento na outra (a automática vem de shown).
-  h = run(f, { type: 'placeLig', meio: IRON, place: { x: 48, y: 40, rot: 0 }, view: 'montar', together: true, shown: { montar: { x: 40, y: 40, rot: 0 }, planta: { x: 80, y: 0, rot: 1 } } });
-  assert.equal(h.past.length, 1);
-  assert.deepEqual(h.present.montarLigs![IRON], { x: 48, y: 40, rot: 0 });
-  assert.deepEqual(h.present.ligs![IRON], { x: 88, y: 0, rot: 1 });
-  h = run(f, { type: 'placeLig', meio: STEEL, place: { x: 312, y: 8, rot: 0 }, view: 'planta', together: true });
-  assert.deepEqual(h.present.montarLigs![STEEL], { x: 312, y: 8, rot: 0 });
   // R (na Planta ou na Montar) gira a ligação da Planta; o chip da Montar fica onde estava (o retângulo de antes).
-  for (const together of [false, true]) {
-    h = run(f, { type: 'placeLig', meio: STEEL, place: { x: 304, y: 0, rot: 1 }, view: 'planta', together });
-    assert.deepEqual(h.present.ligs![STEEL], { x: 304, y: 0, rot: 1 });
-    assert.deepEqual(h.present.montarLigs, { [STEEL]: { x: 304, y: 0, rot: 0 } });
-  }
+  h = run(f, { type: 'placeLig', meio: STEEL, place: { x: 304, y: 0, rot: 1 }, view: 'planta' });
+  assert.deepEqual(h.present.ligs![STEEL], { x: 304, y: 0, rot: 1 });
+  assert.deepEqual(h.present.montarLigs, { [STEEL]: { x: 304, y: 0, rot: 0 } });
   // Voltar ao automático na Planta não congela a Montar que ainda seguia as ligs: volta junto.
   h = run(f, { type: 'placeLig', meio: STEEL, place: null, view: 'planta' });
   assert.equal(h.present.ligs, undefined);

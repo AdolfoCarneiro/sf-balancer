@@ -160,9 +160,9 @@ export const scenarios = [
     },
   },
   {
-    // Legenda aberta (o botão dos controles do mapa).
+    // Legenda aberta (pelo menu Ajuda do mapa).
     name: 'builder-legenda', path: '/?debug=1', viewport: DESKTOP, clearStore: BUILDER_STORE, store: TOUR_SEEN,
-    actions: async pg => { await builderReady(pg); await pg.click('.pl-leg-btn'); await pg.waitForSelector('.pl-leg[role=dialog]'); await pg.waitForTimeout(300); },
+    actions: async pg => { await builderReady(pg); await pg.click('.pl-map-help'); await pg.click('.pl-help-legend'); await pg.waitForSelector('.pl-leg[role=dialog]'); await pg.waitForTimeout(300); },
   },
   {
     // Camadas: "Só as máquinas" (tudo desligado), com o balão ainda aberto.

@@ -22,7 +22,6 @@ const STEPS: TourStep[] = [
   step('panel-blocks', 'panel-blocks', 'panel', 'PanelBlocks'),
   step('block', 'map-block', 'map', 'Block'),
   step('view', 'view', 'map', 'View'),
-  step('together', 'map-together', 'map', 'Together'),
   step('layers', 'map-layers', 'map', 'Layers'),
   step('import', 'panel-import|import', 'panel', 'Import'),
   step('share', 'share', 'map', 'Share'),

@@ -261,3 +261,27 @@ test('removeBlocks apaga 3 blocos e as ligações deles num passo só, e um undo
   // Nenhum id que existe: a fábrica não muda.
   assert.equal(reduce(historyNew(ex), { type: 'removeBlocks', ids: ['x'] }, data).present, ex);
 });
+
+test('bendLinks: o ponto puxado de cada link; null ou zero volta ao meio; some quando o link sai; a leitura limpa', () => {
+  const [l1, l2] = ex.links.filter(l => l.item === 'Desc_SteelIngot_C').map(l => l.id);
+  let h: History<Factory> = historyNew(ex);
+  h = reduce(h, { type: 'bendLinks', links: [l1], off: [8.1, -40] }, data);
+  assert.deepEqual(h.present.bends, { [l1]: [8, -40] });   // em quartos de metro
+  h = reduce(h, { type: 'bendLinks', links: [l2], off: [0, 12] }, data);
+  assert.deepEqual(Object.keys(h.present.bends!).sort(), [l1, l2].sort());
+  // Endireitar a ligação: as duas de uma vez, um passo do desfazer.
+  const before = h.present;
+  h = reduce(h, { type: 'bendLinks', links: [l1, l2], off: null }, data);
+  assert.equal('bends' in h.present, false);
+  assert.deepEqual(reduce(h, { type: 'undo' }, data).present, before);
+  // Inválido ou link que não existe: nada muda.
+  assert.equal(reduce(h, { type: 'bendLinks', links: [l1], off: [NaN, 1] as [number, number] }, data).present, h.present);
+  assert.equal(reduce(h, { type: 'bendLinks', links: ['nada'], off: [1, 1] }, data).present, h.present);
+  // Desligar o link leva a curva junto.
+  let g = reduce(historyNew(ex) as History<Factory>, { type: 'bendLinks', links: [l1, l2], off: [4, 4] }, data);
+  g = reduce(g, { type: 'disconnect', linkId: l1 }, data);
+  assert.deepEqual(Object.keys(g.present.bends!), [l2]);
+  // Leitura: só link que existe, números finitos e não zero.
+  const raw = { ...ex, bends: { [l1]: [4, 4], [l2]: [0, 0], nada: [1, 1], x: 'a' } };
+  assert.deepEqual(decodeFactory(encodeShare(raw), data)!.bends, { [l1]: [4, 4] });
+});

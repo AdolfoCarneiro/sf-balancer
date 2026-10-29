@@ -14,7 +14,7 @@ import { arrange } from '../../src/planner/model/layout.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, switchCam, viewGeo, viewHit, viewLimits,
+  MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, bezierAt, cardScale, cardSize, chipWorld, fitMontar, linkBezier, fitPlanta, montarBounds, switchCam, viewGeo, viewHit, viewLimits,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -123,37 +123,67 @@ test('t = 0,5 fica no meio do caminho', () => {
   });
   assert.equal(m.ports.length, a.ports.length);
   m.ports.forEach((p, i) => { near(p.x, (a.ports[i].x + b.ports[i].x) / 2); near(p.y, (a.ports[i].y + b.ports[i].y) / 2); });
-  m.chips.forEach((c, i) => { near(c.x, (a.chips[i].x + b.chips[i].x) / 2); near(c.y, (a.chips[i].y + b.chips[i].y) / 2); });
+  // Cada ponto da Montar anda até o chip da ligação dele na Planta (os extras somem só no fim).
+  assert.equal(m.chips.length, a.chips.length);
+  m.chips.forEach((c, i) => {
+    const pb = b.chips.find(x => x.meio === c.meio)!;
+    near(c.x, (a.chips[i].x + pb.x) / 2); near(c.y, (a.chips[i].y + pb.y) / 2);
+  });
 });
 
-test('chip no meio da esteira; com ligs, no lugar salvo; ligs de grupo que mudou é ignorado', () => {
+test('Montar: um ponto por link, no meio da esteira dele; Planta: um chip por ligação, no lugar dela', () => {
   const { scene, v } = view(ex, 0);
-  assert.equal(v.chips.length, scene.meios.length);
-  const c = v.chips.find(x => x.meio === STEEL_MEIO)!;
-  assert.deepEqual([c.w, c.h], [CHIP_W, CHIP_H]);
-  // Montar sem ligs: no meio entre a saída do aço de s2 e a média das entradas de aço de s3 e s4.
-  const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+  // O aço sai de s2 para s3 e s4: dois links, dois pontos (o segundo é extra).
+  const steel = v.chips.filter(x => x.meio === STEEL_MEIO);
+  assert.equal(steel.length, 2);
+  assert.equal(v.chips.length, scene.meios.length + 1);
+  assert.equal(steel[0].extra, undefined); assert.equal(steel[1].extra, true);
+  assert.deepEqual([steel[0].w, steel[0].h], [CHIP_W, CHIP_H]);
   const out = v.ports.find(p => p.block === 's2' && p.side === 'out')!;
-  const ins = v.ports.filter(p => (p.block === 's3' || p.block === 's4') && p.side === 'in' && p.item === 'Desc_SteelIngot_C');
-  assert.equal(ins.length, 2);
-  near(c.x, (out.x + mean(ins.map(p => p.x))) / 2); near(c.y, (out.y + mean(ins.map(p => p.y))) / 2);
-  // Planta: no centro do retângulo do meio.
-  const r = scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, c1 = view(ex, 1).v.chips.find(x => x.meio === STEEL_MEIO)!;
-  near(c1.x, (r.x + r.w / 2 - CAM.x) * CAM.zoom); near(c1.y, (r.y + r.h / 2 - CAM.y) * CAM.zoom);
-  // Com ligs: no centro do retângulo salvo, nas duas vistas.
-  const placed = placeLig(ex, STEEL_MEIO, { x: 400, y: 80, rot: 0 });
-  for (const t of [0, 1]) {
-    const w = view(placed, t), rr = w.scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, cc = w.v.chips.find(x => x.meio === STEEL_MEIO)!;
-    assert.equal(rr.x, 400);
-    near(cc.x, (rr.x + rr.w / 2 - CAM.x) * CAM.zoom); near(cc.y, (rr.y + rr.h / 2 - CAM.y) * CAM.zoom);
+  for (const c of steel) {
+    // Para a frente, a curva é simétrica: o meio dela é o meio entre as duas portas.
+    const inp = v.ports.find(p => p.block === c.link!.to && p.side === 'in' && p.item === 'Desc_SteelIngot_C')!;
+    near(c.x, (out.x + inp.x) / 2); near(c.y, (out.y + inp.y) / 2);
+    assert.equal(c.link!.from, 's2');
   }
-  // Grupo que mudou (uma ligação a menos): a posição guardada no id velho não vale para o novo; volta ao meio da esteira.
-  const gone = ex.links.find(l => l.from === 's2' && l.to === 's4')!.id;
-  const stale: Factory = { ...disconnect(placed, gone), ligs: { [STEEL_MEIO]: { x: 400, y: 80, rot: 0 } } };
-  const w = view(stale, 0), id = meiosOf(stale).find(m => m.item === 'Desc_SteelIngot_C')!.id;
-  const cs = w.v.chips.find(x => x.meio === id)!;
-  const o2 = w.v.ports.find(p => p.block === 's2' && p.side === 'out')!, i3 = w.v.ports.find(p => p.block === 's3' && p.side === 'in' && p.item === 'Desc_SteelIngot_C')!;
-  near(cs.x, (o2.x + i3.x) / 2); near(cs.y, (o2.y + i3.y) / 2);
+  // Planta: um chip só, no centro do retângulo do meio.
+  const r = scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, p1 = view(ex, 1).v.chips.filter(x => x.meio === STEEL_MEIO);
+  assert.equal(p1.length, 1);
+  near(p1[0].x, (r.x + r.w / 2 - CAM.x) * CAM.zoom); near(p1[0].y, (r.y + r.h / 2 - CAM.y) * CAM.zoom);
+  // Com ligs: a Planta vai para o lugar salvo; a Montar continua no meio da esteira (o ponto segue os cartões).
+  const placed = placeLig(ex, STEEL_MEIO, { x: 400, y: 80, rot: 0 });
+  const w1 = view(placed, 1), rr = w1.scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, cc = w1.v.chips.find(x => x.meio === STEEL_MEIO)!;
+  assert.equal(rr.x, 400);
+  near(cc.x, (rr.x + rr.w / 2 - CAM.x) * CAM.zoom); near(cc.y, (rr.y + rr.h / 2 - CAM.y) * CAM.zoom);
+  const w0 = view({ ...placed, montarLigs: { [STEEL_MEIO]: { x: 40, y: 200, rot: 0 } } }, 0);
+  assert.deepEqual(w0.v.chips.filter(x => x.meio === STEEL_MEIO).map(c => [c.x, c.y]), steel.map(c => [c.x, c.y]));
+});
+
+test('Montar: a volta de um subproduto passa por baixo dos dois cartões, com o ponto embaixo deles', () => {
+  const a: [number, number] = [600, 100], b: [number, number] = [200, 120];
+  const bz = linkBezier(a, b, 1), mid = bezierAt(bz, 0.5);
+  assert.ok(mid[1] > 120 + 60, `o meio (${mid[1]}) devia ficar bem abaixo das portas`);
+  near(mid[0], 400);
+  // Para a frente: as alças horizontais, metade da distância.
+  const f = linkBezier([0, 0], [200, 100], 1);
+  assert.deepEqual(f[1], [100, 0]); assert.deepEqual(f[2], [100, 100]);
+  assert.deepEqual(bezierAt(f, 0.5), [100, 50]);
+  // Puxado: o meio da curva cai no ponto puxado, para a frente e na volta.
+  for (const [p, q] of [[[0, 0], [200, 100]], [[600, 100], [200, 120]]] as [[number, number], [number, number]][]) {
+    const m0 = bezierAt(linkBezier(p, q, 1), 0.5), m1 = bezierAt(linkBezier(p, q, 1, [30, 80]), 0.5);
+    near(m1[0], m0[0] + 30); near(m1[1], m0[1] + 80);
+  }
+});
+
+test('Montar: o ponto puxado (bends) fica onde foi posto em relação ao meio, e segue os cartões', () => {
+  const lk = ex.links.find(l => l.from === 's2' && l.to === 's3')!.id;
+  const c0 = view(ex, 0).v.chips.find(c => c.link?.id === lk)!;
+  const c1 = view({ ...ex, bends: { [lk]: [10, 20] } }, 0).v.chips.find(c => c.link?.id === lk)!;
+  near(c1.x, c0.x + 10 * CAM.zoom); near(c1.y, c0.y + 20 * CAM.zoom);
+  assert.deepEqual(c1.link!.bend, [10 * CAM.zoom, 20 * CAM.zoom]);
+  // A Planta não usa.
+  const p0 = view(ex, 1).v.chips.find(c => c.meio === STEEL_MEIO)!, p1 = view({ ...ex, bends: { [lk]: [10, 20] } }, 1).v.chips.find(c => c.meio === STEEL_MEIO)!;
+  assert.deepEqual([p1.x, p1.y], [p0.x, p0.y]);
 });
 
 test('hit: porta ganha do bloco embaixo dela; chip ganha de tudo', () => {
@@ -163,8 +193,17 @@ test('hit: porta ganha do bloco embaixo dela; chip ganha de tudo', () => {
   assert.deepEqual(viewHit(v, p.x + 10, p.y), { kind: 'port', port: p });
   assert.deepEqual(viewHit(v, b.rect.x + b.rect.w / 2, b.rect.y + 20), { kind: 'block', id: 's2' });
   const c = v.chips[0];
-  assert.deepEqual(viewHit(v, c.x + CHIP_W / 2 - 2, c.y), { kind: 'chip', meio: c.meio });
+  assert.deepEqual(viewHit(v, c.x + CHIP_W / 2 - 2, c.y), { kind: 'chip', meio: c.meio, link: c.link!.id });
   assert.equal(viewHit(v, -1e5, -1e5), null);
+});
+
+test('hit na Planta: o corpo do bloco ganha do ponto que o cobre (o Miner pequeno); o círculo do ponto ainda pega', () => {
+  const blk = { id: 'e1', rect: { x: 100, y: 100, w: 32, h: 32 }, scale: 1, card: { x: 0, y: 0, w: 1, h: 1 }, plant: { x: 100, y: 100, w: 32, h: 32 } };
+  const g = { blocks: [blk], ports: [], chips: [{ meio: 'm', x: 130, y: 116, w: 64, h: 52, compact: true as const }], k: 1 };
+  assert.deepEqual(viewHit(g, 110, 116, true), { kind: 'block', id: 'e1' });
+  assert.deepEqual(viewHit(g, 110, 116), { kind: 'chip', meio: 'm' });   // na Montar, o ponto continua por cima
+  assert.deepEqual(viewHit(g, 132, 116, true), { kind: 'chip', meio: 'm' });
+  assert.deepEqual(viewHit(g, 155, 116, true), { kind: 'chip', meio: 'm' });   // fora do bloco, a área toda do ponto
 });
 
 test('hit: chip desenhado por cima de uma porta ganha dela; a porta fora do chip ainda ganha do bloco', () => {
@@ -172,7 +211,7 @@ test('hit: chip desenhado por cima de uma porta ganha dela; a porta fora do chip
   const p = v.ports.find(x => x.block === 's1' && x.side === 'out')!, c = v.chips[0];
   // O chip em cima da porta (como no celular, no zoom mínimo da Montar).
   const over = { ...v, chips: [{ ...c, x: p.x + CHIP_W / 2 - 10, y: p.y }] };
-  assert.deepEqual(viewHit(over, p.x, p.y), { kind: 'chip', meio: c.meio });
+  assert.deepEqual(viewHit(over, p.x, p.y), { kind: 'chip', meio: c.meio, link: c.link!.id });
   // Do outro lado da porta, fora do chip: a porta.
   assert.deepEqual(viewHit(over, p.x - 20, p.y), { kind: 'port', port: p });
 });
@@ -292,16 +331,13 @@ test('Montar e Planta com posições próprias: o cartão no lugar da Montar, o 
   near(at(0.5).rect.x, (at(0).rect.x + at(1).rect.x) / 2);
   // Os outros seguem a Planta.
   assert.deepEqual(view(f, 0).v.blocks.find(b => b.id === 's1')!.rect, view(ex, 0).v.blocks.find(b => b.id === 's1')!.rect);
-  // Chip: montarLigs na Montar, ligs na Planta.
+  // Chip: ligs na Planta; na Montar o ponto fica no meio da esteira (montarLigs antigo não vale mais lá).
   const g: Factory = { ...ex, ligs: { [STEEL_MEIO]: { x: 400, y: 80, rot: 0 } }, montarLigs: { [STEEL_MEIO]: { x: 40, y: 200, rot: 0 } } };
-  const w0 = view(g, 0), w1 = view(g, 1);
-  const r = w1.scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, c0 = w0.v.chips.find(x => x.meio === STEEL_MEIO)!, c1 = w1.v.chips.find(x => x.meio === STEEL_MEIO)!;
+  const w1 = view(g, 1), r = w1.scene.meios.find(m => m.meio === STEEL_MEIO)!.rect, c1 = w1.v.chips.find(x => x.meio === STEEL_MEIO)!;
   assert.equal(r.x, 400);
-  near(c0.x, (40 + r.w / 2 - CAM.x) * CAM.zoom); near(c0.y, (200 + r.h / 2 - CAM.y) * CAM.zoom);
   near(c1.x, (400 + r.w / 2 - CAM.x) * CAM.zoom);
-  // montarLigs vazio: a Montar volta ao automático (entre as portas), mesmo com ligs.
-  const auto = view({ ...g, montarLigs: {} }, 0).v.chips.find(x => x.meio === STEEL_MEIO)!, free = view(ex, 0).v.chips.find(x => x.meio === STEEL_MEIO)!;
-  near(auto.x, free.x); near(auto.y, free.y);
+  const c0 = view(g, 0).v.chips.find(x => x.meio === STEEL_MEIO)!, free = view(ex, 0).v.chips.find(x => x.meio === STEEL_MEIO)!;
+  near(c0.x, free.x); near(c0.y, free.y);
   // Mostrar tudo da Montar enquadra os cartões nos lugares dela.
   const wf = view(f, 0), b1 = montarBounds(wf.scene, f, data, wf.flow, MONTAR_REF, false);
   assert.ok(b1.x + b1.w >= base.x + 80 + CARD_W / MONTAR_REF);

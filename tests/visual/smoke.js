@@ -1,6 +1,6 @@
 // uso: node tests/visual/smoke.js <url-base>   (ex.: npm run smoke -- http://localhost:4173, contra o npm run preview)
 // Smoke dos gestos do builder, de ponta a ponta: canvas vazio (o tutorial abre sozinho; Skip fecha e não volta no
-// reload; o botão Tutorial reabre e Next chega ao fim pulando os passos sem alvo; Esc fecha o "? How to use") -> duplo clique -> "Pure Iron" + Enter cria o bloco;
+// reload; "Full tutorial" no menu "? Help" reabre e Next chega ao fim pulando os passos sem alvo; Esc fecha o "How to use the map") -> duplo clique -> "Pure Iron" + Enter cria o bloco;
 // arrastar da saída para o vazio -> "Solid Steel Ingot" cria o próximo já ligado; segunda perna "Steel Pipe";
 // Ctrl+Z desfaz a última; (na Montar) clicar no chip abre o mini painel, Ver montagem abre o modal e Esc fecha com o foco
 // no canvas; Desligar some com a ligação e Ctrl+Z a traz de volta; o botão Planta em escala troca a vista e as portas
@@ -101,9 +101,10 @@ await step('tutorial abre na primeira visita; Skip fecha e não volta no reload'
   await pg.waitForTimeout(1500);
   must(await pg.locator('.pl-tour').count() === 0, 'o tutorial voltou depois do reload');
 });
-await step('botão Tutorial reabre; com a fábrica vazia os passos sem alvo são pulados e Next chega ao fim', async () => {
+await step('"Full tutorial" no menu Help reabre; com a fábrica vazia os passos sem alvo são pulados e Next chega ao fim', async () => {
   await pg.locator('[data-tour="map-tour"]').click();
-  await pg.waitForSelector('.pl-tour-box[data-ready]', { timeout: 3000 }).catch(() => { throw new Error('o botão Tutorial não abriu'); });
+  await pg.locator('.pl-help-tour').click();
+  await pg.waitForSelector('.pl-tour-box[data-ready]', { timeout: 3000 }).catch(() => { throw new Error('o "Full tutorial" não abriu'); });
   const seen = [];
   for (let k = 0; k < 25 && await pg.locator('.pl-tour').count(); k++) {
     seen.push(await pg.locator('.pl-tour-box h2').innerText());
@@ -113,8 +114,9 @@ await step('botão Tutorial reabre; com a fábrica vazia os passos sem alvo são
   must(await pg.locator('.pl-tour').count() === 0, 'o tutorial travou: ' + seen.join(' | '));
   must(!seen.includes('Connect from a port') && !seen.includes('The connection chip'), 'passo sem alvo apareceu: ' + seen.join(' | '));
   must(await tourKey() === 'done', 'Finish não marcou done: ' + await tourKey());
-  // Esc pula: o "? Como mexer" do mapa abre e Esc fecha com o foco de volta no botão.
+  // Esc pula: "How to use the map" (menu Help) abre e Esc fecha com o foco de volta no botão Help.
   await pg.locator('.pl-map-help').click();
+  await pg.locator('.pl-help-map').click();
   await pg.waitForSelector('.pl-tour-box[data-ready]', { timeout: 3000 }).catch(() => { throw new Error('o "? How to use" não abriu'); });
   await pg.keyboard.press('Escape');
   await pg.waitForSelector('.pl-tour', { state: 'detached', timeout: 3000 });
@@ -268,7 +270,8 @@ await step('Camadas: "Machines only" tira portas e chips; ligar de volta traz', 
   await pg.getByRole('button', { name: 'Machines only' }).click();
   // Uma escolha por vista: aqui, a da Montar; a Planta continua com tudo ligado.
   const saved = () => pg.evaluate(() => JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}'));
-  await waitFor(() => { const s = JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}'); return Object.values(s.montar ?? {}).length === 4 && Object.values(s.montar).every(v => v === false); }, null, 'as quatro camadas desligadas');
+  // As quatro camadas (as ligações compactas não são camada e ficam como estão).
+  await waitFor(() => { const m = JSON.parse(localStorage.getItem('sf-balancer:planner-layers') || '{}').montar ?? {}; return ['icons', 'names', 'links', 'ports'].every(k => m[k] === false); }, null, 'as quatro camadas desligadas');
   must(Object.values((await saved()).planta ?? {}).every(v => v === true), 'desligar na Montar mexeu na Planta');
   // Chip escondido não pega o clique: o mini painel não abre.
   const b = await box(), ch = await pg.evaluate(() => window.__sfPlanner.view.chips[0]);

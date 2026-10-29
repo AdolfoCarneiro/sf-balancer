@@ -1,10 +1,11 @@
 // Desenho do mapa num canvas 2D: junta as partes de draw/. Duas vistas e a transição entre elas (t de 0 a 1):
-// - Montar (t = 0): fundo pontilhado, cartões com a faixa de fileiras, esteiras animadas porta → chip → porta;
+// - Montar (t = 0): fundo pontilhado, cartões com a faixa de fileiras, esteiras animadas da saída à entrada,
+//   uma por link, com o ponto no meio;
 // - Planta (t = 1): o desenho em escala (grade, blocos, peças, ligações), os leques porta → fileira e as placas de nome.
 // Nas duas: portas de 44 px pelo estado e o chip de cada ligação. Só desenha o que aparece na tela e o que as camadas
 // deixam (layers: ícones, nomes, ligações, portas).
 import { visible, type Camera } from '../model/map/camera.ts';
-import type { ViewChip, ViewGeo, ViewPort } from '../model/map/cards.ts';
+import { linkBezier, type ViewChip, type ViewGeo, type ViewPort } from '../model/map/cards.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
 import type { Badge } from '../model/badges.ts';
 import type { ChipLabel } from '../model/chip.ts';
@@ -13,7 +14,7 @@ import type { PortState } from '../model/portstate.ts';
 import type { Scene } from '../model/map/scene.ts';
 import type { ItemId, StageId } from '../model/types.ts';
 import type { MapLayers } from '../model/map/layers.ts';
-import { beltCurve, curveBox, drawFans, strokeBelt, type WorldCtx } from './draw/belts.ts';
+import { beltCurve, drawFans, strokeBelt, type WorldCtx } from './draw/belts.ts';
 import { drawCard, drawMontarFloor, type CardText } from './draw/cards.ts';
 import { drawChips } from './draw/chips.ts';
 import { drawPlantLabels, makeLabels } from './draw/labels.ts';
@@ -114,27 +115,24 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
     ctx.globalAlpha = 1;
   }
 
-  // Montar: esteiras porta → chip → porta, por baixo dos cartões.
+  // Montar: uma esteira por link, da saída à entrada, com o ponto no meio (como no Modeler), por baixo dos cartões.
   if (t < 1) {
     ctx.globalAlpha = 1 - t;
     ctx.save(); ctx.scale(k, k);
     for (const c of L0.links ? view.chips : []) {
-      const g = o.meio(c.meio), lab = o.chip(c.meio);
-      if (!g) continue;
-      const m: Pt = kPt([c.x, c.y]), dm: Pt = [1, 0];
-      const look = { color: o.colors[g.item] ?? th.flow, fluid: o.fluid(g.item), short: !!lab?.short, selected: o.selected.has(c.meio) };
-      // Do lado das produtoras, vermelha se alguma consumidora da ligação fica com falta; a perna até cada consumidora,
-      // só se aquela consumidora está com falta (a vizinha curta não pinta a que está cheia).
-      const belt = (path: Path2D, short: boolean) => strokeBelt(ctx, path, { ...look, short }, o.time, th);
-      for (const id of g.producers) {
-        const q = byKey.get(`${id}|out|${g.item}`), p = q && kPort(q);
-        if (p && near(curveBox([p.x, p.y], m), vk, hk, 0)) belt(beltCurve([p.x, p.y], p.dir, m, dm), look.short);
-      }
-      for (const id of g.consumers) {
-        const q = byKey.get(`${id}|in|${g.item}`), p = q && kPort(q);
-        const short = look.short && o.portState(id, 'in', g.item)?.kind === 'deficit';
-        if (p && near(curveBox(m, [p.x, p.y]), vk, hk, 0)) belt(beltCurve(m, dm, [p.x, p.y], [-p.dir[0], -p.dir[1]]), short);
-      }
+      const l = c.link, lab = o.chip(c.meio);
+      if (!l) continue;
+      const qa = byKey.get(`${l.from}|out|${l.item}`), qb = byKey.get(`${l.to}|in|${l.item}`);
+      if (!qa || !qb) continue;
+      // A curva cabe na caixa das pontas e das alças: fora da tela, pula.
+      const bz = linkBezier([qa.x, qa.y], [qb.x, qb.y], view.k, l.bend), xs = bz.map(p => p[0]), ys = bz.map(p => p[1]);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys);
+      if (!near({ x: x0, y: y0, w: Math.max(...xs) - x0, h: Math.max(...ys) - y0 }, vw, vh, 8)) continue;
+      // Vermelha só se a consumidora deste link fica com falta (a vizinha curta não pinta a que está cheia).
+      const short = !!lab?.short && o.portState(l.to, 'in', l.item)?.kind === 'deficit';
+      const [p0, p1, p2, p3] = bz.map(kPt), path = new Path2D();
+      path.moveTo(p0[0], p0[1]); path.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+      strokeBelt(ctx, path, { color: o.colors[l.item] ?? th.flow, fluid: o.fluid(l.item), short, selected: o.selected.has(c.meio) }, o.time, th);
     }
     ctx.restore();
     // Cartões.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { t } from '../../i18n/index.js';
 import { readTheme, type MapTheme } from './draw/theme.ts';
 
@@ -65,15 +65,13 @@ function Row({ icon, title, desc }: { icon: ReactNode; title: string; desc: stri
   return <li><span className="pl-leg-ic">{icon}</span><span><b>{title}</b><br /><span className="pl-leg-d">{desc}</span></span></li>;
 }
 
-// Botão "Legenda" (44 px) e o diálogo; Esc fecha e o foco volta ao botão.
-export function Legend() {
-  const [open, setOpen] = useState(false);
-  const btn = useRef<HTMLButtonElement>(null);
+// O diálogo da Legenda (aberto pelo menu Ajuda do mapa); Esc ou Fechar chamam onClose, que devolve o foco.
+export function LegendDialog({ onClose }: { onClose: () => void }) {
   const dlg = useRef<HTMLDivElement>(null);
-  const close = () => { setOpen(false); btn.current?.focus(); };
-  const th = useMemo(() => (open ? readTheme(document.documentElement) : null), [open]);
+  const close = onClose;
+  const th = useMemo(() => readTheme(document.documentElement), []);
 
-  useEffect(() => { if (open) dlg.current?.focus(); }, [open]);
+  useEffect(() => { dlg.current?.focus(); }, []);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); return; }
@@ -87,8 +85,7 @@ export function Legend() {
 
   return (
     <>
-      <button ref={btn} type="button" className="pl-leg-btn" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>{t('plLegend')}</button>
-      {open && th && (
+      {(
         <div className="pl-leg-back" onMouseDown={e => { if (e.target === e.currentTarget) close(); }}>
           <div className="pl-leg" role="dialog" aria-modal="true" aria-labelledby="pl-leg-title" tabIndex={-1} ref={dlg} onKeyDown={onKey}>
             <header>

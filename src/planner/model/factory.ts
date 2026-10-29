@@ -189,6 +189,7 @@ export function addLinkedBlock(f: Factory, d: GameData, spec: BlockSpec, port: {
 // Tira as posições de ligação e as montagens cujo grupo deixou de existir. `montarLigs` fica mesmo vazio (a presença
 // dele diz que a Montar não segue mais as `ligs`).
 function pruneMeios(f: Factory): Factory {
+  f = pruneBends(f);
   if (!f.ligs && !f.alts && !f.montarLigs) return f;
   const ids = new Set(meiosOf(f).map(m => m.id));
   const keep = <T>(o: Record<string, T> | undefined) => {
@@ -199,6 +200,36 @@ function pruneMeios(f: Factory): Factory {
   const { ligs: _l, alts: _a, montarLigs: _m, ...rest } = f;
   const ligs = keep(f.ligs), alts = keep(f.alts), montarLigs = f.montarLigs && (keep(f.montarLigs) ?? {});
   return { ...rest, ...(alts ? { alts } : {}), ...(ligs ? { ligs } : {}), ...(montarLigs ? { montarLigs } : {}) };
+}
+
+// Sem a curva dos links que saíram (sem nenhuma, sem o campo).
+function pruneBends(f: Factory): Factory {
+  if (!f.bends) return f;
+  const ids = new Set(f.links.map(l => l.id)), e = Object.entries(f.bends).filter(([k]) => ids.has(k));
+  if (e.length === Object.keys(f.bends).length) return f;
+  const { bends: _b, ...rest } = f;
+  return e.length ? { ...rest, bends: Object.fromEntries(e) } : rest;
+}
+
+// O ponto da esteira de cada link na Montar: off (m) a partir do meio automático; null (ou quase zero) o devolve ao
+// meio. Só link que existe e número finito, até BEND_MAX.
+export const BEND_MAX = 10000;
+export function cleanBend(v: unknown): [number, number] | null {
+  if (!Array.isArray(v) || v.length !== 2) return null;
+  const [x, y] = v;
+  return typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= BEND_MAX && Math.abs(y) <= BEND_MAX
+    ? [Math.round(x * 4) / 4, Math.round(y * 4) / 4] : null;
+}
+export function bendLinks(f: Factory, links: string[], off: [number, number] | null): Factory {
+  const ids = new Set(f.links.map(l => l.id)), o = off === null ? null : cleanBend(off);
+  if ((off !== null && !o) || !links.some(id => ids.has(id))) return f;
+  const next = { ...f.bends };
+  for (const id of links) {
+    if (!ids.has(id)) continue;
+    if (!o || (o[0] === 0 && o[1] === 0)) delete next[id]; else next[id] = o;
+  }
+  const { bends: _b, ...rest } = f;
+  return Object.keys(next).length ? { ...rest, bends: next } : rest;
 }
 
 // Sem as posições (nas duas vistas) dos blocos que saíram.
