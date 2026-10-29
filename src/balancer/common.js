@@ -8,7 +8,6 @@ export const DEFAULTS = {
   medium: 'item', belt: 'Mk4', pipe: 'Mk2', policy: 'represar', excess: 'represar', conv: 'k-1',
 };
 export const STORE = 'sf-balancer:v3';
-export const LANG_STORE = 'sf-balancer:lang';
 export function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 export const O = l => srcTag(l.id);
 export const Dn = l => dstTag(l.id);

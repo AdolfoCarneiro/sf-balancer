@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { BALANCER_PATH, BUILDER_PATH, builderLang, legacyTarget, pathLang } from '../../src/planner/lang.ts';
+import { BALANCER_PATH, BUILDER_PATH, builderLang, legacyTarget, pageOf, pagePath, pathLang } from '../../src/shell/site.ts';
 
 const read = (f: string) => readFileSync(new URL('../../' + f, import.meta.url), 'utf8');
 
@@ -48,17 +48,20 @@ test('index.html tem o redirecionamento inline espelhando legacyTarget', () => {
   assert.match(html, /hreflang="pt-BR" href="https:\/\/sf-balancer\.vercel\.app\/pt"/);
 });
 
-test('balancer.html: sem canonical fixo, og:url e hreflang em /balancer; anti-piscada aceita o caminho novo', () => {
+test('balancer.html: sem canonical fixo, og:url e hreflang em /balancer; o mesmo app do index.html', () => {
   const html = read('balancer.html');
   assert.ok(!html.includes('rel="canonical"'));
   assert.match(html, /og:url" content="https:\/\/sf-balancer\.vercel\.app\/balancer"/);
   assert.match(html, /hreflang="es" href="https:\/\/sf-balancer\.vercel\.app\/es\/balancer"/);
-  assert.match(html, /id="plLink" href="\/"/);
-  const flicker = html.match(/<script>(try\{var l=[\s\S]*?)<\/script>/);
-  assert.ok(flicker, 'script anti-piscada');
-  const re = flicker![1].match(/pathname\.match\((\/.*?\/)\)/)![1];
-  const rx = new Function(`return ${re}`)() as RegExp;
-  for (const p of ['/pt', '/es/', '/pt/balancer', '/es/balancer/', '/en', '/', '/balancer', '/ptx']) assert.equal((p.match(rx) || [])[1] ?? null, pathLang(p), p);
+  // Uma entrada só: as duas páginas carregam o src/main.tsx, que escolhe a página pelo caminho.
+  for (const f of ['index.html', 'balancer.html']) assert.match(read(f), /<script type="module" src="\/src\/main\.tsx" blocking="render"><\/script>/, f);
+  assert.ok(!html.includes('lang-pending'), 'sem o anti-piscada: nada aparece antes do app montar');
+});
+
+test('página pelo caminho: /balancer nos três idiomas (e o .html do preview); o resto é a Fábrica', () => {
+  for (const p of ['/balancer', '/balancer/', '/balancer.html', '/pt/balancer', '/es/balancer/', '/en/balancer']) assert.equal(pageOf(p), 'balancer', p);
+  for (const p of ['/', '/pt', '/es/', '/index.html', '/balancerx', '/pt/planner']) assert.equal(pageOf(p), 'factory', p);
+  assert.equal(pagePath('balancer', 'pt'), '/pt/balancer'); assert.equal(pagePath('factory', 'en'), '/');
 });
 
 test('vercel.json e nginx.conf: /planner* redireciona para o builder e /balancer existe nos três idiomas', () => {
@@ -93,11 +96,9 @@ test('sitemap: seis páginas, sem /planner', () => {
   }
 });
 
-test('as duas páginas têm as abas Fábrica | Balancer', () => {
-  const html = read('balancer.html');
-  assert.match(html, /class="navtabs"/);
-  assert.match(html, /data-i18n="navFactory"/);
-  assert.match(html, /data-i18n="navBalancer"/);
-  const header = read('src/planner/ui/Header.tsx');
-  assert.ok(header.includes("'navFactory'") && header.includes("'navBalancer'"));
+test('as duas páginas têm as abas Fábrica | Balancer (a barra comum do shell)', () => {
+  const bar = read('src/shell/SiteBar.tsx');
+  assert.ok(bar.includes("'navFactory'") && bar.includes("'navBalancer'"));
+  assert.match(read('src/planner/ui/Header.tsx'), /<SiteBar nav=\{nav\}>/);
+  assert.match(read('src/balancer/BalancerPage.tsx'), /<SiteBar nav=\{nav\}>/);
 });

@@ -1,20 +1,20 @@
-/* Peças comuns à página Balancer e ao modal da ligação do builder: o desenho do fluxo (esteiras animadas, legenda),
-   a bancada do passo a passo (.wb*, .ponder, .cands…), a tabela de conferência, os botões e a ajuda "?".
-   Vem antes do resto do main.css (que a importa no topo); o builder importa só este arquivo. */
-  /* Trocar de página (Fábrica ↔ Balancer), como trocar de aba num app: a barra do topo fica parada (o mesmo nome de
-     transição nas duas: .pl-top no builder, .sitebar no Balancer) e o conteúdo desliza na direção da aba. Quem anima é
-     a página que chega: aqui, chegando no Balancer (a aba da direita), a de antes sai pela esquerda e ele entra pela
-     direita; o builder inverte (planner.css). Sem movimento, troca seca. */
-  @view-transition { navigation: auto; }
-  .sitebar { view-transition-name: site-top; }
+/* Peças comuns às duas páginas do app (Fábrica e Balancer): a troca de aba, o desenho do fluxo (esteiras animadas,
+   legenda), a bancada do passo a passo (.wb*, .ponder, .cands…), a tabela de conferência, os botões e a ajuda "?".
+   O src/main.tsx carrega este arquivo para as duas; o modal da ligação da Fábrica usa as mesmas peças. */
+  /* Trocar de página (Fábrica ↔ Balancer), como trocar de aba num app: o shell troca a página dentro de uma View
+     Transition (src/shell/Shell.tsx), a barra do topo fica parada (.pl-top, view-transition-name: site-top, nas duas) e o
+     conteúdo desliza 80 px na direção da aba: indo para o Balancer (a aba da direita), a de antes sai pela esquerda e ele
+     entra pela direita; voltando para a Fábrica, o contrário. Sem movimento, o shell troca seco. */
   @keyframes vt-out-left { to { transform: translateX(-80px); opacity: 0; } }
   @keyframes vt-in-right { from { transform: translateX(80px); opacity: 0; } }
   @keyframes vt-out-right { to { transform: translateX(80px); opacity: 0; } }
   @keyframes vt-in-left { from { transform: translateX(-80px); opacity: 0; } }
-  ::view-transition-old(root) { animation: vt-out-left .32s cubic-bezier(.4, 0, .2, 1) both; }
-  ::view-transition-new(root) { animation: vt-in-right .32s cubic-bezier(.4, 0, .2, 1) both; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); animation-fill-mode: both; }
+  html[data-nav="balancer"]::view-transition-old(root) { animation-name: vt-out-left; }
+  html[data-nav="balancer"]::view-transition-new(root) { animation-name: vt-in-right; }
+  html[data-nav="factory"]::view-transition-old(root) { animation-name: vt-out-right; }
+  html[data-nav="factory"]::view-transition-new(root) { animation-name: vt-in-left; }
   ::view-transition-group(site-top) { animation-duration: .32s; }
-  @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
 
   /* Abas Fábrica | Balancer, iguais nas duas páginas */
   .navtabs { display: flex; gap: 3px; padding: 3px; background: var(--plate); }

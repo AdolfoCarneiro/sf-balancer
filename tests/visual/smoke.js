@@ -8,7 +8,9 @@
 // (cada vista com as suas posições); Shift + arrastar no vazio seleciona os blocos e Esc limpa;
 // Ctrl+A + Delete apaga todos e um Ctrl+Z os traz de volta; a etapa do Pure Iron em "Mergers no meio" muda a ligação;
 // importar duo.sfmd (input de arquivo) cria os 6 blocos numa fábrica nova e "Factories" volta para a de antes;
-// Camadas "Machines only" tira portas e chips (só na Montar); /#s= antigo cai em /balancer.
+// Camadas "Machines only" tira portas e chips (só na Montar); a aba Balancer troca a página sem recarregar (Ctrl+Z de cada
+// página, Fábrica e Balancer guardam o que tinham, o voltar do navegador, idioma comum, abrir direto em /pt/balancer);
+// /#s= antigo cai em /balancer. SHOT=<pasta> guarda a tela de cada passo que falhar.
 // As coordenadas vêm de window.__sfPlanner (cena, câmera, portas, vista e a geometria de tela do último quadro), ligado
 // por ?debug=1. Sai com código != 0 se um passo falhar.
 import { chromium } from 'playwright';
@@ -37,7 +39,12 @@ pg.on('response', r => { if (r.status() >= 400 && !r.url().includes('/_vercel/in
 let fail = 0;
 async function step(name, fn) {
   try { await fn(); console.log(`ok    ${name}`); }
-  catch (e) { fail++; console.log(`FALHA ${name}: ${e.message.split('\n')[0]}`); }
+  catch (e) {
+    fail++;
+    console.log(`FALHA ${name}: ${e.message.split('\n')[0]}`);
+    // SHOT=<pasta>: guarda a tela de cada falha (failN.png).
+    if (process.env.SHOT) await pg.screenshot({ path: path.join(process.env.SHOT, `fail${fail}.png`) }).catch(() => {});
+  }
 }
 const must = (ok, msg) => { if (!ok) throw new Error(msg); };
 
@@ -299,6 +306,55 @@ await step('importar duo.sfmd pelo input de arquivo cria uma fábrica nova; Fact
   await pg.waitForSelector('dialog.pl-libs[open]', { timeout: 5000 });
   await pg.locator('dialog.pl-libs .pl-libs-open:not([aria-current])').first().click();
   await nBlocks(before);
+});
+// Um app só: a aba troca a página sem recarregar, as duas guardam o que estava nelas e os atalhos são da página na tela.
+await step('aba Balancer troca sem recarregar; voltar acha a Fábrica igual; Ctrl+Z é de cada página', async () => {
+  await pg.goto(`${base}/?debug=1`, { waitUntil: 'load' });
+  await settled();
+  await pg.evaluate(() => { window.__sameDoc = true; });
+  const blocks = (await state()).blocks.length;
+  const cam = await pg.locator('.pl-map-canvas').getAttribute('data-cam');
+  await pg.locator('.navtabs a:visible', { hasText: 'Balancer' }).first().click();
+  await pg.waitForURL(u => u.pathname === '/balancer', { timeout: 5000 });
+  await pg.locator('#item').waitFor({ state: 'visible', timeout: 5000 });
+  must(await pg.evaluate(() => window.__sameDoc === true), 'a página recarregou');
+  must(!(await pg.locator('.pl-map-canvas').isVisible()), 'o mapa continua na tela');
+  must((await pg.title()).includes('Balancer'), 'título da Fábrica no Balancer: ' + await pg.title());
+  must(await pg.locator('.alt').count() > 0, 'o Balancer não calculou as alternativas');
+  // Digitar no Balancer e desfazer com Ctrl+Z: a Fábrica não pode perder blocos.
+  await pg.locator('#item').fill('Steel Test');
+  await pg.locator('#item').blur();
+  await pg.keyboard.press('Control+z');
+  must((await state()).blocks.length === blocks, 'o Ctrl+Z do Balancer mexeu na Fábrica');
+  await pg.locator('#item').fill('Steel Test');
+  await pg.locator('#item').blur();
+  await pg.goBack();
+  await pg.waitForURL(u => u.pathname === '/', { timeout: 5000 });
+  await pg.locator('.pl-map-canvas').waitFor({ state: 'visible', timeout: 5000 });
+  must(await pg.evaluate(() => window.__sameDoc === true), 'voltar recarregou a página');
+  await settled();
+  must(await pg.locator('.pl-map-canvas').getAttribute('data-cam') === cam, 'a câmera da Fábrica mudou');
+  must((await state()).blocks.length === blocks, 'a Fábrica perdeu blocos');
+  await pg.locator('.navtabs a:visible', { hasText: 'Balancer' }).first().click();
+  await pg.locator('#item').waitFor({ state: 'visible', timeout: 5000 });
+  must(await pg.locator('#item').inputValue() === 'Steel Test', 'o Balancer perdeu o que foi digitado');
+  await pg.locator('.navtabs a:visible', { hasText: 'Factory' }).first().click();
+  await pg.locator('.pl-map-canvas').waitFor({ state: 'visible', timeout: 5000 });
+});
+await step('idioma trocado no Balancer vale para a Fábrica; abrir direto em /pt/balancer', async () => {
+  await pg.locator('.navtabs a:visible', { hasText: 'Balancer' }).first().click();
+  await pg.locator('#item').waitFor({ state: 'visible', timeout: 5000 });
+  await pg.locator('.bal-page .pl-langs button', { hasText: 'PT' }).click();
+  await pg.locator('.bal-page h2', { hasText: 'Origem' }).first().waitFor({ timeout: 3000 });
+  await pg.locator('.navtabs a:visible', { hasText: 'Fábrica' }).first().click();
+  await pg.locator('.pl-view button', { hasText: 'Montar' }).waitFor({ timeout: 3000 });
+  await pg.goto(`${base}/pt/balancer`, { waitUntil: 'load' });
+  await pg.locator('.bal-page h2', { hasText: 'Origem' }).first().waitFor({ timeout: 5000 });
+  must(!(await pg.locator('.pl-map-canvas').count()), 'abrir no Balancer montou o mapa');
+  await pg.locator('.navtabs a:visible', { hasText: 'Fábrica' }).first().click();
+  await pg.locator('.pl-map-canvas').waitFor({ state: 'visible', timeout: 5000 });
+  must(await pg.evaluate(() => location.pathname) === '/pt', 'endereço da Fábrica em pt');
+  await pg.locator('.pl-langs button:visible', { hasText: 'EN' }).first().click();
 });
 await step('/#s= antigo cai em /balancer', async () => {
   const { shareHash } = JSON.parse(fs.readFileSync(path.join(here, 'fixtures.json'), 'utf8'));

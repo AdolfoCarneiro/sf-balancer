@@ -1,18 +1,16 @@
 import { I18N, LANGS, getLang, setLang, t, fmt, parseNum } from '../i18n/index.js';
 import { BELTS, PIPES, historyReplace } from '../logic/index.js';
-import { FLAGS } from './flags.js';
 import { S } from './state.js';
-import { $, LANG_STORE, esc } from './common.js';
+import { $, esc } from './common.js';
 import { rows, syncGroups } from './groups.js';
 import { renderScenarios } from './scenarios.js';
 import { histCommit, histSnap } from './history.js';
 import { render } from './render.js';
-import { BALANCER_PATH, BUILDER_PATH, pathLang } from '../planner/lang.ts';
+import { BALANCER_PATH } from '../shell/site.ts';
 import { renderBps, renderCatalog, renderLib } from './library.js';
 
 // ---- Idioma ----
-// Cada idioma tem um endereço próprio no site (/balancer, /pt/balancer, /es/balancer) para os buscadores; o vercel.json
-// reescreve para o balancer.html.
+// O idioma, o título, a descrição e o endereço da página são do shell (src/shell/); aqui ficam os textos do Balancer.
 export const SITE = 'https://sf-balancer.vercel.app';
 // Atalhos externos para quem não quer montar o balancer na mão: o mod e os blueprints da comunidade.
 export const EXT_MOD = 'https://ficsit.app/mod/LoadBalancers';
@@ -21,37 +19,10 @@ export const extLink = (href, text) => `<a href="${href}" target="_blank" rel="n
 const extLinks = () => [extLink(EXT_MOD, 'Modular Load Balancers (ficsit.app)'), extLink(extBpUrl(), t('extBp'))].join(' · ');
 export const LANG_PATH = BALANCER_PATH;
 export const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
-// A lista de idiomas e a chave salva também estão no script inline anti-piscada do balancer.html: mantenha os dois iguais.
-// Ordem: caminho (/pt/balancer, /es/balancer), ?lang= na URL, escolha salva, inglês.
-export function pickLang() {
-  const fromPath = pathLang(location.pathname);
-  if (fromPath) return fromPath;
-  const fromUrl = new URLSearchParams(location.search).get('lang');
-  if (I18N[fromUrl]) return fromUrl;
-  let saved = null;
-  try { saved = localStorage.getItem(LANG_STORE); } catch (e) { /* sem storage */ }
-  if (I18N[saved]) return saved;
-  return 'en';
-}
 
-
-// Textos fixos do HTML (inclusive os dos grupos já clonados do template).
+// Textos fixos do markup (inclusive os dos grupos já clonados do template).
 export function applyStatic() {
-  document.documentElement.lang = t('htmlLang');
-  document.title = t('pageTitle');
-  document.querySelector('meta[name=description]').content = t('metaDesc');
-  let canon = document.querySelector('link[rel=canonical]');
-  if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
-  canon.href = SITE + LANG_PATH[getLang()];
-  // No site, o endereço acompanha o idioma; aberto direto do disco ou em outro servidor, fica como está.
-  if (onVercel && location.pathname !== LANG_PATH[getLang()]) history.replaceState(null, '', LANG_PATH[getLang()] + location.hash);
-  const pl = document.getElementById('plLink');
-  if (pl) pl.href = BUILDER_PATH[getLang()];
-  // A aba Balancer aponta para a própria página (no site, o caminho do idioma; fora dele, o caminho aberto), e não para
-  // "#", que apagaria o #s= de um cenário compartilhado.
-  const bl = document.getElementById('balLink');
-  if (bl) bl.href = onVercel ? BALANCER_PATH[getLang()] : location.pathname + location.search;
-  const roots = [document, $('grpTpl').content];
+  const roots = [S.root, $('grpTpl').content];
   for (const root of roots) {
     root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
@@ -66,7 +37,6 @@ export function applyStatic() {
   const libBelt = $('libBelt').value;
   $('libBelt').innerHTML = $('belt').innerHTML;
   $('libBelt').value = libBelt || 'Mk4';
-  $('langs').innerHTML = LANGS.map(l => `<button type="button" data-lang="${l}" lang="${I18N[l].htmlLang}" title="${I18N[l].langName}" aria-pressed="${l === getLang()}">${FLAGS[l]}${l.toUpperCase()}</button>`).join('');
   $('faqExt').innerHTML = extLinks();
   syncGroups('src');
   syncGroups('dst');
@@ -88,10 +58,10 @@ export function convertInputs(from) {
 // Nome de exemplo acompanha o idioma; nome digitado pelo usuário fica.
 export const itemFor = name => (LANGS.some(x => I18N[x].defaultItem === name) ? t('defaultItem') : name);
 
-export function changeLang(l) {
-  const prev = getLang();
-  setLang(l);
-  try { localStorage.setItem(LANG_STORE, getLang()); } catch (e) { /* sem storage */ }
+// O shell já trocou o idioma (era `prev`): converte os números digitados e redesenha tudo.
+export function langChanged(prev) {
+  const l = getLang();
+  if (prev === l) return;
   if (S.histTimer) histCommit();
   convertInputs(prev);
   $('item').value = itemFor($('item').value);
@@ -104,4 +74,3 @@ export function changeLang(l) {
   renderCatalog();
   renderLib();
 }
-

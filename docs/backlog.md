@@ -30,6 +30,15 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 
 - A "planta vista de cima": cada linha vira uma fileira de máquinas no tamanho real, com o comprimento do manifold, as fundações ocupadas e onde ficam o meio e o balancer. Sem receitas, partindo das linhas e grupos que a ferramenta já calcula. Não é editor livre da fábrica nem ligação de etapas em cadeia.
 
+## App único (feito em 2026-10-29)
+
+Fábrica e Balancer viraram um app só (`src/shell/`): a aba troca sem recarregar e as duas páginas guardam o estado. Próximos passos possíveis, sem compromisso:
+
+- Passar o Balancer para React aos poucos (hoje é JavaScript puro montado dentro do shell, com o markup em `src/balancer/page.html`); o ganho maior seria dividir peças com a Fábrica (campos, botões, diálogos).
+- "Abrir no Balancer" no modal da ligação poderia trocar de aba dentro do app em vez de abrir uma aba nova do navegador.
+- O link antigo `/#s=` ainda recarrega até o `/balancer` (script no `<head>` do `index.html`); dá para o shell abrir direto.
+- **Bug antigo, já no master:** o cenário `builder-planta` da captura visual dá timeout num clique (nas duas versões); investigar o cenário.
+
 ## Futuro (depois da planta)
 
 - Daí para frente, evoluir na linha do chão e das marcações do Blueprint Designer (já feitos na planta da biblioteca).

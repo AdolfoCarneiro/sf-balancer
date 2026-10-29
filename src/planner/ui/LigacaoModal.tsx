@@ -2,11 +2,11 @@
 // passo a passo (o montador da página Balancer, já com esta ligação). Esc fecha; quem abriu cuida do foco.
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { fmt, t } from '../../i18n/index.js';
-import { flowLegend } from '../../ui/flow.js';
-import { hideTip, showTip } from '../../ui/help.js';
-import { LIB, saveLib, setMode3d } from '../../ui/library.js';
-import { S as UI } from '../../ui/state.js';
-import { stopStage, workbench } from '../../ui/workbench.js';
+import { flowLegend } from '../../balancer/flow.js';
+import { hideTip, showTip } from '../../balancer/help.js';
+import { LIB, saveLib, setMode3d } from '../../balancer/library.js';
+import { S as UI } from '../../balancer/state.js';
+import { stopStage, workbench } from '../../balancer/workbench.js';
 import { altPieces, meioSummary, type Meio } from '../model/meio.ts';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import { balancerUrl } from '../model/ligacao.ts';
@@ -15,7 +15,7 @@ import type { PieceCount } from '../model/map/geo.ts';
 import { rotSize } from '../model/map/scene.ts';
 import type { FlowResult } from '../model/solve.ts';
 import type { Factory, GameData } from '../model/types.ts';
-import type { Lang } from '../lang.ts';
+import type { Lang } from '../../shell/site.ts';
 import { useFlowView } from '../meios.ts';
 import type { ViewMode } from './selection.ts';
 import { blockName, sizeText } from './format.ts';
@@ -27,13 +27,10 @@ interface Props {
   onUnlink: (linkId: string) => void;   // desliga uma esteira do grupo (quem abriu decide para onde o modal vai)
 }
 
-// O estado do balão da ajuda da página Balancer (o mesmo help.js).
+// O estado do balão da ajuda da página Balancer (o mesmo help.js, com um balão só para o app, que mora no diálogo
+// enquanto ele está aberto).
 const TIP = UI as unknown as { tipBtn: HTMLElement | null; tipPinned: boolean };
-// Solta o balão da ajuda; sem o #tipbox (o modal já saiu da página), só esquece o botão.
-const dropTip = () => {
-  if (!TIP.tipBtn) return;
-  if (document.getElementById('tipbox')) hideTip(); else { TIP.tipBtn = null; TIP.tipPinned = false; }
-};
+const dropTip = () => { if (TIP.tipBtn) hideTip(); };
 const altText = (n: PieceCount) => t('plMeioAltPieces', fmt(n.splitters, 0), fmt(n.mergers, 0), fmt(n.sinks, 0));
 
 // result: null = calculando; undefined = a ligação não pôde ser calculada.
@@ -211,7 +208,6 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
           )}
         </section>
       </div>
-      <div id="tipbox" role="tooltip" hidden />
     </dialog>
   );
 }

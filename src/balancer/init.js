@@ -1,7 +1,7 @@
-import { getLang, setLang, t } from '../i18n/index.js';
+import { getLang, t } from '../i18n/index.js';
 import { decodeShare, historyNew } from '../logic/index.js';
 import { S } from './state.js';
-import { applyStatic, convertInputs, pickLang } from './lang.js';
+import { applyStatic, convertInputs } from './lang.js';
 import { $, DEFAULTS, STORE } from './common.js';
 import { loadState } from './input.js';
 import { scenMsg } from './scenarios.js';
@@ -9,10 +9,9 @@ import { LIB, renderBps, renderCatalog, renderLib } from './library.js';
 import { render } from './render.js';
 import { histSnap, syncHist } from './history.js';
 
+// O idioma já vem escolhido pelo shell.
 export function init() {
-setLang(pickLang());
 applyStatic();
-document.documentElement.classList.remove('lang-pending');
 let saved = null;
 try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { saved = null; }
 // Link compartilhado ganha do que estava salvo; depois o endereço volta a ficar limpo.
@@ -20,7 +19,7 @@ const shared = location.hash.startsWith('#s=') ? decodeShare(location.hash.slice
 if (shared) {
   loadState(shared);
   if (shared.lang !== getLang()) convertInputs(shared.lang);
-  history.replaceState(null, '', location.pathname + location.search);
+  history.replaceState(history.state, '', location.pathname + location.search);
   scenMsg(t('sharedLoaded'));
 } else if (saved && saved.src) {
   loadState(saved);

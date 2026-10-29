@@ -1,0 +1,5 @@
+/* O shell (Shell.tsx) marca a página na tela em <html data-page>. A Fábrica é um app da altura da janela (planner.css:
+   html, body e #root em 100%, só o painel rola); o Balancer é uma página comprida que rola inteira, então ali a altura
+   fica solta (senão o body, com overflow-x: hidden, vira uma caixa de rolagem e a página corta na primeira tela). */
+html[data-page="balancer"], html[data-page="balancer"] body, html[data-page="balancer"] #root { height: auto; min-height: 100%; }
+html[data-page="balancer"] body { background: var(--paper); }

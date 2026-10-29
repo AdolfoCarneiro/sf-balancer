@@ -1538,7 +1538,7 @@ test('layout do fluxo: colunas e portas', () => {
 
 // Desenho do fluxo: cada peça da rede vira uma peça no SVG, com o bloco clicável.
 test('fluxo desenhado em peças', async () => {
-  const { flowSvg, flowHasLoop } = await import('../src/ui/flow.js');
+  const { flowSvg, flowHasLoop } = await import('../src/balancer/flow.js');
   const p = caso1(), count = (s, t) => (s.match(new RegExp(`data-piece="${t}"`, 'g')) || []).length;
   const alts = [...p.alternatives, ...p.alternatives.find(x => x.designAlts).designAlts];
   const bp = L.computePlan({ ...base, srcCount: 42, srcRate: 65, dstCount: 60, dstRate: 40, blueprints: [{ n: 6, m: 5 }] });
@@ -1573,7 +1573,7 @@ test('fluxo desenhado em peças', async () => {
 // Modo fluido: o desenho de canos fica igual ao de antes, byte a byte (tests/fluxo-fluido.json, gravado antes do
 // desenho em peças). Para regravar de propósito: gerar com flowSvg para as mesmas entradas, em português.
 test('fluxo do modo fluido igual ao gravado', async () => {
-  const { flowSvg } = await import('../src/ui/flow.js');
+  const { flowSvg } = await import('../src/balancer/flow.js');
   const snap = JSON.parse(fs.readFileSync(new URL('./fluxo-fluido.json', import.meta.url), 'utf8'));
   for (const { input, svgs } of snap) {
     const p = L.computePlan(input);

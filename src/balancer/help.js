@@ -3,9 +3,20 @@ import { S } from './state.js';
 import { $, esc } from './common.js';
 
 export const tip = key => `<button type="button" class="tip" data-tip="${key}" aria-label="${esc(t('helpLabel'))}">?</button>`;
+// Um balão só para o app inteiro (a página Balancer e o modal da ligação da Fábrica), criado na primeira vez: ele muda de
+// lugar (vai para dentro do diálogo aberto), e um diálogo que sai da página pode levá-lo junto.
+function tipbox() {
+  let box = $('tipbox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'tipbox'; box.setAttribute('role', 'tooltip'); box.hidden = true;
+    document.body.append(box);
+  }
+  return box;
+}
 export function showTip(btn, pin = false) {
   if (S.tipBtn && S.tipBtn !== btn) hideTip();
-  const box = $('tipbox');
+  const box = tipbox();
   // Dentro do diálogo modal o balão precisa morar no diálogo, senão fica atrás dele.
   const host = btn.closest('dialog') || document.body;
   if (box.parentNode !== host) host.append(box);
@@ -23,7 +34,7 @@ export function showTip(btn, pin = false) {
 }
 export function hideTip() {
   if (S.tipBtn) { S.tipBtn.removeAttribute('aria-describedby'); S.tipBtn.setAttribute('aria-expanded', 'false'); }
-  $('tipbox').hidden = true;
+  tipbox().hidden = true;
   S.tipBtn = null;
   S.tipPinned = false;
 }

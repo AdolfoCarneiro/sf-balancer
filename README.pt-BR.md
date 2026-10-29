@@ -105,15 +105,16 @@ Para testar como em produção (nginx servindo o build, com as rotas `/pt`, `/es
 ## Como o código está organizado
 
 ```
-index.html            o builder (React + TypeScript; HTML base em inglês, para os buscadores)
-balancer.html         o Balancer (JavaScript puro)
-src/planner/          builder: model/ (puro: estado da fábrica, solver do fluxo, cena do mapa), worker/ (solver e ligações fora da thread principal) e ui/
-src/main.js           ponto de entrada do Balancer
+index.html            o app aberto na Fábrica (HTML base em inglês, para os buscadores)
+balancer.html         o mesmo app aberto no Balancer (só o <head> muda, para os buscadores)
+src/main.tsx          a entrada única das duas páginas
+src/shell/            o shell do app (React): troca entre as duas páginas, barra de cima comum, idioma, título
+src/planner/          página Fábrica (React + TypeScript): model/ (puro: estado da fábrica, solver do fluxo, cena do mapa), worker/ (solver e ligações fora da thread principal) e ui/
+src/balancer/         página Balancer (JavaScript puro, carregada sob demanda): page.html, interface, balancer.css
 src/logic/            funções puras, sem DOM (agrupamento, classificação dos casos, árvores de splitter, simulação do fluxo)
 src/i18n/             textos em pt, en e es
-src/ui/               interface
 src/view3d/           cena 3D (three.js, carregado só ao abrir a aba 3D)
-src/styles/main.css   estilos
+src/styles/           estilos comuns às duas páginas (tokens.css, parts.css)
 public/               estáticos (favicon, og.png, robots.txt, sitemap.xml, ícones do jogo em icons/)
 tests/                testes da lógica e a comparação visual
 vercel.json           build, headers, CSP, rotas e redirects

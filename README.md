@@ -105,15 +105,16 @@ To try it as in production (nginx serving the build, with the `/pt`, `/es`, `/ba
 ## How the code is organized
 
 ```
-index.html            the builder (React + TypeScript; base HTML in English, for search engines)
-balancer.html         the Balancer (plain JavaScript)
-src/planner/          builder: model/ (pure: factory state, flow solver, map scene), worker/ (solver and connections off the main thread) and ui/
-src/main.js           Balancer entry point
+index.html            the app opened on the Factory (base HTML in English, for search engines)
+balancer.html         the same app opened on the Balancer (only its <head> differs, for search engines)
+src/main.tsx          the single entry point of both pages
+src/shell/            the app shell (React): routing between the two pages, shared top bar, language, title
+src/planner/          Factory page (React + TypeScript): model/ (pure: factory state, flow solver, map scene), worker/ (solver and connections off the main thread) and ui/
+src/balancer/         Balancer page (plain JavaScript, loaded on demand): page.html, interface, balancer.css
 src/logic/            pure functions, no DOM (grouping, case classification, splitter trees, flow simulation)
 src/i18n/             texts in pt, en and es
-src/ui/               interface
 src/view3d/           3D scene (three.js, loaded only when the 3D tab opens)
-src/styles/main.css   styles
+src/styles/           styles shared by both pages (tokens.css, parts.css)
 public/               static files (favicon, og.png, robots.txt, sitemap.xml, game icons in icons/)
 tests/                logic tests and the visual comparison harness
 vercel.json           build, headers, CSP, routes and redirects

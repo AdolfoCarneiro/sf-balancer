@@ -1,7 +1,7 @@
 // O meio de cada ligação: as linhas dos produtores viram as linhas dos consumidores pelo computePlan da página, com os
 // números do fluxo resolvido (oferta real de quem produz, o que quer quem consome).
 import { buildLines, computePlan, encodeShare } from '../../logic/index.js';
-import { BALANCER_PATH, type Lang } from '../lang.ts';
+import { BALANCER_PATH, type Lang } from '../../shell/site.ts';
 import { capOf, defaultTier, perRowOf, portTier } from './stage.ts';
 import { arrange, type ArrLine, type Arrangement } from './layout.ts';
 import { rowStage } from './solved.ts';

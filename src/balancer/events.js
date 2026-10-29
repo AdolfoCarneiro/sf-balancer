@@ -1,4 +1,4 @@
-import { getLang, t, fmt, parseNum } from '../i18n/index.js';
+import { t, fmt, parseNum } from '../i18n/index.js';
 import { S } from './state.js';
 import { BPS, LIB, openCatalog, renderBps, renderLib, saveBps } from './library.js';
 import { render } from './render.js';
@@ -9,7 +9,6 @@ import { currentState, loadState } from './input.js';
 import { addGroup, rows } from './groups.js';
 import { openFromPlan } from './dialog.js';
 import { hideTip, showTip } from './help.js';
-import { changeLang } from './lang.js';
 
 function bpChanged() { saveBps(); renderBps(); renderLib(); render(); }
 function addBp() {
@@ -22,13 +21,15 @@ function addBp() {
   bpChanged();
   $('bpN').focus();
 }
-export function initEvents() {
+// root: onde a página está montada. O que escuta o documento inteiro só age com a página na tela (S.active), e a ajuda "?"
+// escuta só a página: o modal da ligação, na Fábrica, cuida da dele.
+export function initEvents(root) {
 $('undo').addEventListener('click', () => histStep(-1));
 $('redo').addEventListener('click', () => histStep(1));
 // Ctrl/Cmd+Z desfaz; Ctrl/Cmd+Y e Ctrl/Cmd+Shift+Z refazem, no lugar do desfazer nativo dos campos.
 // Campos de texto fora do planejador (biblioteca, diálogo) mantêm o desfazer nativo.
 document.addEventListener('keydown', e => {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  if (!S.active || !(e.ctrlKey || e.metaKey) || e.altKey) return;
   const k = e.key.toLowerCase();
   const undo = k === 'z' && !e.shiftKey, redo = k === 'y' || (k === 'z' && e.shiftKey);
   if (!undo && !redo) return;
@@ -111,18 +112,18 @@ $('out').addEventListener('click', e => {
   const card = e.target.closest('.alt');
   if (card) { S.selectedKey = card.dataset.key; render(); document.querySelector(`.alt[data-key="${S.selectedKey}"]`)?.focus(); }
 });
-document.addEventListener('mouseover', e => { const b = e.target.closest('.tip'); if (b && !S.tipPinned) showTip(b); });
-document.addEventListener('mouseout', e => { const b = e.target.closest('.tip'); if (b && b === S.tipBtn && !S.tipPinned && !b.contains(e.relatedTarget)) hideTip(); });
-document.addEventListener('focusin', e => { if (e.target.classList.contains('tip')) showTip(e.target); });
-document.addEventListener('focusout', e => { if (e.target === S.tipBtn) hideTip(); });
-document.addEventListener('click', e => {
+root.addEventListener('mouseover', e => { const b = e.target.closest('.tip'); if (b && !S.tipPinned) showTip(b); });
+root.addEventListener('mouseout', e => { const b = e.target.closest('.tip'); if (b && b === S.tipBtn && !S.tipPinned && !b.contains(e.relatedTarget)) hideTip(); });
+root.addEventListener('focusin', e => { if (e.target.classList.contains('tip')) showTip(e.target); });
+root.addEventListener('focusout', e => { if (e.target === S.tipBtn) hideTip(); });
+root.addEventListener('click', e => {
   const b = e.target.closest('.tip');
   if (b) { e.preventDefault(); if (b === S.tipBtn && S.tipPinned) hideTip(); else showTip(b, true); }
   else if (S.tipBtn) hideTip();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.tipBtn) hideTip(); });
-addEventListener('scroll', () => { if (S.tipBtn) hideTip(); }, { passive: true, capture: true });
-addEventListener('resize', () => { if (S.tipBtn) hideTip(); });
+root.addEventListener('keydown', e => { if (e.key === 'Escape' && S.tipBtn) hideTip(); });
+addEventListener('scroll', () => { if (S.active && S.tipBtn) hideTip(); }, { passive: true, capture: true });
+addEventListener('resize', () => { if (S.active && S.tipBtn) hideTip(); });
 $('out').addEventListener('keydown', e => {
   const open = e.target.closest('g[data-open-bal]');
   if (open && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openFromPlan(open.dataset.openBal); }
@@ -144,9 +145,5 @@ $('dlgClose').addEventListener('click', () => $('balDlg').close());
 $('balDlg').addEventListener('click', e => { if (e.target === $('balDlg')) $('balDlg').close(); });
 $('balDlg').addEventListener('close', () => { const st = $('dlgBody').querySelector('.wb-stage'); if (st && st._stop) st._stop(); hideTip(); });
 $('reset').addEventListener('click', () => { loadState(DEFAULTS); render(); histCommit(); });
-$('langs').addEventListener('click', e => {
-  const btn = e.target.closest('[data-lang]');
-  if (btn && btn.dataset.lang !== getLang()) { changeLang(btn.dataset.lang); $('langs').querySelector(`[data-lang="${getLang()}"]`).focus(); }
-});
 
 }

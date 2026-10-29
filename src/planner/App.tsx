@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { getLang, setLang, t } from '../i18n/index.js';
-import { LANG_STORE } from '../ui/common.js';
-import { BUILDER_PATH, type Lang } from './lang.ts';
+import { t } from '../i18n/index.js';
+import type { Nav } from '../shell/SiteBar.tsx';
 import game from './data/game.json';
 import { hasRows, type Factory, type GameData } from './model/types.ts';
 import type { SfmdReport } from './model/sfmd.ts';
@@ -25,35 +24,14 @@ import { blockName } from './ui/format.ts';
 const data = game as unknown as GameData;
 // O modal da ligação traz a bancada da página Balancer (passo a passo, 3D): só baixa na primeira vez que abre.
 const LigacaoModal = lazy(() => import('./ui/LigacaoModal.tsx').then(m => ({ default: m.LigacaoModal })));
-const SITE = 'https://sf-balancer.vercel.app';
-const onVercel = /(^|\.)vercel\.app$/.test(location.hostname);
 // Gancho de teste da rede de segurança (ErrorBoundary): window.__sfPlannerCrash = true quebra o render; só com ?debug=1
 // ou no servidor de desenvolvimento.
 const DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === '1';
 
-export function App() {
-  // O idioma vive no módulo i18n; este estado só força o re-render ao trocar.
-  const [lang, setLangState] = useState<Lang>(getLang() as Lang);
-
-  useEffect(() => {
-    document.documentElement.lang = t('htmlLang');
-    document.title = t('plPageTitle');
-    // A seção Sobre/FAQ embaixo do mapa (HTML base em inglês, para os buscadores).
-    for (const el of document.querySelectorAll<HTMLElement>('#about [data-i18n]')) el.textContent = t(el.dataset.i18n!);
-    document.querySelector<HTMLMetaElement>('meta[name=description]')?.setAttribute('content', t('plMetaDesc'));
-    let canon = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
-    if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.append(canon); }
-    canon.href = SITE + BUILDER_PATH[lang];
-    // No site, o endereço acompanha o idioma; aberto do disco, fica como está.
-    if (onVercel && location.pathname !== BUILDER_PATH[lang]) history.replaceState(null, '', BUILDER_PATH[lang] + location.hash);
-  }, [lang]);
-
-  const change = (l: Lang) => {
-    setLang(l);
-    try { localStorage.setItem(LANG_STORE, getLang()); } catch { /* sem storage */ }
-    setLangState(l);
-  };
-
+// A página Fábrica. O idioma, o título e o endereço são do shell (src/shell/Shell.tsx); `active` é falso enquanto o
+// Balancer está na tela (a Fábrica fica montada, escondida, e os atalhos de teclado ficam com ele).
+export function App({ nav, active }: { nav: Nav; active: boolean }) {
+  const lang = nav.lang;
   const { factory: f, dispatch, canUndo, canRedo, shareUrl, lib, libOps } = usePlanner(data);
   const [libsOpen, setLibsOpen] = useState(false);
   if (DEBUG && (window as unknown as { __sfPlannerCrash?: boolean }).__sfPlannerCrash) throw new Error('debug: __sfPlannerCrash');
@@ -163,6 +141,7 @@ export function App() {
 
   // Ctrl/Cmd+Z desfaz, +Shift refaz; ignora quando o foco está num campo.
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 'z') return;
       const el = e.target as HTMLElement | null;
@@ -172,11 +151,11 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dispatch]);
+  }, [dispatch, active]);
 
   return (
     <div className="pl-app">
-      <Header lang={lang} onLang={change} status={status} canUndo={canUndo} canRedo={canRedo}
+      <Header nav={nav} status={status} canUndo={canUndo} canRedo={canRedo}
         onUndo={() => dispatch({ type: 'undo' })} onRedo={() => dispatch({ type: 'redo' })} shareUrl={shareUrl}
         view={view} onView={setView} onImportFile={setImpFile}
         factoryName={lib.items.find(e => e.id === lib.current)?.name ?? ''} onFactories={() => setLibsOpen(true)} />
@@ -199,7 +178,7 @@ export function App() {
       {libsOpen && <FactoriesDialog lib={lib} ops={libOps} data={data} onLoad={loadFactory} onClose={() => setLibsOpen(false)} />}
       {impFile && <ImportDialog key={impFile.name + impFile.lastModified + impFile.size} file={impFile} data={data} onImport={importFactory} onClose={() => setImpFile(null)} />}
       {impToast.toast}
-      <Tour />
+      {active && <Tour />}
       <footer className="pl-foot">{t('plCredit')}</footer>
     </div>
   );

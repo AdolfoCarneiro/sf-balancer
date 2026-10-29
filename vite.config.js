@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// index.html (o builder, página inicial) e balancer.html (a ferramenta de meio) na raiz; os estáticos (favicon, og.png, robots, sitemap) ficam em public/.
-// O script de entrada segura a primeira pintura (blocking="render"), para trocar entre a Fábrica e o Balancer não mostrar
-// um quadro vazio; o build reescreve a tag e perde o atributo, então ele volta aqui.
+// Um app só (src/main.tsx) com duas portas de entrada na raiz: index.html (a Fábrica, página inicial) e balancer.html (o
+// mesmo app aberto no Balancer, com o <head> dele para os buscadores); os estáticos (favicon, og.png, robots, sitemap)
+// ficam em public/. Os scripts de entrada seguram a primeira pintura (blocking="render"), para a página aparecer já
+// montada; o build reescreve as tags (e pode dividir a entrada em mais de um arquivo) e perde o atributo, que volta aqui.
 const renderBlocking = {
   name: 'render-blocking-entry',
-  transformIndexHtml: { order: 'post', handler: html => html.replace(/<script type="module" crossorigin src="(\/assets\/[^"]+\.js)">/, '<script type="module" crossorigin src="$1" blocking="render">') },
+  transformIndexHtml: { order: 'post', handler: html => html.replace(/<script type="module" crossorigin src="(\/assets\/[^"]+\.js)">/g, '<script type="module" crossorigin src="$1" blocking="render">') },
 };
 
 // As rotas do vercel.json (e do nginx.conf) também no `npm run dev` e no `npm run preview`: sem elas, /pt/balancer caía no

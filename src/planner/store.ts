@@ -5,7 +5,7 @@ import {
   LIBRARY_STORE, addEntry, cleanLibrary, currentEntry, entryFactory, libraryOf, mergeFile, openEntry, putCurrent, removeEntry,
   renameEntry, type Library,
 } from './model/library.ts';
-import { BUILDER_PATH, type Lang } from './lang.ts';
+import { BUILDER_PATH, type Lang } from '../shell/site.ts';
 import { getLang, t } from '../i18n/index.js';
 
 const readJson = (key: string): unknown => {

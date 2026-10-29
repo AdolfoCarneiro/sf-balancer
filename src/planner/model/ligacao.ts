@@ -1,9 +1,9 @@
 // O que o modal da ligação mostra, calculado no worker: o desenho do fluxo da ferramenta (o mesmo SVG, só string) e
 // os passo a passo que dá para montar (o balancer N→M da montagem e a árvore de cada doadora).
 import { dstTag, srcTag, t } from '../../i18n/index.js';
-import { flowHasLoop, flowSvg } from '../../ui/flow.js';
-import { designKey } from '../../ui/balancerSvg.js';
-import type { Lang } from '../lang.ts';
+import { flowHasLoop, flowSvg } from '../../balancer/flow.js';
+import { designKey } from '../../balancer/balancerSvg.js';
+import type { Lang } from '../../shell/site.ts';
 import { meioInput, meioPlan, meioUrl, type Meio } from './meio.ts';
 import type { FlowResult } from './solve.ts';
 import type { Factory, GameData } from './types.ts';

@@ -66,9 +66,6 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-dim); }
 .pl-center { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; padding: 0; }
 .pl-inspector { flex: 0 0 340px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: var(--bench); }
-/* Chegando na Fábrica (a aba da esquerda): o Balancer sai pela direita e ela entra pela esquerda (ver parts.css). */
-::view-transition-old(root) { animation-name: vt-out-right; }
-::view-transition-new(root) { animation-name: vt-in-left; }
 
 /* Abrir e fechar o painel (desktop): uma gaveta. A largura vai de 0 a 340 px e o mapa cede o espaço junto; o conteúdo
    tem a largura inteira desde o começo, então ele desliza para dentro em vez de se espremer. Ao fechar, o mesmo ao

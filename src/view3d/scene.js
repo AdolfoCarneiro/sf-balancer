@@ -1,6 +1,6 @@
 import { L3D, focus3d, tapGesture, fitDistance } from '../logic/index.js';
 import { NRM3 } from '../logic/layout3d.js';
-import { inColor } from '../ui/balancerSvg.js';
+import { inColor } from '../balancer/balancerSvg.js';
 
 // ---- Cena 3D (Three.js sob demanda) ----
 // Piso de blueprint, peças chapadas (splitter laranja, merger verde-água), setas no topo com as portas usadas,

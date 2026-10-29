@@ -1,8 +1,8 @@
-@import "./tokens.css";
-@import './parts.css';
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
+/* A página Balancer. Tudo fica dentro de .bal-page (o elemento que o shell monta), para nada daqui vazar na Fábrica, que
+   está no mesmo documento; tokens.css e parts.css (comuns) vêm do src/main.tsx. */
+.bal-page {
+  & {
+    min-height: 100%;
     color: var(--ink);
     font: 15px/1.5 var(--body);
     background-color: var(--paper);
@@ -23,23 +23,7 @@
     padding: 16px 18px 18px;
   }
 
-  /* Barra do topo: a mesma da Fábrica (.pl-top no builder), com a marca, as abas e o idioma. */
-  .langbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; background: var(--bench); border-bottom: 2px solid var(--ficsit); }
-  .site-brand { font: 700 18px var(--display); letter-spacing: .02em; color: var(--ficsit); white-space: nowrap; }
-  .site-grow { flex: 1 1 auto; }
-  .langbar .langs button { min-height: 44px; padding: 0 12px; }
   .wrap > .top { padding-top: 22px; }
-  @media (max-width: 720px) { .langbar { gap: 8px; padding: 8px 12px; } .site-brand { font-size: 16px; } .site-grow { display: none; } }
-
-  /* Seletor de idioma */
-  .langs { display: flex; border: 1px solid var(--line); }
-  .langs button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; padding: 5px 10px; font: 600 13px var(--display); }
-  .langs svg { width: 20px; height: 14px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); opacity: .7; }
-  .langs button:hover svg, .langs button[aria-pressed="true"] svg { opacity: 1; }
-  .langs button:first-child { border-left: 0; }
-  .langs button:hover { color: var(--ink); }
-  .langs button[aria-pressed="true"] { background: var(--plate); color: var(--ficsit); }
-  .langs button:focus-visible { outline: 2px solid var(--ficsit); outline-offset: -2px; }
 
   /* Cabeçalho */
   .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 40px; flex-wrap: wrap; padding: 6px 0 20px; }
@@ -276,6 +260,4 @@
   .dlg-body { padding: 18px; }
 
   .site-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--ink-dim); }
-
-/* Ver o script no <head> do index.html: evita piscar em inglês em /pt e /es. */
-html.lang-pending body{visibility:hidden}
+}

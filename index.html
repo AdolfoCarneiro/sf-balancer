@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- Espelho de legacyTarget (src/planner/lang.ts): link antigo da ferramenta (/#s=…, /pt#s=…) vai para o Balancer do mesmo idioma. Mudou um, muda o outro (tests/planner/routes.test.ts roda os dois). -->
+<!-- Espelho de legacyTarget (src/shell/site.ts): link antigo da ferramenta (/#s=…, /pt#s=…) vai para o Balancer do mesmo idioma. Mudou um, muda o outro (tests/planner/routes.test.ts roda os dois). -->
 <script>/* legacyTarget */try{if(/^#s=/.test(location.hash)){var m=location.pathname.match(/^\/(?:(pt|es|en)\/?|index\.html)?$/);if(m)location.replace((m[1]==='pt'||m[1]==='es'?'/'+m[1]:'')+'/balancer'+location.search+location.hash)}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Satisfactory Factory Planner &amp; Belt Balancer</title>
@@ -106,8 +106,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<!-- Segura a primeira pintura até o app montar: trocar de página não mostra um quadro vazio. -->
-<script type="module" src="/src/planner/main.tsx" blocking="render"></script>
+<!-- O app (as duas páginas, Fábrica e Balancer). Segura a primeira pintura até ele montar: a página aparece pronta. -->
+<script type="module" src="/src/main.tsx" blocking="render"></script>
 </head>
 <body>
 <div id="root"></div>
