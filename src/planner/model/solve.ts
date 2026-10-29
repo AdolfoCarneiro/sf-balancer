@@ -6,8 +6,8 @@ import { PURITY, extractorRate, genFuel, meiosOf } from './factory.ts';
 
 // rate: o que passa na porta (null = sem limite); deficit (entrada, só bloco com limite): o que falta para o limite;
 // held (saída): represado nesta origem; exits: o que sai da fábrica pela porta (produto final sem ligação ou coleta de
-// excesso; null = sem limite).
-export interface PortFlow { item: ItemId; rate: number | null; deficit: number; held: number; exits: number | null }
+// excesso; null = sem limite); open (entrada de receita ou gerador sem ligação): vem de fora da fábrica.
+export interface PortFlow { item: ItemId; rate: number | null; deficit: number; held: number; exits: number | null; open?: true }
 export interface BlockFlow {
   id: StageId; x: number | null;            // receita: máquinas-equivalentes a 100%; miner/extrator/sobra: item/min; null = sem limite
   machines: number | null; runClock: number | null;   // receita: inteiro e clock de funcionamento (%); null fora de receita ou sem limite
@@ -344,7 +344,7 @@ export function solveFactory(f: Factory, d: GameData): FlowResult {
       }
       const need = p.a * want;
       const deficit = nd.limited && Number.isFinite(need) ? tidy(Math.max(0, need - avail), need) : 0;
-      return { item: p.item, rate: fin(snap(nd.outlet ? avail : p.a * xi)), deficit, held: 0, exits: 0 };
+      return { item: p.item, rate: fin(snap(nd.outlet ? avail : p.a * xi)), deficit, held: 0, exits: 0, ...(!nd.outlet && !p.links.length ? { open: true as const } : {}) };
     });
     const outs: PortFlow[] = nd.outs.map(p => {
       const held = Number.isFinite(top) ? tidy(p.b * (top - xi), p.b * top) : 0;

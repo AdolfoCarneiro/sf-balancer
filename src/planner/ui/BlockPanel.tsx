@@ -35,7 +35,7 @@ interface Props {
 const SIDES = [[0, 'plMapSideLeft'], [1, 'plMapSideTop'], [2, 'plMapSideRight'], [3, 'plMapSideBottom']] as const;
 const GAP_MAX = 64;
 const PURITIES: [Purity, string][] = [['impure', 'plPurityImpure'], ['normal', 'plPurityNormal'], ['pure', 'plPurityPure']];
-const EXPLAINED = new Set(['deficit', 'surplus', 'stalled', 'exit']);
+const EXPLAINED = new Set(['deficit', 'surplus', 'stalled', 'exit', 'entry']);
 
 // O prédio do bloco, na linha abaixo do nome.
 function buildingOf(b: Block, data: GameData): string {
@@ -57,6 +57,7 @@ function stateText(p: PortState, data: GameData): string {
     case 'surplus': return t('plHeld', n);
     case 'stalled': return t('plCardStalled');
     case 'exit': return t('plExit', n);
+    case 'entry': return t('plEntry', n);
     default: return '';
   }
 }

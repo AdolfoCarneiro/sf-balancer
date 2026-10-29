@@ -20,7 +20,7 @@ import { buildScene, hitTest, placesOf, proposeMap, selectionBox, type Scene } f
 import { montarLig, montarPlaces } from '../model/views.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
-import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, montarFar, switchCam, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
+import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, switchCam, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
@@ -647,7 +647,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // os chips.
   const portsLive = () => {
     const c = cam.current;
-    return !!c && ((tNow.current < 0.5 ? !montarFar(tNow.current, c.zoom) : c.zoom >= PORT_ZOOM) || !!drag.current?.port);
+    return !!c && ((tNow.current < 0.5 || c.zoom >= PORT_ZOOM) || !!drag.current?.port);
   };
   // O que está sob o ponteiro, pela geometria de tela do último quadro: porta, chip, cartão/bloco; na Planta, o corpo
   // da ligação também vale como ela. Camada desligada não pega o ponteiro.
@@ -655,7 +655,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const v = lastView.current, c = cam.current;
     if (!v || !c) return null;
     const [x, y] = local(e);
-    const h = viewHit(hitGeo(v, layers, portsLive(), !montarFar(tNow.current, c.zoom)), x, y);
+    const h = viewHit(hitGeo(v, layers, portsLive(), true), x, y);
     if (h || tNow.current < 0.5 || !layers.links) return h;
     const w = screenToWorld(c, x, y), sh = hitTest(scene, w[0], w[1]);
     return sh?.kind === 'meio' ? { kind: 'chip', meio: sh.id } : null;
@@ -1059,7 +1059,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const el = canvas.current, v0 = lastView.current, c = cam.current;
     if (!el || !v0 || !c) return null;
     // O que dá para pegar agora (camadas desligadas ou chips de longe não contam), como o clique.
-    const v = hitGeo(v0, layers, portsLive(), !montarFar(tNow.current, c.zoom));
+    const v = hitGeo(v0, layers, portsLive(), true);
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) return null;   // mapa escondido (etapa aberta)
     const b = pick(v, r.width, r.height);

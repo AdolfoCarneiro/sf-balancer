@@ -14,7 +14,7 @@ import { arrange } from '../../src/planner/model/layout.ts';
 import type { Camera } from '../../src/planner/model/map/camera.ts';
 import {
   CARD_W, CHIP_H, CHIP_W, MARK_H, MARK_W, PLANT_PORT_OUT, PORT_STEP, PORT_Y0,
-  MONTAR_FAR, MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, switchCam, viewGeo, viewHit, viewLimits, montarFar,
+  MONTAR_LIMITS, MONTAR_REF, PORT_LABEL_ROOM, cardScale, cardSize, chipWorld, fitMontar, fitPlanta, montarBounds, switchCam, viewGeo, viewHit, viewLimits,
 } from '../../src/planner/model/map/cards.ts';
 
 const data = game as GameData;
@@ -35,31 +35,33 @@ function view(f: Factory, t: number, places?: (p: Record<StageId, MapPlace>) => 
   return { scene, flow, v: viewGeo(scene, cam, t, false, f, data, flow) };
 }
 const finite = (x: unknown): boolean => JSON.stringify(x, (_k, v) => (typeof v === 'number' && !Number.isFinite(v) ? 'BAD' : v)).indexOf('BAD') < 0;
+// Um zoom de longe (35 % do cartão).
+const FAR = MONTAR_REF * 0.35;
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `esperava ${b}, veio ${a}`);
 
-test('escala do cartão: 70 % no desktop, 60 % no celular, 115 % no máximo; de longe encolhe com o zoom', () => {
-  assert.equal(cardScale(MONTAR_FAR, false), 0.7);
-  assert.equal(cardScale(MONTAR_FAR, true), 0.6);
-  assert.equal(cardScale(MONTAR_FAR * 1.5, false), 0.7);
+test('escala do cartão: segue o mapa como no Modeler, 115 % no máximo', () => {
   assert.equal(cardScale(100, false), 1.15);
   assert.equal(cardScale(4, false), 1);
-  // Abaixo de MONTAR_FAR o cartão segue o mapa (o tamanho no mundo fica parado), sem pular na divisa.
-  near(cardScale(MONTAR_FAR / 2, false), 0.35);
-  near(cardScale(MONTAR_FAR / 4, true), 0.15);
-  near(cardScale(MONTAR_FAR * (1 - 1e-9), false), 0.7);
+  // O tamanho no mundo fica parado: afastar não amontoa os blocos (no celular, igual).
+  near(cardScale(FAR, false), 0.35);
+  near(cardScale(FAR, true), 0.35);
+  near(cardScale(2, false), 0.5);
   assert.ok(cardScale(MONTAR_LIMITS.min, false) > 0);
 });
 
-test('de longe na Montar: portas e chips somem; na Planta, não depende disso', () => {
-  assert.equal(montarFar(0, MONTAR_FAR / 2), true);
-  assert.equal(montarFar(0, MONTAR_FAR), false);
-  assert.equal(montarFar(0.4, MONTAR_FAR / 2), true);
-  assert.equal(montarFar(1, MONTAR_FAR / 2), false);
+test('a Montar é um desenho só: portas e chips na mesma escala do cartão, em qualquer zoom', () => {
+  for (const zoom of [FAR, 2, 4, 8]) {
+    const { v } = view(ex, 0, undefined, { ...CAM, zoom });
+    const s = v.blocks[0].scale;
+    near(v.k, s);
+    for (const p of v.ports) near(p.r, 22 * s);
+    for (const c of v.chips) { near(c.w, CHIP_W * s); near(c.h, CHIP_H * s); }
+  }
 });
 
 test('cartão enxuto: só o cabeçalho, a altura acompanha as portas', () => {
-  // Uma porta de cada lado: cabeçalho + rodapé, a porta no meio da altura.
-  assert.deepEqual(cardSize('recipe', 1, 1), { w: CARD_W, h: 76 });
+  // Uma porta de cada lado: nome, número e faixa de baixo, a porta no meio da altura.
+  assert.deepEqual(cardSize('recipe', 1, 1), { w: CARD_W, h: MARK_H });
   assert.equal(PORT_Y0, 38);
   assert.equal(cardSize('recipe', 2, 1).h, 2 * PORT_Y0 + PORT_STEP);
   // Muitas portas: a altura acompanha as portas, com a mesma folga em cima e embaixo.
@@ -79,13 +81,17 @@ test('Montar: portas na borda do cartão, 44 px, uma por item', () => {
       const r = data.recipes[blk.recipe];
       assert.deepEqual(ports.filter(p => p.side === 'in').map(p => p.item), r.ins.map(x => x.item));
       assert.deepEqual(ports.filter(p => p.side === 'out').map(p => p.item), r.outs.map(x => x.item));
-      ports.filter(p => p.side === 'in').forEach((p, i) => near(p.y, b.card.y + (PORT_Y0 + i * PORT_STEP) * b.scale));
+      // As portas de cada lado centradas na altura do cartão.
+      for (const side of ['in', 'out'] as const) {
+        const ps = ports.filter(p => p.side === side), h = b.card.h / b.scale;
+        ps.forEach((p, i) => near(p.y, b.card.y + ((h - (ps.length - 1) * PORT_STEP) / 2 + i * PORT_STEP) * b.scale));
+      }
     }
   }
-  // O cartão nasce no canto do bloco na tela, no tamanho do cartão vezes a escala (em MONTAR_FAR → 70 %).
-  const s1 = view(ex, 0, undefined, { ...CAM, zoom: MONTAR_FAR }).v.blocks.find(b => b.id === 's1')!;
-  assert.equal(s1.scale, 0.7);
-  near(s1.card.w, CARD_W * 0.7);
+  // O cartão nasce no canto do bloco na tela, no tamanho do cartão vezes a escala (em FAR → 35 %).
+  const s1 = view(ex, 0, undefined, { ...CAM, zoom: FAR }).v.blocks.find(b => b.id === 's1')!;
+  near(s1.scale, 0.35);
+  near(s1.card.w, CARD_W * 0.35);
 });
 
 test('Planta: porta 30 px por fora do bloco real', () => {
@@ -181,7 +187,8 @@ test('fábrica vazia: listas vazias, sem NaN', () => {
   const f: Factory = { v: 2, blocks: [], links: [] };
   for (const t of [0, 0.5, 1]) {
     const { v } = view(f, t);
-    assert.deepEqual(v, { blocks: [], ports: [], chips: [] });
+    assert.deepEqual({ ...v, k: 0 }, { blocks: [], ports: [], chips: [], k: 0 });
+    assert.ok(Number.isFinite(v.k));
     assert.equal(viewHit(v, 0, 0), null);
   }
 });
@@ -203,7 +210,7 @@ test('bloco sem limite e bloco com 120 fileiras: cartão finito, do mesmo tamanh
 
 test('Montar: zoom de longe como o da Planta até 300 % do zoom de referência', () => {
   assert.deepEqual(MONTAR_LIMITS, { min: viewLimits(false).min, max: MONTAR_REF * 3 });
-  assert.ok(MONTAR_LIMITS.min <= MONTAR_FAR / 20);
+  assert.ok(MONTAR_LIMITS.min <= FAR / 20);
   assert.equal(viewLimits(true), MONTAR_LIMITS);
   assert.ok(viewLimits(false).max > MONTAR_LIMITS.max);
 });
@@ -318,5 +325,5 @@ test('trocar de vista: a câmera fica se algum bloco aparece; senão vai ao sele
   near(r.x + r.w / 2, W / 2);
   near(r.y + r.h / 2, H / 2);
   // Fábrica vazia: nada a procurar, a câmera fica.
-  assert.equal(switchCam({ blocks: [], ports: [], chips: [] }, CAM, W, H, null), CAM);
+  assert.equal(switchCam({ blocks: [], ports: [], chips: [], k: 1 }, CAM, W, H, null), CAM);
 });

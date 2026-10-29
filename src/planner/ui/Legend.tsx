@@ -4,12 +4,13 @@ import { readTheme, type MapTheme } from './draw/theme.ts';
 
 // Os desenhos usam o mesmo tema do canvas (readTheme: os tokens CSS e as cores fixas do mapa), com o mesmo look das portas
 // (draw/ports.ts) e dos chips (draw/chips.ts).
-type PortKind = 'ok' | 'deficit' | 'surplus' | 'exit' | 'stalled';
+type PortKind = 'ok' | 'deficit' | 'surplus' | 'exit' | 'entry' | 'stalled';
 const portLook = (k: PortKind, th: MapTheme): { fill: string; ring: string; dash?: string } => {
   switch (k) {
     case 'deficit': return { fill: th.deficitBg, ring: th.deficit };
     case 'surplus': return { fill: th.surplusBg, ring: th.surplus };
-    case 'exit': return { fill: th.ficsit, ring: th.ficsit };
+    case 'exit': return { fill: th.ok, ring: th.ok };
+    case 'entry': return { fill: th.deficit, ring: th.deficit };
     case 'stalled': return { fill: th.stallBg, ring: th.lock, dash: '5 4' };
     default: return { fill: th.bench, ring: th.line };
   }
@@ -99,6 +100,7 @@ export function Legend() {
               <Row icon={<PortSvg kind="deficit" th={th} />} title={t('plLegPortDeficit')} desc={t('plLegPortDeficitD')} />
               <Row icon={<PortSvg kind="surplus" th={th} />} title={t('plLegPortSurplus')} desc={t('plLegPortSurplusD')} />
               <Row icon={<PortSvg kind="exit" th={th} />} title={t('plLegPortExit')} desc={t('plLegPortExitD')} />
+              <Row icon={<PortSvg kind="entry" th={th} />} title={t('plLegPortEntry')} desc={t('plLegPortEntryD')} />
               <Row icon={<PortSvg kind="stalled" th={th} />} title={t('plLegPortStalled')} desc={t('plLegPortStalledD')} />
             </ul>
             <ul>

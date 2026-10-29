@@ -2,7 +2,7 @@
 import { isSource, type Block, type Factory, type GameData, type ItemId, type StageId } from './types.ts';
 import { EPS, type BlockFlow, type FlowResult } from './solve.ts';
 
-export type PortKind = 'ok' | 'deficit' | 'surplus' | 'exit' | 'stalled';
+export type PortKind = 'ok' | 'deficit' | 'surplus' | 'exit' | 'entry' | 'stalled';
 // amount: falta, sobra, o que sai ou o que pararia (null sem número); rate: o que passa (null = sem limite).
 export interface PortState { block: StageId; side: 'in' | 'out'; item: ItemId; kind: PortKind; amount: number | null; rate: number | null }
 export interface Balance {
@@ -17,12 +17,13 @@ export interface Balance {
 const above = (v: number | null): v is number => v !== null && v > EPS;
 const num = (v: number | null): number | null => (v !== null && Number.isFinite(v) ? v : null);
 
-// Entradas e saídas na ordem do fluxo. Prioridade nas saídas: travada > sobra > saída da fábrica.
+// Entradas e saídas na ordem do fluxo. Entrada sem ligação: o que precisa chegar de fora (como "sai" na saída), a não ser
+// que falte. Prioridade nas saídas: travada > sobra > saída da fábrica.
 export function portStates(bf: BlockFlow): PortState[] {
   const res: PortState[] = [];
   for (const p of bf.ins) {
-    const deficit = above(p.deficit);
-    res.push({ block: bf.id, side: 'in', item: p.item, kind: deficit ? 'deficit' : 'ok', amount: deficit ? p.deficit : null, rate: num(p.rate) });
+    const deficit = above(p.deficit), entry = !deficit && p.open && (p.rate === null || p.rate > EPS);
+    res.push({ block: bf.id, side: 'in', item: p.item, kind: deficit ? 'deficit' : entry ? 'entry' : 'ok', amount: deficit ? p.deficit : entry ? num(p.rate) : null, rate: num(p.rate) });
   }
   for (const p of bf.outs) {
     let kind: PortKind = 'ok', amount: number | null = null;

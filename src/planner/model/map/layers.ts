@@ -17,13 +17,13 @@ export function cleanLayers(v: unknown): MapLayers {
   return out;
 }
 
-// Ponto da ligação compacta (px de tela): o que pega o ponteiro, o ponto e, em cima, o ícone e a vazão.
+// Ponto da ligação compacta (px de tela a 100 %, na escala do desenho, ViewGeo.k): o que pega o ponteiro, o ponto e, em cima, o ícone e a vazão.
 export const DOT_W = 64, DOT_H = 52;
 // Ligações compactas: o chip que não está aberto (open: sob o ponteiro ou selecionado) vira o ponto. O aberto volta ao
 // tamanho do chip, então o ponteiro passeando por ele não o fecha.
 export function compactChips(v: ViewGeo, on: boolean, open: (meio: string) => boolean): ViewGeo {
   if (!on) return v;
-  return { ...v, chips: v.chips.map(c => (open(c.meio) ? c : { ...c, w: DOT_W, h: DOT_H, compact: true as const })) };
+  return { ...v, chips: v.chips.map(c => (open(c.meio) ? c : { ...c, w: DOT_W * v.k, h: DOT_H * v.k, compact: true as const })) };
 }
 
 // Uma escolha por vista ({ montar, planta }). O formato antigo (uma só para as duas) vale para as duas.

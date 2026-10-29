@@ -74,6 +74,8 @@ test('fábrica: bloco puxado de uma saída nasce livre e ligado', () => {
   // Puxado de uma entrada para trás: o novo produz e alimenta a porta.
   const g = addLinkedBlock(ex, data, { kind: 'miner', item: 'Desc_Coal_C' }, { block: 's2', item: 'Desc_Coal_C', side: 'in' }, [0, 0]);
   assert.deepEqual(g.links[g.links.length - 1], { id: 'l4', item: 'Desc_Coal_C', from: 's5', to: 's2' });
+  // Miner e extrator puxados de uma porta: a ferramenta calcula quantos (como o Modeler sem Max).
+  assert.equal((g.blocks.find(b => b.id === 's5') as { count?: number | null }).count, null);
   assert.deepEqual(ex, snapEx);
 });
 

@@ -1,6 +1,7 @@
 // Portas dos blocos nas duas vistas: círculo de PORT_D px (o mesmo raio que pega o ponteiro) com o ícone do item e o anel
-// pelo estado (ok neutro, falta coral, sobra turquesa, saída da fábrica preenchida de laranja, travada tracejada em
-// amarelo), e o rótulo do estado ao lado ("faltam 120/min", "+330 sobrando", "sai 450/min", "travado: sem destino").
+// pelo estado (ok neutro, falta coral, sobra turquesa, saída da fábrica preenchida de verde, entrada de fora preenchida
+// de vermelho, travada tracejada em amarelo), e o rótulo do estado ao lado ("faltam 120/min", "+330 sobrando", "sai
+// 450/min", "entra 373,3/min", "travado: sem destino").
 // Puxando uma porta, as compatíveis brilham (anel laranja duplo), as outras ficam a 30 % e os rótulos somem.
 import { fmt, t } from '../../../i18n/index.js';
 import { PORT_D, type ViewPort } from '../../model/map/cards.ts';
@@ -16,13 +17,15 @@ export const viewPortId = (p: { block: string; side: string; item: string }): st
 
 const RING = 3, LABEL_H = 22, LABEL_FONT = (th: MapTheme) => `600 12px ${th.body}`;
 
-const look = (k: PortKind, th: MapTheme): { fill: string; ring: string; ink: string; dash: boolean } => {
+// bg: o fundo do rótulo (a porta preenchida pede um fundo escuro, senão o texto some).
+const look = (k: PortKind, th: MapTheme): { fill: string; ring: string; ink: string; bg: string; dash: boolean } => {
   switch (k) {
-    case 'deficit': return { fill: th.deficitBg, ring: th.deficit, ink: th.deficitInk, dash: false };
-    case 'surplus': return { fill: th.surplusBg, ring: th.surplus, ink: th.surplusInk, dash: false };
-    case 'exit': return { fill: th.ficsit, ring: th.ficsit, ink: th.ficsitSoft, dash: false };
-    case 'stalled': return { fill: th.stallBg, ring: th.lock, ink: th.lock, dash: true };
-    default: return { fill: th.bench, ring: th.line, ink: th.ink, dash: false };
+    case 'deficit': return { fill: th.deficitBg, ring: th.deficit, ink: th.deficitInk, bg: th.deficitBg, dash: false };
+    case 'surplus': return { fill: th.surplusBg, ring: th.surplus, ink: th.surplusInk, bg: th.surplusBg, dash: false };
+    case 'exit': return { fill: th.ok, ring: th.ok, ink: th.ok, bg: th.exitBg, dash: false };
+    case 'entry': return { fill: th.deficit, ring: th.deficit, ink: th.deficitInk, bg: th.deficitBg, dash: false };
+    case 'stalled': return { fill: th.stallBg, ring: th.lock, ink: th.lock, bg: th.stallBg, dash: true };
+    default: return { fill: th.bench, ring: th.line, ink: th.ink, bg: th.bench, dash: false };
   }
 };
 
@@ -35,6 +38,7 @@ export function portLabel(p: ViewPort, o: DrawOpts): string {
     case 'deficit': return t('plPortDeficit', rate(s.amount));
     case 'surplus': return s.amount === null ? '' : t('plPortSurplus', fmt(s.amount));
     case 'exit': return t('plPortExit', rate(s.amount));
+    case 'entry': return t('plPortEntry', rate(s.amount));
     case 'stalled': return t('plPortStalled');
     default: return '';
   }
@@ -50,7 +54,7 @@ export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: D
   for (const p of ports) {
     const key = viewPortId(p), kind = o.portState(p.block, p.side, p.item)?.kind ?? 'ok', L = look(kind, th);
     const lit = !!wire && wire.lit.has(key), src = key === from, hov = key === o.portHover;
-    const r = PORT_R * (lit ? 1.12 : hov ? 1.08 : 1);
+    const r = p.r * (lit ? 1.12 : hov ? 1.08 : 1);
     const a = ctx.globalAlpha;
     if (wire && !lit && !src) ctx.globalAlpha = a * 0.3;
     if (lit) {
@@ -87,16 +91,16 @@ export function drawPorts(ctx: CanvasRenderingContext2D, ports: ViewPort[], o: D
     const w = ctx.measureText(s).width + 16;
     // Lugares, na ordem: acima e por fora (o normal), abaixo e por fora, do outro lado. Fica no primeiro que não
     // cobre um chip (a Planta põe o chip colado nas portas da ligação); sem nenhum livre, o primeiro.
-    const up = p.y - PORT_R - LABEL_H - 4, down = p.y + PORT_R + 4, mid = p.y - LABEL_H / 2;
-    const cands: [number, number][] = p.dir[0] < 0 ? [[p.x - PORT_R - w, up], [p.x - PORT_R - w, down], [p.x + PORT_R, up]]
-      : p.dir[0] > 0 ? [[p.x + PORT_R, up], [p.x + PORT_R, down], [p.x - PORT_R - w, up]]
-        : [[p.x + PORT_R + 4, mid], [p.x - PORT_R - 4 - w, mid]];
+    const R = p.r, up = p.y - R - LABEL_H - 4, down = p.y + R + 4, mid = p.y - LABEL_H / 2;
+    const cands: [number, number][] = p.dir[0] < 0 ? [[p.x - R - w, up], [p.x - R - w, down], [p.x + R, up]]
+      : p.dir[0] > 0 ? [[p.x + R, up], [p.x + R, down], [p.x - R - w, up]]
+        : [[p.x + R + 4, mid], [p.x - R - 4 - w, mid]];
     const at = ([cx, cy]: [number, number]): Rect => {
       const x = Math.max(0, Math.min(cx, vw - w)), y = Math.max(0, Math.min(cy, vh - LABEL_H));
       return { x, y, w, h: LABEL_H };
     };
     const { x, y } = cands.map(at).find(r => !avoid.some(a => overlaps(a, r))) ?? at(cands[0]);
-    ctx.fillStyle = L.fill === th.ficsit ? '#2b2010' : L.fill;
+    ctx.fillStyle = L.bg;
     ctx.fillRect(x, y, w, LABEL_H);
     ctx.strokeStyle = L.ring; ctx.lineWidth = 1;
     if (L.dash) ctx.setLineDash([4, 3]);

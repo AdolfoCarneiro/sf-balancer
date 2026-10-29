@@ -6,8 +6,9 @@ import { ALL_LAYERS, DOT_H, DOT_W, NO_LAYERS, cleanLayers, cleanViewLayers, comp
 // Um cartão com uma porta na borda e um chip ao lado.
 const V: ViewGeo = {
   blocks: [{ id: 's1', rect: { x: 0, y: 0, w: 200, h: 100 }, scale: 1, card: { x: 0, y: 0, w: 200, h: 100 }, plant: { x: 0, y: 0, w: 10, h: 10 } }],
-  ports: [{ block: 's1', side: 'out', item: 'Desc_IronIngot_C', x: 200, y: 50, dir: [1, 0], lanes: [] }],
+  ports: [{ block: 's1', side: 'out', item: 'Desc_IronIngot_C', x: 200, y: 50, r: 22, dir: [1, 0], lanes: [] }],
   chips: [{ meio: 'm1', x: 400, y: 50, w: 120, h: 56 }],
+  k: 1,
 };
 
 test('camadas: padrão tudo ligado; lixo do storage cai no padrão por chave', () => {

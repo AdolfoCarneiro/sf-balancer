@@ -5,7 +5,7 @@ export interface MapTheme {
   machine: string; display: string; body: string;
   // Reforma visual (Montar): estado das portas, tons de texto, chapa do cartão e as cores fixas do protótipo (máquina da
   // faixa, pontos do fundo, casca da esteira e os textos claros dos rótulos de estado).
-  deficit: string; deficitBg: string; deficitInk: string; surplus: string; surplusBg: string; surplusInk: string;
+  deficit: string; deficitBg: string; deficitInk: string; surplus: string; surplusBg: string; surplusInk: string; exitBg: string;
   ficsitSoft: string; inkMid: string; inkSoft: string; plate2: string; lineHi: string;
   stallBg: string; cardMachine: string; cardMachineHi: string; dot: string; beltCase: string;
 }
@@ -20,7 +20,7 @@ export function readTheme(el: Element): MapTheme {
     lock: v('--lock', '#ffd84a'),
     machine: '#1f4a72', display: v('--display', 'sans-serif'), body: v('--body', 'sans-serif'),
     deficit: v('--deficit', '#ff7a6b'), deficitBg: v('--deficit-bg', '#3a1f24'), deficitInk: '#ffb3a8',
-    surplus: v('--surplus', '#45d4c8'), surplusBg: v('--surplus-bg', '#123a3c'), surplusInk: '#8ff0e6',
+    surplus: v('--surplus', '#45d4c8'), surplusBg: v('--surplus-bg', '#123a3c'), surplusInk: '#8ff0e6', exitBg: '#14301f',
     ficsitSoft: '#ffc58f', inkMid: v('--ink-mid', '#c3d3e3'), inkSoft: v('--ink-soft', '#9fb6cc'), plate2: v('--plate-2', '#13314f'),
     lineHi: '#4a77a3', stallBg: '#2b2a10', cardMachine: '#2f6496', cardMachineHi: '#5b90c4', dot: '#24476b', beltCase: '#06121e',
   };

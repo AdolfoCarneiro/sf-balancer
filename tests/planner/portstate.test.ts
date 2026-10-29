@@ -29,6 +29,21 @@ test('entrada com falta', () => {
   assert.equal(p.kind, 'deficit'); close(p.amount, 5 * 40 - 2 * 65);
 });
 
+test('entrada sem ligação diz quanto precisa chegar de fora', () => {
+  // 2 refinarias de Pure Iron: 35 de minério e 20 de água cada; a entrada ligada não é "de fora".
+  const f = fac([recipe('s1', 'Recipe_Alternate_PureIronIngot_C', { machines: 2 }), recipe('s2', 'Recipe_Alternate_IngotSteel_1_C', { machines: 1 })],
+    [link('l1', 'Desc_IronIngot_C', 's1', 's2')]);
+  const flow = solveFactory(f, data);
+  const ins = portStates(solveFactory(fac([f.blocks[0]]), data).blocks.s1).filter(p => p.side === 'in');
+  assert.deepEqual(ins.map(p => p.kind), ['entry', 'entry']);
+  close(ins[0].amount, 70); close(ins[1].amount, 40);
+  const steel = portStates(flow.blocks.s2).filter(p => p.side === 'in');
+  assert.equal(steel.find(p => p.item === 'Desc_IronIngot_C')!.kind, 'ok');
+  assert.equal(steel.find(p => p.item === 'Desc_Coal_C')!.kind, 'entry');
+  // Não é problema: fica fora da contagem de faltas e sobras.
+  assert.ok(factoryBalance(f, flow, data).problems.every(p => p.kind !== 'entry'));
+});
+
 test('produto final sem ligação sai da fábrica', () => {
   const f = fac([recipe('s1', 'Recipe_Alternate_PureIronIngot_C', { machines: 2 })]);
   const p = out(f, 's1', 'Desc_IronIngot_C');

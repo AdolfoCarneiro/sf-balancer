@@ -7,7 +7,7 @@ import type { Pt } from './map/geo.ts';
 import type { PortState } from './portstate.ts';
 import { EPS, type FlowResult } from './solve.ts';
 
-export interface Sentence { key: 'plWhyDeficit' | 'plWhySurplus' | 'plWhyStalled' | 'plWhyExit'; args: (string | number)[] }
+export interface Sentence { key: 'plWhyDeficit' | 'plWhySurplus' | 'plWhyStalled' | 'plWhyExit' | 'plWhyEntry'; args: (string | number)[] }
 // n: o valor que o conserto deixa (plFixReduce: máquinas; plFixRaise: taxa do Miner, extratores ou máquinas da produtora).
 // action null (plFixCreate): a UI abre o seletor filtrado pela porta, como arrastar da porta para o vazio.
 export interface Fix { key: 'plFixSink' | 'plFixReduce' | 'plFixRaise' | 'plFixCreate'; n?: number; action: Action | null }
@@ -29,6 +29,7 @@ export function problemSentence(p: PortState, f: Factory, _flow: FlowResult, d: 
     }
     case 'stalled': return { key: 'plWhyStalled', args: [item, num(p.amount)] };
     case 'exit': return { key: 'plWhyExit', args: [item, num(p.amount)] };
+    case 'entry': return { key: 'plWhyEntry', args: [item, num(p.amount)] };
     default: return null;
   }
 }
@@ -50,6 +51,9 @@ export function fixesFor(p: PortState, f: Factory, flow: FlowResult, d: GameData
     }
     return out;
   }
+
+  // Entrada sem ligação: criar a fonte (puxada da porta, ela já calcula quantos).
+  if (p.kind === 'entry') return [create];
 
   if (p.kind === 'deficit' && p.side === 'in') {
     const need = amount;

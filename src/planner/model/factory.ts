@@ -145,16 +145,17 @@ function makeBlock(f: Factory, d: GameData, spec: BlockSpec, free: boolean): Blo
       // Criado no vazio: uma fileira cheia, já fixada (bloco solto sem limite não teria número).
       return free ? b : { ...b, limits: { machines: suggestedPerRow(asStage(b), d) } };
     }
-    // Miner novo: Mk.1 em nó normal, um só (60/min, como o nó do Modeler); sem o Miner nos dados, o de vazão digitada.
+    // Miner novo: Mk.1 em nó normal, um só no vazio (60/min, como o nó do Modeler); puxado de uma porta, a ferramenta
+    // calcula quantos (como o Modeler sem Max). Sem o Miner nos dados, o de vazão digitada.
     case 'miner': {
       if (!minable(d, spec.item)) return null;
       const mk1 = minerMks(d).find(e => e.items.includes(spec.item));
-      return mk1 ? { id, kind: 'extractor', building: mk1.id, item: spec.item, purity: 'normal', count: 1 } : { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT };
+      return mk1 ? { id, kind: 'extractor', building: mk1.id, item: spec.item, purity: 'normal', count: free ? null : 1 } : { id, kind: 'miner', item: spec.item, rate: MINER_DEFAULT };
     }
-    // Extrator novo: o de nó (Oil Extractor, Resource Well, os que têm pureza) nasce com um, como o nó do Modeler; o
-    // Water Extractor vai em qualquer água, então a ferramenta calcula quantos.
+    // Extrator novo: o de nó (Oil Extractor, Resource Well, os que têm pureza) nasce com um no vazio, como o nó do
+    // Modeler; puxado de uma porta, ou o Water Extractor (vai em qualquer água), a ferramenta calcula quantos.
     case 'extractor': return extractable(d, spec.building, spec.item)
-      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: d.extractors[spec.building].purity ? 1 : null } : null;
+      ? { id, kind: 'extractor', building: spec.building, item: spec.item, purity: 'normal', count: d.extractors[spec.building].purity && !free ? 1 : null } : null;
     case 'input': return typeof spec.item === 'string' && own(d.items, spec.item) ? { id, kind: 'input', item: spec.item, rate: null } : null;
     case 'generator': return genFuel(d, spec.building, spec.fuel) ? { id, kind: 'generator', building: spec.building, fuel: spec.fuel, count: null } : null;
     case 'sink': case 'container': case 'export': return { id, kind: spec.kind };
