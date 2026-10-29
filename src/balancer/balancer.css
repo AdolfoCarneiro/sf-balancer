@@ -86,6 +86,8 @@
     font: 500 15px var(--body);
     font-variant-numeric: tabular-nums;
   }
+  .field { transition: border-color .12s; }
+  .field:hover:not(:focus-visible):not(.invalid) { border-color: var(--ink-dim); }
   .field:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 0; border-color: var(--ficsit); }
   .field.invalid { border-color: var(--sink); }
   .field::placeholder { color: var(--ink-dim); opacity: .85; }
@@ -109,7 +111,7 @@
   .dst-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
   .dst-actions .tip { margin-left: 6px; }
   .choice { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 3px 0; cursor: pointer; }
-  .choice input { accent-color: var(--ficsit); margin: 0; }
+  .choice.off input:disabled { opacity: 1; }   /* o rótulo inteiro já fica apagado */
   select.field { width: auto; min-width: 170px; }
 
   .warns { display: flex; flex-direction: column; gap: 4px; margin: 14px 0 0; }

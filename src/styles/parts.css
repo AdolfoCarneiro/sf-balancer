@@ -246,3 +246,30 @@
   .ctag.use { color: var(--holo); }
   .checks td:first-child { white-space: normal; }
   .checks td:last-child { width: 1%; }
+
+  /* Caixas de seleção e rádios do app inteiro: os nativos destoavam do resto (caixa clara do sistema). Quadrado escuro
+     com borda, que fica laranja com o visto escuro quando marcado; o rádio é redondo, com o miolo laranja. */
+  input[type="checkbox"], input[type="radio"] {
+    appearance: none; flex: none; width: 18px; height: 18px; margin: 0;
+    display: inline-grid; place-content: center; vertical-align: middle;
+    background: var(--bench); border: 1.5px solid var(--ink-dim); cursor: pointer;
+    transition: background-color .12s, border-color .12s;
+  }
+  input[type="checkbox"] { border-radius: 3px; }
+  input[type="radio"] { border-radius: 50%; }
+  input[type="checkbox"]::before {
+    content: ""; width: 11px; height: 11px; background: var(--paper);
+    clip-path: polygon(12% 48%, 0 62%, 38% 100%, 100% 24%, 87% 11%, 38% 73%);
+    transform: scale(0); transition: transform .12s;
+  }
+  input[type="radio"]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ficsit); transform: scale(0); transition: transform .12s; }
+  input[type="checkbox"]:checked { background: var(--ficsit); border-color: var(--ficsit); }
+  input[type="radio"]:checked { border-color: var(--ficsit); }
+  input[type="checkbox"]:checked::before, input[type="radio"]:checked::before { transform: scale(1); }
+  input[type="checkbox"]:hover:not(:disabled), input[type="radio"]:hover:not(:disabled),
+  label:hover > input[type="checkbox"]:not(:disabled), label:hover > input[type="radio"]:not(:disabled) { border-color: var(--ficsit); }
+  input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 2px; }
+  input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: .45; cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    input[type="checkbox"], input[type="radio"], input[type="checkbox"]::before, input[type="radio"]::before { transition: none; }
+  }

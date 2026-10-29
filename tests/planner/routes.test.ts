@@ -100,5 +100,5 @@ test('as duas páginas têm as abas Fábrica | Balancer (a barra comum do shell)
   const bar = read('src/shell/SiteBar.tsx');
   assert.ok(bar.includes("'navFactory'") && bar.includes("'navBalancer'"));
   assert.match(read('src/planner/ui/Header.tsx'), /<SiteBar nav=\{nav\}>/);
-  assert.match(read('src/balancer/BalancerPage.tsx'), /<SiteBar nav=\{nav\}>/);
+  assert.match(read('src/balancer/Balancer.tsx'), /<SiteBar nav=\{nav\}>/);
 });

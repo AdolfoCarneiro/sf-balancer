@@ -70,7 +70,8 @@ const EMPTY_ZOOM = 2;
 const fitAll = (b: Rect, w: number, h: number): Camera =>
   (b.w || b.h ? fitPlanta(b, w, h) : { x: -w / 2 / EMPTY_ZOOM, y: -h / 2 / EMPTY_ZOOM, zoom: EMPTY_ZOOM });
 
-const WHEEL_ZOOM = 0.0015;   // o mesmo fator do workbench.js
+const DBL_MS = 500;   // dois cliques no mesmo bloco dentro disto são um duplo clique (o padrão do Windows)
+const WHEEL_ZOOM = 0.0015;   // o mesmo fator do passo a passo do Balancer (Ponder.tsx)
 const BUTTON_ZOOM = 1.25;
 const LINE_PX = 16;
 const CLICK_PX = 4;   // até aqui o ponteiro só clicou; passou disso, arrasta
@@ -696,6 +697,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     onSelect({ kind: 'stage', id });
     closePicker(true);
   };
+  const lastClick = useRef<{ id: StageId; t: number } | null>(null);
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.button !== 1) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -823,6 +825,14 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
         return;
       }
       setPopId(null);
+      // Clicar de novo no bloco selecionado fecha o painel (como clicar fora). O segundo clique de um duplo clique não
+      // conta: ele é da etapa (onDoubleClick).
+      const now = performance.now(), prev = lastClick.current;
+      lastClick.current = d.hit?.kind === 'block' && !d.port ? { id: d.hit.id, t: now } : null;
+      if (d.hit?.kind === 'block' && !d.port && selStage === d.hit.id && !(prev?.id === d.hit.id && now - prev.t < DBL_MS)) {
+        onSelect(null);
+        return;
+      }
       onSelect(d.port ? { kind: 'stage', id: d.port.block } : d.hit ? { kind: 'stage', id: d.hit.id } : null);
       return;
     }
@@ -849,7 +859,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Duplo clique: no bloco abre a etapa; no vazio, o seletor. Botão direito no vazio também abre o seletor.
   const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const hit = hitAt(e);
-    if (hit?.kind === 'block') onOpenStage(hit.id);
+    if (hit?.kind === 'block') { onSelect({ kind: 'stage', id: hit.id }); onOpenStage(hit.id); }
     else if (!hit) { const [x, y] = local(e); openPicker(x, y); }
   };
   const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {

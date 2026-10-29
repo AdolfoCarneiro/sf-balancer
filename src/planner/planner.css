@@ -117,7 +117,7 @@ body { margin: 0; color: var(--ink); font: 15px/1.5 var(--body); background: var
 .pl-malt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; background: var(--plate); border-left: 3px solid transparent; font-size: 14px; cursor: pointer; }
 .pl-malt:has(input:checked) { border-left-color: var(--ficsit); }
 .pl-malt:has(input:focus-visible) { outline: 2px solid var(--ficsit); outline-offset: -2px; }
-.pl-malt input { margin-top: 3px; accent-color: var(--ficsit); }
+.pl-malt input { margin-top: 1px; }
 .pl-malt > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pl-malt small { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 .pl-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -136,7 +136,6 @@ select.pl-field { width: auto; }
 .pl-field input:focus-visible, .pl-field select:focus-visible, select.pl-field:focus-visible, .pl-check input:focus-visible, .pl-link:focus-visible { outline: 2px solid var(--ficsit); outline-offset: 1px; }
 .pl-bad { color: var(--sink); font-size: 12px; }
 .pl-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.pl-check input { accent-color: var(--ficsit); }
 .pl-link { display: block; text-align: center; text-decoration: none; }
 .pl-danger { color: var(--sink); border-color: rgba(255, 109, 124, .55); }
 .pl-danger:hover:not(:disabled) { border-color: var(--sink); }
@@ -564,7 +563,6 @@ select.pl-field { width: auto; }
 .pl-layers-pop fieldset { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; }
 .pl-layers-pop legend { padding: 0 0 4px; font: 600 14px var(--display); }
 .pl-layers-pop label { display: flex; align-items: center; gap: 10px; min-height: 44px; font: 14px var(--body); cursor: pointer; }
-.pl-layers-pop input { width: 18px; height: 18px; margin: 0; accent-color: var(--ficsit); }
 .pl-layers-pop .pl-layers-compact { margin-top: 4px; border-top: 1px solid var(--line); }
 .pl-layers-pop .pl-btn { min-height: 44px; }
 .pl-leg-back { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(5, 12, 22, .66); }

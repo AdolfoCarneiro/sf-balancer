@@ -64,12 +64,11 @@ export function Shell({ start, balancer }: { start: Page; balancer: BalancerModu
     idle(() => { loadBalancer().catch(() => {}); });
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  // O Balancer vê o idioma novo pelo nav e passa os números digitados para o formato dele.
   const changeLang = (l: Lang) => {
-    const prev = getLang();
-    if (prev === l) return;
+    if (getLang() === l) return;
     setLang(l);
     try { localStorage.setItem(LANG_STORE, l); } catch { /* sem storage */ }
-    balRef.current?.langChanged(prev);
     setLangState(l);
   };
 

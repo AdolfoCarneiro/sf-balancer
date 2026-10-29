@@ -110,7 +110,7 @@ balancer.html         la misma app abierta en el Balancer (solo cambia el <head>
 src/main.tsx          el punto de entrada único de las dos páginas
 src/shell/            el shell de la app (React): cambio entre las dos páginas, barra superior común, idioma, título
 src/planner/          página Fábrica (React + TypeScript): model/ (puro: estado de la fábrica, solver del flujo, escena del mapa), worker/ (solver y conexiones fuera del hilo principal) y ui/
-src/balancer/         página Balancer (JavaScript puro, se carga bajo demanda): page.html, interfaz, balancer.css
+src/balancer/         página Balancer (React + TypeScript, se carga bajo demanda), el banco de trabajo y balancer.css
 src/logic/            funciones puras, sin DOM (agrupamiento, clasificación de casos, árboles de splitters, simulación del flujo)
 src/i18n/             textos en pt, en y es
 src/view3d/           escena 3D (three.js, se carga solo al abrir la pestaña 3D)
@@ -128,7 +128,7 @@ La lógica son funciones puras que los tests importan directamente en Node, sin 
 
 Los issues y pull requests son bienvenidos. Unas pocas reglas mantienen el proyecto en orden:
 
-1. **Respeta las capas.** El Balancer es JavaScript puro y el constructor es React + TypeScript, los dos construidos con Vite; `src/logic` y `src/planner/model` no tocan el DOM.
+1. **Respeta las capas.** Las dos páginas son React + TypeScript, construidas con Vite; `src/logic` y `src/planner/model` no tocan el DOM.
 2. **Todo texto visible existe en los tres idiomas.** Los textos están en `src/i18n/` (`pt.js`, `en.js`, `es.js`) y se leen con `t('clave')`. Una clave nueva entra en los tres en el mismo cambio; el test `idiomas: as mesmas chaves...` falla si falta alguna.
 3. **La lógica va en funciones puras con tests.** Un montaje o regla nueva lleva su caso en `tests/logic.test.js`.
 4. **No inventes mecánicas del juego.** Si no sabes cómo se comporta una pieza, abre un issue primero.

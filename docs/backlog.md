@@ -34,7 +34,7 @@ Ideias combinadas para seguir depois, de qualquer máquina. Nada aqui está plan
 
 Fábrica e Balancer viraram um app só (`src/shell/`): a aba troca sem recarregar e as duas páginas guardam o estado. Próximos passos possíveis, sem compromisso:
 
-- Passar o Balancer para React aos poucos (hoje é JavaScript puro montado dentro do shell, com o markup em `src/balancer/page.html`); o ganho maior seria dividir peças com a Fábrica (campos, botões, diálogos).
+- ~~Passar o Balancer para React~~ (feito no mesmo dia: a página, a biblioteca e a bancada, que o modal da ligação da Fábrica também usa). Dá para ir além e dividir mais peças com a Fábrica (campos, botões, diálogos).
 - "Abrir no Balancer" no modal da ligação poderia trocar de aba dentro do app em vez de abrir uma aba nova do navegador.
 - O link antigo `/#s=` ainda recarrega até o `/balancer` (script no `<head>` do `index.html`); dá para o shell abrir direto.
 - **Bug antigo, já no master:** o cenário `builder-planta` da captura visual dá timeout num clique (nas duas versões); investigar o cenário.

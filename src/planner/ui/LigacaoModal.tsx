@@ -1,12 +1,10 @@
 // O modal da ligação: o desenho do fluxo da ferramenta (esteiras animadas), as montagens, as ligações do grupo e o
 // passo a passo (o montador da página Balancer, já com esta ligação). Esc fecha; quem abriu cuida do foco.
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { fmt, t } from '../../i18n/index.js';
 import { flowLegend } from '../../balancer/flow.js';
-import { hideTip, showTip } from '../../balancer/help.js';
-import { LIB, saveLib, setMode3d } from '../../balancer/library.js';
-import { S as UI } from '../../balancer/state.js';
-import { stopStage, workbench } from '../../balancer/workbench.js';
+import { TIP, hideTip, tipHandlers } from '../../balancer/help.tsx';
+import { Workbench } from '../../balancer/Workbench.tsx';
 import { altPieces, meioSummary, type Meio } from '../model/meio.ts';
 import { chosenAlt, chosenGeo, type MeioResult } from '../model/meioresult.ts';
 import { balancerUrl } from '../model/ligacao.ts';
@@ -27,10 +25,9 @@ interface Props {
   onUnlink: (linkId: string) => void;   // desliga uma esteira do grupo (quem abriu decide para onde o modal vai)
 }
 
-// O estado do balão da ajuda da página Balancer (o mesmo help.js, com um balão só para o app, que mora no diálogo
-// enquanto ele está aberto).
-const TIP = UI as unknown as { tipBtn: HTMLElement | null; tipPinned: boolean };
-const dropTip = () => { if (TIP.tipBtn) hideTip(); };
+// O balão da ajuda é o mesmo da página Balancer (um só para o app, que mora no diálogo enquanto ele está aberto).
+const dropTip = () => { if (TIP.btn) hideTip(); };
+const NO_BPS: never[] = [];
 const altText = (n: PieceCount) => t('plMeioAltPieces', fmt(n.splitters, 0), fmt(n.mergers, 0), fmt(n.sinks, 0));
 
 // result: null = calculando; undefined = a ligação não pôde ser calculada.
@@ -54,18 +51,8 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
   }, []);
   // Outra montagem: volta ao desenho (os passo a passo são outros).
   useEffect(() => { setBuilding(false); setBenchIdx(0); }, [altKey]);
-  // O montador da ferramenta, montado à parte do React no div; sai parando a animação e a cena 3D.
-  useEffect(() => {
-    const el = benchEl.current;
-    if (!el || !bench) return;
-    workbench(el, {
-      ...bench.ctx, rates: [...bench.ctx.rates], labels: { ins: [...bench.ctx.labels.ins], outs: [...bench.ctx.labels.outs] }, blueprints: [],
-      mode3d: LIB.mode3d, mode3dBf: LIB.mode3dBf, onMode3d: setMode3d, per3d: LIB.per3d, onPer3d: (v: string) => { LIB.per3d = v; saveLib(); },
-      view2d: LIB.view2d, onView2d: (v: string) => { LIB.view2d = v; saveLib(); },
-    });
-    (el.querySelector('.ponder') as HTMLElement | null)?.focus();
-    return () => { stopStage(el); el.innerHTML = ''; };
-  }, [bench]);
+  // O montador da página Balancer: abriu, o foco vai para o passo a passo (as setas andam nele).
+  useLayoutEffect(() => { if (bench) benchEl.current?.querySelector<HTMLElement>('.ponder')?.focus(); }, [bench]);
 
   const close = () => dlg.current?.close();
   const build = (i: number) => { setBenchIdx(i); setBuilding(true); };
@@ -74,17 +61,6 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
     const k = (e.target as Element).closest?.('[data-open-bal]')?.getAttribute('data-open-bal');
     const i = k ? benches.findIndex(b => b.key === k) : -1;
     if (i >= 0) { e.preventDefault(); build(i); }
-  };
-  // Ajuda "?" da bancada: o mesmo balão da página Balancer, morando no diálogo.
-  const tipOver = (e: SyntheticEvent) => { const b = (e.target as Element).closest?.('.tip') as HTMLElement | null; if (b && !TIP.tipPinned) showTip(b); };
-  const tipOut = (e: React.MouseEvent) => {
-    const b = (e.target as Element).closest?.('.tip');
-    if (b && b === TIP.tipBtn && !TIP.tipPinned && !b.contains(e.relatedTarget as Node | null)) hideTip();
-  };
-  const tipClick = (e: React.MouseEvent) => {
-    const b = (e.target as Element).closest?.('.tip') as HTMLElement | null;
-    if (b) { e.preventDefault(); if (b === TIP.tipBtn && TIP.tipPinned) hideTip(); else showTip(b, true); }
-    else if (TIP.tipBtn) hideTip();
   };
 
   const names = (ids: string[]) => ids.map(id => { const b = f.blocks.find(x => x.id === id); return b ? blockName(b, data) : id; }).join(', ');
@@ -105,8 +81,7 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
   const title = view?.title ?? t('plLigTitle', item?.name ?? meio.item);
 
   return (
-    <dialog ref={dlg} className="pl-lig" aria-labelledby="pl-lig-title" onClose={() => { dropTip(); onClose(); }}
-      onMouseOver={tipOver} onMouseOut={tipOut} onFocus={tipOver} onBlur={e => { if (e.target === TIP.tipBtn) hideTip(); }} onClick={tipClick}>
+    <dialog ref={dlg} className="pl-lig" aria-labelledby="pl-lig-title" onClose={() => { dropTip(); onClose(); }} {...tipHandlers}>
       <div className="pl-lig-head">
         <h2 id="pl-lig-title">{title}</h2>
         <button type="button" className="pl-btn" onClick={close}>{t('plLigClose')}</button>
@@ -191,7 +166,9 @@ export function LigacaoModal({ meio, result, factory: f, flow, data, lang, dispa
               )}
             </div>
           )}
-          <div ref={benchEl} className="pl-lig-bench" hidden={!bench} />
+          <div ref={benchEl} className="pl-lig-bench" hidden={!bench}>
+            {bench && <Workbench key={bench.key} {...bench.ctx} blueprints={NO_BPS} />}
+          </div>
           {!bench && (
             <>
               {state.kind === 'calc' && <p className="pl-note" role="status">{t('plMeioCalc')}</p>}

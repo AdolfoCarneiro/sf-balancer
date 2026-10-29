@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src/main.tsx", "src/shell", "src/planner", "src/balancer/BalancerPage.tsx", "tests/planner"]
+  "include": ["src/main.tsx", "src/shell", "src/planner", "src/balancer", "tests/planner"]
 }
