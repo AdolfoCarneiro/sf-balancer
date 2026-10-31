@@ -8,7 +8,7 @@ import { hasRows, isSource, type Factory, type GameData, type MapPlace, type Sta
 import type { FlowResult } from '../model/solve.ts';
 import type { Action } from '../model/factorystate.ts';
 import type { Pt, Rect } from '../model/map/geo.ts';
-import { selectionBox, type Scene } from '../model/map/scene.ts';
+import type { Scene } from '../model/map/scene.ts';
 import { warningRect } from '../model/map/edit.ts';
 import type { Meio } from '../model/meio.ts';
 import type { MeioResult } from '../model/meioresult.ts';
@@ -56,6 +56,8 @@ interface Props {
   onImportFile: (f: File) => void;   // importar do Modeler (o App mostra o resumo)
   onSplit: (ids: StageId[]) => void;   // separar a seleção numa fábrica nova
   onCopy: () => void; onPaste: () => void; onDuplicate: () => void;   // copiar e colar (Ctrl+C, Ctrl+V, Ctrl+D)
+  // Área da seleção na Planta (a calculada, ou a que a pessoa arrastou/redimensionou: areaEdited) e voltar à calculada.
+  selArea: Rect | null; areaEdited: boolean; onAreaReset: () => void;
 }
 
 export function MapPanel(p: Props) {
@@ -159,12 +161,14 @@ const PANEL_OUT_MS = 240;
 
 // Vários blocos selecionados: quantos, quais e os botões de apagar todos (um passo só do desfazer), separar numa fábrica
 // nova e limpar a seleção.
-function ManyPanel({ ids, stageName, scene, meioList, onDeleteMany, onClearSel, onSplit, onCopy, onPaste, onDuplicate }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
-  const n = fmt(ids.length, 0), box = selectionBox(scene, ids, meioList);
+function ManyPanel({ ids, stageName, selArea: box, areaEdited, onAreaReset, view, onDeleteMany, onClearSel, onSplit, onCopy, onPaste, onDuplicate }: Props & { ids: StageId[]; stageName: (id: StageId) => string }) {
+  const n = fmt(ids.length, 0);
   return (
     <>
       <h2 className="pl-insp-title">{t('plSelMany', n)}</h2>
-      {box && <p className="pl-insp-sub">{t('plSelSize')}: <b>{sizeText(box)}</b></p>}
+      {box && <p className="pl-insp-sub">{t(areaEdited ? 'plSelSizeEdited' : 'plSelSize')}: <b>{sizeText(box)}</b></p>}
+      {box && view === 'planta' && <p className="pl-note">{t('plSelAreaHint')}</p>}
+      {areaEdited && <button type="button" className="pl-btn" onClick={onAreaReset}>{t('plSelAreaReset')}</button>}
       <p className="pl-note">{t('plSelManyHint')}</p>
       <ul className="pl-sel-list">
         {ids.map(id => <li key={id}>{stageName(id)}</li>)}

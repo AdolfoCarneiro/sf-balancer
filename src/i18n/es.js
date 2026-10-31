@@ -496,7 +496,7 @@ export default {
   plChangeRecipe: 'Receta (cambiar)', plDeleteBlock: 'Borrar bloque',
   plBalIn: 'Entra', plBalOut: 'Sale', plBalSink: 'Sink', plBalDeficits: n => `${n} ${n === '1' ? 'falta' : 'faltas'}`, plBalSurpluses: n => `${n} ${n === '1' ? 'sobrante' : 'sobrantes'}`,
   plBalAria: 'Balance de la fábrica: lo que entra, lo que sale y lo que va al sink', plBalGo: (kind, item, block, rate) => `${kind === 'surplus' ? 'Sobrante' : kind === 'stalled' ? 'Bloqueado' : 'Falta'} de ${item} en ${block}: ${rate}`,
-  plSelMany: n => `${n} bloques seleccionados`, plSelSize: 'En el plano ocupa',
+  plSelMany: n => `${n} bloques seleccionados`, plSelSize: 'En el plano ocupa', plSelSizeEdited: 'Área ajustada', plSelAreaHint: 'En el plano, arrastra los bordes o las esquinas del contorno discontinuo para cambiar el tamaño del área, o arrastra el vacío dentro de ella para moverla (en la cuadrícula de 8 m).', plSelAreaReset: 'Volver al área de los bloques',
   plSelManyHint: 'Arrastra uno de ellos para mover todos. Supr los borra todos; Esc limpia la selección. Shift + clic añade o quita un bloque.',
   plSelDelete: n => `Borrar ${n} bloques`, plSelClear: 'Limpiar selección', plSelAll: 'Seleccionar todo',
   plInviteTitle: 'Doble clic para crear un bloque', plInviteSub: 'o arrastra desde un puerto hasta aquí', plNewBlock: 'Nuevo bloque', plLegendTitle: 'Leyenda',

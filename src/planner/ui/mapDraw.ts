@@ -58,7 +58,8 @@ export interface DrawOpts {
   // Camadas ligadas (desligada: não desenha; o MapView também tira do clique).
   layers: MapLayers;
   // Seleção de vários blocos: o que ela ocupa na Planta (mundo, m) e a medida já no idioma ("96 × 72 m · 12 × 9 fundações").
-  selBox: { r: Rect; text: string } | null;
+  // grips: as alças nos cantos e no meio das bordas (a área pode ser arrastada e redimensionada).
+  selBox: { r: Rect; text: string; grips?: boolean } | null;
 }
 
 const near = (r: Rect, vw: number, vh: number, m: number) => r.x + r.w >= -m && r.y + r.h >= -m && r.x <= vw + m && r.y <= vh + m;
@@ -172,6 +173,14 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, view: Vie
       ctx.save();
       ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = th.ficsit;
       ctx.strokeRect(r.x - 0.5, r.y - 0.5, r.w + 1, r.h + 1);
+      if (o.selBox.grips) {
+        ctx.setLineDash([]); ctx.fillStyle = th.ficsit;
+        const G = 8;
+        for (const gx of [r.x, r.x + r.w / 2, r.x + r.w]) for (const gy of [r.y, r.y + r.h / 2, r.y + r.h]) {
+          if (gx === r.x + r.w / 2 && gy === r.y + r.h / 2) continue;
+          ctx.fillRect(Math.round(gx - G / 2), Math.round(gy - G / 2), G, G);
+        }
+      }
       ctx.restore();
       const line = { s: o.selBox.text, font: `600 12px ${th.body}`, color: th.ficsit, h: 18 };
       L.put([line], [[r.x, r.y - 18 - 4], [r.x, r.y + r.h + 4], [r.x + 4, r.y + 4]], null, true, true);

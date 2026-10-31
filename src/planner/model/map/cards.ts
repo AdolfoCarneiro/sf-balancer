@@ -5,7 +5,7 @@ import type { Block, Factory, GameData, ItemId, LigPlace, Link, StageId } from '
 import { groupLinks, type Meio } from '../meio.ts';
 import { portsOf } from '../factory.ts';
 import type { FlowResult } from '../solve.ts';
-import { PLANT_LIMITS, centerOn, fit, type Camera, type ZoomLimits } from './camera.ts';
+import { PLANT_LIMITS, fit, type Camera, type ZoomLimits } from './camera.ts';
 import { gateOf, toWorld, type Pt, type Rect } from './geo.ts';
 import type { Scene, SceneBlock } from './scene.ts';
 import { MAP_GRID } from './sizes.ts';
@@ -215,18 +215,6 @@ export function chipWorld(cam: Camera, sx: number, sy: number, size: { w: number
 // mapa ainda aproxima).
 export const MONTAR_LIMITS: ZoomLimits = { min: PLANT_LIMITS.min, max: MONTAR_REF * 3 };
 export const viewLimits = (montar: boolean): ZoomLimits => (montar ? MONTAR_LIMITS : PLANT_LIMITS);
-
-// Trocar de vista (v: a geometria da nova vista com a câmera de agora): a câmera fica se algum bloco aparece na tela
-// (vw × vh px); senão vai ao bloco selecionado (sel) no lugar dele na nova vista; sem ele, null (quem chama enquadra
-// tudo). As duas vistas têm posições próprias, então o centro de uma pode ser o vazio da outra.
-export function switchCam(v: ViewGeo, cam: Camera, vw: number, vh: number, sel: StageId | null): Camera | null {
-  const seen = (r: Rect) => r.x < vw && r.x + r.w > 0 && r.y < vh && r.y + r.h > 0;
-  if (!v.blocks.length || v.blocks.some(b => seen(b.rect))) return cam;
-  const b = sel ? v.blocks.find(x => x.id === sel) : undefined;
-  if (!b) return null;
-  const z = cam.zoom, r = b.rect;
-  return centerOn(cam, { x: cam.x + r.x / z, y: cam.y + r.y / z, w: r.w / z, h: r.h / z }, vw, vh);
-}
 
 // Do lado de fora de cada porta cabe o rótulo do estado ("sai 1.200/min", "faltam 120/min", "+330 sobrando"): sem essa
 // folga, o "Mostrar tudo" põe o cartão na borda e o rótulo, preso à tela, cobre o número de máquinas.

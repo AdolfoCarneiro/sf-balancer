@@ -496,7 +496,7 @@ export default {
   plChangeRecipe: 'Recipe (change)', plDeleteBlock: 'Delete block',
   plBalIn: 'In', plBalOut: 'Out', plBalSink: 'Sink', plBalDeficits: n => `${n} ${n === '1' ? 'shortage' : 'shortages'}`, plBalSurpluses: n => `${n} ${n === '1' ? 'surplus' : 'surpluses'}`,
   plBalAria: 'Factory balance: what comes in, what goes out and what goes to the sink', plBalGo: (kind, item, block, rate) => `${kind === 'surplus' ? 'Surplus' : kind === 'stalled' ? 'Stalled' : 'Shortage'} of ${item} at ${block}: ${rate}`,
-  plSelMany: n => `${n} blocks selected`, plSelSize: 'Takes on the plan',
+  plSelMany: n => `${n} blocks selected`, plSelSize: 'Takes on the plan', plSelSizeEdited: 'Adjusted area', plSelAreaHint: 'On the plan, drag the edges or corners of the dashed outline to resize the area, or drag the empty space inside it to move it (on the 8 m grid).', plSelAreaReset: 'Back to the blocks\' area',
   plSelManyHint: 'Drag one of them to move them all. Delete removes them all; Esc clears the selection. Shift + click adds or removes a block.',
   plSelDelete: n => `Delete ${n} blocks`, plSelClear: 'Clear selection', plSelAll: 'Select all',
   plInviteTitle: 'Double-click to create a block', plInviteSub: 'or drag from a port to here', plNewBlock: 'New block', plLegendTitle: 'Legend',

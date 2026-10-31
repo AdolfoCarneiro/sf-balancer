@@ -16,11 +16,12 @@ import { isSource, type Block, type Factory, type GameData, type ItemId, type Li
 import type { Action } from '../model/factorystate.ts';
 import { centerOn, clampCam, fit, pan, screenToWorld, zoomAt, type Camera } from '../model/map/camera.ts';
 import type { MeioGeo, Pt, Rect } from '../model/map/geo.ts';
+import { AREA_CURSOR, areaGrip, dragArea, type AreaGrip } from '../model/map/area.ts';
 import { buildScene, hitTest, placesOf, proposeMap, selectionBox, type Scene } from '../model/map/scene.ts';
 import { montarLig, montarPlaces } from '../model/views.ts';
 import { dragged, ligDragged, ligRotated, nudged, rotated, withPlace } from '../model/map/edit.ts';
 import { dropTarget, type ScenePort } from '../model/map/ports.ts';
-import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, switchCam, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
+import { MONTAR_REF, blockCardSize, cardScale, cardSpec, chipWorld, fitMontar, fitPlanta, viewGeo, viewHit, viewLimits, type ViewGeo, type ViewHit, type ViewPort } from '../model/map/cards.ts';
 import { chipLabel, type ChipLabel } from '../model/chip.ts';
 import { portStates, type PortState } from '../model/portstate.ts';
 import { MAX_LINKS, MAX_STAGES, blocksFull, linksFull, nextBlockId } from '../model/factory.ts';
@@ -64,6 +65,9 @@ export interface MapViewHandle {
 // camMoved: o usuário já mexeu na câmera (aí ela não reenquadra sozinha quando os meios chegam).
 let sessionCam: Camera | null = null;
 let camMoved = false, refitted = false;
+// A câmera de cada vista (as posições das duas são próprias, então o mesmo centro numa é o vazio da outra): trocar de
+// vista guarda a de saída e volta à da nova onde ela ficou; a primeira vez numa vista enquadra tudo.
+let viewCams: Partial<Record<ViewMode, Camera>> = {};
 
 // Mapa vazio: a origem no centro, de perto (enquadrar um retângulo vazio daria o zoom máximo).
 const EMPTY_ZOOM = 2;
@@ -359,11 +363,17 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   // Cartão de cada bloco na Montar, já no idioma (lang nas dependências).
   const cards = useMemo(() => new Map(f.blocks.map(b => [b.id, cardText(b, data, flow, badges.get(b.id) ?? [])])),
     [f.blocks, data, flow, badges, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
-  // Vários blocos selecionados: o que ocupam na Planta, com a medida em fundações.
-  const selBox = useMemo(() => {
-    const r = selection?.kind === 'stages' ? selectionBox(scene, selection.ids, meioList) : null;
-    return r ? { r, text: sizeText(r) } : null;
-  }, [selection, scene, meioList, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Vários blocos selecionados: o que ocupam na Planta (as ligações escondidas nas Camadas não contam), com a medida em
+  // fundações. A pessoa pode arrastar e redimensionar essa área (areaEdit, até a seleção mudar).
+  const selKeyMany = selection?.kind === 'stages' ? selection.ids.join(',') : null;
+  const [areaEdit, setAreaEdit] = useState<{ key: string; r: Rect } | null>(null);
+  const [areaDrag, setAreaDrag] = useState<Rect | null>(null);
+  const selAuto = useMemo(() => (selection?.kind === 'stages' ? selectionBox(scene, selection.ids, meioList, layers.links) : null),
+    [selection, scene, meioList, layers.links]);
+  const selArea = areaDrag ?? (areaEdit && areaEdit.key === selKeyMany ? areaEdit.r : null) ?? selAuto;
+  const areaEdited = !!selKeyMany && (!!areaDrag || areaEdit?.key === selKeyMany);
+  const selBox = useMemo(() => (selArea && !montar ? { r: selArea, text: sizeText(selArea), grips: true } : null),
+    [selArea, montar, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
   const opts = useMemo((): DrawOpts | null => theme && {
     // lang nas dependências: os rótulos mudam com o idioma.
     selected, hover, colors, theme, t: 1, time: 0,
@@ -506,21 +516,16 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     return fitAll(sc.bounds, w, h);
   };
 
-  // Trocar de vista: a câmera mantém o centro (com o zoom nos limites da nova) e t anda até a ponta em TRANS_MS
-  // (na hora com movimento reduzido). Se nenhum bloco da nova vista fica na tela (as posições das duas são próprias),
-  // vai ao bloco selecionado no lugar dele lá, ou enquadra a nova vista.
-  const firstMode = useRef(true);
+  // Trocar de vista: cada vista tem a sua câmera (guardada ao sair; a primeira vez, enquadra tudo) e t anda até a ponta
+  // em TRANS_MS (na hora com movimento reduzido).
+  const prevMode = useRef(mode);
   useEffect(() => {
-    if (firstMode.current) { firstMode.current = false; return; }
+    const was = prevMode.current;
+    if (was === mode) return;
+    prevMode.current = mode;
     const to = mode === 'planta' ? 1 : 0, from = tNow.current;
-    if (cam.current) {
-      setCam(cam.current);
-      const { w, h } = size.current, { scene: sc, f: fs, data: dt, flow: fl } = latest.current;
-      if (w && cam.current) {
-        const v = viewGeo(sc, cam.current, to, phone.current, fs, dt, fl);
-        setCam(switchCam(v, cam.current, w, h, selStage) ?? fitView());
-      }
-    }
+    if (cam.current) viewCams[was] = cam.current;
+    if (size.current.w) setCam(viewCams[mode] ?? fitView());
     if (reduced.current || from === to) { tNow.current = to; request(); return; }
     const t0 = performance.now();
     let id = 0;
@@ -634,8 +639,18 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     group: Record<StageId, MapPlace> | null; moved2: Record<StageId, MapPlace> | null;   // vários blocos: de onde e para onde
     marquee: boolean;
     bend: { link: string; base: [number, number]; to: [number, number] | null } | null;   // Montar: puxando o ponto de uma esteira
+    area?: { grip: AreaGrip; r: Rect; to: Rect | null };   // Planta: puxando a área da seleção (borda, canto ou o meio vazio)
   } | null>(null);
-  const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | 'marquee' | null>(null);
+  // Pega da área da seleção sob o ponteiro (só na Planta parada): bordas e cantos ganham de tudo; o meio, só no vazio.
+  const [areaHover, setAreaHover] = useState<AreaGrip | null>(null);
+  const gripAt = (e: { clientX: number; clientY: number; currentTarget: Element }, empty: boolean): AreaGrip | null => {
+    const c = cam.current;
+    if (!selArea || montar || tNow.current !== 1 || !c) return null;
+    const [x, y] = local(e), z = c.zoom;
+    const g = areaGrip({ x: (selArea.x - c.x) * z, y: (selArea.y - c.y) * z, w: selArea.w * z, h: selArea.h * z }, x, y);
+    return g === 'move' && !empty ? null : g;
+  };
+  const [dragging, setDragging] = useState<'pan' | 'block' | 'link' | 'marquee' | 'area' | null>(null);
   // Retângulo de seleção (Shift + arrastar no vazio), em px do mapa.
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const local = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
@@ -711,6 +726,14 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     // Bloco que faz parte da seleção múltipla: arrastar leva todos.
     const group = hit?.kind === 'block' && selMany?.includes(hit.id)
       ? Object.fromEntries(selMany.filter(id => viewBase[id]).map(id => [id, viewBase[id]])) : null;
+    const grip = e.button === 0 && !e.shiftKey && !e.ctrlKey && !e.metaKey && !port ? gripAt(e, !h) : null;
+    if (grip && selArea) {
+      drag.current = {
+        id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit: null, from: null, to: null,
+        port: null, chip: null, shift: false, group: null, moved2: null, marquee: false, bend: null, area: { grip, r: selArea, to: null },
+      };
+      return;
+    }
     drag.current = {
       id: e.pointerId, button: e.button, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, hit, from, to: null, port,
       // Shift ou Ctrl/⌘ + clique põe ou tira o bloco da seleção; Shift ou Ctrl/⌘ + arrastar no vazio, o retângulo.
@@ -726,10 +749,14 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       if (!d.moved) {
         if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK_PX) return;
         d.moved = true;
-        setDragging(d.marquee ? 'marquee' : d.port ? 'link' : d.from || d.bend ? 'block' : 'pan');
+        setDragging(d.area ? 'area' : d.marquee ? 'marquee' : d.port ? 'link' : d.from || d.bend ? 'block' : 'pan');
         if (d.hit?.kind === 'meio') setPopId(null);
       }
-      if (d.marquee) {
+      if (d.area) {
+        const a = dragArea(d.area.r, d.area.grip, (e.clientX - d.x0) / c.zoom, (e.clientY - d.y0) / c.zoom);
+        const p = d.area.to;
+        if (!p || p.x !== a.x || p.y !== a.y || p.w !== a.w || p.h !== a.h) { d.area.to = a; setAreaDrag(a); }
+      } else if (d.marquee) {
         const r = e.currentTarget.getBoundingClientRect();
         setMarquee({ x0: d.x0 - r.left, y0: d.y0 - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top });
       } else if (d.port) {
@@ -774,7 +801,9 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     const h = hitAt(e);
     const over = h?.kind === 'port' ? scenePort(h.port) : null;
     if ((over && portKey(over)) !== (hoverPort && portKey(hoverPort))) setHoverPort(over);
-    const id = h?.kind === 'block' ? h.id : h?.kind === 'chip' ? h.meio : null;
+    const g = over ? null : gripAt(e, !h);
+    if (g !== areaHover) setAreaHover(g);
+    const id = g ? null : h?.kind === 'block' ? h.id : h?.kind === 'chip' ? h.meio : null;
     if (id !== hover) setHover(id);
   };
   // Soltou a porta puxada: numa porta (ou no corpo de um bloco, que vale como a porta do item) liga; no vazio abre o
@@ -800,6 +829,13 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
     setMoving(null);
     setWire(null);
     setMarquee(null);
+    setAreaDrag(null);
+    if (d.area) {
+      // Clique sem arrastar no vazio dentro da área limpa a seleção, como no resto do vazio.
+      if (!cancel && !d.moved && d.area.grip === 'move') { setPopId(null); onSelect(null); return; }
+      if (!cancel && d.area.to && selKeyMany) setAreaEdit({ key: selKeyMany, r: d.area.to });
+      return;
+    }
     if (cancel) return;
     if (d.marquee) {
       // Shift + arrastar no vazio: os blocos cujo retângulo na tela cruza o retângulo; Shift + clique no vazio não muda nada.
@@ -1025,12 +1061,12 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
   const fitNext = useRef(false);
   useEffect(() => { if (fitNext.current && size.current.w) { fitNext.current = false; setCam(fitView()); } }, [scene]);   // eslint-disable-line react-hooks/exhaustive-deps
   const importFactory = (nf: Factory) => {
-    fitNext.current = true; camMoved = false; refitted = false;
+    fitNext.current = true; camMoved = false; refitted = false; viewCams = {};
     onSelect(null);
     dispatch({ type: 'load', factory: nf });
   };
   const openFactory = (nf: Factory) => {
-    fitNext.current = true; camMoved = false; refitted = false;
+    fitNext.current = true; camMoved = false; refitted = false; viewCams = {};
     onSelect(null);
     dispatch({ type: 'reset', factory: nf });
   };
@@ -1111,10 +1147,11 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       <main className="pl-center" id="pl-graph" tabIndex={-1} aria-label={t('plViewMap')}>
         <div className="pl-map" ref={wrap}>
           <canvas ref={canvas} tabIndex={0} role="img"
+            style={areaHover && (!dragging || dragging === 'area') ? { cursor: AREA_CURSOR[drag.current?.area?.grip ?? areaHover] } : undefined}
             className={'pl-map-canvas' + (dragging === 'marquee' ? ' marquee' : dragging === 'pan' ? ' grabbing' : dragging === 'block' ? ' moving' : dragging === 'link' || hoverPort ? ' linking' : hover ? ' over' : '')}
             aria-label={t('plMapAria', fmt(f.blocks.length, 0), area)}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={e => endDrag(e)} onPointerCancel={e => endDrag(e, true)}
-            onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); } }}
+            onPointerLeave={() => { if (!drag.current) { if (hover) setHover(null); if (hoverPort) setHoverPort(null); if (areaHover) setAreaHover(null); } }}
             onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onKeyDown={canvasKey} />
           {marquee && (
             <div className="pl-marquee" aria-hidden="true" style={{
@@ -1157,6 +1194,7 @@ export function MapView({ view: mode, factory: f, flow, data, lang, meioList, re
       <MapPanel factory={f} flow={flow} data={data} dispatch={dispatch} onDelete={remove} onDeleteMany={removeMany} onSelectAll={selectAll}
         onClearSel={() => { onSelect(null); canvas.current?.focus(); }} onSplit={onSplit}
         onCopy={() => { copySel(); }} onPaste={() => pasteClip(false)} onDuplicate={() => { if (copySel()) pasteClip(false); }} meioList={meioList} scene={scene} places={places}
+        selArea={selArea} areaEdited={areaEdited} onAreaReset={() => setAreaEdit(null)}
         selection={selection} problems={problems} view={mode} open={panelOpen} sheet={sheet} onSheet={setSheet}
         chip={id => chips.get(id) ?? null} results={results}
         onPlace={placePlanta} onPropose={propose} onFocus={focus} onGo={goTo}

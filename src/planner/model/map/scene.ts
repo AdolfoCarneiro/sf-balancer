@@ -181,11 +181,13 @@ function boundsOf(rects: Rect[], belts: BeltPath[] = []): Rect {
 }
 
 // O que a seleção ocupa na Planta (para fazer a base no jogo): os blocos e as ligações que ficam entre eles (todas as
-// produtoras e consumidoras na seleção). Sem nenhum bloco na cena: null.
-export function selectionBox(scene: Scene, ids: readonly StageId[], meios: readonly Meio[]): Rect | null {
+// produtoras e consumidoras na seleção; links false: as ligações estão escondidas nas Camadas e não contam). Sem nenhum
+// bloco na cena: null.
+export function selectionBox(scene: Scene, ids: readonly StageId[], meios: readonly Meio[], links = true): Rect | null {
   const set = new Set(ids);
   const rects = scene.blocks.filter(b => set.has(b.stage)).map(b => b.rect);
   if (!rects.length) return null;
+  if (!links) return boundsOf(rects);
   const inside = new Set(meios.filter(m => [...m.producers, ...m.consumers].every(id => set.has(id))).map(m => m.id));
   for (const m of scene.meios) if (inside.has(m.meio)) rects.push(m.rect);
   return boundsOf(rects);
